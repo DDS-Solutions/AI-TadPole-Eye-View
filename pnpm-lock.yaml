@@ -63,6 +63,25 @@ importers:
         specifier: ^3.0.7
         version: 3.2.7(@types/node@26.3.0)
 
+  packages/providers:
+    dependencies:
+      '@gev/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@gev/core':
+        specifier: workspace:*
+        version: link:../core
+      '@gev/security':
+        specifier: workspace:*
+        version: link:../security
+    devDependencies:
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7(@types/node@26.3.0)
+
   packages/security:
     dependencies:
       ipaddr.js:

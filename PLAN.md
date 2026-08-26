@@ -269,7 +269,7 @@ Each layer ships with: provider adapter + fixture tests + Playwright smoke passi
 - [x] security pkg: pinned-fetch ported + tests
 - [x] core pkg: math modules ported + property tests
 - [ ] Globe renders flights end-to-end, keyless
-- [ ] Sim-clock + seed-mode providers (no live calls in dev/test)
+- [x] Sim-clock + seed-mode providers (no live calls in dev/test)
 - [ ] governance stubs live (WAL to SQLite, STASIS trip, prompt approvals)
 - [ ] ops-mcp + gev CLI skeletons; debug bus
 - [ ] AGENTS.md, RUNBOOK.md, adr/INDEX.md, ADG gate
