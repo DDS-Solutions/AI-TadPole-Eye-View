@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import {
+  type ApprovalGate,
   type DiagnosticCheck,
   type FeedHealthItem,
   type GetBudgetOutput,
@@ -27,7 +28,7 @@ export interface OperatorContext {
   clock: SimClock;
   auditSink: SqliteAuditSink;
   budgetGovernor: CapBudgetGovernor;
-  approvalGate: PromptApprovalGate;
+  approvalGate: ApprovalGate;
   openSkyAdapter: OpenSkyAdapter;
   flags: Map<string, boolean>;
 }

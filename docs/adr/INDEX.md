@@ -21,3 +21,5 @@ This directory records all significant architectural and structural decisions ma
 | [0026](./0026-provider-agnostic-voice-agent-and-xstate-lifecycle-architecture.md) | Provider-Agnostic Voice Agent & XState Lifecycle Architecture | Accepted | 2026-08-26 |
 | [0027](./0027-shared-tool-registry-contracts-and-governed-actuators-architecture.md) | Shared Tool Registry Contracts & Governed Actuators Architecture | Accepted | 2026-08-26 |
 | [0028](./0028-yjs-collaborative-intent-rooms-and-co-user-presence-architecture.md) | Yjs Collaborative Intent Rooms & Co-User Presence Architecture | Accepted | 2026-08-26 |
+| [0029](./0029-phase-4-hygiene-telemetry-licensing-and-m2-showcase.md) | Phase 4 Hygiene, Licensing Download Packs, Telemetry & Tadpole M2 Showcase | Accepted | 2026-08-26 |
+

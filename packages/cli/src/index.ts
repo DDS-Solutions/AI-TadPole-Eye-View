@@ -2,6 +2,7 @@
 import { spawn } from 'node:child_process';
 import { Command } from 'commander';
 import { runAuditTail } from './commands/audit.js';
+import { runDemo } from './commands/demo.js';
 import { runFeedsHealth } from './commands/feeds.js';
 import { runResume } from './commands/resume.js';
 import { runSceneLoad, runSceneSave } from './commands/scene.js';
@@ -13,6 +14,14 @@ program
   .name('gev')
   .description("God's Eye View v2 (GEV) — Operator & Agent CLI Surface")
   .version('0.1.0');
+
+// 0. gev demo
+program
+  .command('demo')
+  .description('Run live Governed Agent Team showcase demonstration (PLAN.md §10 Phase 4)')
+  .action(async () => {
+    await runDemo();
+  });
 
 // 1. gev status
 program

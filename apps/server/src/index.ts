@@ -34,10 +34,12 @@ import { createRadioRouter } from './routes/radio.js';
 import { createShipsRouter } from './routes/ships.js';
 import { createVoiceRouter } from './routes/voice.js';
 import { createWeatherRouter } from './routes/weather.js';
+import { ServerTelemetryManager } from './telemetry/index.js';
 
 export function createApp() {
   const app = new Hono();
   const clock = new SystemClock();
+  const telemetry = new ServerTelemetryManager();
 
   // Adapters
   const openSkyAdapter = new OpenSkyAdapter({ clock });
@@ -69,6 +71,7 @@ export function createApp() {
   // Health and provider status
   app.get('/api/health', async (c) => {
     const govState = budgetGovernor.state();
+    telemetry.trackEvent('system.health_check');
     return c.json({
       status: 'ok',
       version: '0.1.0',
@@ -90,6 +93,11 @@ export function createApp() {
         weather: { healthy: true, source: 'rainviewer' },
       },
     });
+  });
+
+  // Telemetry Metrics Endpoint (PLAN.md §7.1 & §10)
+  app.get('/api/telemetry/metrics', async (c) => {
+    return c.json(telemetry.getMetrics());
   });
 
   // Diagnostic Feed Health Endpoint
@@ -334,6 +342,7 @@ export function createApp() {
     approvalGate,
     costGovernor,
     collabRoomManager,
+    telemetry,
     clock,
     adapters: {
       openSky: openSkyAdapter,

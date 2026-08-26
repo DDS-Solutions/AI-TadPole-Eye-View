@@ -300,11 +300,11 @@ Each layer ships with: provider adapter + fixture tests + Playwright smoke passi
 - [x] Yjs rooms + awareness + room tokens (T2)
 
 ### Phase 4 — Hygiene & showcase (Week 9)
-- [ ] Docs regenerated; DATA_SOURCES provenance per layer
-- [ ] Licensing cleaned (NC data → download packs; model licenses explicit)
-- [ ] Self-hosted telemetry finalized; k6 load pass on proxies
-- [ ] Demo script: governed agent team operating live console (M1/M2 truthfully demonstrated)
-- [ ] Tadpole integration spike toward M2
+- [x] Docs regenerated; DATA_SOURCES provenance per layer
+- [x] Licensing cleaned (NC data → download packs; model licenses explicit)
+- [x] Self-hosted telemetry finalized; k6 load pass on proxies
+- [x] Demo script: governed agent team operating live console (M1/M2 truthfully demonstrated)
+- [x] Tadpole integration spike toward M2
 
 **Effort:** solo ≈ 10–12 wks to parity (+2 wks collab tiers); two devs ≈ 6–8 wks. Porting upstream assets saves ~30%.
 
