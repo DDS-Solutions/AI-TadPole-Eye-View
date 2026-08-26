@@ -24,7 +24,7 @@ for your successor (§10).
 | Term | Meaning |
 |---|---|
 | **GEV v2** | This repo. Ground-up rewrite of bilawalsidhu/gods-eye-view. |
-| **Tadpole** | DDS-Solutions/AI-TadPole-OS — agent governance runtime will act as the eyes and ears for AI-Tadpole-OS digital twinSMB end users. Provides implementations for our five ports at merge rungs M1–M4. |
+| **Tadpole** | DDS-Solutions/AI-TadPole-OS — agent governance runtime will act as the eyes and ears for AI-Tadpole-OS digital twin SMB end users. Provides implementations for our five ports at merge rungs M1–M4. |
 | **Port** | An interface in `packages/contracts/src/ports.ts`: AuditSink, ApprovalGate, BudgetGovernor, CapabilityIssuer, AgentEnvelope. |
 | **Stub** | Local Phase-0 implementation of a port (SQLite log, browser prompt, hardcoded caps). Fully functional standalone. |
 | **M-rung** | Merge ladder step: M1 Observer → M2 Gatekeeper → M3 Governor → M4 Runtime (PLAN.md §6). |

@@ -15,3 +15,9 @@ export {
   type LayerControllersMap,
   type CameraPose,
 } from './debugBus.js';
+export {
+  FrameBudgetMonitor,
+  type FrameBudgetMonitorOptions,
+  type FrameMetrics,
+  type FrameBudgetReport,
+} from './frameBudget.js';

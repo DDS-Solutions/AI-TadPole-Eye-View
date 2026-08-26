@@ -17,6 +17,7 @@ This directory records all significant architectural and structural decisions ma
 | [0022](./0022-cctv-media-proxy-voice-tokens-and-m1-audit-stream.md) | CCTV Media Proxy, Realtime Voice Tokens & M1 Audit Stream Architecture | Accepted | 2026-08-26 |
 | [0023](./0023-telemetry-layer-controllers-and-tactical-hud-architecture.md) | Telemetry Layer Controllers & Tactical HUD Architecture | Accepted | 2026-08-26 |
 | [0024](./0024-media-telemetry-layers-and-live-streaming-hud-architecture.md) | Media Telemetry Layers, Orbital Trajectories & Live Streaming HUD Architecture | Accepted | 2026-08-26 |
+| [0025](./0025-performance-budgets-frame-harness-and-virtualized-telemetry.md) | Performance Budgets, Frame-Time Harness & Virtualized Telemetry Architecture | Accepted | 2026-08-26 |
 
 
 

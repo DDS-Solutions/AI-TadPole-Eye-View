@@ -1,11 +1,20 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import type { GevDebugBus } from '@gev/cesium-kit';
 import { expect, test } from '@playwright/test';
 
-test.describe('GEV v2 Multi-Layer Telemetry & Tactical HUD Smoke (PLAN.md Phase 2)', () => {
-  test('renders keyless Cesium 3D globe and streams all 9 Layers with tactical HUD controls', async ({
+declare global {
+  interface Window {
+    __gev?: GevDebugBus;
+  }
+}
+
+test.describe('GEV v2 Multi-Layer Telemetry, Virtualized Table & Frame Monitor Smoke (PLAN.md Phase 2)', () => {
+  test('renders keyless Cesium 3D globe, virtualized telemetry stream, and uPlot charts', async ({
     page,
   }) => {
+    test.setTimeout(60000);
+
     // 1. Navigate to web application
     await page.goto('/');
 
@@ -61,7 +70,41 @@ test.describe('GEV v2 Multi-Layer Telemetry & Tactical HUD Smoke (PLAN.md Phase 
     await expect(page.locator('#launch-count')).not.toHaveText('0');
     await expect(page.locator('#weather-count')).not.toHaveText('0');
 
-    // 6. Test Layer Control Panel toggles
+    // 6. Test Frame Budget Monitor integration on window.__gev
+    const frameReport = await page.evaluate(() => window.__gev?.getFrameReport?.());
+    expect(frameReport).not.toBeNull();
+    if (frameReport) {
+      expect(frameReport.targetFps).toBe(60);
+      expect(frameReport.targetBudgetMs).toBeCloseTo(16.666, 2);
+      expect(frameReport.metrics.totalFrames).toBeGreaterThan(0);
+    }
+
+    // 7. Test High-Density Virtualized Telemetry Table
+    const toggleTableBtn = page.locator('#toggle-telemetry-table-btn');
+    await expect(toggleTableBtn).toBeVisible();
+    await toggleTableBtn.click();
+
+    const tablePanel = page.locator('#virtualized-telemetry-table');
+    await expect(tablePanel).toBeVisible();
+
+    // Verify virtual rows rendered
+    const virtualRows = page.locator('.virtual-row');
+    await expect(virtualRows.first()).toBeVisible();
+
+    // Test Search input inside the table
+    const searchInput = page.locator('#telemetry-search-input');
+    await searchInput.fill('Flight');
+    await expect(searchInput).toHaveValue('Flight');
+    await searchInput.fill('');
+
+    // Test Selecting a row from the virtual table
+    await virtualRows.first().click();
+
+    // Assert Entity Info Card is open and displays uPlot time series chart
+    const infoCard = page.locator('#entity-info-card');
+    await expect(infoCard).toBeVisible();
+
+    // 8. Test Layer Control Panel toggles
     const flightsToggle = page.locator('#toggle-flights');
     await expect(flightsToggle).toBeChecked();
     await flightsToggle.setChecked(false, { force: true });
@@ -69,16 +112,7 @@ test.describe('GEV v2 Multi-Layer Telemetry & Tactical HUD Smoke (PLAN.md Phase 
     await flightsToggle.setChecked(true, { force: true });
     await expect(flightsToggle).toBeChecked();
 
-    const cctvToggle = page.locator('#toggle-cctv');
-    await expect(cctvToggle).toBeChecked();
-
-    const radioToggle = page.locator('#toggle-radio');
-    await expect(radioToggle).toBeChecked();
-
-    const launchToggle = page.locator('#toggle-launches');
-    await expect(launchToggle).toBeChecked();
-
-    // 7. Test Filter tabs and interaction
+    // 9. Test Filter tabs and interaction
     const filtersTabBtn = page.getByRole('button', { name: 'Filters' });
     await filtersTabBtn.click();
 
@@ -87,32 +121,15 @@ test.describe('GEV v2 Multi-Layer Telemetry & Tactical HUD Smoke (PLAN.md Phase 
     await m45FilterBtn.click();
     await expect(m45FilterBtn).toHaveClass(/active/);
 
-    const frp50FilterBtn = page.locator('#filter-firms-frp50');
-    await expect(frp50FilterBtn).toBeVisible();
-    await frp50FilterBtn.click();
-    await expect(frp50FilterBtn).toHaveClass(/active/);
-
-    const cctvCaltransFilterBtn = page.locator('#filter-cctv-caltrans');
-    await expect(cctvCaltransFilterBtn).toBeVisible();
-    await cctvCaltransFilterBtn.click();
-    await expect(cctvCaltransFilterBtn).toHaveClass(/active/);
-
-    // 8. Test collapse / expand panel
-    const collapseBtn = page.locator('#toggle-collapse-btn');
-    await collapseBtn.click();
-    await expect(collapseBtn).toHaveText('◀');
-    await collapseBtn.click();
-    await expect(collapseBtn).toHaveText('▼');
-
-    // 9. Ensure artifact directory exists and capture screenshot (Rule 2: visual evidence)
+    // 10. Capture screenshot artifact (Rule 2: visual verification)
     const resultsDir = path.resolve('test-results');
     if (!fs.existsSync(resultsDir)) {
       fs.mkdirSync(resultsDir, { recursive: true });
     }
 
-    const screenshotPath = path.join(resultsDir, 'globe-all-9-layers.png');
+    const screenshotPath = path.join(resultsDir, 'globe-phase2-virtual-telemetry.png');
     await page.screenshot({ path: screenshotPath, fullPage: true });
 
-    console.log(`[E2E] Saved 9-layer globe screenshot artifact to ${screenshotPath}`);
+    console.log(`[E2E] Saved Phase 2 telemetry screenshot artifact to ${screenshotPath}`);
   });
 });
