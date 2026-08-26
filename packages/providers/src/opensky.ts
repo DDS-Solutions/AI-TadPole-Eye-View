@@ -32,7 +32,7 @@ export type RawOpenSkyVector = [
   number | null, // 13: geo_altitude
   string | null, // 14: squawk
   boolean, // 15: spi
-  number, // 16: position_source
+  number // 16: position_source
 ];
 
 export interface RawOpenSkyResponse {
@@ -41,6 +41,28 @@ export interface RawOpenSkyResponse {
 }
 
 const POSITION_SOURCE_MAP: PositionSource[] = ['ADSB', 'ASTERIX', 'MLAT', 'FLARM'];
+
+/**
+ * Searches upward to find the monorepo fixtures path.
+ */
+function resolveFixturePath(customPath?: string): string {
+  if (customPath && fs.existsSync(customPath)) {
+    return customPath;
+  }
+
+  let current = process.cwd();
+  for (let i = 0; i < 5; i++) {
+    const candidate = path.resolve(current, 'fixtures', 'flights-opensky.json');
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+
+  return path.resolve(process.cwd(), 'fixtures', 'flights-opensky.json');
+}
 
 /**
  * Fast normalization of a raw OpenSky state vector array into a typed FlightState.
@@ -84,21 +106,15 @@ export function normalizeOpenSkyState(raw: RawOpenSkyVector, _clock: SimClock): 
     icao24: icao24.toLowerCase().trim(),
     callsign: callsign ? callsign.trim() : null,
     origin_country,
-    time_position:
-      time_position !== null && time_position !== undefined ? time_position : undefined,
+    time_position: time_position !== null && time_position !== undefined ? time_position : undefined,
     last_contact,
     longitude: lon,
     latitude: lat,
-    baro_altitude:
-      baro_altitude !== null && baro_altitude !== undefined ? baro_altitude : undefined,
+    baro_altitude: baro_altitude !== null && baro_altitude !== undefined ? baro_altitude : undefined,
     on_ground,
     velocity: velocity !== null && velocity !== undefined && velocity >= 0 ? velocity : undefined,
-    true_track:
-      true_track !== null && true_track !== undefined && true_track >= 0 && true_track <= 360
-        ? true_track
-        : undefined,
-    vertical_rate:
-      vertical_rate !== null && vertical_rate !== undefined ? vertical_rate : undefined,
+    true_track: true_track !== null && true_track !== undefined && true_track >= 0 && true_track <= 360 ? true_track : undefined,
+    vertical_rate: vertical_rate !== null && vertical_rate !== undefined ? vertical_rate : undefined,
     geo_altitude: geo_altitude !== null && geo_altitude !== undefined ? geo_altitude : undefined,
     squawk: squawk ? squawk.trim() : undefined,
     spi,
@@ -163,8 +179,7 @@ export class OpenSkyAdapter {
 
   constructor(options: OpenSkyAdapterOptions = {}) {
     this.clock = options.clock ?? new SystemClock();
-    this.seedFixturePath =
-      options.seedFixturePath ?? path.resolve(process.cwd(), 'fixtures', 'flights-opensky.json');
+    this.seedFixturePath = resolveFixturePath(options.seedFixturePath);
 
     // Seed mode is default unless explicitly GEV_LIVE_MODE=1 and GEV_SEED_MODE!=1
     const envSeed = process.env.GEV_SEED_MODE;

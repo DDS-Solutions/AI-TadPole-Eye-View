@@ -69,10 +69,10 @@ jobs:
         run: pnpm e2e
         env:
           GEV_SEED_MODE: '1'
-      - name: Upload failure evidence (traces + screenshots)
-        if: failure()
+      - name: Upload globe visual screenshot artifact (Rule 2: visual evidence)
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-failure-evidence
+          name: globe-screenshot-evidence
           path: e2e/test-results/
           retention-days: 14

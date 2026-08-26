@@ -1,0 +1,27 @@
+{
+  "name": "@gev/cesium-kit",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check ."
+  },
+  "dependencies": {
+    "@cesium/engine": "^26.2.0",
+    "@gev/contracts": "workspace:*",
+    "@gev/core": "workspace:*",
+    "cesium": "^1.126.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
