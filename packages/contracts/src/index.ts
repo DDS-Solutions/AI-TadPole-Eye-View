@@ -13,3 +13,4 @@ export * from './scene.js';
 export * from './launches.js';
 export * from './weather.js';
 export * from './collab.js';
+export * from './capabilities.js';

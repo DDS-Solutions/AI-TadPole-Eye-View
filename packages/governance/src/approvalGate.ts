@@ -8,24 +8,29 @@ import {
 } from '@gev/contracts';
 import { type SimClock, SystemClock } from '@gev/core';
 
+export type ApprovalPromptHandler = (request: ApprovalRequest) => Promise<boolean> | boolean;
+
 export interface PromptApprovalGateOptions {
   policy?: 'auto' | 'deny' | 'prompt';
   clock?: SimClock;
   decidedBy?: Actor;
+  promptHandler?: ApprovalPromptHandler;
 }
 
 /**
- * Prompt Approval Gate Stub (PLAN.md §6 & §10 Item 7)
- * Implements the ApprovalGate port contract with policy-based test switching.
+ * Prompt Approval Gate (PLAN.md §6 & §10 Item 7)
+ * Implements the ApprovalGate port contract with policy-based switching and prompt delegation.
  */
 export class PromptApprovalGate implements ApprovalGate {
   private readonly policy: 'auto' | 'deny' | 'prompt';
   private readonly clock: SimClock;
   private readonly decidedBy: Actor;
+  private readonly promptHandler?: ApprovalPromptHandler;
 
   constructor(options: PromptApprovalGateOptions = {}) {
     this.clock = options.clock ?? new SystemClock();
     this.decidedBy = options.decidedBy ?? 'human';
+    this.promptHandler = options.promptHandler;
 
     const envPolicy = process.env.GEV_APPROVAL_POLICY;
     if (envPolicy === 'auto' || envPolicy === 'deny' || envPolicy === 'prompt') {
@@ -51,14 +56,28 @@ export class PromptApprovalGate implements ApprovalGate {
       });
     }
 
-    // Auto-approve in dev/test stub mode (with local stub signature)
-    // TODO(M2): 'prompt' policy should integrate with Tadpole's interactive
-    // approval channel. Until then, both 'auto' and 'prompt' auto-approve.
     if (this.policy === 'prompt') {
-      console.error(
-        `[governance:warn] ApprovalGate policy is 'prompt' but interactive prompting is not yet implemented (stub). Auto-approving request ${r.id}.`
-      );
+      if (this.promptHandler) {
+        const approved = await this.promptHandler(r);
+        return ApprovalResultSchema.parse({
+          request_id: r.id,
+          decision: approved ? 'approved' : 'denied',
+          signature: approved ? `sig-prompt-${r.id.slice(0, 8)}` : undefined,
+          decided_by: this.decidedBy,
+          decided_at: decidedAt,
+        });
+      }
+
+      // Fail closed if prompt policy requested but no interactive prompt channel configured
+      return ApprovalResultSchema.parse({
+        request_id: r.id,
+        decision: 'denied',
+        decided_by: this.decidedBy,
+        decided_at: decidedAt,
+      });
     }
+
+    // Explicit 'auto' policy in dev/test seed mode
     return ApprovalResultSchema.parse({
       request_id: r.id,
       decision: 'approved',
