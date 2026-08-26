@@ -27,6 +27,59 @@ export interface JsonRpcResponse {
   };
 }
 
+/** JSON Schema input descriptors for MCP client tool discovery. */
+const TOOL_INPUT_SCHEMAS: Record<OperatorToolName, Record<string, unknown>> = {
+  get_feed_health: {
+    type: 'object',
+    properties: {
+      provider: { type: 'string', description: 'Filter by provider name (e.g. opensky)' },
+    },
+  },
+  get_budget: {
+    type: 'object',
+    properties: {},
+  },
+  run_diagnostics: {
+    type: 'object',
+    properties: {
+      scope: {
+        type: 'string',
+        enum: ['all', 'feeds', 'governance', 'memory'],
+        description: 'Diagnostic scope to inspect (default: all)',
+      },
+    },
+  },
+  load_scene: {
+    type: 'object',
+    properties: {
+      scene_json: { type: 'string', description: 'Raw JSON string of SceneState' },
+      scene_path: { type: 'string', description: 'File path to load scene from' },
+    },
+  },
+  save_scene: {
+    type: 'object',
+    properties: {
+      title: { type: 'string', description: 'Optional scene title' },
+      save_path: { type: 'string', description: 'File path to save JSON to' },
+    },
+  },
+  tail_logs: {
+    type: 'object',
+    properties: {
+      limit: { type: 'number', description: 'Max audit records (1-1000, default: 50)' },
+      task_ref: { type: 'string', description: 'Filter by taskRef' },
+    },
+  },
+  set_flag: {
+    type: 'object',
+    properties: {
+      flag: { type: 'string', description: 'Kill switch flag identifier (e.g. opensky.enabled)' },
+      enabled: { type: 'boolean', description: 'Enable/disable flag state' },
+    },
+    required: ['flag', 'enabled'],
+  },
+};
+
 /**
  * Robust Model Context Protocol (MCP) Server for GEV v2 Operations.
  * Runs over stdio JSON-RPC transport adhering strictly to stdout/stderr separation.
@@ -124,7 +177,7 @@ export class GevMcpServer {
         const tools = Object.values(OPERATOR_TOOLS).map((tool) => ({
           name: tool.name,
           description: tool.description,
-          inputSchema: {
+          inputSchema: TOOL_INPUT_SCHEMAS[tool.name as OperatorToolName] ?? {
             type: 'object',
             properties: {},
           },

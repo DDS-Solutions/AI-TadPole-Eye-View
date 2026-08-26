@@ -16,7 +16,6 @@ import {
   type SaveSceneOutput,
   SceneState,
   type SetFlagInput,
-  SetFlagInputSchema,
   type SetFlagOutput,
   type TailLogsInput,
   type TailLogsOutput,
@@ -259,25 +258,25 @@ export async function executeOperatorTool(
     let result: unknown;
     switch (name) {
       case 'get_feed_health':
-        result = await handleGetFeedHealth(ctx, tool.inputSchema.parse(args));
+        result = await handleGetFeedHealth(ctx, tool.inputSchema.parse(args) as GetFeedHealthInput);
         break;
       case 'get_budget':
         result = await handleGetBudget(ctx);
         break;
       case 'run_diagnostics':
-        result = await handleRunDiagnostics(ctx, tool.inputSchema.parse(args));
+        result = await handleRunDiagnostics(ctx, tool.inputSchema.parse(args) as RunDiagnosticsInput);
         break;
       case 'load_scene':
-        result = await handleLoadScene(ctx, tool.inputSchema.parse(args));
+        result = await handleLoadScene(ctx, tool.inputSchema.parse(args) as LoadSceneInput);
         break;
       case 'save_scene':
-        result = await handleSaveScene(ctx, tool.inputSchema.parse(args));
+        result = await handleSaveScene(ctx, tool.inputSchema.parse(args) as SaveSceneInput);
         break;
       case 'tail_logs':
-        result = await handleTailLogs(ctx, tool.inputSchema.parse(args));
+        result = await handleTailLogs(ctx, tool.inputSchema.parse(args) as TailLogsInput);
         break;
       case 'set_flag':
-        result = await handleSetFlag(ctx, SetFlagInputSchema.parse(args));
+        result = await handleSetFlag(ctx, tool.inputSchema.parse(args) as SetFlagInput);
         break;
       default:
         throw new Error(`Unhandled operator tool: ${name}`);

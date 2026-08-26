@@ -40,9 +40,15 @@ describe('GEV v2 Operator MCP Server (@gev/ops-mcp)', () => {
     expect(feedHealthTool?._metadata.is_mutating).toBe(false);
     expect(feedHealthTool?._metadata.is_cacheable).toBe(true);
 
-    const setFlagTool = result.tools.find((t) => t.name === 'set_flag');
+    const setFlagTool = result.tools.find((t) => t.name === 'set_flag') as {
+      name: string;
+      inputSchema: { properties: Record<string, unknown>; required?: string[] };
+      _metadata: Record<string, boolean>;
+    };
     expect(setFlagTool?._metadata.is_mutating).toBe(true);
     expect(setFlagTool?._metadata.is_dangerous).toBe(true);
+    expect(setFlagTool?.inputSchema.properties.flag).toBeDefined();
+    expect(setFlagTool?.inputSchema.required).toContain('flag');
   });
 
   it('executes get_feed_health and get_budget tools', async () => {
