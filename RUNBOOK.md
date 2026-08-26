@@ -1,6 +1,6 @@
 # RUNBOOK.md — Operational Procedures & Incident Response
 
-**Status:** Active · **Audience:** Human Operators & AI Agents · **Companion docs:** [PLAN.md](file:///g:/AI-TadPole-Eye-View/PLAN.md), [AGENTS.md](file:///g:/AI-TadPole-Eye-View/AGENTS.md)
+**Status:** Active · **Audience:** Human Operators & AI Agents · **Companion docs:** [PLAN.md](./PLAN.md), [AGENTS.md](./AGENTS.md)
 
 ---
 

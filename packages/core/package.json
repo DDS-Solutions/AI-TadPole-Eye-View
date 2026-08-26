@@ -16,6 +16,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@gev/contracts": "workspace:*"
+  },
   "devDependencies": {
     "fast-check": "^3.23.2",
     "typescript": "^5.8.2",

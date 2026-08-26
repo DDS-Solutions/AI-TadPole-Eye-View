@@ -6,10 +6,9 @@ This directory records all significant architectural and structural decisions ma
 
 | ADR | Title | Status | Date |
 |---|---|---|---|
-| [0014](file:///g:/AI-TadPole-Eye-View/docs/adr/0014-cesium-osm-raster-keyless-baseline.md) | CesiumJS with ion-free OpenStreetMap raster imagery as keyless default baseline | Accepted | 2026-08-26 |
-| [0015](file:///g:/AI-TadPole-Eye-View/docs/adr/0015-http-polling-transport-initial-feeds.md) | Client HTTP polling transport to server-side cache for initial feed layers | Accepted | 2026-08-26 |
-| [0016](file:///g:/AI-TadPole-Eye-View/docs/adr/0016-node-sqlite-governance-audit-wal.md) | Built-in node:sqlite for local governance AuditSink write-ahead log (WAL) | Accepted | 2026-08-26 |
-| [0017](file:///g:/AI-TadPole-Eye-View/docs/adr/0017-mcp-server-and-cli-architecture.md) | Operator MCP Server & Unified gev CLI Surface | Accepted | 2026-08-26 |
-| [0018](file:///g:/AI-TadPole-Eye-View/docs/adr/0018-active-documentation-guard-and-runbook-architecture.md) | Active Documentation Guard (ADG) & Operational Runbook Architecture | Accepted | 2026-08-26 |
-
-
+| [0014](./0014-cesium-osm-raster-keyless-baseline.md) | CesiumJS with ion-free OpenStreetMap raster imagery as keyless default baseline | Accepted | 2026-08-26 |
+| [0015](./0015-http-polling-transport-initial-feeds.md) | Client HTTP polling transport to server-side cache for initial feed layers | Accepted | 2026-08-26 |
+| [0016](./0016-node-sqlite-governance-audit-wal.md) | Built-in node:sqlite for local governance AuditSink write-ahead log (WAL) | Accepted | 2026-08-26 |
+| [0017](./0017-mcp-server-and-cli-architecture.md) | Operator MCP Server & Unified gev CLI Surface | Accepted | 2026-08-26 |
+| [0018](./0018-active-documentation-guard-and-runbook-architecture.md) | Active Documentation Guard (ADG) & Operational Runbook Architecture | Accepted | 2026-08-26 |
+| [0019](./0019-scene-serializer-and-deep-link-architecture.md) | Scene State Serialization & URL Deep-Linking Architecture | Accepted | 2026-08-26 |

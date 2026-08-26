@@ -14,13 +14,12 @@ import {
   type RunDiagnosticsOutput,
   type SaveSceneInput,
   type SaveSceneOutput,
-  SceneState,
   type SetFlagInput,
   type SetFlagOutput,
   type TailLogsInput,
   type TailLogsOutput,
 } from '@gev/contracts';
-import { type SimClock, SystemClock } from '@gev/core';
+import { type SimClock, SystemClock, deserializeScene, getDefaultSceneState } from '@gev/core';
 import { CapBudgetGovernor, PromptApprovalGate, SqliteAuditSink } from '@gev/governance';
 import { OpenSkyAdapter, resolveFixturePath } from '@gev/providers';
 
@@ -138,17 +137,16 @@ export async function handleLoadScene(
   _ctx: OperatorContext,
   input: LoadSceneInput
 ): Promise<LoadSceneOutput> {
-  let rawJson = input.scene_json;
-  if (!rawJson && input.scene_path) {
-    rawJson = await fs.promises.readFile(input.scene_path, 'utf-8');
+  let raw = input.scene_json;
+  if (!raw && input.scene_path) {
+    raw = await fs.promises.readFile(input.scene_path, 'utf-8');
   }
 
-  if (!rawJson) {
+  if (!raw) {
     throw new Error('Either scene_json or scene_path must be provided to load_scene');
   }
 
-  const parsed = JSON.parse(rawJson);
-  const validated = SceneState.parse(parsed);
+  const validated = deserializeScene(raw);
 
   return {
     loaded: true,
@@ -161,29 +159,7 @@ export async function handleSaveScene(
   ctx: OperatorContext,
   input: SaveSceneInput
 ): Promise<SaveSceneOutput> {
-  const scene = SceneState.parse({
-    version: 1,
-    created_at: new Date(ctx.clock.now()).toISOString(),
-    camera: {
-      longitude: 0,
-      latitude: 20,
-      altitude: 20000000,
-      heading: 0,
-      pitch: -90,
-      roll: 0,
-    },
-    layers: [
-      { id: 'flights', enabled: true, opacity: 1 },
-      { id: 'osm_raster', enabled: true, opacity: 1 },
-    ],
-    selected_entity: null,
-    aois: [],
-    sim_time: {
-      iso: new Date(ctx.clock.now()).toISOString(),
-      rate: 1,
-      paused: false,
-    },
-  });
+  const scene = getDefaultSceneState(ctx.clock);
 
   if (input.save_path) {
     await fs.promises.writeFile(input.save_path, JSON.stringify(scene, null, 2), 'utf-8');
