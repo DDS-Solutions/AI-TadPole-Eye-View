@@ -31,6 +31,13 @@ export class WeatherLayerController extends BaseLayerController<
     this.enqueueUpdates(weather.stations);
   }
 
+  /**
+   * Alias for enqueueWeather to maintain interface consistency across layer controllers.
+   */
+  enqueueCollection(weather: WeatherCollection): void {
+    this.enqueueWeather(weather);
+  }
+
   protected getEntityId(station: WeatherStation): string {
     return station.id;
   }
