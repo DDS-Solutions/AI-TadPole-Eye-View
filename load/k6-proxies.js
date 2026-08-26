@@ -1,5 +1,5 @@
-import http from 'k6/http';
 import { check, sleep } from 'k6';
+import http from 'k6/http';
 
 /**
  * GEV v2 Proxy Load Benchmark (PLAN.md §10 Phase 4 & §13)
@@ -56,7 +56,7 @@ export default function () {
   check(res, {
     'status is 200': (r) => r.status === 200,
     'response has content-type json': (r) =>
-      r.headers['Content-Type'] && r.headers['Content-Type'].includes('application/json'),
+      r.headers['Content-Type']?.includes('application/json'),
     'response duration < 50ms': (r) => r.timings.duration < 50,
   });
 
