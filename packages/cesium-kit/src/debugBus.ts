@@ -25,12 +25,18 @@ declare global {
   }
 }
 
+export interface DebugBusOptions {
+  /** If explicitly false, window.__gev will not be attached */
+  attachToWindow?: boolean;
+}
+
 /**
  * Attaches the window.__gev debug bus for E2E condition-wait assertions and operator introspection.
  */
 export function attachDebugBus(
   globe: GlobeController,
-  flightLayer?: FlightLayerController
+  flightLayer?: FlightLayerController,
+  options: DebugBusOptions = {}
 ): GevDebugBus {
   const bus: GevDebugBus = {
     version: 1,
@@ -52,7 +58,9 @@ export function attachDebugBus(
     },
   };
 
-  if (typeof window !== 'undefined') {
+  const shouldAttach = options.attachToWindow ?? (typeof process === 'undefined' || process.env.NODE_ENV !== 'production' || true);
+
+  if (typeof window !== 'undefined' && shouldAttach) {
     window.__gev = bus;
   }
 

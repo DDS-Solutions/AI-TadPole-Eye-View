@@ -78,7 +78,7 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
           min: 0,
           max: Number.POSITIVE_INFINITY,
         });
-      }).toThrow();
+      }).toThrow(/Number must be finite/);
 
       expect(() => {
         BudgetState.parse({
@@ -89,7 +89,7 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
           warn_threshold_pct: 80,
           last_trip: null,
         });
-      }).toThrow();
+      }).toThrow(/Number must be finite/);
     });
   });
 
@@ -118,7 +118,7 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
           latitude: Number.POSITIVE_INFINITY,
           longitude: 8.5,
         });
-      }).toThrow();
+      }).toThrow(/Number must be finite/);
 
       expect(() => {
         FlightState.parse({
@@ -128,7 +128,7 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
           longitude: 8.5,
           velocity: Number.POSITIVE_INFINITY,
         });
-      }).toThrow();
+      }).toThrow(/Number must be finite/);
     });
 
     it('validates cross-field ordered BoundingBox and rejects inverted boxes (P3)', () => {
@@ -192,7 +192,7 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
           ...scene,
           version: 2,
         });
-      }).toThrow();
+      }).toThrow(/Invalid literal value/);
     });
 
     it('deterministically normalizes AOI polygon ring closure on parse (P4)', () => {
@@ -232,7 +232,7 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
           aois: [],
           sim_time: { iso: '2026-08-25T12:00:00.000Z', rate: 1, paused: false },
         });
-      }).toThrow();
+      }).toThrow(/Number must be finite/);
     });
   });
 
