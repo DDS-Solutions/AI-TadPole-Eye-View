@@ -1,19 +1,19 @@
 import { z } from 'zod';
 
 export const CameraPose = z.object({
-  longitude: z.number().min(-180).max(180),
-  latitude: z.number().min(-90).max(90),
-  altitude: z.number().nonnegative(),
-  heading: z.number().min(0).max(360),
-  pitch: z.number().min(-90).max(90),
-  roll: z.number().min(-180).max(180).default(0),
+  longitude: z.number().finite().min(-180).max(180),
+  latitude: z.number().finite().min(-90).max(90),
+  altitude: z.number().finite().nonnegative(),
+  heading: z.number().finite().min(0).max(360),
+  pitch: z.number().finite().min(-90).max(90),
+  roll: z.number().finite().min(-180).max(180).default(0),
 });
 export type CameraPose = z.infer<typeof CameraPose>;
 
 export const LayerState = z.object({
   id: z.string().min(1),
   enabled: z.boolean(),
-  opacity: z.number().min(0).max(1).default(1),
+  opacity: z.number().finite().min(0).max(1).default(1),
 });
 export type LayerState = z.infer<typeof LayerState>;
 
@@ -25,23 +25,42 @@ export const SelectedEntity = z
   .nullable();
 export type SelectedEntity = z.infer<typeof SelectedEntity>;
 
+/**
+ * Area of Interest polygon geometry.
+ * Ring closure is normalized deterministically on parse (ensuring first coordinate === last coordinate).
+ */
 export const AreaOfInterest = z.object({
   id: z.string().min(1),
   name: z.string().min(1).max(128),
   coordinates: z
     .array(
       z.object({
-        longitude: z.number().min(-180).max(180),
-        latitude: z.number().min(-90).max(90),
+        longitude: z.number().finite().min(-180).max(180),
+        latitude: z.number().finite().min(-90).max(90),
       })
     )
-    .min(3),
+    .min(3)
+    .transform((coords) => {
+      if (coords.length < 3) {
+        return coords;
+      }
+      const first = coords[0];
+      const last = coords[coords.length - 1];
+      if (
+        first &&
+        last &&
+        (first.longitude !== last.longitude || first.latitude !== last.latitude)
+      ) {
+        return [...coords, { longitude: first.longitude, latitude: first.latitude }];
+      }
+      return coords;
+    }),
 });
 export type AreaOfInterest = z.infer<typeof AreaOfInterest>;
 
 export const SimTimeState = z.object({
   iso: z.string().datetime(),
-  rate: z.number().default(1),
+  rate: z.number().finite().default(1),
   paused: z.boolean().default(false),
 });
 export type SimTimeState = z.infer<typeof SimTimeState>;
@@ -51,7 +70,7 @@ export type SimTimeState = z.infer<typeof SimTimeState>;
  * Used for deep links, deterministic test fixtures, bug reports, and multiplayer sync.
  */
 export const SceneState = z.object({
-  version: z.literal('1.0.0'),
+  version: z.literal(1),
   created_at: z.string().datetime(),
   camera: CameraPose,
   layers: z.array(LayerState),

@@ -1,7 +1,7 @@
 import net from 'node:net';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
-import { FlightBatch } from '@gev/contracts';
+import { FlightBatch, FlightState } from '@gev/contracts';
 import { FrozenClock } from '@gev/core';
 import { describe, expect, it, vi } from 'vitest';
 import { OpenSkyAdapter } from '../src/opensky.js';
@@ -9,6 +9,39 @@ import { OpenSkyAdapter } from '../src/opensky.js';
 describe('OpenSky Provider Adapter (@gev/providers)', () => {
   const fixturePath = path.resolve(process.cwd(), '..', '..', 'fixtures', 'flights-opensky.json');
   const frozenTime = 1724641200000;
+
+  it('parses hand-written minimal flight record with explicit nulls in all nullable slots (P5)', () => {
+    const rawRecord = {
+      icao24: 'a00001',
+      callsign: null,
+      origin_country: 'United States',
+      time_position: null,
+      last_contact: 1724641200,
+      longitude: -73.9851,
+      latitude: 40.7488,
+      baro_altitude: null,
+      on_ground: false,
+      velocity: null,
+      true_track: null,
+      vertical_rate: null,
+      geo_altitude: null,
+      squawk: null,
+      spi: false,
+      position_source: 'ADSB',
+    };
+
+    const parsed = FlightState.safeParse(rawRecord);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.icao24).toBe('a00001');
+      expect(parsed.data.callsign).toBeNull();
+      expect(parsed.data.baro_altitude).toBeNull();
+      expect(parsed.data.velocity).toBeNull();
+      expect(parsed.data.vertical_rate).toBeNull();
+      expect(parsed.data.geo_altitude).toBeNull();
+      expect(parsed.data.squawk).toBeNull();
+    }
+  });
 
   it('replays seed fixture deterministically using FrozenClock with zero live calls', async () => {
     const clock = new FrozenClock(frozenTime);
