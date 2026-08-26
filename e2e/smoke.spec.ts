@@ -13,13 +13,15 @@ test.describe('GEV v2 Multi-Layer Telemetry, Virtualized Table & Frame Monitor S
   test('renders keyless Cesium 3D globe, virtualized telemetry stream, and uPlot charts', async ({
     page,
   }) => {
-    test.setTimeout(60000);
+    page.on('console', (msg) => console.log('PAGE LOG:', msg.text()));
+    page.on('pageerror', (err) => console.error('PAGE ERROR:', err));
 
     // 1. Navigate to web application
     await page.goto('/');
 
     // 2. Assert basic shell elements and attribution
     const titleLocator = page.locator('#app-title');
+
     await expect(titleLocator).toHaveText("GEV v2 — God's Eye View");
 
     const attributionLocator = page.locator('#osm-attribution');

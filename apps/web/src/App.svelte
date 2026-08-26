@@ -33,6 +33,7 @@
   import HudHeader from './components/HudHeader.svelte';
   import LayerControlPanel from './components/LayerControlPanel.svelte';
   import EntityInfoCard from './components/EntityInfoCard.svelte';
+  import VirtualizedTelemetryTable from './components/VirtualizedTelemetryTable.svelte';
   import VoiceControlOrb from './components/VoiceControlOrb.svelte';
   import CollabBar from './components/CollabBar.svelte';
   import { JulianDate, type Entity } from 'cesium';
