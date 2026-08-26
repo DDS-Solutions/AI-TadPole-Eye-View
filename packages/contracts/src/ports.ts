@@ -72,7 +72,8 @@ export const AuditOutcome = z
   });
 export type AuditOutcome = z.infer<typeof AuditOutcome>;
 
-export type AuditEntry = AuditIntent | AuditOutcome;
+export const AuditEntrySchema = z.union([AuditIntent, AuditOutcome]);
+export type AuditEntry = z.infer<typeof AuditEntrySchema>;
 
 export const AuditQuery = z.object({
   actor: Actor.optional(),

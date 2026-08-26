@@ -10,6 +10,7 @@ import {
   FlightBatch,
   FlightState,
   GevEvents,
+  OPERATOR_TOOLS,
   SceneState,
   Verdict,
 } from '../src/index.js';
@@ -232,6 +233,45 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
           sim_time: { iso: '2026-08-25T12:00:00.000Z', rate: 1, paused: false },
         });
       }).toThrow();
+    });
+  });
+
+  describe('Operator Tools & Manifests (PLAN.md §7.2)', () => {
+    it('defines standard operator tools with governance flags', () => {
+      expect(OPERATOR_TOOLS.get_feed_health.is_mutating).toBe(false);
+      expect(OPERATOR_TOOLS.get_feed_health.is_cacheable).toBe(true);
+
+      expect(OPERATOR_TOOLS.get_budget.is_mutating).toBe(false);
+      expect(OPERATOR_TOOLS.get_budget.is_cacheable).toBe(false);
+
+      expect(OPERATOR_TOOLS.load_scene.is_mutating).toBe(true);
+      expect(OPERATOR_TOOLS.save_scene.is_mutating).toBe(true);
+
+      expect(OPERATOR_TOOLS.set_flag.is_mutating).toBe(true);
+      expect(OPERATOR_TOOLS.set_flag.is_dangerous).toBe(true);
+    });
+
+    it('validates tool inputs and outputs', () => {
+      const budgetOut = OPERATOR_TOOLS.get_budget.outputSchema.parse({
+        cap_usd: 10,
+        spent_usd: 2.5,
+        remaining_usd: 7.5,
+        stasis_active: false,
+      });
+      expect(budgetOut.remaining_usd).toBe(7.5);
+
+      const healthOut = OPERATOR_TOOLS.get_feed_health.outputSchema.parse({
+        feeds: [
+          {
+            provider: 'opensky',
+            status: 'healthy',
+            error_rate: 0,
+            ttl_tier_s: 30,
+            quota_remaining: 4000,
+          },
+        ],
+      });
+      expect(healthOut.feeds.length).toBe(1);
     });
   });
 });

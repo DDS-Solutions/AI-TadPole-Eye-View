@@ -1,0 +1,39 @@
+{
+  "name": "@gev/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "gev": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "biome check .",
+    "gev": "node dist/index.js"
+  },
+  "dependencies": {
+    "@gev/contracts": "workspace:*",
+    "@gev/core": "workspace:*",
+    "@gev/governance": "workspace:*",
+    "@gev/ops-mcp": "workspace:*",
+    "@gev/providers": "workspace:*",
+    "@gev/security": "workspace:*",
+    "commander": "^13.1.0",
+    "picocolors": "^1.1.1",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.1.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  }
+}
