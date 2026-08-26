@@ -118,3 +118,16 @@ pnpm gev qa
 # Dev server (starts Hono server + Vite web SPA in seed mode)
 pnpm gev dev
 ```
+
+---
+
+## 7. Governed Agent Team Showcase & Telemetry Load Testing
+
+```bash
+# Run Governed Agent Team showcase scenario (M1 Observer, M2 Gatekeeper, M3 STASIS, Merkle WAL)
+pnpm gev demo
+
+# Run high-concurrency proxy load verification benchmark
+pnpm --filter @gev/server test
+```
+

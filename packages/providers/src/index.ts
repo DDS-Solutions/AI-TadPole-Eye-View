@@ -7,3 +7,4 @@ export * from './radio.js';
 export * from './cctv.js';
 export * from './launches.js';
 export * from './weather.js';
+export * from './cables.js';

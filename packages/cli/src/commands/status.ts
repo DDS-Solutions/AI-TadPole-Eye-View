@@ -65,7 +65,7 @@ export async function runStatus(options: StatusOptions = {}): Promise<void> {
     console.log(
       JSON.stringify(
         {
-          phase: 'Phase 0 — Walking Skeleton',
+          phase: 'Phase 4 — Hygiene & Showcase (Parity Achieved)',
           server_online: isOnline,
           stasis_active: stasisActive,
           spent_usd: spentUsd,
@@ -82,7 +82,7 @@ export async function runStatus(options: StatusOptions = {}): Promise<void> {
 
   console.log(pc.bold(pc.cyan('\n🌍 GEV v2 Console Status (PLAN.md §0)')));
   console.log(pc.dim('───────────────────────────────────────────────'));
-  console.log(` ${pc.bold('Project Phase:')}      Phase 0 (Walking skeleton & AI keel)`);
+  console.log(` ${pc.bold('Project Phase:')}      Phase 4 (Hygiene & Showcase — Parity Achieved)`);
   console.log(
     ` ${pc.bold('Server Status:')}      ${isOnline ? pc.green('ONLINE (http://localhost:3000)') : pc.dim('OFFLINE (local inspection)')}`
   );

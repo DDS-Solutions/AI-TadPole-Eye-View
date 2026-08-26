@@ -2,11 +2,11 @@
 
 > Watch the world live — then watch governed AI agents build and run the thing doing the watching.
 
-[![Status](https://img.shields.io/badge/status-phase%203%20complete-brightgreen)]() [![License](https://img.shields.io/badge/code-MIT-blue)](#license) [![Governed by](https://img.shields.io/badge/governed%20by-AI--TadPole--OS-purple)](https://github.com/DDS-Solutions/AI-TadPole-OS)
+[![Status](https://img.shields.io/badge/status-phase%204%20complete-brightgreen)]() [![License](https://img.shields.io/badge/code-MIT-blue)](#license) [![Governed by](https://img.shields.io/badge/governed%20by-AI--TadPole--OS-purple)](https://github.com/DDS-Solutions/AI-TadPole-OS)
 
-A live 3D OSINT console tracking **flights, ships, satellite launches, earthquakes, wildfires, bike transit, weather radar, public CCTV and radio** on a photorealistic globe — rebuilt ground-up from [bilawalsidhu/gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view) as an **agent-native codebase**: designed from commit one so AI agents can develop, deploy, monitor, and debug it *alongside humans*, under enforceable governance (audit trails, approval gates, spend caps).
+A live 3D OSINT console tracking **flights, ships, satellite launches, earthquakes, wildfires, bike transit, weather radar, public CCTV, radio, and submarine cables** on a photorealistic globe — rebuilt ground-up from [bilawalsidhu/gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view) as an **agent-native codebase**: designed from commit one so AI agents can develop, deploy, monitor, and debug it *alongside humans*, under enforceable governance (audit trails, approval gates, spend caps).
 
-**📖 Full build plan:** [PLAN.md](./PLAN.md) · **🤖 AI operating manual:** [AGENTS.md](./AGENTS.md)
+**📖 Full build plan:** [PLAN.md](./PLAN.md) · **🤖 AI operating manual:** [AGENTS.md](./AGENTS.md) · **🌐 Data provenance:** [DATA_SOURCES.md](./DATA_SOURCES.md) · **📜 Licenses:** [docs/LICENSES.md](./docs/LICENSES.md)
 
 ---
 
@@ -23,15 +23,17 @@ Most agent demos show swarm diagrams. This one shows a working product and the r
 
 | Layer | Source | Status |
 |---|---|---|
-| ✈️ Flights | OpenSky Network | 🟢 Active (Phase 0–1) |
+| ✈️ Flights | OpenSky Network · adsb.lol | 🟢 Active (Phase 0–1) |
 | 🚢 Ships | AISStream | 🟢 Active (Phase 2) |
-| 🌍 Earthquakes | USGS Earthquake API | 🟢 Active (Phase 2) |
+| 🌍 Earthquakes | USGS Earthquake API · EMSC | 🟢 Active (Phase 2) |
 | 🔥 Wildfires | NASA FIRMS | 🟢 Active (Phase 2) |
 | 🚲 Bike Transit | GBFS Standard Feeds | 🟢 Active (Phase 2) |
 | 📷 Public CCTV | DOT Traffic Camera Feeds | 🟢 Active (Phase 2) |
-| 📻 Live Radio | Broadcastify Police/Fire Audio | 🟢 Active (Phase 2) |
+| 📻 Live Radio | Radio Browser Community Directory | 🟢 Active (Phase 2) |
 | 🚀 Orbital Trajectories | Launch Dashboard Feeds | 🟢 Active (Phase 2) |
-| 🌧️ Weather Radar | RainViewer Precipitation Radar | 🟢 Active (Phase 2) |
+| 🌧️ Weather Radar | RainViewer Precipitation Radar · NOAA | 🟢 Active (Phase 2) |
+| 🛰️ Satellites | CelesTrak / Space-Track SGP4 Ephemeris | 🟢 Active (Phase 2) |
+| 🌐 Submarine Cables | TeleGeography (NC Download Pack) | 🟢 Active (Phase 4) |
 | 🎙️ AI Voice Copilot | OpenAI Realtime · Seed/Mock Driver | 🟢 Active (Phase 3) |
 | 👥 T2 Live Co-Op | Yjs CRDT Rooms + Presence Cursors | 🟢 Active (Phase 3) |
 
@@ -46,6 +48,7 @@ Most agent demos show swarm diagrams. This one shows a working product and the r
                                  ├─ ops API + SSE audit stream
                                  ├─ Yjs collaborative intent rooms (/api/collab)
                                  ├─ ephemeral voice session tokens (/api/voice)
+                                 ├─ self-hosted telemetry & metrics (/api/telemetry/metrics)
                                  └─ governance ports: AuditSink · ApprovalGate ·
                                     BudgetGovernor · CapabilityIssuer · AgentEnvelope
 ```
@@ -56,14 +59,14 @@ Most agent demos show swarm diagrams. This one shows a working product and the r
 
 ## Governance (the Tadpole seam)
 
-AI actions in this repo run under five enforced ports — local stubs today, [AI-TadPole-OS](https://github.com/DDS-Solutions/AI-TadPole-OS) implementations at each merge rung:
+AI actions in this repo run under five enforced ports — local stubs backed by SQLite WAL and Ed25519 cryptographic signatures:
 
 | Rung | Capability | Status |
 |---|---|---|
 | **M1 Observer** | Tadpole reads the live audit stream (`/ops/audit`) + feed health | 🟢 Verified |
-| **M2 Gatekeeper** | Mutating ops require signed approvals (`ApprovalGate`) | 🟢 Verified |
+| **M2 Gatekeeper** | Mutating ops require Ed25519-signed approvals (`ApprovalGate`) | 🟢 Verified |
 | **M3 Governor** | Budget enforcement + STASIS lockdown (`BudgetGovernor`) | 🟢 Verified |
-| **M4 Runtime** | Agent team operates the console end-to-end | ⚪ Phase 4 |
+| **M4 Runtime** | Agent team operates the console end-to-end under governance | 🟢 Demonstrated (`gev demo`) |
 
 Spend caps trip **STASIS** — all agents suspend until a human resumes them. No self-resume. Ever.
 
@@ -76,9 +79,10 @@ pnpm install
 pnpm gev dev          # http://localhost:5173 — keyless seed mode by default
 ```
 
-Run tests and health diagnostics:
+Run tests, showcase demonstration, and health diagnostics:
 ```bash
 pnpm gev status       # inspect phase, STASIS, budget, and feeds
+pnpm gev demo         # run live Governed Agent Team showcase demonstration
 pnpm gev test         # run complete unit & property test suites
 node scripts/adg.mjs  # run Active Documentation Guard
 ```
@@ -88,8 +92,10 @@ node scripts/adg.mjs  # run Active Documentation Guard
 - [PLAN.md](./PLAN.md) — master build plan, phased roadmap, progress tracker *(single source of truth)*
 - [AGENTS.md](./AGENTS.md) — how AI agents operate in this repo
 - [SECURITY.md](./SECURITY.md) — threat model
+- [DATA_SOURCES.md](./DATA_SOURCES.md) — dataset provenance, rate limits, and honest labeling
+- [docs/LICENSES.md](./docs/LICENSES.md) — software, asset, and NC download pack licenses
 - [RUNBOOK.md](./RUNBOOK.md) — operational procedures incl. STASIS recovery
-- [docs/adr/INDEX.md](./docs/adr/INDEX.md) — Architecture Decision Records (ADRs 0014–0028)
+- [docs/adr/INDEX.md](./docs/adr/INDEX.md) — Architecture Decision Records (ADRs 0014–0029)
 
 ## Ethics
 
@@ -97,7 +103,8 @@ Hard lines, inherited and sharpened from upstream: **no person-tracking, no face
 
 ## License
 
-Code: **MIT**. Bundled datasets and 3D models carry their own licenses — non-commercial data ships as optional download packs, never bundled. Details in [LICENSE](./LICENSE).
+Code: **MIT**. Bundled datasets and 3D models carry their own licenses — non-commercial data ships as optional download packs, never bundled. Details in [docs/LICENSES.md](./docs/LICENSES.md) and [LICENSE](./LICENSE).
+
 
 ## Credits
 
