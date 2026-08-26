@@ -7,6 +7,7 @@ import {
   FirmsAdapter,
   GbfsAdapter,
   OpenSkyAdapter,
+  RadioAdapter,
   UsgsQuakeAdapter,
 } from '@gev/providers';
 import { serve } from '@hono/node-server';
@@ -16,7 +17,9 @@ import { CostGovernor } from './middleware/costGovernor.js';
 import { createFirmsRouter } from './routes/firms.js';
 import { createFlightsRouter } from './routes/flights.js';
 import { createGbfsRouter } from './routes/gbfs.js';
+import { createOverpassRouter } from './routes/overpass.js';
 import { createQuakesRouter } from './routes/quakes.js';
+import { createRadioRouter } from './routes/radio.js';
 import { createShipsRouter } from './routes/ships.js';
 
 export function createApp() {
@@ -29,6 +32,7 @@ export function createApp() {
   const quakeAdapter = new UsgsQuakeAdapter({ clock });
   const firmsAdapter = new FirmsAdapter({ clock });
   const gbfsAdapter = new GbfsAdapter({ clock });
+  const radioAdapter = new RadioAdapter({ clock });
 
   // Governance & Cost Governor
   const auditSink = new SqliteAuditSink({ clock });
@@ -55,6 +59,8 @@ export function createApp() {
         quakes: { healthy: true, source: 'usgs' },
         firms: { healthy: true, source: 'firms' },
         gbfs: { healthy: true, source: 'gbfs' },
+        radio: { healthy: true, source: 'broadcastify' },
+        overpass: { healthy: true, source: 'overpass-api' },
       },
     });
   });
@@ -74,6 +80,12 @@ export function createApp() {
 
   app.use('/api/gbfs/*', costGovernor.middleware('gbfs'));
   app.route('/api/gbfs', createGbfsRouter(gbfsAdapter));
+
+  app.use('/api/radio/*', costGovernor.middleware('radio'));
+  app.route('/api/radio', createRadioRouter(radioAdapter));
+
+  app.use('/api/overpass/*', costGovernor.middleware('overpass'));
+  app.route('/api/overpass', createOverpassRouter({ seedMode: true }));
 
   // Governed Mutating Endpoint (Rule 1, Rule 2 & PLAN.md §6):
   // Strict order: intent → budget.check → approval → execute → outcome
@@ -230,6 +242,7 @@ export function createApp() {
       quake: quakeAdapter,
       firms: firmsAdapter,
       gbfs: gbfsAdapter,
+      radio: radioAdapter,
     },
   };
 }

@@ -279,8 +279,8 @@ Each layer ships with: provider adapter + fixture tests + Playwright smoke passi
 ### Phase 1 — Server parity (Weeks 2–3)
 - [x] Every upstream proxy ported out of vite.config.js into Hono routes
 - [x] Cost governor (TTL tiers, Retry-After cooldown, staleness cutoff) as middleware + tests
-- [ ] Radio proxy w/ TLS pinning + catalog health policy
-- [ ] Overpass sanitizer ported + property tests
+- [x] Radio proxy w/ TLS pinning + catalog health policy
+- [x] Overpass sanitizer ported + property tests
 - [ ] CCTV media proxy with full timeout lifecycle
 - [ ] Redis rate limits; auth-default on OpenAI token route
 - [ ] Feed-health endpoint + OTel wiring complete

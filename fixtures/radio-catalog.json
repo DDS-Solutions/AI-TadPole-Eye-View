@@ -1,0 +1,76 @@
+{
+  "time": 1724580000,
+  "count": 5,
+  "stations": [
+    {
+      "id": "ksfo-tower",
+      "name": "San Francisco International (KSFO) Tower",
+      "category": "atc",
+      "frequency_mhz": 120.5,
+      "stream_url": "https://audio.broadcastify.com/ksfo_twr.mp3",
+      "longitude": -122.375,
+      "latitude": 37.619,
+      "location_name": "San Francisco, CA, USA",
+      "status": "online",
+      "bitrate_kbps": 64,
+      "format": "mp3",
+      "last_checked": 1724580000
+    },
+    {
+      "id": "kjfk-tower",
+      "name": "John F. Kennedy International (KJFK) Tower",
+      "category": "atc",
+      "frequency_mhz": 119.1,
+      "stream_url": "https://audio.broadcastify.com/kjfk_twr.mp3",
+      "longitude": -73.778,
+      "latitude": 40.641,
+      "location_name": "New York, NY, USA",
+      "status": "online",
+      "bitrate_kbps": 64,
+      "format": "mp3",
+      "last_checked": 1724580000
+    },
+    {
+      "id": "egll-tower",
+      "name": "London Heathrow (EGLL) Tower",
+      "category": "atc",
+      "frequency_mhz": 118.5,
+      "stream_url": "https://audio.broadcastify.com/egll_twr.mp3",
+      "longitude": -0.454,
+      "latitude": 51.470,
+      "location_name": "London, United Kingdom",
+      "status": "online",
+      "bitrate_kbps": 64,
+      "format": "mp3",
+      "last_checked": 1724580000
+    },
+    {
+      "id": "marine-ch16-sfbay",
+      "name": "USCG Sector San Francisco Marine VHF Ch 16 (Distress / Safety)",
+      "category": "marine",
+      "frequency_mhz": 156.8,
+      "stream_url": "https://audio.broadcastify.com/uscg_sf_ch16.mp3",
+      "longitude": -122.419,
+      "latitude": 37.774,
+      "location_name": "San Francisco Bay, CA, USA",
+      "status": "online",
+      "bitrate_kbps": 64,
+      "format": "mp3",
+      "last_checked": 1724580000
+    },
+    {
+      "id": "marine-ch13-rotterdam",
+      "name": "Port of Rotterdam VTS Marine VHF Ch 13",
+      "category": "marine",
+      "frequency_mhz": 156.65,
+      "stream_url": "https://audio.broadcastify.com/rotterdam_vts.mp3",
+      "longitude": 4.477,
+      "latitude": 51.924,
+      "location_name": "Rotterdam, Netherlands",
+      "status": "online",
+      "bitrate_kbps": 64,
+      "format": "mp3",
+      "last_checked": 1724580000
+    }
+  ]
+}
