@@ -117,10 +117,16 @@ describe('GEV v2 Operator MCP Server (@gev/ops-mcp)', () => {
     // Verify Audit WAL entries
     const entries = ctx.auditSink.tail({ limit: 10 });
     expect(entries.length).toBe(2);
-    expect(entries[0]?.kind).toBe(GevEvents.AuditIntent);
-    expect(entries[0]?.action).toBe('ops.set_flag');
-    expect(entries[1]?.kind).toBe(GevEvents.AuditOutcome);
-    expect(entries[1]?.status).toBe('ok');
+    const first = entries[0];
+    const second = entries[1];
+    expect(first?.kind).toBe(GevEvents.AuditIntent);
+    if (first?.kind === GevEvents.AuditIntent) {
+      expect(first.action).toBe('ops.set_flag');
+    }
+    expect(second?.kind).toBe(GevEvents.AuditOutcome);
+    if (second?.kind === GevEvents.AuditOutcome) {
+      expect(second.status).toBe('ok');
+    }
   });
 
   it('runs diagnostics check across governance, feeds, and memory', async () => {
