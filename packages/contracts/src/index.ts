@@ -5,6 +5,8 @@ export * from './firms.js';
 export * from './gbfs.js';
 export * from './radio.js';
 export * from './overpass.js';
+export * from './cctv.js';
+export * from './voice.js';
 export * from './ports.js';
 export * from './tools.js';
 export * from './scene.js';

@@ -4,6 +4,7 @@ import { SystemClock } from '@gev/core';
 import { CapBudgetGovernor, PromptApprovalGate, SqliteAuditSink } from '@gev/governance';
 import {
   AisAdapter,
+  CctvAdapter,
   FirmsAdapter,
   GbfsAdapter,
   OpenSkyAdapter,
@@ -14,13 +15,17 @@ import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { CostGovernor } from './middleware/costGovernor.js';
+import { createAuditStreamRouter } from './routes/auditStream.js';
+import { createCctvRouter } from './routes/cctv.js';
 import { createFirmsRouter } from './routes/firms.js';
 import { createFlightsRouter } from './routes/flights.js';
 import { createGbfsRouter } from './routes/gbfs.js';
+import { createFeedHealthRouter } from './routes/health.js';
 import { createOverpassRouter } from './routes/overpass.js';
 import { createQuakesRouter } from './routes/quakes.js';
 import { createRadioRouter } from './routes/radio.js';
 import { createShipsRouter } from './routes/ships.js';
+import { createVoiceRouter } from './routes/voice.js';
 
 export function createApp() {
   const app = new Hono();
@@ -33,6 +38,7 @@ export function createApp() {
   const firmsAdapter = new FirmsAdapter({ clock });
   const gbfsAdapter = new GbfsAdapter({ clock });
   const radioAdapter = new RadioAdapter({ clock });
+  const cctvAdapter = new CctvAdapter({ clock });
 
   // Governance & Cost Governor
   const auditSink = new SqliteAuditSink({ clock });
@@ -61,9 +67,13 @@ export function createApp() {
         gbfs: { healthy: true, source: 'gbfs' },
         radio: { healthy: true, source: 'broadcastify' },
         overpass: { healthy: true, source: 'overpass-api' },
+        cctv: { healthy: true, source: 'dot-traffic' },
       },
     });
   });
+
+  // Diagnostic Feed Health Endpoint
+  app.route('/api/feeds', createFeedHealthRouter({ clock, budgetGovernor }));
 
   // Telemetry Feed Routes with Cost Governor Middleware
   app.use('/api/flights/*', costGovernor.middleware('flights'));
@@ -86,6 +96,15 @@ export function createApp() {
 
   app.use('/api/overpass/*', costGovernor.middleware('overpass'));
   app.route('/api/overpass', createOverpassRouter({ seedMode: true }));
+
+  app.use('/api/cctv/*', costGovernor.middleware('cctv'));
+  app.route('/api/cctv', createCctvRouter(cctvAdapter));
+
+  // Voice Ephemeral Token Provisioning
+  app.route('/api/voice', createVoiceRouter({ clock }));
+
+  // M1 Observer Real-Time Audit SSE Stream
+  app.route('/ops/audit', createAuditStreamRouter(auditSink));
 
   // Governed Mutating Endpoint (Rule 1, Rule 2 & PLAN.md §6):
   // Strict order: intent → budget.check → approval → execute → outcome
@@ -243,6 +262,7 @@ export function createApp() {
       firms: firmsAdapter,
       gbfs: gbfsAdapter,
       radio: radioAdapter,
+      cctv: cctvAdapter,
     },
   };
 }

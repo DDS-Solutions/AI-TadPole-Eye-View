@@ -281,10 +281,10 @@ Each layer ships with: provider adapter + fixture tests + Playwright smoke passi
 - [x] Cost governor (TTL tiers, Retry-After cooldown, staleness cutoff) as middleware + tests
 - [x] Radio proxy w/ TLS pinning + catalog health policy
 - [x] Overpass sanitizer ported + property tests
-- [ ] CCTV media proxy with full timeout lifecycle
-- [ ] Redis rate limits; auth-default on OpenAI token route
-- [ ] Feed-health endpoint + OTel wiring complete
-- [ ] **M1 merge-rung ready** (audit stream readable externally)
+- [x] CCTV media proxy with full timeout lifecycle
+- [x] Redis rate limits; auth-default on OpenAI token route
+- [x] Feed-health endpoint + OTel wiring complete
+- [x] **M1 merge-rung ready** (audit stream readable externally)
 
 ### Phase 2 — Layers (Weeks 3–6)
 - [ ] Layers 2–5 of §8, each with adapter+fixtures+smoke+flags

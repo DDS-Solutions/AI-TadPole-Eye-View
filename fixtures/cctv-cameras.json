@@ -1,0 +1,58 @@
+{
+  "time": 1724580000,
+  "count": 4,
+  "cameras": [
+    {
+      "id": "caltrans-d4-baybridge",
+      "name": "I-80 Bay Bridge West Anchorage",
+      "agency": "Caltrans District 4",
+      "longitude": -122.385,
+      "latitude": 37.794,
+      "location_name": "San Francisco, CA, USA",
+      "stream_type": "image",
+      "snapshot_url": "https://cctv.dot.ca.gov/data/d4/cctv/image/80_west_anchorage.jpg",
+      "status": "online",
+      "refresh_interval_sec": 10,
+      "last_updated": 1724580000
+    },
+    {
+      "id": "caltrans-d4-goldengate",
+      "name": "US-101 Golden Gate Bridge Toll Plaza",
+      "agency": "Caltrans District 4",
+      "longitude": -122.478,
+      "latitude": 37.808,
+      "location_name": "San Francisco, CA, USA",
+      "stream_type": "image",
+      "snapshot_url": "https://cctv.dot.ca.gov/data/d4/cctv/image/101_toll_plaza.jpg",
+      "status": "online",
+      "refresh_interval_sec": 10,
+      "last_updated": 1724580000
+    },
+    {
+      "id": "nycdot-timessquare",
+      "name": "Broadway @ 42nd St (Times Square)",
+      "agency": "NYCDOT",
+      "longitude": -73.985,
+      "latitude": 40.756,
+      "location_name": "New York, NY, USA",
+      "stream_type": "image",
+      "snapshot_url": "https://nyctmc.org/cctv/image/broadway_42nd.jpg",
+      "status": "online",
+      "refresh_interval_sec": 5,
+      "last_updated": 1724580000
+    },
+    {
+      "id": "tfl-trafalgarsquare",
+      "name": "A400 Trafalgar Square / Whitehall",
+      "agency": "TfL",
+      "longitude": -0.128,
+      "latitude": 51.508,
+      "location_name": "London, United Kingdom",
+      "stream_type": "image",
+      "snapshot_url": "https://s3-eu-west-1.amazonaws.com/jamcams.tfl.gov.uk/00001.04351.jpg",
+      "status": "online",
+      "refresh_interval_sec": 15,
+      "last_updated": 1724580000
+    }
+  ]
+}
