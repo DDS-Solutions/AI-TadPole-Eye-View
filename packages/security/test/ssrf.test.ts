@@ -7,7 +7,7 @@ import {
 } from '../src/ssrf.js';
 
 describe('SSRF Protection Suite', () => {
-  describe('normalizeHost', () => {
+  describe('normalizeHost (P7)', () => {
     it('normalizes integer encoded IPv4 addresses', () => {
       expect(normalizeHost('2130706433')).toBe('127.0.0.1');
       expect(normalizeHost('3232235521')).toBe('192.168.0.1');
@@ -18,6 +18,18 @@ describe('SSRF Protection Suite', () => {
       expect(normalizeHost('0177.0.0.1')).toBe('127.0.0.1');
     });
 
+    it('normalizes short-form dotted IPv4 addresses (127.1 -> 127.0.0.1, 127.0.1 -> 127.0.0.1)', () => {
+      expect(normalizeHost('127.1')).toBe('127.0.0.1');
+      expect(normalizeHost('127.0.1')).toBe('127.0.0.1');
+      expect(normalizeHost('10.1')).toBe('10.0.0.1');
+      expect(normalizeHost('192.168.1')).toBe('192.168.0.1');
+    });
+
+    it('strips trailing dot from FQDN hostnames', () => {
+      expect(normalizeHost('example.com.')).toBe('example.com');
+      expect(normalizeHost('opensky-network.org.')).toBe('opensky-network.org');
+    });
+
     it('strips bracket notation from IPv6 hosts', () => {
       expect(normalizeHost('[::1]')).toBe('::1');
       expect(normalizeHost('[2606:4700:4700::1111]')).toBe('2606:4700:4700::1111');
@@ -25,9 +37,11 @@ describe('SSRF Protection Suite', () => {
   });
 
   describe('validateIpAddress - IPv4 & Special Ranges', () => {
-    it('blocks loopback (127.0.0.0/8)', () => {
+    it('blocks loopback (127.0.0.0/8) including normalized short-forms', () => {
       expect(() => validateIpAddress('127.0.0.1')).toThrow(SsrfBlockError);
       expect(() => validateIpAddress('127.255.255.254')).toThrow(SsrfBlockError);
+      expect(() => validateIpAddress(normalizeHost('127.1'))).toThrow(SsrfBlockError);
+      expect(() => validateIpAddress(normalizeHost('127.0.1'))).toThrow(SsrfBlockError);
     });
 
     it('blocks private RFC1918 ranges', () => {
@@ -110,6 +124,17 @@ describe('SSRF Protection Suite', () => {
 
       const result = await resolveAndValidateHost('example.com', mockResolver);
       expect(result.length).toBe(2);
+      expect(result[0]?.address).toBe('93.184.216.34');
+    });
+
+    it('handles trailing-dot FQDN resolution cleanly', async () => {
+      const mockResolver = {
+        resolve4: async () => ['93.184.216.34'],
+        resolve6: async () => [],
+      };
+
+      const result = await resolveAndValidateHost('example.com.', mockResolver);
+      expect(result.length).toBe(1);
       expect(result[0]?.address).toBe('93.184.216.34');
     });
   });

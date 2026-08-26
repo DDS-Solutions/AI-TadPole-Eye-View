@@ -70,23 +70,55 @@ describe('GeoMath Property & Invariant Tests', () => {
     );
   });
 
-  it('performs destination point round-trips: go(d, θ) then go(d, θ ± 180°) returns origin within epsilon', () => {
+  it('performs destination point round-trips: go(d, θ) then return on initialBearing(dest→origin) returns origin within < 1m', () => {
     fc.assert(
       fc.property(
-        fc.double({ min: -60, max: 60, noNaN: true }),
-        fc.double({ min: -160, max: 160, noNaN: true }),
-        fc.double({ min: 100, max: 100000, noNaN: true }), // short to medium distance
+        arbitraryLat,
+        arbitraryLon,
+        arbitraryDistance,
         arbitraryBearing,
         (lat, lon, dist, bearing) => {
           const dest = destinationPoint(lat, lon, dist, bearing);
-          const returnBearing = (bearing + 180) % 360;
+          const returnBearing = initialBearing(dest.latitude, dest.longitude, lat, lon);
           const origin = destinationPoint(dest.latitude, dest.longitude, dist, returnBearing);
 
           const errorMeters = haversineDistance(lat, lon, origin.latitude, origin.longitude);
-          expect(errorMeters).toBeLessThan(10.0); // Within 10 meters for spherical projection
+          expect(errorMeters).toBeLessThan(1.0); // Within 1 meter tolerance across full distance domain
         }
-      )
+      ),
+      { numRuns: 300 }
     );
+  });
+
+  it('demonstrates that the return bearing on a sphere is NOT simply (bearing + 180) at high latitude (P2 worked example)', () => {
+    // 100 km due east from (60°N, 0°E)
+    const lat = 60.0;
+    const lon = 0.0;
+    const dist = 100000;
+    const bearing = 90.0;
+
+    const dest = destinationPoint(lat, lon, dist, bearing);
+
+    // Initial bearing from dest back to origin differs from naive (90 + 180) = 270°
+    const trueReturnBearing = initialBearing(dest.latitude, dest.longitude, lat, lon);
+    const naiveReturnBearing = 270.0;
+
+    expect(Math.abs(trueReturnBearing - naiveReturnBearing)).toBeGreaterThan(0.5);
+
+    // Naive return lands ~2-3 km away from origin due to convergence of meridians
+    const naiveOrigin = destinationPoint(dest.latitude, dest.longitude, dist, naiveReturnBearing);
+    const naiveErrorMeters = haversineDistance(
+      lat,
+      lon,
+      naiveOrigin.latitude,
+      naiveOrigin.longitude
+    );
+    expect(naiveErrorMeters).toBeGreaterThan(500); // 500m+ error
+
+    // True spherical return bearing lands within < 1m of origin
+    const trueOrigin = destinationPoint(dest.latitude, dest.longitude, dist, trueReturnBearing);
+    const trueErrorMeters = haversineDistance(lat, lon, trueOrigin.latitude, trueOrigin.longitude);
+    expect(trueErrorMeters).toBeLessThan(1.0);
   });
 
   it('correctly calculates short distances across the anti-meridian / dateline', () => {
