@@ -16,3 +16,13 @@ export class MaxBytesExceededError extends Error {
     this.name = 'MaxBytesExceededError';
   }
 }
+
+export class OverpassSanitizationError extends Error {
+  constructor(
+    message: string,
+    public readonly code: string = 'OVERPASS_QUERY_REJECTED'
+  ) {
+    super(`[OverpassSanitizer] ${code}: ${message}`);
+    this.name = 'OverpassSanitizationError';
+  }
+}

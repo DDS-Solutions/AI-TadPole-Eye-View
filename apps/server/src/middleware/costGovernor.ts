@@ -26,8 +26,7 @@ interface CacheEntry {
 
 interface ProviderState {
   cooldownUntil: number;
-  lastFetchTime: number;
-  cachedResponse?: CacheEntry;
+  cache: Map<string, CacheEntry>;
 }
 
 export interface CostGovernorOptions {
@@ -65,6 +64,8 @@ export class CostGovernor {
     return async (c: Context, next: Next) => {
       const now = this.clock.now();
       const state = this.getProviderState(providerName);
+      const cacheKey = c.req.url;
+      const cached = state.cache.get(cacheKey);
 
       // Check if provider is currently in a Retry-After cooldown
       if (state.cooldownUntil > now) {
@@ -72,20 +73,20 @@ export class CostGovernor {
         c.header('Retry-After', remainingCooldownSec.toString());
         c.header('X-GEV-Cooldown-Active', 'true');
 
-        if (state.cachedResponse) {
+        if (cached) {
           c.header('X-GEV-Stale', 'true');
           c.header('X-GEV-Cache-Source', 'cooldown-fallback');
-          return c.json(state.cachedResponse.body, state.cachedResponse.status as 200);
+          return c.json(cached.body, cached.status as 200);
         }
       }
 
       // Check if cache is still fresh within TTL window
-      if (state.cachedResponse && now - state.lastFetchTime < tier.ttlSeconds * 1000) {
-        const ageSec = Math.floor((now - state.lastFetchTime) / 1000);
+      if (cached && now - cached.timestamp < tier.ttlSeconds * 1000) {
+        const ageSec = Math.floor((now - cached.timestamp) / 1000);
         c.header('X-GEV-Cache', 'HIT');
         c.header('X-GEV-Cache-Age-Sec', ageSec.toString());
         c.header('X-GEV-TTL-Sec', tier.ttlSeconds.toString());
-        return c.json(state.cachedResponse.body, state.cachedResponse.status as 200);
+        return c.json(cached.body, cached.status as 200);
       }
 
       // If budget governor is attached, verify spend budget is allowed
@@ -101,10 +102,10 @@ export class CostGovernor {
 
         if (!verdict.allowed) {
           c.header('X-GEV-Budget-Exceeded', 'true');
-          if (state.cachedResponse) {
+          if (cached) {
             c.header('X-GEV-Stale', 'true');
             c.header('X-GEV-Cache-Source', 'budget-fallback');
-            return c.json(state.cachedResponse.body, state.cachedResponse.status as 200);
+            return c.json(cached.body, cached.status as 200);
           }
           return c.json(
             {
@@ -134,23 +135,22 @@ export class CostGovernor {
         const cloned = c.res.clone();
         try {
           const jsonBody = await cloned.json();
-          state.cachedResponse = {
+          state.cache.set(cacheKey, {
             body: jsonBody,
             status,
             timestamp: now,
             etag: `W/"${now}"`,
-          };
-          state.lastFetchTime = now;
+          });
           c.header('X-GEV-Cache', 'MISS');
           c.header('X-GEV-TTL-Sec', tier.ttlSeconds.toString());
         } catch {
-          // Ignore non-JSON bodies
+          // Ignore non-JSON bodies (e.g. audio streams)
         }
-      } else if (state.cachedResponse && now - state.lastFetchTime < tier.maxStaleSeconds * 1000) {
+      } else if (cached && now - cached.timestamp < tier.maxStaleSeconds * 1000) {
         // Staleness fallback on 5xx or rate limits
         c.header('X-GEV-Stale', 'true');
         c.header('X-GEV-Cache-Source', 'error-fallback');
-        return c.json(state.cachedResponse.body, 200);
+        return c.json(cached.body, 200);
       }
 
       return;
@@ -162,7 +162,7 @@ export class CostGovernor {
     if (!state) {
       state = {
         cooldownUntil: 0,
-        lastFetchTime: 0,
+        cache: new Map(),
       };
       this.providerStates.set(providerName, state);
     }
