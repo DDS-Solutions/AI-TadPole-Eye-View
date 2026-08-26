@@ -1,24 +1,24 @@
 {
-  "name": "@gev/server",
+  "name": "@gev/governance",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "scripts": {
-    "dev": "node --watch src/index.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "start": "node dist/index.js",
     "lint": "biome check ."
   },
   "dependencies": {
     "@gev/contracts": "workspace:*",
-    "@gev/core": "workspace:*",
-    "@gev/governance": "workspace:*",
-    "@gev/providers": "workspace:*",
-    "@gev/security": "workspace:*",
-    "@hono/node-server": "^1.13.8",
-    "hono": "^4.7.2"
+    "@gev/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.1.0",

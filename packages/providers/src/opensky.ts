@@ -32,7 +32,7 @@ export type RawOpenSkyVector = [
   number | null, // 13: geo_altitude
   string | null, // 14: squawk
   boolean, // 15: spi
-  number // 16: position_source
+  number, // 16: position_source
 ];
 
 export interface RawOpenSkyResponse {
@@ -106,15 +106,21 @@ export function normalizeOpenSkyState(raw: RawOpenSkyVector, _clock: SimClock): 
     icao24: icao24.toLowerCase().trim(),
     callsign: callsign ? callsign.trim() : null,
     origin_country,
-    time_position: time_position !== null && time_position !== undefined ? time_position : undefined,
+    time_position:
+      time_position !== null && time_position !== undefined ? time_position : undefined,
     last_contact,
     longitude: lon,
     latitude: lat,
-    baro_altitude: baro_altitude !== null && baro_altitude !== undefined ? baro_altitude : undefined,
+    baro_altitude:
+      baro_altitude !== null && baro_altitude !== undefined ? baro_altitude : undefined,
     on_ground,
     velocity: velocity !== null && velocity !== undefined && velocity >= 0 ? velocity : undefined,
-    true_track: true_track !== null && true_track !== undefined && true_track >= 0 && true_track <= 360 ? true_track : undefined,
-    vertical_rate: vertical_rate !== null && vertical_rate !== undefined ? vertical_rate : undefined,
+    true_track:
+      true_track !== null && true_track !== undefined && true_track >= 0 && true_track <= 360
+        ? true_track
+        : undefined,
+    vertical_rate:
+      vertical_rate !== null && vertical_rate !== undefined ? vertical_rate : undefined,
     geo_altitude: geo_altitude !== null && geo_altitude !== undefined ? geo_altitude : undefined,
     squawk: squawk ? squawk.trim() : undefined,
     spi,
