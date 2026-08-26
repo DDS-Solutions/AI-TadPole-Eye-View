@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { AuditEntrySchema } from './ports.js';
-import { SceneState } from './scene.js';
 
 export const ToolMetadataSchema = z.object({
   name: z.string(),
@@ -66,10 +65,14 @@ export const RunDiagnosticsOutputSchema = z.object({
 export type RunDiagnosticsOutput = z.infer<typeof RunDiagnosticsOutputSchema>;
 
 // 4. load_scene
-export const LoadSceneInputSchema = z.object({
-  scene_json: z.string().optional(),
-  scene_path: z.string().optional(),
-});
+export const LoadSceneInputSchema = z
+  .object({
+    scene_json: z.string().optional(),
+    scene_path: z.string().optional(),
+  })
+  .refine((data) => Boolean(data.scene_json || data.scene_path), {
+    message: 'Either scene_json or scene_path must be provided',
+  });
 export type LoadSceneInput = z.infer<typeof LoadSceneInputSchema>;
 
 export const LoadSceneOutputSchema = z.object({
@@ -86,10 +89,18 @@ export const SaveSceneInputSchema = z.object({
 });
 export type SaveSceneInput = z.infer<typeof SaveSceneInputSchema>;
 
+export const SaveSceneSummarySchema = z.object({
+  version: z.number().finite(),
+  layer_count: z.number().finite().nonnegative(),
+  aoi_count: z.number().finite().nonnegative(),
+  camera_altitude: z.number().finite(),
+});
+export type SaveSceneSummary = z.infer<typeof SaveSceneSummarySchema>;
+
 export const SaveSceneOutputSchema = z.object({
   saved: z.boolean(),
   scene_path: z.string().optional(),
-  scene: SceneState,
+  summary: SaveSceneSummarySchema,
 });
 export type SaveSceneOutput = z.infer<typeof SaveSceneOutputSchema>;
 
@@ -118,6 +129,20 @@ export const SetFlagOutputSchema = z.object({
   updated: z.boolean(),
 });
 export type SetFlagOutput = z.infer<typeof SetFlagOutputSchema>;
+
+export type OperatorToolDefinition<
+  TName extends string,
+  TIn extends z.ZodTypeAny,
+  TOut extends z.ZodTypeAny,
+> = {
+  name: TName;
+  description: string;
+  is_mutating: boolean;
+  is_dangerous: boolean;
+  is_cacheable: boolean;
+  inputSchema: TIn;
+  outputSchema: TOut;
+};
 
 /**
  * Registry of standard operator tool definitions with governance flags.
@@ -152,9 +177,9 @@ export const OPERATOR_TOOLS = {
   },
   load_scene: {
     name: 'load_scene',
-    description: 'Load a serialized globe scene state (camera, layers, AOIs)',
+    description: 'Load a serialized globe scene state (destructive state overwrite)',
     is_mutating: true,
-    is_dangerous: false,
+    is_dangerous: true,
     is_cacheable: false,
     inputSchema: LoadSceneInputSchema,
     outputSchema: LoadSceneOutputSchema,
@@ -186,6 +211,6 @@ export const OPERATOR_TOOLS = {
     inputSchema: SetFlagInputSchema,
     outputSchema: SetFlagOutputSchema,
   },
-} as const;
+} as const satisfies Record<string, OperatorToolDefinition<string, z.ZodTypeAny, z.ZodTypeAny>>;
 
 export type OperatorToolName = keyof typeof OPERATOR_TOOLS;

@@ -245,6 +245,7 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
       expect(OPERATOR_TOOLS.get_budget.is_cacheable).toBe(false);
 
       expect(OPERATOR_TOOLS.load_scene.is_mutating).toBe(true);
+      expect(OPERATOR_TOOLS.load_scene.is_dangerous).toBe(true);
       expect(OPERATOR_TOOLS.save_scene.is_mutating).toBe(true);
 
       expect(OPERATOR_TOOLS.set_flag.is_mutating).toBe(true);
@@ -252,6 +253,17 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
     });
 
     it('validates tool inputs and outputs', () => {
+      // Rejects empty load_scene input
+      expect(() => OPERATOR_TOOLS.load_scene.inputSchema.parse({})).toThrow(
+        'Either scene_json or scene_path must be provided'
+      );
+
+      // Accepts valid load_scene input
+      const validLoad = OPERATOR_TOOLS.load_scene.inputSchema.parse({
+        scene_path: 'fixtures/scenes/default.json',
+      });
+      expect(validLoad.scene_path).toBe('fixtures/scenes/default.json');
+
       const budgetOut = OPERATOR_TOOLS.get_budget.outputSchema.parse({
         cap_usd: 10,
         spent_usd: 2.5,
@@ -272,6 +284,18 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
         ],
       });
       expect(healthOut.feeds.length).toBe(1);
+
+      const saveOut = OPERATOR_TOOLS.save_scene.outputSchema.parse({
+        saved: true,
+        scene_path: 'scenes/saved.json',
+        summary: {
+          version: 1,
+          layer_count: 2,
+          aoi_count: 0,
+          camera_altitude: 20000000,
+        },
+      });
+      expect(saveOut.summary.layer_count).toBe(2);
     });
   });
 });

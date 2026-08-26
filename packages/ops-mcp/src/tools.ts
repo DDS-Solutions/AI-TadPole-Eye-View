@@ -193,7 +193,12 @@ export async function handleSaveScene(
   return {
     saved: true,
     scene_path: input.save_path,
-    scene,
+    summary: {
+      version: scene.version,
+      layer_count: scene.layers.length,
+      aoi_count: scene.aois.length,
+      camera_altitude: scene.camera.altitude,
+    },
   };
 }
 
