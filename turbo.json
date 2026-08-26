@@ -1,5 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": ["GEV_SEED_MODE", "GEV_LIVE_MODE", "GEV_APPROVAL_POLICY", "NODE_ENV", "TZ"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -12,8 +13,7 @@
       "dependsOn": ["^build"]
     },
     "test": {
-      "dependsOn": ["^build"],
-      "env": ["GEV_SEED_MODE", "NODE_ENV"]
+      "dependsOn": ["^build"]
     },
     "dev": {
       "cache": false,

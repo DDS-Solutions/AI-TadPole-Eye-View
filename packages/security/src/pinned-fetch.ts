@@ -1,4 +1,4 @@
-import { Agent, type Dispatcher, type Response, fetch as undiciFetch } from 'undici';
+import { Agent, type Dispatcher, Response, fetch as undiciFetch } from 'undici';
 import { MaxBytesExceededError, PinnedFetchSecurityError } from './errors.js';
 import {
   type PathAllowRule,
@@ -22,7 +22,59 @@ export interface PinnedFetchOptions {
     resolve4?: (h: string) => Promise<string[]>;
     resolve6?: (h: string) => Promise<string[]>;
   };
+  /** TEST-ONLY: Custom dispatcher override for mocking in unit tests */
   dispatcher?: Dispatcher;
+}
+
+export type PinnedLookupCallback = (
+  err: Error | null,
+  addresses: Array<{ address: string; family: number }>
+) => void;
+
+export type PinnedLookupHook = (
+  hostname: string,
+  opts: unknown,
+  callback: PinnedLookupCallback
+) => void;
+
+/**
+ * Creates a custom DNS lookup callback that always returns the pinned IP address.
+ */
+export function createPinnedLookupHook(primaryIp: {
+  address: string;
+  family: number;
+}): PinnedLookupHook {
+  return (_hostname: string, _opts: unknown, callback: PinnedLookupCallback) => {
+    callback(null, [{ address: primaryIp.address, family: primaryIp.family }]);
+  };
+}
+
+/**
+ * Creates an Undici Agent that pins all DNS lookups to the specified pre-validated IP address.
+ */
+export function createPinnedAgent(primaryIp: { address: string; family: number }): Agent {
+  return new Agent({
+    connect: {
+      lookup: createPinnedLookupHook(primaryIp),
+    },
+  });
+}
+
+/**
+ * Creates a byte-counting TransformStream that throws MaxBytesExceededError if the stream exceeds maxBytes.
+ */
+export function createByteCountingStream(maxBytes: number): TransformStream {
+  let bytesRead = 0;
+  return new TransformStream({
+    transform(chunk: Uint8Array, controller) {
+      bytesRead += chunk.byteLength;
+      if (bytesRead > maxBytes) {
+        controller.error(new MaxBytesExceededError(maxBytes, bytesRead));
+        return;
+      }
+      controller.enqueue(chunk);
+    },
+  });
 }
 
 /**
@@ -31,7 +83,8 @@ export interface PinnedFetchOptions {
  * 2. Pins TLS connection to validated IP via custom lookup hook (zero TOCTOU / rebinding).
  * 3. Enforces mandatory timeouts.
  * 4. Refuses HTTP redirects (redirect: 'error').
- * 5. Enforces maximum response byte limits.
+ * 5. Enforces maximum response byte limits (Content-Length fast-path + streaming counting wrapper).
+ * 6. Refuses credentials in URL (username:password).
  */
 export async function pinnedFetch(
   targetUrl: string | URL,
@@ -42,6 +95,13 @@ export async function pinnedFetch(
   // Only allow HTTP/HTTPS
   if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
     throw new PinnedFetchSecurityError(`Unsupported protocol: ${parsedUrl.protocol}`);
+  }
+
+  // Reject userinfo in URLs (username:password)
+  if (parsedUrl.username || parsedUrl.password) {
+    throw new PinnedFetchSecurityError(
+      'Userinfo (username:password) in URL is forbidden for security'
+    );
   }
 
   // Validate allowlists if specified
@@ -59,22 +119,7 @@ export async function pinnedFetch(
   const maxBytes = options.maxBytes ?? 50 * 1024 * 1024;
 
   // Custom agent pinning socket connection directly to the pre-validated IP
-  const pinnedAgent =
-    options.dispatcher ??
-    new Agent({
-      connect: {
-        lookup: (
-          _hostname: string,
-          _opts: unknown,
-          callback: (
-            err: Error | null,
-            addresses: Array<{ address: string; family: number }>
-          ) => void
-        ) => {
-          callback(null, [{ address: primaryIp.address, family: primaryIp.family }]);
-        },
-      },
-    });
+  const pinnedAgent = options.dispatcher ?? createPinnedAgent(primaryIp);
 
   const abortSignal = AbortSignal.timeout(timeoutMs);
 
@@ -87,13 +132,24 @@ export async function pinnedFetch(
     signal: abortSignal,
   });
 
-  // Verify Content-Length header if provided
+  // Fast-path: Verify Content-Length header if provided
   const contentLengthHeader = response.headers.get('content-length');
   if (contentLengthHeader) {
     const contentLength = Number.parseInt(contentLengthHeader, 10);
     if (!Number.isNaN(contentLength) && contentLength > maxBytes) {
       throw new MaxBytesExceededError(maxBytes, contentLength);
     }
+  }
+
+  // Enforce byte cap on streamed / chunked body response
+  if (response.body) {
+    // biome-ignore lint/suspicious/noExplicitAny: Standard TransformStream bridge across undici/DOM stream definitions
+    const cappedBody = (response.body as any).pipeThrough(createByteCountingStream(maxBytes));
+    return new Response(cappedBody as unknown as string, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+    });
   }
 
   return response;

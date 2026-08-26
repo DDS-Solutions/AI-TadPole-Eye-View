@@ -99,7 +99,7 @@ const IPV6_BLOCKED_CIDRS = [
 const NAT64_PREFIX = ipaddr.parseCIDR('64:ff9b::/96');
 
 /**
- * Normalizes encoded URL hostnames (e.g. integer IP 2130706433, hex 0x7f.1, octal 0177.0.0.1).
+ * Normalizes encoded URL hostnames (e.g. integer IP 2130706433, hex 0x7f.1, octal 0177.0.0.1, short-form 127.1, trailing dot host.).
  */
 export function normalizeHost(host: string): string {
   let cleanHost = host.trim().toLowerCase();
@@ -107,6 +107,11 @@ export function normalizeHost(host: string): string {
   // Strip enclosing brackets for IPv6
   if (cleanHost.startsWith('[') && cleanHost.endsWith(']')) {
     cleanHost = cleanHost.slice(1, -1);
+  }
+
+  // Strip single trailing dot for FQDN (e.g. 'example.com.')
+  if (cleanHost.endsWith('.') && cleanHost.length > 1) {
+    cleanHost = cleanHost.slice(0, -1);
   }
 
   // Pure integer decimal IP (e.g. 2130706433 -> 127.0.0.1)
@@ -117,12 +122,15 @@ export function normalizeHost(host: string): string {
     }
   }
 
-  // Dotted segments containing hex or octal numbers (e.g. 0x7f.0.0.1 or 0177.0.0.1)
+  // Dotted segments containing decimal, hex, or octal numbers (e.g. 0x7f.0.0.1, 0177.0.0.1, 127.1, 127.0.1)
   if (/^[0-9a-fx.]+/i.test(cleanHost) && cleanHost.includes('.')) {
     const parts = cleanHost.split('.');
-    if (parts.length === 4 && parts.every((p) => /^(0x[0-9a-f]+|0[0-7]*|[1-9]\d*)$/i.test(p))) {
+    if (
+      (parts.length === 2 || parts.length === 3 || parts.length === 4) &&
+      parts.every((p) => /^(0x[0-9a-f]+|0[0-7]*|[1-9]\d*|0)$/i.test(p))
+    ) {
       try {
-        const parsed = parts.map((p) => {
+        const nums = parts.map((p) => {
           if (p.startsWith('0x') || p.startsWith('0X')) {
             return Number.parseInt(p, 16);
           }
@@ -131,8 +139,48 @@ export function normalizeHost(host: string): string {
           }
           return Number.parseInt(p, 10);
         });
-        if (parsed.every((n) => !Number.isNaN(n) && n >= 0 && n <= 255)) {
-          return parsed.join('.');
+
+        if (nums.every((n) => typeof n === 'number' && !Number.isNaN(n) && n >= 0)) {
+          const n0 = nums[0];
+          const n1 = nums[1];
+          const n2 = nums[2];
+          const n3 = nums[3];
+
+          if (
+            nums.length === 4 &&
+            n0 !== undefined &&
+            n1 !== undefined &&
+            n2 !== undefined &&
+            n3 !== undefined &&
+            n0 <= 255 &&
+            n1 <= 255 &&
+            n2 <= 255 &&
+            n3 <= 255
+          ) {
+            return `${n0}.${n1}.${n2}.${n3}`;
+          }
+
+          if (
+            nums.length === 2 &&
+            n0 !== undefined &&
+            n1 !== undefined &&
+            n0 <= 255 &&
+            n1 <= 0xffffff
+          ) {
+            return [n0, (n1 >>> 16) & 255, (n1 >>> 8) & 255, n1 & 255].join('.');
+          }
+
+          if (
+            nums.length === 3 &&
+            n0 !== undefined &&
+            n1 !== undefined &&
+            n2 !== undefined &&
+            n0 <= 255 &&
+            n1 <= 255 &&
+            n2 <= 0xffff
+          ) {
+            return [n0, n1, (n2 >>> 8) & 255, n2 & 255].join('.');
+          }
         }
       } catch {
         // Fallback to original cleanHost
@@ -202,55 +250,60 @@ export function validateIpAddress(ipStr: string): { address: string; family: 4 |
   return { address: v6.toString(), family: 6 };
 }
 
+export interface ResolverOverride {
+  resolve4?: (hostname: string) => Promise<string[]>;
+  resolve6?: (hostname: string) => Promise<string[]>;
+}
+
 /**
- * Resolves a hostname via DNS and validates ALL returned records against SSRF rules.
- * Returns the list of validated IP address records.
+ * Resolves a hostname to IP addresses and validates all returned records against SSRF rules.
+ * All resolved IPs must pass validation, otherwise an error is thrown.
  */
 export async function resolveAndValidateHost(
-  host: string,
-  customResolver?: {
-    resolve4?: (h: string) => Promise<string[]>;
-    resolve6?: (h: string) => Promise<string[]>;
-  }
+  hostname: string,
+  resolverOverride?: ResolverOverride
 ): Promise<Array<{ address: string; family: 4 | 6 }>> {
-  const normalized = normalizeHost(host);
+  const normHost = normalizeHost(hostname);
 
-  // If host is already an IP address, validate directly
-  if (ipaddr.isValid(normalized)) {
-    return [validateIpAddress(normalized)];
+  // If already an IP address, validate directly
+  if (ipaddr.isValid(normHost)) {
+    const validated = validateIpAddress(normHost);
+    return [validated];
   }
 
-  const resolve4 = customResolver?.resolve4 || dns.resolve4.bind(dns);
-  const resolve6 = customResolver?.resolve6 || dns.resolve6.bind(dns);
+  const resolve4 = resolverOverride?.resolve4 ?? dns.resolve4;
+  const resolve6 = resolverOverride?.resolve6 ?? dns.resolve6;
 
-  const [v4Results, v6Results] = await Promise.allSettled([
-    resolve4(normalized),
-    resolve6(normalized),
-  ]);
+  const [v4Results, v6Results] = await Promise.allSettled([resolve4(normHost), resolve6(normHost)]);
 
-  const rawIps: string[] = [];
+  const allAddresses: Array<{ address: string; family: 4 | 6 }> = [];
 
   if (v4Results.status === 'fulfilled' && Array.isArray(v4Results.value)) {
-    rawIps.push(...v4Results.value);
-  }
-  if (v6Results.status === 'fulfilled' && Array.isArray(v6Results.value)) {
-    rawIps.push(...v6Results.value);
+    for (const ip of v4Results.value) {
+      allAddresses.push({ address: ip, family: 4 });
+    }
   }
 
-  if (rawIps.length === 0) {
+  if (v6Results.status === 'fulfilled' && Array.isArray(v6Results.value)) {
+    for (const ip of v6Results.value) {
+      allAddresses.push({ address: ip, family: 6 });
+    }
+  }
+
+  if (allAddresses.length === 0) {
     throw new SsrfBlockError(
-      `DNS resolution returned no addresses for host: ${host}`,
+      `DNS resolution failed or returned no addresses for ${hostname}`,
       undefined,
-      host
+      hostname
     );
   }
 
-  const validatedList: Array<{ address: string; family: 4 | 6 }> = [];
-
-  for (const rawIp of rawIps) {
-    const validated = validateIpAddress(rawIp);
-    validatedList.push(validated);
+  // Validate ALL resolved IP addresses (Rule 4: fail-closed if ANY resolved IP is malicious)
+  const validatedAddresses: Array<{ address: string; family: 4 | 6 }> = [];
+  for (const record of allAddresses) {
+    const validated = validateIpAddress(record.address);
+    validatedAddresses.push(validated);
   }
 
-  return validatedList;
+  return validatedAddresses;
 }

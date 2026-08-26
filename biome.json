@@ -16,7 +16,15 @@
       "**/*.ts",
       "**/*.js"
     ],
-    "ignore": ["node_modules", "dist", ".turbo", "test-results", "playwright-report"]
+    "ignore": [
+      "node_modules",
+      "dist",
+      ".turbo",
+      "test-results",
+      "playwright-report",
+      "e2e/test-results",
+      "e2e/playwright-report"
+    ]
   },
   "formatter": {
     "enabled": true,
