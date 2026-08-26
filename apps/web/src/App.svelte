@@ -1,60 +1,295 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { GlobeController, FlightLayerController, attachDebugBus } from '@gev/cesium-kit';
-  import type { FlightBatch } from '@gev/contracts';
+  import {
+    GlobeController,
+    FlightLayerController,
+    MarineLayerController,
+    QuakeLayerController,
+    FirmsLayerController,
+    GbfsLayerController,
+    CctvLayerController,
+    RadioLayerController,
+    LaunchLayerController,
+    WeatherLayerController,
+    attachDebugBus,
+  } from '@gev/cesium-kit';
+  import type {
+    FlightBatch,
+    ShipBatch,
+    EarthquakeCollection,
+    ThermalHotspotBatch,
+    BikeStationBatch,
+    CctvCatalog,
+    RadioCatalog,
+    LaunchCatalog,
+    WeatherCollection,
+  } from '@gev/contracts';
   import { parseSceneFromUrl } from '@gev/core';
+  import { layerStore } from './stores/layers.svelte.js';
+  import HudHeader from './components/HudHeader.svelte';
+  import LayerControlPanel from './components/LayerControlPanel.svelte';
+  import EntityInfoCard from './components/EntityInfoCard.svelte';
+  import type { Entity, JulianDate } from 'cesium';
 
   let globeContainer: HTMLDivElement;
   let globe: GlobeController | null = null;
-  let flightLayer: FlightLayerController | null = null;
 
-  let flightCount = $state(0);
-  let statusText = $state('Initializing Globe...');
-  let lastUpdateTime = $state('');
+  let flightLayer: FlightLayerController | null = null;
+  let marineLayer: MarineLayerController | null = null;
+  let quakeLayer: QuakeLayerController | null = null;
+  let firmsLayer: FirmsLayerController | null = null;
+  let gbfsLayer: GbfsLayerController | null = null;
+  let cctvLayer: CctvLayerController | null = null;
+  let radioLayer: RadioLayerController | null = null;
+  let launchLayer: LaunchLayerController | null = null;
+  let weatherLayer: WeatherLayerController | null = null;
+
   let pollInterval: ReturnType<typeof setInterval> | null = null;
 
-  async function pollFlights() {
+  async function pollAllFeeds() {
     try {
-      const response = await fetch('/api/flights');
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+      // 1. Flights
+      if (layerStore.visibility.flights) {
+        fetch('/api/flights')
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data: FlightBatch | null) => {
+            if (data && flightLayer) {
+              flightLayer.enqueueBatch(data);
+              layerStore.counts.flights = flightLayer.getEntityCount();
+            }
+          })
+          .catch((err) => {
+            layerStore.activeErrors.flights = String(err);
+          });
       }
-      const data: FlightBatch = await response.json();
-      if (flightLayer && data.states) {
-        flightLayer.enqueueBatch(data);
-        requestAnimationFrame(() => {
-          flightCount = flightLayer?.getEntityCount() ?? 0;
-        });
-        lastUpdateTime = new Date().toLocaleTimeString();
-        statusText = 'Connected (Keyless OpenStreetMap)';
+
+      // 2. Ships (AIS)
+      if (layerStore.visibility.marine) {
+        fetch('/api/ships')
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data: ShipBatch | null) => {
+            if (data && marineLayer) {
+              marineLayer.enqueueBatch(data);
+              layerStore.counts.marine = marineLayer.getEntityCount();
+            }
+          })
+          .catch((err) => {
+            layerStore.activeErrors.marine = String(err);
+          });
       }
+
+      // 3. Earthquakes (USGS)
+      if (layerStore.visibility.quakes) {
+        fetch('/api/quakes')
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data: EarthquakeCollection | null) => {
+            if (data && quakeLayer) {
+              quakeLayer.enqueueCollection(data);
+              layerStore.counts.quakes = quakeLayer.getEntityCount();
+            }
+          })
+          .catch((err) => {
+            layerStore.activeErrors.quakes = String(err);
+          });
+      }
+
+      // 4. FIRMS (Thermal)
+      if (layerStore.visibility.firms) {
+        fetch('/api/firms')
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data: ThermalHotspotBatch | null) => {
+            if (data && firmsLayer) {
+              firmsLayer.enqueueBatch(data);
+              layerStore.counts.firms = firmsLayer.getEntityCount();
+            }
+          })
+          .catch((err) => {
+            layerStore.activeErrors.firms = String(err);
+          });
+      }
+
+      // 5. GBFS (Bikeshare)
+      if (layerStore.visibility.gbfs) {
+        fetch('/api/gbfs')
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data: BikeStationBatch | null) => {
+            if (data && gbfsLayer) {
+              gbfsLayer.enqueueBatch(data);
+              layerStore.counts.gbfs = gbfsLayer.getEntityCount();
+            }
+          })
+          .catch((err) => {
+            layerStore.activeErrors.gbfs = String(err);
+          });
+      }
+
+      // 6. CCTV Cameras
+      if (layerStore.visibility.cctv) {
+        fetch('/api/cctv/catalog')
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data: CctvCatalog | null) => {
+            if (data && cctvLayer) {
+              cctvLayer.enqueueCatalog(data);
+              layerStore.counts.cctv = cctvLayer.getEntityCount();
+            }
+          })
+          .catch((err) => {
+            layerStore.activeErrors.cctv = String(err);
+          });
+      }
+
+      // 7. Radio Stations & ATC Freqs
+      if (layerStore.visibility.radio) {
+        fetch('/api/radio/catalog')
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data: RadioCatalog | null) => {
+            if (data && radioLayer) {
+              radioLayer.enqueueCatalog(data);
+              layerStore.counts.radio = radioLayer.getEntityCount();
+            }
+          })
+          .catch((err) => {
+            layerStore.activeErrors.radio = String(err);
+          });
+      }
+
+      // 8. Launch Trajectories
+      if (layerStore.visibility.launches) {
+        fetch('/api/launches')
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data: LaunchCatalog | null) => {
+            if (data && launchLayer) {
+              launchLayer.enqueueCatalog(data);
+              layerStore.counts.launches = launchLayer.getEntityCount();
+            }
+          })
+          .catch((err) => {
+            layerStore.activeErrors.launches = String(err);
+          });
+      }
+
+      // 9. Weather Radar & Observations
+      if (layerStore.visibility.weather) {
+        fetch('/api/weather/radar')
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data: WeatherCollection | null) => {
+            if (data && weatherLayer) {
+              weatherLayer.enqueueWeather(data);
+              layerStore.counts.weather = weatherLayer.getEntityCount();
+            }
+          })
+          .catch((err) => {
+            layerStore.activeErrors.weather = String(err);
+          });
+      }
+
+      layerStore.lastSyncTime = new Date().toLocaleTimeString();
+      layerStore.statusText = 'Connected (Keyless OpenStreetMap)';
     } catch (err: unknown) {
-      statusText = `Feed Error: ${err instanceof Error ? err.message : 'Disconnected'}`;
+      layerStore.statusText = `Feed Error: ${err instanceof Error ? err.message : 'Disconnected'}`;
     }
   }
 
+  function handleEntitySelected(entity: Entity | null) {
+    if (!entity) {
+      layerStore.clearSelection();
+      return;
+    }
+
+    const props: Record<string, unknown> = {};
+    if (entity.properties) {
+      const propertyNames = entity.properties.propertyNames;
+      for (const name of propertyNames) {
+        props[name] = entity.properties.getValue(undefined as unknown as JulianDate)?.[name];
+      }
+    }
+
+    const kind =
+      (props.kind as
+        | 'flight'
+        | 'marine'
+        | 'quake'
+        | 'firms'
+        | 'gbfs'
+        | 'cctv'
+        | 'radio'
+        | 'launch'
+        | 'weather') || 'flight';
+
+    layerStore.selectEntity({
+      kind,
+      id: String(entity.id),
+      name: String(entity.name || entity.id),
+      data: props,
+    });
+  }
+
+  // Svelte 5 $effect to synchronize UI store visibility and filters to Cesium layers
+  $effect(() => {
+    flightLayer?.setVisible(layerStore.visibility.flights);
+    marineLayer?.setVisible(layerStore.visibility.marine);
+    quakeLayer?.setVisible(layerStore.visibility.quakes);
+    firmsLayer?.setVisible(layerStore.visibility.firms);
+    gbfsLayer?.setVisible(layerStore.visibility.gbfs);
+    cctvLayer?.setVisible(layerStore.visibility.cctv);
+    radioLayer?.setVisible(layerStore.visibility.radio);
+    launchLayer?.setVisible(layerStore.visibility.launches);
+    weatherLayer?.setVisible(layerStore.visibility.weather);
+
+    quakeLayer?.setMinMagnitude(layerStore.filters.quakes.minMagnitude);
+    firmsLayer?.setMinFrp(layerStore.filters.firms.minFrp);
+    firmsLayer?.setConfidenceFilter(layerStore.filters.firms.confidence);
+    marineLayer?.setVesselTypeFilter(layerStore.filters.marine.vesselType);
+    gbfsLayer?.setMinBikesAvailable(layerStore.filters.gbfs.minBikes);
+    cctvLayer?.setAgencyFilter(layerStore.filters.cctv.agency);
+    radioLayer?.setCategoryFilter(layerStore.filters.radio.category);
+  });
+
   onMount(async () => {
     try {
-      globe = new GlobeController({ container: globeContainer });
+      globe = new GlobeController({
+        container: globeContainer,
+        onEntitySelected: handleEntitySelected,
+      });
+
       flightLayer = new FlightLayerController({ viewer: globe.viewer });
-      attachDebugBus(globe, flightLayer);
+      marineLayer = new MarineLayerController({ viewer: globe.viewer });
+      quakeLayer = new QuakeLayerController({ viewer: globe.viewer });
+      firmsLayer = new FirmsLayerController({ viewer: globe.viewer });
+      gbfsLayer = new GbfsLayerController({ viewer: globe.viewer });
+      cctvLayer = new CctvLayerController({ viewer: globe.viewer });
+      radioLayer = new RadioLayerController({ viewer: globe.viewer });
+      launchLayer = new LaunchLayerController({ viewer: globe.viewer });
+      weatherLayer = new WeatherLayerController({ viewer: globe.viewer });
+
+      attachDebugBus(globe, {
+        flight: flightLayer,
+        marine: marineLayer,
+        quakes: quakeLayer,
+        firms: firmsLayer,
+        gbfs: gbfsLayer,
+        cctv: cctvLayer,
+        radio: radioLayer,
+        launches: launchLayer,
+        weather: weatherLayer,
+      });
 
       // Inspect active deep link scene if present in URL
       if (typeof window !== 'undefined' && window.location.href) {
         const sceneFromUrl = parseSceneFromUrl(window.location.href);
         if (sceneFromUrl) {
           globe.setCameraPose(sceneFromUrl.camera);
-          statusText = 'Loaded scene from deep link';
+          layerStore.statusText = 'Loaded scene from deep link';
         }
       }
 
-      // Initial poll immediately
-      await pollFlights();
+      // Initial poll immediately across all feeds
+      await pollAllFeeds();
 
       // Poll at 5-second human-rate cadence (ADR-0015)
-      pollInterval = setInterval(pollFlights, 5000);
+      pollInterval = setInterval(pollAllFeeds, 5000);
     } catch (err: unknown) {
-      statusText = `Init Error: ${err instanceof Error ? err.message : 'Unknown'}`;
+      layerStore.statusText = `Init Error: ${err instanceof Error ? err.message : 'Unknown'}`;
     }
   });
 
@@ -64,6 +299,14 @@
       pollInterval = null;
     }
     flightLayer?.destroy();
+    marineLayer?.destroy();
+    quakeLayer?.destroy();
+    firmsLayer?.destroy();
+    gbfsLayer?.destroy();
+    cctvLayer?.destroy();
+    radioLayer?.destroy();
+    launchLayer?.destroy();
+    weatherLayer?.destroy();
     globe?.destroy();
   });
 </script>
@@ -71,31 +314,12 @@
 <main class="app-layout">
   <div bind:this={globeContainer} id="globe-container" class="globe-viewport"></div>
 
-  <!-- HUD Overlay -->
-  <header class="hud-header">
-    <div class="hud-title-card">
-      <h1 id="app-title">GEV v2 — God's Eye View</h1>
-      <div id="app-status" class="hud-status">
-        <span class="status-indicator"></span>
-        {statusText}
-      </div>
-    </div>
+  <!-- HUD Overlays -->
+  <HudHeader />
+  <LayerControlPanel />
+  <EntityInfoCard />
 
-    <div class="hud-stats-card">
-      <div class="stat-item">
-        <span class="stat-label">Active Aircraft</span>
-        <span id="flight-count" class="stat-value">{flightCount}</span>
-      </div>
-      {#if lastUpdateTime}
-        <div class="stat-item">
-          <span class="stat-label">Last Sync</span>
-          <span class="stat-value">{lastUpdateTime}</span>
-        </div>
-      {/if}
-    </div>
-  </header>
-
-  <!-- OpenStreetMap Mandatory Attribution (Rule 3) -->
+  <!-- OpenStreetMap Mandatory Attribution (Rule 3 & DESIGN.md §5) -->
   <footer id="osm-attribution" class="attribution-badge">
     Map data &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors
   </footer>
@@ -110,7 +334,7 @@
     overflow: hidden;
     background-color: #030712;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    color: #f3f4f6;
+    color: #f8fafc;
   }
 
   .app-layout {
@@ -127,92 +351,23 @@
     height: 100%;
   }
 
-  .hud-header {
-    position: absolute;
-    top: 16px;
-    left: 16px;
-    right: 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    pointer-events: none;
-    z-index: 10;
-  }
-
-  .hud-title-card, .hud-stats-card {
-    background: rgba(17, 24, 39, 0.85);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(75, 85, 99, 0.4);
-    border-radius: 8px;
-    padding: 12px 16px;
-    pointer-events: auto;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  }
-
-  #app-title {
-    margin: 0 0 4px 0;
-    font-size: 1.1rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    color: #f9fafb;
-  }
-
-  .hud-status {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.8rem;
-    color: #9ca3af;
-  }
-
-  .status-indicator {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background-color: #10b981;
-    display: inline-block;
-  }
-
-  .hud-stats-card {
-    display: flex;
-    gap: 16px;
-  }
-
-  .stat-item {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-  }
-
-  .stat-label {
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #9ca3af;
-  }
-
-  .stat-value {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #38bdf8;
-    font-variant-numeric: tabular-nums;
-  }
-
   .attribution-badge {
     position: absolute;
     bottom: 8px;
-    right: 8px;
-    background: rgba(17, 24, 39, 0.75);
-    padding: 4px 8px;
+    left: 16px;
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(148, 163, 184, 0.15);
     border-radius: 4px;
-    font-size: 0.7rem;
-    color: #9ca3af;
+    padding: 4px 8px;
+    font-size: 0.68rem;
+    color: #94a3b8;
     pointer-events: auto;
     z-index: 10;
   }
 
   .attribution-badge a {
-    color: #60a5fa;
+    color: #38bdf8;
     text-decoration: none;
   }
 

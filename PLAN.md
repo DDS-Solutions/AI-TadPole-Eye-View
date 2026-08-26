@@ -287,8 +287,8 @@ Each layer ships with: provider adapter + fixture tests + Playwright smoke passi
 - [x] **M1 merge-rung ready** (audit stream readable externally)
 
 ### Phase 2 — Layers (Weeks 3–6)
-- [ ] Layers 2–5 of §8, each with adapter+fixtures+smoke+flags
-- [ ] Layers 6–9 of §8
+- [x] Layers 2–5 of §8, each with adapter+fixtures+smoke+flags
+- [x] Layers 6–9 of §8
 - [ ] Perf budgets enforced in CI; frame-time harness green
 - [ ] PWA shell; virtualized lists; uPlot timelines
 

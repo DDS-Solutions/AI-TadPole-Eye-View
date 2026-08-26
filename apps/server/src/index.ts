@@ -7,9 +7,11 @@ import {
   CctvAdapter,
   FirmsAdapter,
   GbfsAdapter,
+  LaunchAdapter,
   OpenSkyAdapter,
   RadioAdapter,
   UsgsQuakeAdapter,
+  WeatherAdapter,
 } from '@gev/providers';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
@@ -21,11 +23,13 @@ import { createFirmsRouter } from './routes/firms.js';
 import { createFlightsRouter } from './routes/flights.js';
 import { createGbfsRouter } from './routes/gbfs.js';
 import { createFeedHealthRouter } from './routes/health.js';
+import { createLaunchRouter } from './routes/launches.js';
 import { createOverpassRouter } from './routes/overpass.js';
 import { createQuakesRouter } from './routes/quakes.js';
 import { createRadioRouter } from './routes/radio.js';
 import { createShipsRouter } from './routes/ships.js';
 import { createVoiceRouter } from './routes/voice.js';
+import { createWeatherRouter } from './routes/weather.js';
 
 export function createApp() {
   const app = new Hono();
@@ -39,6 +43,8 @@ export function createApp() {
   const gbfsAdapter = new GbfsAdapter({ clock });
   const radioAdapter = new RadioAdapter({ clock });
   const cctvAdapter = new CctvAdapter({ clock });
+  const launchAdapter = new LaunchAdapter({ clock });
+  const weatherAdapter = new WeatherAdapter({ clock });
 
   // Governance & Cost Governor
   const auditSink = new SqliteAuditSink({ clock });
@@ -68,6 +74,8 @@ export function createApp() {
         radio: { healthy: true, source: 'broadcastify' },
         overpass: { healthy: true, source: 'overpass-api' },
         cctv: { healthy: true, source: 'dot-traffic' },
+        launches: { healthy: true, source: 'trajectories' },
+        weather: { healthy: true, source: 'rainviewer' },
       },
     });
   });
@@ -99,6 +107,12 @@ export function createApp() {
 
   app.use('/api/cctv/*', costGovernor.middleware('cctv'));
   app.route('/api/cctv', createCctvRouter(cctvAdapter));
+
+  app.use('/api/launches/*', costGovernor.middleware('launches'));
+  app.route('/api/launches', createLaunchRouter({ adapter: launchAdapter }));
+
+  app.use('/api/weather/*', costGovernor.middleware('weather'));
+  app.route('/api/weather', createWeatherRouter({ adapter: weatherAdapter }));
 
   // Voice Ephemeral Token Provisioning
   app.route('/api/voice', createVoiceRouter({ clock }));
