@@ -140,14 +140,14 @@ export type TripCode = z.infer<typeof TripCode>;
 export const CostEstimate = z
   .object({
     currency: z.literal('usd'), // widen deliberately, not accidentally
-    min: z.number().nonnegative(),
-    max: z.number().nonnegative(),
+    min: z.number().finite().nonnegative(),
+    max: z.number().finite().nonnegative(),
   })
   .refine((e) => e.min <= e.max, { message: 'min exceeds max' });
 export type CostEstimate = z.infer<typeof CostEstimate>;
 
 export const Verdict = z.discriminatedUnion('allowed', [
-  z.object({ allowed: z.literal(true), remaining_usd: z.number() }),
+  z.object({ allowed: z.literal(true), remaining_usd: z.number().finite() }),
   z.object({ allowed: z.literal(false), reason: TripCode, message: z.string() }),
 ]);
 export type Verdict = z.infer<typeof Verdict>;
@@ -155,8 +155,8 @@ export type Verdict = z.infer<typeof Verdict>;
 export const BudgetState = z.object({
   stasis_active: z.boolean(),
   period_start: z.string().datetime(),
-  spent_usd: z.number().nonnegative(),
-  cap_usd: z.number().positive(),
+  spent_usd: z.number().finite().nonnegative(),
+  cap_usd: z.number().finite().positive(),
   warn_threshold_pct: z.number().int().min(1).max(100),
   last_trip: z
     .object({ code: TripCode, at: z.string().datetime(), resumed_by: Actor.optional() })
