@@ -69,7 +69,7 @@ When an upstream provider (e.g. OpenSky Network) is rate-limited or degraded:
 GEV v2 operates **100% keyless by default** (ADR 0014).
 - **Default Base Layer:** Ion-free OpenStreetMap raster imagery provider (`TileMapService` / OSM XYZ raster tiles).
 - **No Cesium Ion Token Required:** The globe boots, centers on the target coordinates, and renders live/fixture flight point entities without any API key.
-- **WebGL Fallback:** In headless CI and test environments, Cesium boots in headless WebGL mode verified via Playwright screenshot fixtures (`e2e/test-results/globe-flights.png`).
+- **WebGL Fallback:** In headless CI and test environments, Cesium boots in headless WebGL mode verified via Playwright screenshot fixtures (`fixtures/` and E2E visual tests).
 
 ---
 

@@ -175,7 +175,7 @@ function collectExportedWorkspaceSymbols() {
 /** Validates a referenced filepath in docs */
 function checkFilePath(refPath, sourceFile) {
   // Strip anchor fragments (#heading or #L10-L20)
-  const cleanRef = refPath.split('#')[0].replace(/^file:\/\/\/?/, '');
+  let cleanRef = refPath.split('#')[0].replace(/^file:\/\/\/?/, '');
   if (
     !cleanRef ||
     cleanRef.startsWith('http://') ||
@@ -185,16 +185,21 @@ function checkFilePath(refPath, sourceFile) {
     return true; // External link
   }
 
-  // Handle absolute or relative filepaths
-  let target;
-  if (path.isAbsolute(cleanRef)) {
-    target = cleanRef;
-  } else if (cleanRef.startsWith('./') || cleanRef.startsWith('../')) {
-    target = path.resolve(ROOT, path.dirname(sourceFile), cleanRef);
-  } else {
-    // Workspace relative path (e.g. packages/contracts/src/ports.ts)
-    target = path.resolve(ROOT, cleanRef);
+  // Strip file protocol and workspace absolute prefixes (e.g. file:///g:/AI-TadPole-Eye-View/ or /home/runner/work/...)
+  let repoRelCandidate = null;
+  if (cleanRef.startsWith('file:')) {
+    const withoutScheme = cleanRef.replace(/^file:\/\/\/?/, '').replace(/^[a-zA-Z]:[\\/]/, '/');
+    const match = withoutScheme.match(/(?:^|[\\/])AI-TadPole-Eye-View[\\/](.+)$/i);
+    if (match?.[1]) {
+      repoRelCandidate = match[1].replace(/\\/g, '/');
+    }
   }
+
+  cleanRef = cleanRef
+    .replace(/^file:\/\/\/?/, '')
+    .replace(/^[a-zA-Z]:[\\/]/, '/')
+    .replace(/^.*[\\/]AI-TadPole-Eye-View[\\/]/i, '')
+    .replace(/\\/g, '/');
 
   // Allow template placeholders, ellipsis, or wildcards (e.g. NNNN-slug.md, <slug>, *, ...)
   if (
@@ -213,7 +218,27 @@ function checkFilePath(refPath, sourceFile) {
     return fs.existsSync(checkDir);
   }
 
-  return fs.existsSync(target);
+  // Check 1: Relative to source file directory
+  const targetRelSource = path.resolve(ROOT, path.dirname(sourceFile), cleanRef);
+  if (fs.existsSync(targetRelSource)) {
+    return true;
+  }
+
+  // Check 2: Relative to workspace root
+  const targetRelRoot = path.resolve(ROOT, cleanRef.startsWith('/') ? `.${cleanRef}` : cleanRef);
+  if (fs.existsSync(targetRelRoot)) {
+    return true;
+  }
+
+  // Check 3: Candidate from stripped repo root URI
+  if (repoRelCandidate) {
+    const targetFromRepoUri = path.resolve(ROOT, repoRelCandidate);
+    if (fs.existsSync(targetFromRepoUri)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /** Main ADG execution */
