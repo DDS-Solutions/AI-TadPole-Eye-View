@@ -19,7 +19,7 @@ export interface PathAllowRule {
 }
 
 /**
- * Validates request destination against host and path allowlists.
+ * Validates request destination against host and path allowlists with segment-aware path matching.
  */
 export function validateAllowlists(
   parsedUrl: URL,
@@ -37,9 +37,16 @@ export function validateAllowlists(
   }
 
   if (allowedPaths && allowedPaths.length > 0) {
-    const isPathAllowed = allowedPaths.some(
-      (rule) => rule.host.toLowerCase() === host && path.startsWith(rule.pathPrefix)
-    );
+    const isPathAllowed = allowedPaths.some((rule) => {
+      if (rule.host.toLowerCase() !== host) {
+        return false;
+      }
+      const prefix =
+        rule.pathPrefix.endsWith('/') && rule.pathPrefix !== '/'
+          ? rule.pathPrefix.slice(0, -1)
+          : rule.pathPrefix;
+      return path === prefix || path.startsWith(prefix === '/' ? '/' : `${prefix}/`);
+    });
     if (!isPathAllowed) {
       throw new PinnedFetchSecurityError(
         `Path ${path} on host ${host} is not allowed by path rules`

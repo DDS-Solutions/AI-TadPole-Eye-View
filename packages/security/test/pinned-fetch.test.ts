@@ -21,13 +21,24 @@ describe('Pinned Fetch Client', () => {
       }).toThrow(PinnedFetchSecurityError);
     });
 
-    it('validates allowed paths per host prefix', () => {
+    it('validates allowed paths per host prefix with segment awareness', () => {
       const pathRules = [{ host: 'radio-browser.info', pathPrefix: '/json/stations' }];
 
       const validUrl = new URL('https://radio-browser.info/json/stations/byname/jazz');
       expect(() => {
         validateAllowlists(validUrl, undefined, pathRules);
       }).not.toThrow();
+
+      const exactUrl = new URL('https://radio-browser.info/json/stations');
+      expect(() => {
+        validateAllowlists(exactUrl, undefined, pathRules);
+      }).not.toThrow();
+
+      // Suffix without path segment separator should be rejected
+      const prefixBypassUrl = new URL('https://radio-browser.info/json/stations_unauthorized');
+      expect(() => {
+        validateAllowlists(prefixBypassUrl, undefined, pathRules);
+      }).toThrow(PinnedFetchSecurityError);
 
       const invalidPathUrl = new URL('https://radio-browser.info/admin/delete');
       expect(() => {
