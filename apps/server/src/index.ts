@@ -385,7 +385,6 @@ if (process.env.NODE_ENV !== 'test') {
   const { app, collabRoomManager } = createApp();
   const port = Number(process.env.PORT) || 3000;
   const hostname = process.env.GEV_HOST || '127.0.0.1';
-  console.log(`[GEV v2 Server] Hono server listening on http://${hostname}:${port}`);
   const server = serve({
     fetch: app.fetch,
     port,

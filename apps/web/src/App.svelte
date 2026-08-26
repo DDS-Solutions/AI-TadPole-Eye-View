@@ -33,10 +33,9 @@
   import HudHeader from './components/HudHeader.svelte';
   import LayerControlPanel from './components/LayerControlPanel.svelte';
   import EntityInfoCard from './components/EntityInfoCard.svelte';
-  import VirtualizedTelemetryTable from './components/VirtualizedTelemetryTable.svelte';
   import VoiceControlOrb from './components/VoiceControlOrb.svelte';
   import CollabBar from './components/CollabBar.svelte';
-  import type { Entity } from 'cesium';
+  import { JulianDate, type Entity } from 'cesium';
 
   let globeContainer: HTMLDivElement;
   let globe: GlobeController | null = null;
@@ -116,7 +115,7 @@
           });
       }
 
-      // 4. Wildfires (FIRMS)
+      // 4. Thermal Hotspots (NASA FIRMS)
       if (layerStore.visibility.firms) {
         fetch('/api/firms', { signal })
           .then((res) => (res.ok ? res.json() : null))
@@ -134,7 +133,7 @@
           });
       }
 
-      // 5. GBFS Bike Transit
+      // 5. Shared Transit (GBFS)
       if (layerStore.visibility.gbfs) {
         fetch('/api/gbfs', { signal })
           .then((res) => (res.ok ? res.json() : null))
@@ -152,9 +151,9 @@
           });
       }
 
-      // 6. CCTV Traffic Cameras
+      // 6. Public CCTV Media
       if (layerStore.visibility.cctv) {
-        fetch('/api/cctv', { signal })
+        fetch('/api/cctv/catalog', { signal })
           .then((res) => (res.ok ? res.json() : null))
           .then((data: CctvCatalog | null) => {
             if (data && cctvLayer) {
@@ -170,9 +169,9 @@
           });
       }
 
-      // 7. Radio Streams
+      // 7. Global Radio Broadcasts
       if (layerStore.visibility.radio) {
-        fetch('/api/radio', { signal })
+        fetch('/api/radio/catalog', { signal })
           .then((res) => (res.ok ? res.json() : null))
           .then((data: RadioCatalog | null) => {
             if (data && radioLayer) {
@@ -188,7 +187,7 @@
           });
       }
 
-      // 8. Space Launch Trajectories
+      // 8. Orbital Launches
       if (layerStore.visibility.launches) {
         fetch('/api/launches', { signal })
           .then((res) => (res.ok ? res.json() : null))
@@ -208,7 +207,7 @@
 
       // 9. Weather Radar & Precipitation
       if (layerStore.visibility.weather) {
-        fetch('/api/weather', { signal })
+        fetch('/api/weather/radar', { signal })
           .then((res) => (res.ok ? res.json() : null))
           .then((data: WeatherCollection | null) => {
             if (data && weatherLayer) {
@@ -238,8 +237,9 @@
     const props: Record<string, unknown> = {};
     if (entity.properties) {
       const propertyNames = entity.properties.propertyNames;
+      const now = JulianDate.now();
       for (const name of propertyNames) {
-        props[name] = entity.properties.getValue(name);
+        props[name] = entity.properties.getValue(now)?.[name];
       }
     }
 
