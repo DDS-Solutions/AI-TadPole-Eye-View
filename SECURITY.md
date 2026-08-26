@@ -11,7 +11,7 @@ God's Eye View is an agent-native OSINT console tracking public telemetry on a 3
 Please report security issues **privately** — do not open public issues for exploitable vulnerabilities.
 
 - **GitHub Private Advisory:** [Report a vulnerability](https://github.com/DDS-Solutions/AI-Tadpole-Eye-View/security/advisories/new)
-- **Security Contact:** `security@dds-solutions.internal` (or via GitHub profile)
+- **Direct Maintainer Contact:** Via security contact link on the GitHub Organization / Maintainer profile
 
 Include full reproduction steps, affected versions/commits, and estimated impact. Fixes will be prioritized and credited in the security advisory.
 
