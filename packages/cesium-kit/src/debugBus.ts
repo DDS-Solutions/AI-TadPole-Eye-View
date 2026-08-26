@@ -58,7 +58,9 @@ export function attachDebugBus(
     },
   };
 
-  const shouldAttach = options.attachToWindow ?? (typeof process === 'undefined' || process.env.NODE_ENV !== 'production' || true);
+  const shouldAttach =
+    options.attachToWindow ??
+    (typeof process === 'undefined' || process.env.NODE_ENV !== 'production' || true);
 
   if (typeof window !== 'undefined' && shouldAttach) {
     window.__gev = bus;

@@ -264,7 +264,10 @@ export async function executeOperatorTool(
         result = await handleGetBudget(ctx);
         break;
       case 'run_diagnostics':
-        result = await handleRunDiagnostics(ctx, tool.inputSchema.parse(args) as RunDiagnosticsInput);
+        result = await handleRunDiagnostics(
+          ctx,
+          tool.inputSchema.parse(args) as RunDiagnosticsInput
+        );
         break;
       case 'load_scene':
         result = await handleLoadScene(ctx, tool.inputSchema.parse(args) as LoadSceneInput);
