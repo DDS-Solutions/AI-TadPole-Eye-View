@@ -18,6 +18,6 @@ This directory records all significant architectural and structural decisions ma
 | [0023](./0023-telemetry-layer-controllers-and-tactical-hud-architecture.md) | Telemetry Layer Controllers & Tactical HUD Architecture | Accepted | 2026-08-26 |
 | [0024](./0024-media-telemetry-layers-and-live-streaming-hud-architecture.md) | Media Telemetry Layers, Orbital Trajectories & Live Streaming HUD Architecture | Accepted | 2026-08-26 |
 | [0025](./0025-performance-budgets-frame-harness-and-virtualized-telemetry.md) | Performance Budgets, Frame-Time Harness & Virtualized Telemetry Architecture | Accepted | 2026-08-26 |
-
-
-
+| [0026](./0026-provider-agnostic-voice-agent-and-xstate-lifecycle-architecture.md) | Provider-Agnostic Voice Agent & XState Lifecycle Architecture | Accepted | 2026-08-26 |
+| [0027](./0027-shared-tool-registry-contracts-and-governed-actuators-architecture.md) | Shared Tool Registry Contracts & Governed Actuators Architecture | Accepted | 2026-08-26 |
+| [0028](./0028-yjs-collaborative-intent-rooms-and-co-user-presence-architecture.md) | Yjs Collaborative Intent Rooms & Co-User Presence Architecture | Accepted | 2026-08-26 |

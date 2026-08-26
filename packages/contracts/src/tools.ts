@@ -130,6 +130,106 @@ export const SetFlagOutputSchema = z.object({
 });
 export type SetFlagOutput = z.infer<typeof SetFlagOutputSchema>;
 
+// 8. fly_to_location (OSINT domain actuator)
+export const FlyToLocationInputSchema = z.object({
+  lat: z.number().finite().min(-90).max(90),
+  lon: z.number().finite().min(-180).max(180),
+  altitude_m: z.number().finite().positive().default(500000).optional(),
+  duration_s: z.number().finite().positive().default(2).optional(),
+});
+export type FlyToLocationInput = z.infer<typeof FlyToLocationInputSchema>;
+
+export const FlyToLocationOutputSchema = z.object({
+  moved: z.boolean(),
+  target: z.object({
+    lat: z.number(),
+    lon: z.number(),
+    altitude_m: z.number(),
+  }),
+});
+export type FlyToLocationOutput = z.infer<typeof FlyToLocationOutputSchema>;
+
+// 9. toggle_layer (OSINT domain actuator)
+export const ToggleLayerInputSchema = z.object({
+  layer: z.string().min(1),
+  enabled: z.boolean(),
+});
+export type ToggleLayerInput = z.infer<typeof ToggleLayerInputSchema>;
+
+export const ToggleLayerOutputSchema = z.object({
+  layer: z.string(),
+  enabled: z.boolean(),
+  updated: z.boolean(),
+});
+export type ToggleLayerOutput = z.infer<typeof ToggleLayerOutputSchema>;
+
+// 10. select_entity (OSINT domain actuator)
+export const SelectEntityInputSchema = z.object({
+  layer: z.string().min(1),
+  id: z.string().min(1),
+  track_camera: z.boolean().default(false).optional(),
+});
+export type SelectEntityInput = z.infer<typeof SelectEntityInputSchema>;
+
+export const SelectEntityOutputSchema = z.object({
+  selected: z.boolean(),
+  layer: z.string(),
+  id: z.string(),
+  entity_found: z.boolean(),
+});
+export type SelectEntityOutput = z.infer<typeof SelectEntityOutputSchema>;
+
+// 11. inspect_telemetry (OSINT telemetry query)
+export const InspectTelemetryInputSchema = z.object({
+  layer: z.string().min(1),
+  id: z.string().min(1),
+});
+export type InspectTelemetryInput = z.infer<typeof InspectTelemetryInputSchema>;
+
+export const InspectTelemetryOutputSchema = z.object({
+  layer: z.string(),
+  id: z.string(),
+  found: z.boolean(),
+  data: z.record(z.unknown()).optional(),
+});
+export type InspectTelemetryOutput = z.infer<typeof InspectTelemetryOutputSchema>;
+
+// 12. query_aoi (OSINT spatial query)
+export const QueryAoiInputSchema = z.object({
+  south: z.number().finite().min(-90).max(90),
+  west: z.number().finite().min(-180).max(180),
+  north: z.number().finite().min(-90).max(90),
+  east: z.number().finite().min(-180).max(180),
+  layers: z.array(z.string()).optional(),
+});
+export type QueryAoiInput = z.infer<typeof QueryAoiInputSchema>;
+
+export const QueryAoiOutputSchema = z.object({
+  total_entities: z.number().finite().nonnegative(),
+  counts_by_layer: z.record(z.number()),
+  bounds: z.object({
+    south: z.number(),
+    west: z.number(),
+    north: z.number(),
+    east: z.number(),
+  }),
+});
+export type QueryAoiOutput = z.infer<typeof QueryAoiOutputSchema>;
+
+// 13. set_sim_time (Sim-clock control)
+export const SetSimTimeInputSchema = z.object({
+  offset_s: z.number().finite(),
+  playback_rate: z.number().finite().positive().default(1).optional(),
+});
+export type SetSimTimeInput = z.infer<typeof SetSimTimeInputSchema>;
+
+export const SetSimTimeOutputSchema = z.object({
+  sim_time_offset_s: z.number().finite(),
+  playback_rate: z.number().finite(),
+  updated: z.boolean(),
+});
+export type SetSimTimeOutput = z.infer<typeof SetSimTimeOutputSchema>;
+
 export type OperatorToolDefinition<
   TName extends string,
   TIn extends z.ZodTypeAny,
@@ -145,7 +245,8 @@ export type OperatorToolDefinition<
 };
 
 /**
- * Registry of standard operator tool definitions with governance flags.
+ * Shared registry of standard operator and console tool definitions with governance flags.
+ * Serves Voice Agent, in-app Co-User, and Operator MCP Server.
  */
 export const OPERATOR_TOOLS = {
   get_feed_health: {
@@ -211,6 +312,212 @@ export const OPERATOR_TOOLS = {
     inputSchema: SetFlagInputSchema,
     outputSchema: SetFlagOutputSchema,
   },
+  fly_to_location: {
+    name: 'fly_to_location',
+    description:
+      'Navigate camera to specific geographic latitude, longitude, and altitude on the globe',
+    is_mutating: true,
+    is_dangerous: false,
+    is_cacheable: false,
+    inputSchema: FlyToLocationInputSchema,
+    outputSchema: FlyToLocationOutputSchema,
+  },
+  toggle_layer: {
+    name: 'toggle_layer',
+    description:
+      'Enable or disable a specific telemetry layer (e.g. flights, marine, quakes, firms, cctv, radio, launches)',
+    is_mutating: true,
+    is_dangerous: false,
+    is_cacheable: false,
+    inputSchema: ToggleLayerInputSchema,
+    outputSchema: ToggleLayerOutputSchema,
+  },
+  select_entity: {
+    name: 'select_entity',
+    description: 'Select and track a specific telemetry entity on the 3D globe by ID and layer',
+    is_mutating: true,
+    is_dangerous: false,
+    is_cacheable: false,
+    inputSchema: SelectEntityInputSchema,
+    outputSchema: SelectEntityOutputSchema,
+  },
+  inspect_telemetry: {
+    name: 'inspect_telemetry',
+    description:
+      'Fetch detailed telemetry and metadata attributes for a specific entity in an active layer',
+    is_mutating: false,
+    is_dangerous: false,
+    is_cacheable: true,
+    inputSchema: InspectTelemetryInputSchema,
+    outputSchema: InspectTelemetryOutputSchema,
+  },
+  query_aoi: {
+    name: 'query_aoi',
+    description: 'Query entity density and counts within an Area of Interest (AOI) bounding box',
+    is_mutating: false,
+    is_dangerous: false,
+    is_cacheable: true,
+    inputSchema: QueryAoiInputSchema,
+    outputSchema: QueryAoiOutputSchema,
+  },
+  set_sim_time: {
+    name: 'set_sim_time',
+    description: 'Adjust global simulation clock offset and replay rate',
+    is_mutating: true,
+    is_dangerous: false,
+    is_cacheable: false,
+    inputSchema: SetSimTimeInputSchema,
+    outputSchema: SetSimTimeOutputSchema,
+  },
 } as const satisfies Record<string, OperatorToolDefinition<string, z.ZodTypeAny, z.ZodTypeAny>>;
 
 export type OperatorToolName = keyof typeof OPERATOR_TOOLS;
+
+/**
+ * OpenAI / OpenRouter Tool Definition Format.
+ */
+export interface OpenAIToolDefinition {
+  type: 'function';
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+}
+
+/**
+ * Generate OpenAI Realtime / Chat function definitions from the shared OPERATOR_TOOLS registry.
+ */
+export function getOpenAIToolDefinitions(
+  toolNames?: readonly OperatorToolName[]
+): OpenAIToolDefinition[] {
+  const keys = (toolNames ?? Object.keys(OPERATOR_TOOLS)) as OperatorToolName[];
+  return keys.map((key) => {
+    const def = OPERATOR_TOOLS[key];
+    return {
+      type: 'function',
+      function: {
+        name: def.name,
+        description: `${def.description}${def.is_mutating ? ' [MUTATING]' : ''}${def.is_dangerous ? ' [DANGEROUS]' : ''}`,
+        parameters: zodToJsonSchemaLight(def.inputSchema),
+      },
+    };
+  });
+}
+
+/**
+ * Lightweight Zod-to-JSON-Schema converter for tool definitions without external heavy deps.
+ */
+function zodToJsonSchemaLight(schema: z.ZodTypeAny): Record<string, unknown> {
+  if (schema instanceof z.ZodObject) {
+    const shape = schema.shape;
+    const properties: Record<string, unknown> = {};
+    const required: string[] = [];
+
+    for (const [key, value] of Object.entries(shape)) {
+      const field = value as z.ZodTypeAny;
+      properties[key] = zodTypeToJsonSchema(field);
+      if (!(field instanceof z.ZodOptional) && !(field instanceof z.ZodDefault)) {
+        required.push(key);
+      }
+    }
+
+    return {
+      type: 'object',
+      properties,
+      required: required.length > 0 ? required : undefined,
+    };
+  }
+
+  if (schema instanceof z.ZodEffects) {
+    return zodToJsonSchemaLight(schema.innerType());
+  }
+
+  return { type: 'object', properties: {} };
+}
+
+function zodTypeToJsonSchema(field: z.ZodTypeAny): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+
+  if (field.description) {
+    result.description = field.description;
+  }
+
+  if (field instanceof z.ZodOptional) {
+    return { ...result, ...zodTypeToJsonSchema(field.unwrap()) };
+  }
+
+  if (field instanceof z.ZodNullable) {
+    const inner = zodTypeToJsonSchema(field.unwrap());
+    return { ...result, ...inner, nullable: true };
+  }
+
+  if (field instanceof z.ZodDefault) {
+    const innerDef = field._def as { innerType: z.ZodTypeAny; defaultValue: () => unknown };
+    const inner = zodTypeToJsonSchema(innerDef.innerType);
+    let defaultVal: unknown;
+    try {
+      defaultVal = innerDef.defaultValue();
+    } catch {
+      // Ignore if default evaluation throws
+    }
+    return {
+      ...result,
+      ...inner,
+      ...(defaultVal !== undefined ? { default: defaultVal } : {}),
+    };
+  }
+
+  if (field instanceof z.ZodUnion) {
+    const options = (field._def as { options: z.ZodTypeAny[] }).options;
+    return {
+      ...result,
+      anyOf: options.map((opt) => zodTypeToJsonSchema(opt)),
+    };
+  }
+
+  if (field instanceof z.ZodString) {
+    return { ...result, type: 'string' };
+  }
+
+  if (field instanceof z.ZodNumber) {
+    const numSchema: Record<string, unknown> = { ...result, type: 'number' };
+    const checks = (field._def as { checks?: Array<{ kind: string; value: number }> }).checks;
+    if (checks) {
+      for (const check of checks) {
+        if (check.kind === 'min') {
+          numSchema.minimum = check.value;
+        } else if (check.kind === 'max') {
+          numSchema.maximum = check.value;
+        }
+      }
+    }
+    return numSchema;
+  }
+
+  if (field instanceof z.ZodBoolean) {
+    return { ...result, type: 'boolean' };
+  }
+
+  if (field instanceof z.ZodEnum) {
+    return { ...result, type: 'string', enum: field.options };
+  }
+
+  if (field instanceof z.ZodArray) {
+    return {
+      ...result,
+      type: 'array',
+      items: zodTypeToJsonSchema(field.element),
+    };
+  }
+
+  if (field instanceof z.ZodObject) {
+    return { ...result, ...zodToJsonSchemaLight(field) };
+  }
+
+  if (field instanceof z.ZodRecord) {
+    return { ...result, type: 'object' };
+  }
+
+  return { ...result, type: 'string' };
+}

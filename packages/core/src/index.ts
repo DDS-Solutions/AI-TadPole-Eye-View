@@ -3,3 +3,7 @@ export * from './cockpitMath.js';
 export * from './scopeMask.js';
 export * from './clock.js';
 export * from './sceneSerializer.js';
+export * from './toolExecutor.js';
+export * from './agentAdapters.js';
+export * from './voiceMachine.js';
+export * from './collabDoc.js';

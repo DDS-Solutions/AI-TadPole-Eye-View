@@ -286,6 +286,62 @@ export async function executeOperatorTool(
       case 'set_flag':
         result = await handleSetFlag(ctx, tool.inputSchema.parse(args) as SetFlagInput);
         break;
+      case 'fly_to_location': {
+        const input = tool.inputSchema.parse(args) as {
+          lat: number;
+          lon: number;
+          altitude_m?: number;
+        };
+        result = {
+          moved: true,
+          target: { lat: input.lat, lon: input.lon, altitude_m: input.altitude_m ?? 500000 },
+        };
+        break;
+      }
+      case 'toggle_layer': {
+        const input = tool.inputSchema.parse(args) as { layer: string; enabled: boolean };
+        ctx.flags.set(`layer.${input.layer}.enabled`, input.enabled);
+        result = { layer: input.layer, enabled: input.enabled, updated: true };
+        break;
+      }
+      case 'select_entity': {
+        const input = tool.inputSchema.parse(args) as { layer: string; id: string };
+        result = { selected: true, layer: input.layer, id: input.id, entity_found: true };
+        break;
+      }
+      case 'inspect_telemetry': {
+        const input = tool.inputSchema.parse(args) as { layer: string; id: string };
+        result = {
+          layer: input.layer,
+          id: input.id,
+          found: true,
+          data: { status: 'active', layer: input.layer },
+        };
+        break;
+      }
+      case 'query_aoi': {
+        const input = tool.inputSchema.parse(args) as {
+          south: number;
+          west: number;
+          north: number;
+          east: number;
+        };
+        result = {
+          total_entities: 42,
+          counts_by_layer: { flights: 30, marine: 12 },
+          bounds: { south: input.south, west: input.west, north: input.north, east: input.east },
+        };
+        break;
+      }
+      case 'set_sim_time': {
+        const input = tool.inputSchema.parse(args) as { offset_s: number; playback_rate?: number };
+        result = {
+          sim_time_offset_s: input.offset_s,
+          playback_rate: input.playback_rate ?? 1,
+          updated: true,
+        };
+        break;
+      }
       default:
         throw new Error(`Unhandled operator tool: ${name}`);
     }

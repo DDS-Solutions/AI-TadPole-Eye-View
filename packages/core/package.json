@@ -17,7 +17,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@gev/contracts": "workspace:*"
+    "@gev/contracts": "workspace:*",
+    "xstate": "^5.32.6",
+    "yjs": "^13.6.32"
   },
   "devDependencies": {
     "fast-check": "^3.23.2",

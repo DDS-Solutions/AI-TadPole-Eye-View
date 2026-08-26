@@ -17,7 +17,9 @@
     "@tanstack/svelte-virtual": "^3.13.36",
     "cesium": "^1.126.0",
     "svelte": "^5.0.0",
-    "uplot": "^1.6.32"
+    "uplot": "^1.6.32",
+    "xstate": "^5.32.6",
+    "yjs": "^13.6.32"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.0.0",

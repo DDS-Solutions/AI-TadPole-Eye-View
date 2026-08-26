@@ -293,11 +293,11 @@ Each layer ships with: provider adapter + fixture tests + Playwright smoke passi
 - [x] PWA shell; virtualized lists; uPlot timelines
 
 ### Phase 3 — Voice agent + co-user foundations (Weeks 6–8)
-- [ ] Provider-agnostic agent endpoint (OpenAI Realtime GA flow; OpenRouter/Ollama adapters)
-- [ ] XState session machine; barge-in/recovery tested
-- [ ] Tool registry generated from contracts (shared triple-consumer surface)
-- [ ] VAD-local audio gating
-- [ ] Yjs rooms + awareness + room tokens (T2)
+- [x] Provider-agnostic agent endpoint (OpenAI Realtime GA flow; OpenRouter/Ollama adapters)
+- [x] XState session machine; barge-in/recovery tested
+- [x] Tool registry generated from contracts (shared triple-consumer surface)
+- [x] VAD-local audio gating
+- [x] Yjs rooms + awareness + room tokens (T2)
 
 ### Phase 4 — Hygiene & showcase (Week 9)
 - [ ] Docs regenerated; DATA_SOURCES provenance per layer

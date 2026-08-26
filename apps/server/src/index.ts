@@ -1,4 +1,6 @@
 import crypto from 'node:crypto';
+import type { IncomingMessage } from 'node:http';
+import type { Duplex } from 'node:stream';
 import { type Actor, GevEvents } from '@gev/contracts';
 import { SystemClock } from '@gev/core';
 import { CapBudgetGovernor, PromptApprovalGate, SqliteAuditSink } from '@gev/governance';
@@ -16,9 +18,11 @@ import {
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { WebSocketServer } from 'ws';
 import { CostGovernor } from './middleware/costGovernor.js';
 import { createAuditStreamRouter } from './routes/auditStream.js';
 import { createCctvRouter } from './routes/cctv.js';
+import { CollabRoomManager, createCollabRouter } from './routes/collab.js';
 import { createFirmsRouter } from './routes/firms.js';
 import { createFlightsRouter } from './routes/flights.js';
 import { createGbfsRouter } from './routes/gbfs.js';
@@ -46,11 +50,12 @@ export function createApp() {
   const launchAdapter = new LaunchAdapter({ clock });
   const weatherAdapter = new WeatherAdapter({ clock });
 
-  // Governance & Cost Governor
+  // Governance, Cost Governor & Collab Manager
   const auditSink = new SqliteAuditSink({ clock });
   const budgetGovernor = new CapBudgetGovernor({ clock });
   const approvalGate = new PromptApprovalGate({ clock });
   const costGovernor = new CostGovernor({ clock, budgetGovernor });
+  const collabRoomManager = new CollabRoomManager();
 
   // Global Middleware
   app.use(
@@ -71,6 +76,7 @@ export function createApp() {
       timestamp: clock.now(),
       stasis_active: govState.stasis_active,
       budget_remaining_usd: Math.max(0, govState.cap_usd - govState.spent_usd),
+      collab_rooms: collabRoomManager.listRooms(),
       providers: {
         flights: { healthy: true, source: 'opensky' },
         ships: { healthy: true, source: 'aisstream' },
@@ -123,6 +129,9 @@ export function createApp() {
   // Voice Ephemeral Token Provisioning
   app.route('/api/voice', createVoiceRouter({ clock }));
 
+  // T2 Collaborative Intent Rooms Route
+  app.route('/api/collab', createCollabRouter(collabRoomManager));
+
   // M1 Observer Real-Time Audit SSE Stream
   app.route('/ops/audit', createAuditStreamRouter(auditSink));
 
@@ -161,7 +170,7 @@ export function createApp() {
         intent_id: intentId,
         ts: new Date(clock.now()).toISOString(),
         status: 'blocked',
-        error: spendVerdict.message,
+        error: `STASIS active or budget exceeded: ${spendVerdict.message} (${spendVerdict.reason})`,
         duration_ms: durationMs,
       });
 
@@ -169,22 +178,22 @@ export function createApp() {
         {
           status: 'blocked',
           intent_id: intentId,
+          stasis_active: budgetGovernor.state().stasis_active,
           reason: spendVerdict.reason,
           message: spendVerdict.message,
-          stasis_active: true,
         },
         429
       );
     }
 
-    // 3. Approval Gate Check
+    // 3. Approval Gate Request for Mutating Action
     const approvalDecision = await approvalGate.request({
       id: crypto.randomUUID(),
-      ts: new Date(clock.now()).toISOString(),
+      ts: intentTs,
       intent_id: intentId,
-      scopes: ['repo.write'],
-      rationale: 'Reload deterministic flight seed fixtures',
-      expires_at: new Date(clock.now() + 30000).toISOString(),
+      scopes: ['flags.write'],
+      rationale: 'Reloading seed fixtures mutates in-memory telemetry state for active session',
+      expires_at: new Date(startTime + 30000).toISOString(),
     });
 
     if (approvalDecision.decision !== 'approved') {
@@ -194,7 +203,7 @@ export function createApp() {
         intent_id: intentId,
         ts: new Date(clock.now()).toISOString(),
         status: 'blocked',
-        error: `Approval denied by ${approvalDecision.decided_by}`,
+        error: `Action denied by approval gate (decision: ${approvalDecision.decision})`,
         duration_ms: durationMs,
       });
 
@@ -324,6 +333,7 @@ export function createApp() {
     budgetGovernor,
     approvalGate,
     costGovernor,
+    collabRoomManager,
     clock,
     adapters: {
       openSky: openSkyAdapter,
@@ -337,14 +347,49 @@ export function createApp() {
   };
 }
 
+export function attachWebSocketCollabServer(
+  server: ReturnType<typeof serve>,
+  collabRoomManager: CollabRoomManager
+) {
+  const wss = new WebSocketServer({ noServer: true });
+
+  server.on('upgrade', async (req: IncomingMessage, socket: Duplex, head: Buffer) => {
+    const url = new URL(req.url || '/', 'http://127.0.0.1');
+    if (url.pathname.startsWith('/api/collab/room/')) {
+      const token = url.searchParams.get('token');
+      if (!token) {
+        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+
+      const verified = await collabRoomManager.verifyRoomToken(token);
+      if (!verified) {
+        socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+
+      wss.handleUpgrade(req, socket, head, (ws) => {
+        collabRoomManager.handleWebSocketPeer(ws, verified);
+      });
+    } else {
+      socket.destroy();
+    }
+  });
+
+  return wss;
+}
+
 if (process.env.NODE_ENV !== 'test') {
-  const { app } = createApp();
+  const { app, collabRoomManager } = createApp();
   const port = Number(process.env.PORT) || 3000;
   const hostname = process.env.GEV_HOST || '127.0.0.1';
-  console.log(`[GEV v2 Server] Hono server listening on http://${hostname}:${port}`);
-  serve({
+  const server = serve({
     fetch: app.fetch,
     port,
     hostname,
   });
+
+  attachWebSocketCollabServer(server, collabRoomManager);
 }

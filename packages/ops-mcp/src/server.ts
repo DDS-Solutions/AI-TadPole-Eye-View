@@ -78,6 +78,60 @@ const TOOL_INPUT_SCHEMAS: Record<OperatorToolName, Record<string, unknown>> = {
     },
     required: ['flag', 'enabled'],
   },
+  fly_to_location: {
+    type: 'object',
+    properties: {
+      lat: { type: 'number', description: 'Latitude (-90 to 90)' },
+      lon: { type: 'number', description: 'Longitude (-180 to 180)' },
+      altitude_m: { type: 'number', description: 'Altitude in meters' },
+      duration_s: { type: 'number', description: 'Flight duration in seconds' },
+    },
+    required: ['lat', 'lon'],
+  },
+  toggle_layer: {
+    type: 'object',
+    properties: {
+      layer: { type: 'string', description: 'Layer identifier (e.g. flights, marine, quakes)' },
+      enabled: { type: 'boolean', description: 'Enable/disable layer' },
+    },
+    required: ['layer', 'enabled'],
+  },
+  select_entity: {
+    type: 'object',
+    properties: {
+      layer: { type: 'string', description: 'Layer identifier' },
+      id: { type: 'string', description: 'Entity identifier' },
+      track_camera: { type: 'boolean', description: 'Whether to track with camera' },
+    },
+    required: ['layer', 'id'],
+  },
+  inspect_telemetry: {
+    type: 'object',
+    properties: {
+      layer: { type: 'string', description: 'Layer identifier' },
+      id: { type: 'string', description: 'Entity identifier' },
+    },
+    required: ['layer', 'id'],
+  },
+  query_aoi: {
+    type: 'object',
+    properties: {
+      south: { type: 'number', description: 'South latitude bound' },
+      west: { type: 'number', description: 'West longitude bound' },
+      north: { type: 'number', description: 'North latitude bound' },
+      east: { type: 'number', description: 'East longitude bound' },
+      layers: { type: 'array', items: { type: 'string' }, description: 'Target layers' },
+    },
+    required: ['south', 'west', 'north', 'east'],
+  },
+  set_sim_time: {
+    type: 'object',
+    properties: {
+      offset_s: { type: 'number', description: 'Simulation time offset in seconds' },
+      playback_rate: { type: 'number', description: 'Playback speed multiplier' },
+    },
+    required: ['offset_s'],
+  },
 };
 
 /**

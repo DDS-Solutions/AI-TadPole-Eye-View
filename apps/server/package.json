@@ -18,10 +18,13 @@
     "@gev/providers": "workspace:*",
     "@gev/security": "workspace:*",
     "@hono/node-server": "^1.13.8",
-    "hono": "^4.7.2"
+    "hono": "^4.7.2",
+    "jose": "^6.2.10",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@types/node": "^24.1.0",
+    "@types/ws": "^8.18.1",
     "typescript": "^5.9.3",
     "vitest": "^3.2.7"
   }
