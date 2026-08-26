@@ -38,6 +38,9 @@ importers:
       '@gev/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@gev/governance':
+        specifier: workspace:*
+        version: link:../../packages/governance
       '@gev/providers':
         specifier: workspace:*
         version: link:../../packages/providers
@@ -57,6 +60,9 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7(@types/node@24.13.3)
 
   apps/web:
     dependencies:
@@ -142,6 +148,25 @@ importers:
         specifier: ^3.0.7
         version: 3.2.7(@types/node@26.3.0)
 
+  packages/governance:
+    dependencies:
+      '@gev/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@gev/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^24.1.0
+        version: 24.13.3
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7(@types/node@24.13.3)
+
   packages/providers:
     dependencies:
       '@gev/contracts':
@@ -153,6 +178,9 @@ importers:
       '@gev/security':
         specifier: workspace:*
         version: link:../security
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.76
     devDependencies:
       typescript:
         specifier: ^5.9.3
