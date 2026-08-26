@@ -272,7 +272,7 @@ Each layer ships with: provider adapter + fixture tests + Playwright smoke passi
 - [x] Sim-clock + seed-mode providers (no live calls in dev/test)
 - [x] governance stubs live (WAL to SQLite, STASIS trip, prompt approvals)
 - [x] ops-mcp + gev CLI skeletons; debug bus
-- [ ] AGENTS.md, RUNBOOK.md, adr/INDEX.md, ADG gate
+- [x] AGENTS.md, RUNBOOK.md, adr/INDEX.md, ADG gate
 - [ ] Scene serializer + deep links
 - [ ] SECURITY.md threat model drafted for new topology
 
