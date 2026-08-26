@@ -19,18 +19,17 @@ export function createVoiceRouter(options: VoiceRouterOptions = {}) {
   const router = new Hono();
   const clock = options.clock ?? new SystemClock();
   const apiKey = options.apiKey ?? process.env.OPENAI_API_KEY;
-  const requireAuth = options.requireAuth ?? process.env.GEV_REQUIRE_AUTH === '1';
+  const requireAuth = options.requireAuth ?? process.env.GEV_REQUIRE_AUTH !== '0';
 
   router.post('/session', async (c) => {
     // Auth-default check: verify bearer authorization if enabled
     if (requireAuth) {
-      const authHeader = c.req.header('Authorization');
       const opsToken = process.env.GEV_OPS_TOKEN;
-      if (
-        !authHeader ||
-        !authHeader.startsWith('Bearer ') ||
-        (opsToken && authHeader.slice(7) !== opsToken)
-      ) {
+      if (!opsToken) {
+        return c.json({ error: 'Voice sessions disabled: GEV_OPS_TOKEN not configured' }, 503);
+      }
+      const authHeader = c.req.header('Authorization');
+      if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.slice(7) !== opsToken) {
         return c.json(
           { error: 'Unauthorized: Valid Bearer token required for voice session provisioning' },
           401

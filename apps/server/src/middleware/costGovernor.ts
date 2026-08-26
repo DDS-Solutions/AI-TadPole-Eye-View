@@ -15,7 +15,14 @@ export const DEFAULT_PROVIDER_TIERS: Record<string, ProviderTierConfig> = {
   quakes: { ttlSeconds: 60, costPerFetchUsd: 0.0, maxStaleSeconds: 3600 },
   firms: { ttlSeconds: 300, costPerFetchUsd: 0.001, maxStaleSeconds: 7200 },
   gbfs: { ttlSeconds: 30, costPerFetchUsd: 0.0, maxStaleSeconds: 600 },
+  weather: { ttlSeconds: 300, costPerFetchUsd: 0.0, maxStaleSeconds: 3600 },
+  launches: { ttlSeconds: 600, costPerFetchUsd: 0.0, maxStaleSeconds: 7200 },
+  radio: { ttlSeconds: 60, costPerFetchUsd: 0.0, maxStaleSeconds: 600 },
+  cctv: { ttlSeconds: 10, costPerFetchUsd: 0.001, maxStaleSeconds: 120 },
+  overpass: { ttlSeconds: 30, costPerFetchUsd: 0.0, maxStaleSeconds: 600 },
 };
+
+const MAX_CACHE_ENTRIES = 200;
 
 interface CacheEntry {
   body: unknown;
@@ -130,11 +137,25 @@ export class CostGovernor {
         state.cooldownUntil = now + retrySec * 1000;
       }
 
-      // If successful, update cached response
+      // If successful, update cached response and record spend
       if (status >= 200 && status < 300) {
         const cloned = c.res.clone();
         try {
           const jsonBody = await cloned.json();
+
+          // Evict oldest entry if cache is full
+          if (state.cache.size >= MAX_CACHE_ENTRIES) {
+            let oldestKey = '';
+            let oldestTs = Number.POSITIVE_INFINITY;
+            for (const [key, entry] of state.cache) {
+              if (entry.timestamp < oldestTs) {
+                oldestTs = entry.timestamp;
+                oldestKey = key;
+              }
+            }
+            if (oldestKey) state.cache.delete(oldestKey);
+          }
+
           state.cache.set(cacheKey, {
             body: jsonBody,
             status,
@@ -143,14 +164,24 @@ export class CostGovernor {
           });
           c.header('X-GEV-Cache', 'MISS');
           c.header('X-GEV-TTL-Sec', tier.ttlSeconds.toString());
+
+          // Record spend after successful upstream fetch (H1 fix)
+          if (this.budgetGovernor && tier.costPerFetchUsd > 0) {
+            this.budgetGovernor.recordSpend(tier.costPerFetchUsd);
+          }
         } catch {
           // Ignore non-JSON bodies (e.g. audio streams)
         }
       } else if (cached && now - cached.timestamp < tier.maxStaleSeconds * 1000) {
-        // Staleness fallback on 5xx or rate limits
-        c.header('X-GEV-Stale', 'true');
-        c.header('X-GEV-Cache-Source', 'error-fallback');
-        return c.json(cached.body, 200);
+        // Staleness fallback on 5xx or rate limits — replace c.res (H2 fix)
+        c.res = new Response(JSON.stringify(cached.body), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-GEV-Stale': 'true',
+            'X-GEV-Cache-Source': 'error-fallback',
+          },
+        });
       }
 
       return;

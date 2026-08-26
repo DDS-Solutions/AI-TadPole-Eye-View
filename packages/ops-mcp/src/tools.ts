@@ -216,6 +216,35 @@ export async function executeOperatorTool(
   const startTime = ctx.clock.now();
   const intentId = crypto.randomUUID();
 
+  // Governance & STASIS checks for mutating operations
+  if (tool.is_mutating) {
+    const govState = ctx.budgetGovernor.state();
+    if (govState.stasis_active) {
+      throw new Error(
+        `STASIS active (${govState.last_trip?.code ?? 'governance lock'}). Tool ${name} blocked.`
+      );
+    }
+  }
+
+  // Gate dangerous tools through ApprovalGate
+  if (tool.is_dangerous) {
+    const nowIso = new Date(startTime).toISOString();
+    const expiresIso = new Date(startTime + 60_000).toISOString();
+    const approval = await ctx.approvalGate.request({
+      id: crypto.randomUUID(),
+      ts: nowIso,
+      intent_id: intentId,
+      scopes: ['flags.write'],
+      rationale: `Dangerous operator tool invocation requested for ${name}`,
+      expires_at: expiresIso,
+    });
+    if (approval.decision !== 'approved') {
+      throw new Error(
+        `Approval denied for dangerous tool ${name}: decision was ${approval.decision}`
+      );
+    }
+  }
+
   // Audit intent if mutating
   if (tool.is_mutating) {
     ctx.auditSink.intent({

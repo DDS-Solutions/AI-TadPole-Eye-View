@@ -53,6 +53,8 @@ jobs:
       - run: pnpm turbo run build
         env:
           GEV_SEED_MODE: '1'
+      - name: Enforce bundle size budgets (PLAN.md §13)
+        run: pnpm check:budgets
 
   e2e:
     name: playwright smoke

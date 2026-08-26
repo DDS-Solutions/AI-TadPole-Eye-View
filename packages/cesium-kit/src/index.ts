@@ -1,3 +1,4 @@
+export { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
 export { GlobeController, type GlobeOptions, type CameraPoseInput } from './globe.js';
 export { FlightLayerController, type FlightLayerOptions } from './flightLayer.js';
 export { MarineLayerController, type MarineLayerOptions } from './marineLayer.js';

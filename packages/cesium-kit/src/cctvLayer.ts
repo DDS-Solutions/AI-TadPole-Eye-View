@@ -1,54 +1,28 @@
 import type { CctvCamera, CctvCatalog } from '@gev/contracts';
-import { type SimClock, SystemClock } from '@gev/core';
-import {
-  Cartesian3,
-  Color,
-  ConstantPositionProperty,
-  CustomDataSource,
-  type Entity,
-  JulianDate,
-  NearFarScalar,
-  type Viewer,
-} from 'cesium';
+import { Cartesian3, Color, ConstantPositionProperty, JulianDate, NearFarScalar } from 'cesium';
+import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
 
-export interface CctvLayerOptions {
-  viewer: Viewer;
-  clock?: SimClock;
-  dataSourceName?: string;
-}
+export interface CctvLayerOptions extends BaseLayerOptions {}
 
 /**
  * Public CCTV & Traffic Camera Layer Controller (PLAN.md §8 Layer 6)
  * Renders verified DOT traffic cameras with Purple/Violet (#a855f7) styling.
  */
-export class CctvLayerController {
-  public readonly dataSource: CustomDataSource;
-  public readonly clock: SimClock;
-  private readonly viewer: Viewer;
-  private readonly entityMap = new Map<string, Entity>();
-  private pendingUpdates: CctvCamera[] = [];
+export class CctvLayerController extends BaseLayerController<CctvCamera, CctvLayerOptions> {
   private agencyFilter = 'all';
-  private rafHandle: number | null = null;
-  private isDestroyed = false;
 
   private static readonly PURPLE_VIOLET = Color.fromCssColorString('#a855f7');
   private static readonly OUTLINE_COLOR = Color.fromCssColorString('#3b0764');
 
   constructor(options: CctvLayerOptions) {
-    this.viewer = options.viewer;
-    this.clock = options.clock ?? new SystemClock();
-    this.dataSource = new CustomDataSource(options.dataSourceName ?? 'gev-cctv');
-    this.viewer.dataSources.add(this.dataSource);
+    super(options, 'gev-cctv');
   }
 
   /**
    * Enqueues a CCTV camera catalog for the next rAF drain cycle.
    */
   enqueueCatalog(catalog: CctvCatalog): void {
-    if (this.isDestroyed) return;
-
-    this.pendingUpdates.push(...catalog.cameras);
-    this.scheduleRafDrain();
+    this.enqueueUpdates(catalog.cameras);
   }
 
   /**
@@ -59,80 +33,50 @@ export class CctvLayerController {
     this.applyVisibilityFilters();
   }
 
-  /**
-   * Toggles visibility of the entire CCTV layer.
-   */
-  setVisible(visible: boolean): void {
-    this.dataSource.show = visible;
+  protected getEntityId(cam: CctvCamera): string {
+    return cam.id;
   }
 
-  private scheduleRafDrain(): void {
-    if (this.rafHandle !== null || typeof requestAnimationFrame !== 'function') {
-      if (typeof requestAnimationFrame !== 'function') {
-        this.drainQueue();
-      }
+  protected processEntity(cam: CctvCamera, id: string): void {
+    if (cam.longitude === null || cam.latitude === null) {
       return;
     }
 
-    this.rafHandle = requestAnimationFrame(() => {
-      this.rafHandle = null;
-      this.drainQueue();
-    });
-  }
+    const position = Cartesian3.fromDegrees(cam.longitude, cam.latitude, 0);
+    const isVisible =
+      this.agencyFilter === 'all' || cam.agency.toLowerCase().includes(this.agencyFilter);
 
-  private drainQueue(): void {
-    if (this.pendingUpdates.length === 0 || this.isDestroyed) return;
+    let entity = this.entityMap.get(id);
 
-    const updates = this.pendingUpdates;
-    this.pendingUpdates = [];
-
-    this.dataSource.entities.suspendEvents();
-
-    for (let i = 0; i < updates.length; i++) {
-      const cam = updates[i];
-      if (!cam || cam.longitude === null || cam.latitude === null) {
-        continue;
-      }
-
-      const id = cam.id;
-      const position = Cartesian3.fromDegrees(cam.longitude, cam.latitude, 0);
-      const isVisible =
-        this.agencyFilter === 'all' || cam.agency.toLowerCase().includes(this.agencyFilter);
-
-      let entity = this.entityMap.get(id);
-
-      if (!entity) {
-        entity = this.dataSource.entities.add({
-          id: `cctv-${id}`,
-          name: cam.name,
-          show: isVisible,
-          position,
-          point: {
-            pixelSize: 8,
-            color: CctvLayerController.PURPLE_VIOLET,
-            outlineColor: CctvLayerController.OUTLINE_COLOR,
-            outlineWidth: 1.5,
-            scaleByDistance: new NearFarScalar(1.5e2, 1.6, 8.0e6, 0.6),
-          },
-          properties: {
-            kind: 'cctv',
-            ...cam,
-          },
+    if (!entity) {
+      entity = this.dataSource.entities.add({
+        id: `cctv-${id}`,
+        name: cam.name,
+        show: isVisible,
+        position,
+        point: {
+          pixelSize: 8,
+          color: CctvLayerController.PURPLE_VIOLET,
+          outlineColor: CctvLayerController.OUTLINE_COLOR,
+          outlineWidth: 1.5,
+          scaleByDistance: new NearFarScalar(1.5e2, 1.6, 8.0e6, 0.6),
+        },
+        properties: {
+          kind: 'cctv',
+          ...cam,
+        },
+      });
+      this.entityMap.set(id, entity);
+    } else {
+      entity.position = new ConstantPositionProperty(position);
+      entity.show = isVisible;
+      if (entity.properties) {
+        entity.properties.merge({
+          kind: 'cctv',
+          ...cam,
         });
-        this.entityMap.set(id, entity);
-      } else {
-        entity.position = new ConstantPositionProperty(position);
-        entity.show = isVisible;
-        if (entity.properties) {
-          entity.properties.merge({
-            kind: 'cctv',
-            ...cam,
-          });
-        }
       }
     }
-
-    this.dataSource.entities.resumeEvents();
   }
 
   private applyVisibilityFilters(): void {
@@ -147,22 +91,10 @@ export class CctvLayerController {
     this.dataSource.entities.resumeEvents();
   }
 
-  getEntityCount(): number {
-    return this.entityMap.size;
-  }
-
+  /**
+   * Gets all active camera IDs.
+   */
   getCameraIds(): string[] {
-    return Array.from(this.entityMap.keys());
-  }
-
-  destroy(): void {
-    this.isDestroyed = true;
-    if (this.rafHandle !== null && typeof cancelAnimationFrame === 'function') {
-      cancelAnimationFrame(this.rafHandle);
-      this.rafHandle = null;
-    }
-    this.viewer.dataSources.remove(this.dataSource, true);
-    this.entityMap.clear();
-    this.pendingUpdates = [];
+    return this.getEntityIds();
   }
 }
