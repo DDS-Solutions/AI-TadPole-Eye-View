@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { destinationPoint } from '../src/geoMath.js';
 import {
   isPointInPolygon,
   isWithinAzimuthCone,
@@ -38,6 +39,27 @@ describe('Scope Mask & Spatial Filtering', () => {
       expect(isWithinAzimuthCone(centerLat, centerLon, 0, 180, targetLat, targetLon, false)).toBe(
         false
       );
+    });
+
+    it('handles sector-wrap across 0°/360° heading boundary (P5 regression case)', () => {
+      // Observer at (0,0), heading 0° (due North) with 20° FOV cone (covers [350°, 10°])
+      // Target 1 at bearing 355° (50km away) -> inside cone
+      const targetInside = destinationPoint(0, 0, 50000, 355);
+      expect(isWithinAzimuthCone(0, 0, 0, 20, targetInside.latitude, targetInside.longitude)).toBe(
+        true
+      );
+
+      // Target 2 at bearing 340° (50km away) -> outside cone
+      const targetOutside = destinationPoint(0, 0, 50000, 340);
+      expect(
+        isWithinAzimuthCone(0, 0, 0, 20, targetOutside.latitude, targetOutside.longitude)
+      ).toBe(false);
+
+      // Target 3 at bearing 5° (50km away) -> inside cone
+      const targetInsideEast = destinationPoint(0, 0, 50000, 5);
+      expect(
+        isWithinAzimuthCone(0, 0, 0, 20, targetInsideEast.latitude, targetInsideEast.longitude)
+      ).toBe(true);
     });
   });
 

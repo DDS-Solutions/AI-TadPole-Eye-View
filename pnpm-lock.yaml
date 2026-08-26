@@ -178,6 +178,9 @@ importers:
       '@gev/security':
         specifier: workspace:*
         version: link:../security
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.76
     devDependencies:
       typescript:
         specifier: ^5.9.3
