@@ -11,6 +11,7 @@
     RadioLayerController,
     LaunchLayerController,
     WeatherLayerController,
+    FrameBudgetMonitor,
     attachDebugBus,
   } from '@gev/cesium-kit';
   import type {
@@ -29,10 +30,12 @@
   import HudHeader from './components/HudHeader.svelte';
   import LayerControlPanel from './components/LayerControlPanel.svelte';
   import EntityInfoCard from './components/EntityInfoCard.svelte';
+  import VirtualizedTelemetryTable from './components/VirtualizedTelemetryTable.svelte';
   import type { Entity, JulianDate } from 'cesium';
 
   let globeContainer: HTMLDivElement;
   let globe: GlobeController | null = null;
+  let frameMonitor: FrameBudgetMonitor | null = null;
 
   let flightLayer: FlightLayerController | null = null;
   let marineLayer: MarineLayerController | null = null;
@@ -56,6 +59,7 @@
             if (data && flightLayer) {
               flightLayer.enqueueBatch(data);
               layerStore.counts.flights = flightLayer.getEntityCount();
+              layerStore.rawEntities.flights = data.states;
             }
           })
           .catch((err) => {
@@ -71,6 +75,7 @@
             if (data && marineLayer) {
               marineLayer.enqueueBatch(data);
               layerStore.counts.marine = marineLayer.getEntityCount();
+              layerStore.rawEntities.marine = data.ships;
             }
           })
           .catch((err) => {
@@ -86,6 +91,7 @@
             if (data && quakeLayer) {
               quakeLayer.enqueueCollection(data);
               layerStore.counts.quakes = quakeLayer.getEntityCount();
+              layerStore.rawEntities.quakes = data.features;
             }
           })
           .catch((err) => {
@@ -101,6 +107,7 @@
             if (data && firmsLayer) {
               firmsLayer.enqueueBatch(data);
               layerStore.counts.firms = firmsLayer.getEntityCount();
+              layerStore.rawEntities.firms = data.hotspots;
             }
           })
           .catch((err) => {
@@ -116,6 +123,7 @@
             if (data && gbfsLayer) {
               gbfsLayer.enqueueBatch(data);
               layerStore.counts.gbfs = gbfsLayer.getEntityCount();
+              layerStore.rawEntities.gbfs = data.stations;
             }
           })
           .catch((err) => {
@@ -131,6 +139,7 @@
             if (data && cctvLayer) {
               cctvLayer.enqueueCatalog(data);
               layerStore.counts.cctv = cctvLayer.getEntityCount();
+              layerStore.rawEntities.cctv = data.cameras;
             }
           })
           .catch((err) => {
@@ -146,6 +155,7 @@
             if (data && radioLayer) {
               radioLayer.enqueueCatalog(data);
               layerStore.counts.radio = radioLayer.getEntityCount();
+              layerStore.rawEntities.radio = data.stations;
             }
           })
           .catch((err) => {
@@ -161,6 +171,7 @@
             if (data && launchLayer) {
               launchLayer.enqueueCatalog(data);
               layerStore.counts.launches = launchLayer.getEntityCount();
+              layerStore.rawEntities.launches = data.missions;
             }
           })
           .catch((err) => {
@@ -176,6 +187,7 @@
             if (data && weatherLayer) {
               weatherLayer.enqueueWeather(data);
               layerStore.counts.weather = weatherLayer.getEntityCount();
+              layerStore.rawEntities.weather = data.stations;
             }
           })
           .catch((err) => {
@@ -245,12 +257,36 @@
     radioLayer?.setCategoryFilter(layerStore.filters.radio.category);
   });
 
+  // Svelte 5 $effect to handle flyTo camera transitions from table or HUD
+  $effect(() => {
+    const target = layerStore.flyToTarget;
+    if (target && globe) {
+      globe.setCameraPose({
+        longitude: target.lon,
+        latitude: target.lat,
+        altitude: Math.max(2500, target.alt * 1.5),
+        pitch: -55,
+      });
+      layerStore.clearFlyTo();
+    }
+  });
+
   onMount(async () => {
     try {
       globe = new GlobeController({
         container: globeContainer,
         onEntitySelected: handleEntitySelected,
       });
+
+      frameMonitor = new FrameBudgetMonitor({
+        targetBudgetMs: 16.666,
+        targetFps: 60,
+        sampleWindowSize: 120,
+      });
+
+      if (globe.viewer.scene) {
+        frameMonitor.attachToScene(globe.viewer.scene);
+      }
 
       flightLayer = new FlightLayerController({ viewer: globe.viewer });
       marineLayer = new MarineLayerController({ viewer: globe.viewer });
@@ -262,17 +298,21 @@
       launchLayer = new LaunchLayerController({ viewer: globe.viewer });
       weatherLayer = new WeatherLayerController({ viewer: globe.viewer });
 
-      attachDebugBus(globe, {
-        flight: flightLayer,
-        marine: marineLayer,
-        quakes: quakeLayer,
-        firms: firmsLayer,
-        gbfs: gbfsLayer,
-        cctv: cctvLayer,
-        radio: radioLayer,
-        launches: launchLayer,
-        weather: weatherLayer,
-      });
+      attachDebugBus(
+        globe,
+        {
+          flight: flightLayer,
+          marine: marineLayer,
+          quakes: quakeLayer,
+          firms: firmsLayer,
+          gbfs: gbfsLayer,
+          cctv: cctvLayer,
+          radio: radioLayer,
+          launches: launchLayer,
+          weather: weatherLayer,
+        },
+        { frameMonitor }
+      );
 
       // Inspect active deep link scene if present in URL
       if (typeof window !== 'undefined' && window.location.href) {
@@ -298,6 +338,7 @@
       clearInterval(pollInterval);
       pollInterval = null;
     }
+    frameMonitor?.detach();
     flightLayer?.destroy();
     marineLayer?.destroy();
     quakeLayer?.destroy();
@@ -318,6 +359,7 @@
   <HudHeader />
   <LayerControlPanel />
   <EntityInfoCard />
+  <VirtualizedTelemetryTable />
 
   <!-- OpenStreetMap Mandatory Attribution (Rule 3 & DESIGN.md §5) -->
   <footer id="osm-attribution" class="attribution-badge">

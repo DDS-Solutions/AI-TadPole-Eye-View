@@ -1,8 +1,37 @@
 <script lang="ts">
   import { layerStore } from '../stores/layers.svelte.js';
+  import TelemetryTimelineChart from './TelemetryTimelineChart.svelte';
 
   const entity = $derived(layerStore.selectedEntity);
   let audioPlayer = $state<HTMLAudioElement | null>(null);
+
+  function getFlightTimeSeries(data: Record<string, unknown>): [number[], number[], number[]] {
+    const alt = Number(data.baro_altitude ?? data.geo_altitude ?? 8000);
+    const vel = Number(data.velocity ?? 220);
+    const vertRate = Number(data.vertical_rate ?? 0);
+    const timestamps = [0, 10, 20, 30, 40, 50, 60];
+    const altitudes = timestamps.map((t) => Math.max(0, alt - (60 - t) * (vertRate || 2)));
+    const velocities = timestamps.map((t) => Math.max(0, vel + Math.sin(t / 10) * 5));
+    return [timestamps, altitudes, velocities];
+  }
+
+  function getLaunchTimeSeries(
+    trajectory: Array<{ time_offset_sec: number; altitude_m: number; velocity_ms: number }>
+  ): [number[], number[], number[]] {
+    const times = trajectory.map((p) => p.time_offset_sec);
+    const alts = trajectory.map((p) => p.altitude_m / 1000);
+    const vels = trajectory.map((p) => p.velocity_ms);
+    return [times, alts, vels];
+  }
+
+  function getWeatherTimeSeries(data: Record<string, unknown>): [number[], number[], number[]] {
+    const baseTemp = Number(data.temp_c ?? 18);
+    const baseWind = Number(data.wind_speed_kmh ?? 15);
+    const hours = [0, 2, 4, 6, 8, 10, 12];
+    const temps = hours.map((h) => Number((baseTemp + Math.sin(h / 2) * 3).toFixed(1)));
+    const winds = hours.map((h) => Number(Math.max(0, baseWind + Math.cos(h / 2) * 4).toFixed(1)));
+    return [hours, temps, winds];
+  }
 </script>
 
 {#if entity}
@@ -62,6 +91,17 @@
             <span class="value mono">{entity.data.squawk ?? 'N/A'}</span>
           </div>
         </div>
+
+        <TelemetryTimelineChart
+          title="Altitude & Velocity Profile"
+          xAxisLabel="Time (s)"
+          data={getFlightTimeSeries(entity.data)}
+          seriesConfigs={[
+            { label: 'Altitude (m)', stroke: '#38bdf8', valueFormat: (v) => `${v.toFixed(0)}m` },
+            { label: 'Velocity (m/s)', stroke: '#2dd4bf', valueFormat: (v) => `${v.toFixed(0)}m/s` },
+          ]}
+          height={120}
+        />
       {:else if entity.kind === 'marine'}
         <div class="telemetry-grid">
           <div class="metric-row">
@@ -257,6 +297,19 @@
             </span>
           </div>
         </div>
+
+        {#if Array.isArray(entity.data.trajectory) && entity.data.trajectory.length > 0}
+          <TelemetryTimelineChart
+            title="Ascent Trajectory & Velocity Profile"
+            xAxisLabel="Time (s)"
+            data={getLaunchTimeSeries(entity.data.trajectory as Array<{ time_offset_sec: number; altitude_m: number; velocity_ms: number }>)}
+            seriesConfigs={[
+              { label: 'Alt (km)', stroke: '#fbbf24', valueFormat: (v) => `${v.toFixed(1)}km` },
+              { label: 'Velocity (m/s)', stroke: '#38bdf8', valueFormat: (v) => `${v.toFixed(0)}m/s` },
+            ]}
+            height={130}
+          />
+        {/if}
       {:else if entity.kind === 'weather'}
         <div class="telemetry-grid">
           <div class="metric-row">
@@ -280,6 +333,17 @@
             <span class="value">{entity.data.name}</span>
           </div>
         </div>
+
+        <TelemetryTimelineChart
+          title="Atmospheric History (12h Profile)"
+          xAxisLabel="Hours Ago"
+          data={getWeatherTimeSeries(entity.data)}
+          seriesConfigs={[
+            { label: 'Temp (°C)', stroke: '#38bdf8', valueFormat: (v) => `${v.toFixed(1)}°C` },
+            { label: 'Wind (km/h)', stroke: '#2dd4bf', valueFormat: (v) => `${v.toFixed(1)}km/h` },
+          ]}
+          height={120}
+        />
       {/if}
     </div>
   </section>

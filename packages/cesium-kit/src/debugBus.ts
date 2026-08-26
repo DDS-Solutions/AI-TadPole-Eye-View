@@ -9,6 +9,8 @@ import type { QuakeLayerController } from './quakeLayer.js';
 import type { RadioLayerController } from './radioLayer.js';
 import type { WeatherLayerController } from './weatherLayer.js';
 
+import type { FrameBudgetMonitor, FrameBudgetReport, FrameMetrics } from './frameBudget.js';
+
 export interface CameraPose {
   longitude: number;
   latitude: number;
@@ -47,6 +49,8 @@ export interface GevDebugBus {
   getCameraHeight: () => number;
   getCameraPose: () => CameraPose;
   getSelectedEntity: () => unknown;
+  getFrameMetrics?: () => FrameMetrics | null;
+  getFrameReport?: () => FrameBudgetReport | null;
 }
 
 declare global {
@@ -58,6 +62,8 @@ declare global {
 export interface DebugBusOptions {
   /** If explicitly false, window.__gev will not be attached */
   attachToWindow?: boolean;
+  /** Optional frame budget monitor instance to expose on the debug bus */
+  frameMonitor?: FrameBudgetMonitor;
 }
 
 /**
@@ -72,6 +78,8 @@ export function attachDebugBus(
     layersOrFlightLayer && 'dataSource' in layersOrFlightLayer
       ? { flight: layersOrFlightLayer as FlightLayerController }
       : ((layersOrFlightLayer as LayerControllersMap) ?? {});
+
+  const frameMonitor = options.frameMonitor;
 
   const bus: GevDebugBus = {
     version: 1,
@@ -134,6 +142,8 @@ export function attachDebugBus(
       };
     },
     getSelectedEntity: () => globe.getSelectedEntity(),
+    getFrameMetrics: () => frameMonitor?.getMetrics() ?? null,
+    getFrameReport: () => frameMonitor?.getReport() ?? null,
   };
 
   const shouldAttach =

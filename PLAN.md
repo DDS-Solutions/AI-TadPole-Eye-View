@@ -289,8 +289,8 @@ Each layer ships with: provider adapter + fixture tests + Playwright smoke passi
 ### Phase 2 — Layers (Weeks 3–6)
 - [x] Layers 2–5 of §8, each with adapter+fixtures+smoke+flags
 - [x] Layers 6–9 of §8
-- [ ] Perf budgets enforced in CI; frame-time harness green
-- [ ] PWA shell; virtualized lists; uPlot timelines
+- [x] Perf budgets enforced in CI; frame-time harness green
+- [x] PWA shell; virtualized lists; uPlot timelines
 
 ### Phase 3 — Voice agent + co-user foundations (Weeks 6–8)
 - [ ] Provider-agnostic agent endpoint (OpenAI Realtime GA flow; OpenRouter/Ollama adapters)

@@ -15,6 +15,15 @@
     <div class="title-row">
       <h1 id="app-title">GEV v2 — God's Eye View</h1>
       <span class="version-badge">OSINT CONSOLE</span>
+      <button
+        id="toggle-telemetry-table-btn"
+        class="table-toggle-btn"
+        class:active={layerStore.isTableOpen}
+        onclick={() => layerStore.toggleTable()}
+        title="Toggle High-Density Telemetry Table"
+      >
+        📊 {layerStore.isTableOpen ? 'Hide Table' : 'Telemetry Table'}
+      </button>
     </div>
     <div id="app-status" class="hud-status">
       <span class="status-indicator"></span>
@@ -134,6 +143,29 @@
     background: rgba(56, 189, 248, 0.15);
     color: #38bdf8;
     border: 1px solid rgba(56, 189, 248, 0.3);
+  }
+
+  .table-toggle-btn {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    color: #38bdf8;
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .table-toggle-btn:hover {
+    background: rgba(56, 189, 248, 0.2);
+    border-color: #38bdf8;
+  }
+
+  .table-toggle-btn.active {
+    background: #38bdf8;
+    color: #030712;
+    font-weight: 700;
   }
 
   .hud-status {
