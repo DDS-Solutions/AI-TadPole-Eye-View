@@ -309,12 +309,32 @@ async function runActiveDocumentationGuard() {
       );
       for (const match of inlineSymbolMatches) {
         const symbol = match[1];
-        if (GLOBAL_PROSE_ALLOWLIST.has(symbol) || symbol.includes('/') || symbol.includes('.')) {
+        if (
+          GLOBAL_PROSE_ALLOWLIST.has(symbol) ||
+          symbol.includes('/') ||
+          symbol.includes('.') ||
+          symbol.length <= 2
+        ) {
           continue;
         }
 
         checkedSymbolsCount++;
+        // If symbol is explicitly in a code reference context (e.g. function/class/type)
+        // verify that it exists in exported workspace symbols or allowlist
       }
+    }
+  }
+
+  // 4. Validate Version Consistency across repo manifests
+  const rootPkgPath = path.join(ROOT, 'package.json');
+  if (fs.existsSync(rootPkgPath)) {
+    const rootPkg = JSON.parse(fs.readFileSync(rootPkgPath, 'utf-8'));
+    if (rootPkg.version !== '1.1.0') {
+      errors.push({
+        file: 'package.json',
+        line: 1,
+        message: `Version mismatch: root package.json version is ${rootPkg.version}, expected 1.1.0`,
+      });
     }
   }
 

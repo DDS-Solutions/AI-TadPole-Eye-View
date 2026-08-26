@@ -85,6 +85,14 @@ export class CostGovernor {
           c.header('X-GEV-Cache-Source', 'cooldown-fallback');
           return c.json(cached.body, cached.status as 200);
         }
+
+        return c.json(
+          {
+            error: 'Provider in active cooldown due to upstream 429 rate limit',
+            cooldown_seconds: remainingCooldownSec,
+          },
+          429
+        );
       }
 
       // Check if cache is still fresh within TTL window
@@ -133,7 +141,7 @@ export class CostGovernor {
       const retryAfterHeader = c.res.headers.get('Retry-After');
 
       if (status === 429 && retryAfterHeader) {
-        const retrySec = Number.parseInt(retryAfterHeader, 10) || 30;
+        const retrySec = this.parseRetryAfter(retryAfterHeader);
         state.cooldownUntil = now + retrySec * 1000;
       }
 
@@ -186,6 +194,20 @@ export class CostGovernor {
 
       return;
     };
+  }
+
+  private parseRetryAfter(header: string | null): number {
+    if (!header) return 30;
+    const seconds = Number.parseInt(header, 10);
+    if (!Number.isNaN(seconds)) {
+      return Math.min(1800, Math.max(30, seconds));
+    }
+    const dateMs = Date.parse(header);
+    if (!Number.isNaN(dateMs)) {
+      const diffSec = Math.ceil((dateMs - Date.now()) / 1000);
+      return Math.min(1800, Math.max(30, diffSec));
+    }
+    return 30;
   }
 
   private getProviderState(providerName: string): ProviderState {

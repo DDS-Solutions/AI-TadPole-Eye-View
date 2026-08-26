@@ -178,12 +178,14 @@ export class OpenAIRealtimeAdapter implements AgentProviderAdapter {
     try {
       const msg = JSON.parse(data);
       switch (msg.type) {
+        case 'response.output_audio.delta':
         case 'response.audio.delta':
           if (msg.delta) {
             const bytes = this.base64ToBuffer(msg.delta);
             this.events.onAudioDelta?.(bytes);
           }
           break;
+        case 'response.output_text.delta':
         case 'response.text.delta':
         case 'response.audio_transcript.delta':
           if (msg.delta) {
@@ -202,6 +204,10 @@ export class OpenAIRealtimeAdapter implements AgentProviderAdapter {
           break;
         case 'input_audio_buffer.speech_stopped':
           this.events.onSpeechStopped?.();
+          break;
+        case 'response.done':
+        case 'response.cancelled':
+          this.updateStatus('idle');
           break;
       }
     } catch {

@@ -1,13 +1,22 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { layerStore } from '../stores/layers.svelte.js';
 
   let currentTime = $state(new Date().toUTCString());
+  let timer: ReturnType<typeof setInterval> | null = null;
 
   if (typeof window !== 'undefined') {
-    setInterval(() => {
+    timer = setInterval(() => {
       currentTime = new Date().toUTCString();
     }, 1000);
   }
+
+  onDestroy(() => {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+  });
 </script>
 
 <header class="hud-header">
