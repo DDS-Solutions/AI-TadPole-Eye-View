@@ -112,6 +112,16 @@ export class GlobeController {
   }
 
   /**
+   * Smoothly animates camera to target geographic location (Voice / Tool actuator).
+   */
+  flyToLocation(lat: number, lon: number, altitude_m = 500000, duration_s = 2): void {
+    this.viewer.camera.flyTo({
+      destination: Cartesian3.fromDegrees(lon, lat, altitude_m),
+      duration: duration_s,
+    });
+  }
+
+  /**
    * Returns currently selected entity if any.
    */
   getSelectedEntity(): Entity | null {

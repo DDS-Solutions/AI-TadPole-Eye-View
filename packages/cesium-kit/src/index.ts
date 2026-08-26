@@ -9,6 +9,7 @@ export { CctvLayerController, type CctvLayerOptions } from './cctvLayer.js';
 export { RadioLayerController, type RadioLayerOptions } from './radioLayer.js';
 export { LaunchLayerController, type LaunchLayerOptions } from './launchLayer.js';
 export { WeatherLayerController, type WeatherLayerOptions } from './weatherLayer.js';
+export { CollabLayerController, type CollabLayerOptions } from './collabLayer.js';
 export {
   attachDebugBus,
   type GevDebugBus,

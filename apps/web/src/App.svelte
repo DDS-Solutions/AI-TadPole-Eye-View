@@ -11,6 +11,7 @@
     RadioLayerController,
     LaunchLayerController,
     WeatherLayerController,
+    CollabLayerController,
     FrameBudgetMonitor,
     attachDebugBus,
   } from '@gev/cesium-kit';
@@ -27,11 +28,15 @@
   } from '@gev/contracts';
   import { parseSceneFromUrl } from '@gev/core';
   import { layerStore } from './stores/layers.svelte.js';
+  import { voiceStore } from './stores/voice.svelte.js';
+  import { collabStore } from './stores/collab.svelte.js';
   import HudHeader from './components/HudHeader.svelte';
   import LayerControlPanel from './components/LayerControlPanel.svelte';
   import EntityInfoCard from './components/EntityInfoCard.svelte';
   import VirtualizedTelemetryTable from './components/VirtualizedTelemetryTable.svelte';
-  import { JulianDate, type Entity } from 'cesium';
+  import VoiceControlOrb from './components/VoiceControlOrb.svelte';
+  import CollabBar from './components/CollabBar.svelte';
+  import type { Entity } from 'cesium';
 
   let globeContainer: HTMLDivElement;
   let globe: GlobeController | null = null;
@@ -46,6 +51,7 @@
   let radioLayer: RadioLayerController | null = null;
   let launchLayer: LaunchLayerController | null = null;
   let weatherLayer: WeatherLayerController | null = null;
+  let collabLayer: CollabLayerController | null = null;
 
   let pollInterval: ReturnType<typeof setInterval> | null = null;
   let abortController: AbortController | null = null;
@@ -110,7 +116,7 @@
           });
       }
 
-      // 4. Thermal Hotspots (NASA FIRMS)
+      // 4. Wildfires (FIRMS)
       if (layerStore.visibility.firms) {
         fetch('/api/firms', { signal })
           .then((res) => (res.ok ? res.json() : null))
@@ -128,7 +134,7 @@
           });
       }
 
-      // 5. Shared Transit (GBFS)
+      // 5. GBFS Bike Transit
       if (layerStore.visibility.gbfs) {
         fetch('/api/gbfs', { signal })
           .then((res) => (res.ok ? res.json() : null))
@@ -146,9 +152,9 @@
           });
       }
 
-      // 6. Public CCTV Media
+      // 6. CCTV Traffic Cameras
       if (layerStore.visibility.cctv) {
-        fetch('/api/cctv/catalog', { signal })
+        fetch('/api/cctv', { signal })
           .then((res) => (res.ok ? res.json() : null))
           .then((data: CctvCatalog | null) => {
             if (data && cctvLayer) {
@@ -164,9 +170,9 @@
           });
       }
 
-      // 7. Global Radio Broadcasts
+      // 7. Radio Streams
       if (layerStore.visibility.radio) {
-        fetch('/api/radio/catalog', { signal })
+        fetch('/api/radio', { signal })
           .then((res) => (res.ok ? res.json() : null))
           .then((data: RadioCatalog | null) => {
             if (data && radioLayer) {
@@ -182,7 +188,7 @@
           });
       }
 
-      // 8. Orbital Launches
+      // 8. Space Launch Trajectories
       if (layerStore.visibility.launches) {
         fetch('/api/launches', { signal })
           .then((res) => (res.ok ? res.json() : null))
@@ -200,13 +206,13 @@
           });
       }
 
-      // 9. Weather Radar & Observations
+      // 9. Weather Radar & Precipitation
       if (layerStore.visibility.weather) {
-        fetch('/api/weather/radar', { signal })
+        fetch('/api/weather', { signal })
           .then((res) => (res.ok ? res.json() : null))
           .then((data: WeatherCollection | null) => {
             if (data && weatherLayer) {
-              weatherLayer.enqueueWeather(data);
+              weatherLayer.enqueueCollection(data);
               layerStore.counts.weather = weatherLayer.getEntityCount();
               layerStore.rawEntities.weather = data.stations;
             }
@@ -217,31 +223,28 @@
             }
           });
       }
-
-      layerStore.lastSyncTime = new Date().toLocaleTimeString();
-      layerStore.statusText = 'Connected (Keyless OpenStreetMap)';
-    } catch (err: unknown) {
-      layerStore.statusText = `Feed Error: ${err instanceof Error ? err.message : 'Disconnected'}`;
+    } catch {
+      // Catch network or parsing errors
     }
   }
 
   function handleEntitySelected(entity: Entity | null) {
     if (!entity) {
       layerStore.clearSelection();
+      collabStore.syncSelectedEntity(null);
       return;
     }
 
     const props: Record<string, unknown> = {};
     if (entity.properties) {
       const propertyNames = entity.properties.propertyNames;
-      const now = JulianDate.now();
       for (const name of propertyNames) {
-        props[name] = entity.properties.getValue(now)?.[name];
+        props[name] = entity.properties.getValue(name);
       }
     }
 
     const kind =
-      (props.kind as
+      (props.entityKind as
         | 'flight'
         | 'marine'
         | 'quake'
@@ -257,6 +260,87 @@
       id: String(entity.id),
       name: String(entity.name || entity.id),
       data: props,
+    });
+
+    collabStore.syncSelectedEntity({ layer: kind, id: String(entity.id) });
+  }
+
+  // Register Voice / Co-User Tool Actuators
+  function setupToolExecutors() {
+    voiceStore.executor.register('fly_to_location', (input) => {
+      if (globe) {
+        globe.flyToLocation(input.lat, input.lon, input.altitude_m, input.duration_s);
+      }
+      return {
+        moved: true,
+        target: {
+          lat: input.lat,
+          lon: input.lon,
+          altitude_m: input.altitude_m ?? 500000,
+        },
+      };
+    });
+
+    voiceStore.executor.register('toggle_layer', (input) => {
+      const key = input.layer as keyof typeof layerStore.visibility;
+      if (key in layerStore.visibility) {
+        layerStore.visibility[key] = input.enabled;
+        collabStore.syncLayerToggle(input.layer, input.enabled);
+        return { layer: input.layer, enabled: input.enabled, updated: true };
+      }
+      return { layer: input.layer, enabled: input.enabled, updated: false };
+    });
+
+    voiceStore.executor.register('select_entity', (input) => {
+      const key = input.layer as keyof typeof layerStore.rawEntities;
+      const list = (layerStore.rawEntities[key] || []) as Array<Record<string, unknown>>;
+      const found = list.find((item) => String(item.id || item.icao24 || item.mmsi || item.station_id) === input.id);
+      if (found) {
+        layerStore.selectEntity({
+          kind: input.layer as any,
+          id: input.id,
+          name: String(found.name || found.callsign || input.id),
+          data: found,
+        });
+        if (input.track_camera && globe && typeof found.latitude === 'number' && typeof found.longitude === 'number') {
+          globe.flyToLocation(found.latitude, found.longitude, 50000, 2);
+        }
+        return { selected: true, layer: input.layer, id: input.id, entity_found: true };
+      }
+      return { selected: false, layer: input.layer, id: input.id, entity_found: false };
+    });
+
+    voiceStore.executor.register('inspect_telemetry', (input) => {
+      const key = input.layer as keyof typeof layerStore.rawEntities;
+      const list = (layerStore.rawEntities[key] || []) as Array<Record<string, unknown>>;
+      const found = list.find((item) => String(item.id || item.icao24 || item.mmsi || item.station_id) === input.id);
+      return {
+        layer: input.layer,
+        id: input.id,
+        found: Boolean(found),
+        data: found,
+      };
+    });
+
+    voiceStore.executor.register('query_aoi', (input) => {
+      const counts: Record<string, number> = {};
+      let total = 0;
+      for (const [layer, list] of Object.entries(layerStore.rawEntities)) {
+        if (!input.layers || input.layers.includes(layer)) {
+          const inBounds = (list as Array<Record<string, unknown>>).filter((item) => {
+            const lat = Number(item.latitude || item.lat);
+            const lon = Number(item.longitude || item.lon);
+            return lat >= input.south && lat <= input.north && lon >= input.west && lon <= input.east;
+          });
+          counts[layer] = inBounds.length;
+          total += inBounds.length;
+        }
+      }
+      return {
+        total_entities: total,
+        counts_by_layer: counts,
+        bounds: { south: input.south, west: input.west, north: input.north, east: input.east },
+      };
     });
   }
 
@@ -279,6 +363,12 @@
     gbfsLayer?.setMinBikesAvailable(layerStore.filters.gbfs.minBikes);
     cctvLayer?.setAgencyFilter(layerStore.filters.cctv.agency);
     radioLayer?.setCategoryFilter(layerStore.filters.radio.category);
+  });
+
+  // Synchronize remote collaborative presence to Cesium
+  $effect(() => {
+    collabLayer?.updatePresences(collabStore.state.presences);
+    collabLayer?.setFollowLeader(collabStore.state.followLeaderId);
   });
 
   // Svelte 5 $effect to handle flyTo camera transitions from table or HUD
@@ -321,6 +411,9 @@
       radioLayer = new RadioLayerController({ viewer: globe.viewer });
       launchLayer = new LaunchLayerController({ viewer: globe.viewer });
       weatherLayer = new WeatherLayerController({ viewer: globe.viewer });
+      collabLayer = new CollabLayerController({ viewer: globe.viewer });
+
+      setupToolExecutors();
 
       attachDebugBus(
         globe,
@@ -346,12 +439,18 @@
         }
       );
 
-      // Inspect active deep link scene if present in URL
+      // Deep link inspection
       if (typeof window !== 'undefined' && window.location.href) {
         const sceneFromUrl = parseSceneFromUrl(window.location.href);
         if (sceneFromUrl) {
           globe.setCameraPose(sceneFromUrl.camera);
           layerStore.statusText = 'Loaded scene from deep link';
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomParam = urlParams.get('room');
+        if (roomParam) {
+          collabStore.joinRoom(roomParam);
         }
       }
 
@@ -382,6 +481,7 @@
     radioLayer?.destroy();
     launchLayer?.destroy();
     weatherLayer?.destroy();
+    collabLayer?.destroy();
     globe?.destroy();
   });
 </script>
@@ -391,9 +491,13 @@
 
   <!-- HUD Overlays -->
   <HudHeader />
+  <div class="collab-overlay">
+    <CollabBar />
+  </div>
   <LayerControlPanel />
   <EntityInfoCard />
   <VirtualizedTelemetryTable />
+  <VoiceControlOrb />
 
   <!-- OpenStreetMap Mandatory Attribution (Rule 3 & DESIGN.md §5) -->
   <footer id="osm-attribution" class="attribution-badge">
@@ -425,6 +529,13 @@
     left: 0;
     width: 100%;
     height: 100%;
+  }
+
+  .collab-overlay {
+    position: absolute;
+    top: 64px;
+    left: 20px;
+    z-index: 10;
   }
 
   .attribution-badge {
