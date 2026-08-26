@@ -120,6 +120,7 @@ export async function pinnedFetch(
 
   // Custom agent pinning socket connection directly to the pre-validated IP
   const pinnedAgent = options.dispatcher ?? createPinnedAgent(primaryIp);
+  const ownsAgent = !options.dispatcher; // only close agents we created
 
   const abortSignal = AbortSignal.timeout(timeoutMs);
 
@@ -137,19 +138,41 @@ export async function pinnedFetch(
   if (contentLengthHeader) {
     const contentLength = Number.parseInt(contentLengthHeader, 10);
     if (!Number.isNaN(contentLength) && contentLength > maxBytes) {
+      if (ownsAgent && pinnedAgent instanceof Agent) pinnedAgent.close();
       throw new MaxBytesExceededError(maxBytes, contentLength);
     }
+  }
+
+  // Helper: creates a TransformStream that closes the agent when the body stream ends
+  function createAgentCleanupStream(): TransformStream {
+    return new TransformStream({
+      transform(chunk, controller) {
+        controller.enqueue(chunk);
+      },
+      flush() {
+        if (ownsAgent && pinnedAgent instanceof Agent) {
+          pinnedAgent.close();
+        }
+      },
+    });
   }
 
   // Enforce byte cap on streamed / chunked body response
   if (response.body) {
     // biome-ignore lint/suspicious/noExplicitAny: Standard TransformStream bridge across undici/DOM stream definitions
-    const cappedBody = (response.body as any).pipeThrough(createByteCountingStream(maxBytes));
+    const cappedBody = (response.body as any)
+      .pipeThrough(createByteCountingStream(maxBytes))
+      .pipeThrough(createAgentCleanupStream());
     return new Response(cappedBody as unknown as string, {
       status: response.status,
       statusText: response.statusText,
       headers: response.headers,
     });
+  }
+
+  // No body — close agent immediately
+  if (ownsAgent && pinnedAgent instanceof Agent) {
+    pinnedAgent.close();
   }
 
   return response;

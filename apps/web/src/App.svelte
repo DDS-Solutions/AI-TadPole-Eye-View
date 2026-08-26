@@ -31,7 +31,7 @@
   import LayerControlPanel from './components/LayerControlPanel.svelte';
   import EntityInfoCard from './components/EntityInfoCard.svelte';
   import VirtualizedTelemetryTable from './components/VirtualizedTelemetryTable.svelte';
-  import type { Entity, JulianDate } from 'cesium';
+  import { JulianDate, type Entity } from 'cesium';
 
   let globeContainer: HTMLDivElement;
   let globe: GlobeController | null = null;
@@ -48,12 +48,17 @@
   let weatherLayer: WeatherLayerController | null = null;
 
   let pollInterval: ReturnType<typeof setInterval> | null = null;
+  let abortController: AbortController | null = null;
 
   async function pollAllFeeds() {
+    abortController?.abort();
+    abortController = new AbortController();
+    const signal = abortController.signal;
+
     try {
       // 1. Flights
       if (layerStore.visibility.flights) {
-        fetch('/api/flights')
+        fetch('/api/flights', { signal })
           .then((res) => (res.ok ? res.json() : null))
           .then((data: FlightBatch | null) => {
             if (data && flightLayer) {
@@ -63,13 +68,15 @@
             }
           })
           .catch((err) => {
-            layerStore.activeErrors.flights = String(err);
+            if (err.name !== 'AbortError') {
+              layerStore.activeErrors.flights = String(err);
+            }
           });
       }
 
       // 2. Ships (AIS)
       if (layerStore.visibility.marine) {
-        fetch('/api/ships')
+        fetch('/api/ships', { signal })
           .then((res) => (res.ok ? res.json() : null))
           .then((data: ShipBatch | null) => {
             if (data && marineLayer) {
@@ -79,13 +86,15 @@
             }
           })
           .catch((err) => {
-            layerStore.activeErrors.marine = String(err);
+            if (err.name !== 'AbortError') {
+              layerStore.activeErrors.marine = String(err);
+            }
           });
       }
 
       // 3. Earthquakes (USGS)
       if (layerStore.visibility.quakes) {
-        fetch('/api/quakes')
+        fetch('/api/quakes', { signal })
           .then((res) => (res.ok ? res.json() : null))
           .then((data: EarthquakeCollection | null) => {
             if (data && quakeLayer) {
@@ -95,13 +104,15 @@
             }
           })
           .catch((err) => {
-            layerStore.activeErrors.quakes = String(err);
+            if (err.name !== 'AbortError') {
+              layerStore.activeErrors.quakes = String(err);
+            }
           });
       }
 
-      // 4. FIRMS (Thermal)
+      // 4. Thermal Hotspots (NASA FIRMS)
       if (layerStore.visibility.firms) {
-        fetch('/api/firms')
+        fetch('/api/firms', { signal })
           .then((res) => (res.ok ? res.json() : null))
           .then((data: ThermalHotspotBatch | null) => {
             if (data && firmsLayer) {
@@ -111,13 +122,15 @@
             }
           })
           .catch((err) => {
-            layerStore.activeErrors.firms = String(err);
+            if (err.name !== 'AbortError') {
+              layerStore.activeErrors.firms = String(err);
+            }
           });
       }
 
-      // 5. GBFS (Bikeshare)
+      // 5. Shared Transit (GBFS)
       if (layerStore.visibility.gbfs) {
-        fetch('/api/gbfs')
+        fetch('/api/gbfs', { signal })
           .then((res) => (res.ok ? res.json() : null))
           .then((data: BikeStationBatch | null) => {
             if (data && gbfsLayer) {
@@ -127,13 +140,15 @@
             }
           })
           .catch((err) => {
-            layerStore.activeErrors.gbfs = String(err);
+            if (err.name !== 'AbortError') {
+              layerStore.activeErrors.gbfs = String(err);
+            }
           });
       }
 
-      // 6. CCTV Cameras
+      // 6. Public CCTV Media
       if (layerStore.visibility.cctv) {
-        fetch('/api/cctv/catalog')
+        fetch('/api/cctv/catalog', { signal })
           .then((res) => (res.ok ? res.json() : null))
           .then((data: CctvCatalog | null) => {
             if (data && cctvLayer) {
@@ -143,13 +158,15 @@
             }
           })
           .catch((err) => {
-            layerStore.activeErrors.cctv = String(err);
+            if (err.name !== 'AbortError') {
+              layerStore.activeErrors.cctv = String(err);
+            }
           });
       }
 
-      // 7. Radio Stations & ATC Freqs
+      // 7. Global Radio Broadcasts
       if (layerStore.visibility.radio) {
-        fetch('/api/radio/catalog')
+        fetch('/api/radio/catalog', { signal })
           .then((res) => (res.ok ? res.json() : null))
           .then((data: RadioCatalog | null) => {
             if (data && radioLayer) {
@@ -159,13 +176,15 @@
             }
           })
           .catch((err) => {
-            layerStore.activeErrors.radio = String(err);
+            if (err.name !== 'AbortError') {
+              layerStore.activeErrors.radio = String(err);
+            }
           });
       }
 
-      // 8. Launch Trajectories
+      // 8. Orbital Launches
       if (layerStore.visibility.launches) {
-        fetch('/api/launches')
+        fetch('/api/launches', { signal })
           .then((res) => (res.ok ? res.json() : null))
           .then((data: LaunchCatalog | null) => {
             if (data && launchLayer) {
@@ -175,13 +194,15 @@
             }
           })
           .catch((err) => {
-            layerStore.activeErrors.launches = String(err);
+            if (err.name !== 'AbortError') {
+              layerStore.activeErrors.launches = String(err);
+            }
           });
       }
 
       // 9. Weather Radar & Observations
       if (layerStore.visibility.weather) {
-        fetch('/api/weather/radar')
+        fetch('/api/weather/radar', { signal })
           .then((res) => (res.ok ? res.json() : null))
           .then((data: WeatherCollection | null) => {
             if (data && weatherLayer) {
@@ -191,7 +212,9 @@
             }
           })
           .catch((err) => {
-            layerStore.activeErrors.weather = String(err);
+            if (err.name !== 'AbortError') {
+              layerStore.activeErrors.weather = String(err);
+            }
           });
       }
 
@@ -211,8 +234,9 @@
     const props: Record<string, unknown> = {};
     if (entity.properties) {
       const propertyNames = entity.properties.propertyNames;
+      const now = JulianDate.now();
       for (const name of propertyNames) {
-        props[name] = entity.properties.getValue(undefined as unknown as JulianDate)?.[name];
+        props[name] = entity.properties.getValue(now)?.[name];
       }
     }
 
@@ -311,7 +335,15 @@
           launches: launchLayer,
           weather: weatherLayer,
         },
-        { frameMonitor }
+        {
+          frameMonitor,
+          attachToWindow:
+            import.meta.env.DEV ||
+            (typeof window !== 'undefined' &&
+              (window.location.hostname === 'localhost' ||
+                window.location.hostname === '127.0.0.1' ||
+                window.location.search.includes('gev_debug=1'))),
+        }
       );
 
       // Inspect active deep link scene if present in URL
@@ -334,6 +366,8 @@
   });
 
   onDestroy(() => {
+    abortController?.abort();
+    abortController = null;
     if (pollInterval) {
       clearInterval(pollInterval);
       pollInterval = null;

@@ -130,7 +130,7 @@ export class FirmsAdapter {
       if (Number.isNaN(lat) || Number.isNaN(lon)) continue;
 
       results.push({
-        id: `firms-${i}-${Date.now()}`,
+        id: `firms-${lat.toFixed(4)}-${lon.toFixed(4)}-${parts[dateIdx] || ''}-${parts[timeIdx] || ''}`,
         latitude: lat,
         longitude: lon,
         brightness_kelvin: Number.parseFloat(parts[brightIdx] || '300') || 300,

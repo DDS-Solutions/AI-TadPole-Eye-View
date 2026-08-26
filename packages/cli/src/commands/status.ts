@@ -1,5 +1,5 @@
 import { SystemClock } from '@gev/core';
-import { CapBudgetGovernor } from '@gev/governance';
+import { CapBudgetGovernor, SqliteAuditSink } from '@gev/governance';
 import pc from 'picocolors';
 
 export interface StatusOptions {
@@ -39,12 +39,15 @@ export async function runStatus(options: StatusOptions = {}): Promise<void> {
   }
 
   if (!isOnline) {
+    // Offline fallback: read from shared on-disk governance state
     const governor = new CapBudgetGovernor({ clock });
+    const auditSink = new SqliteAuditSink({ clock });
     const state = governor.state();
     stasisActive = state.stasis_active;
     spentUsd = state.spent_usd;
     capUsd = state.cap_usd;
     lastTripReason = state.last_trip?.code;
+    auditSink.close();
   }
 
   const remainingUsd = Math.max(0, capUsd - spentUsd);

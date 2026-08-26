@@ -88,7 +88,7 @@ export class RadioAdapter {
 
       const latencyMs = this.clock.now() - startTime;
       return {
-        online: res.ok || res.status === 200 || res.status === 206 || res.status === 302,
+        online: res.ok || res.status === 302,
         latencyMs,
       };
     } catch {

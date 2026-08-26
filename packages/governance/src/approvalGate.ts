@@ -52,6 +52,13 @@ export class PromptApprovalGate implements ApprovalGate {
     }
 
     // Auto-approve in dev/test stub mode (with local stub signature)
+    // TODO(M2): 'prompt' policy should integrate with Tadpole's interactive
+    // approval channel. Until then, both 'auto' and 'prompt' auto-approve.
+    if (this.policy === 'prompt') {
+      console.error(
+        `[governance:warn] ApprovalGate policy is 'prompt' but interactive prompting is not yet implemented (stub). Auto-approving request ${r.id}.`
+      );
+    }
     return ApprovalResultSchema.parse({
       request_id: r.id,
       decision: 'approved',

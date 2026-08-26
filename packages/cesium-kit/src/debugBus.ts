@@ -148,7 +148,10 @@ export function attachDebugBus(
 
   const shouldAttach =
     options.attachToWindow ??
-    (typeof process === 'undefined' || process.env.NODE_ENV !== 'production' || true);
+    (typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.search.includes('gev_debug=1')));
 
   if (typeof window !== 'undefined' && shouldAttach) {
     window.__gev = bus;

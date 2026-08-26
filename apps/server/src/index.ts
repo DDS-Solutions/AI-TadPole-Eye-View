@@ -53,7 +53,13 @@ export function createApp() {
   const costGovernor = new CostGovernor({ clock, budgetGovernor });
 
   // Global Middleware
-  app.use('*', cors());
+  app.use(
+    '*',
+    cors({
+      origin: process.env.GEV_CORS_ORIGIN || 'http://localhost:5173',
+      credentials: true,
+    })
+  );
 
   // Health and provider status
   app.get('/api/health', async (c) => {
@@ -249,17 +255,67 @@ export function createApp() {
   // Ops Audit Log Query
   app.get('/ops/audit', async (c) => {
     const taskRef = c.req.query('task_ref');
+    const limitParam = c.req.query('limit');
+    const limit = limitParam ? Number.parseInt(limitParam, 10) : 100;
     if (taskRef) {
       const entries = auditSink.tailByTaskRef(taskRef);
       return c.json({ entries });
     }
-    const entries = auditSink.tail();
+    const entries = auditSink.tail({ limit });
     return c.json({ entries });
   });
 
   // Ops Governor Status
   app.get('/ops/status', async (c) => {
     return c.json(budgetGovernor.state());
+  });
+
+  // Ops STASIS Resume (Rule 1: intent → action → outcome; human-only)
+  app.post('/ops/resume', async (c) => {
+    const opsToken = process.env.GEV_OPS_TOKEN;
+    if (opsToken) {
+      const authHeader = c.req.header('Authorization');
+      if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.slice(7) !== opsToken) {
+        return c.json({ error: 'Unauthorized' }, 401);
+      }
+    }
+
+    const body = (await c.req.json().catch(() => ({}))) as { reason?: string };
+    const reason = body.reason ?? 'Human operator manual override via ops API';
+    const state = budgetGovernor.state();
+
+    if (!state.stasis_active) {
+      return c.json({ status: 'ok', message: 'STASIS is not currently active' });
+    }
+
+    const startTime = clock.now();
+    const intentId = crypto.randomUUID();
+
+    // Rule 1: Audit intent BEFORE mutation
+    auditSink.intent({
+      kind: GevEvents.AuditIntent,
+      id: intentId,
+      ts: new Date(startTime).toISOString(),
+      actor: 'human',
+      action: 'governance.resume',
+      target: 'stasis.lock',
+      params: { reason },
+      task_ref: 'ops-resume',
+    });
+
+    budgetGovernor.resume('human');
+
+    // Rule 1: Audit outcome AFTER mutation
+    auditSink.outcome({
+      kind: GevEvents.AuditOutcome,
+      intent_id: intentId,
+      ts: new Date(clock.now()).toISOString(),
+      status: 'ok',
+      result: { resumed: true, reason },
+      duration_ms: clock.now() - startTime,
+    });
+
+    return c.json({ status: 'ok', message: 'STASIS resumed', reason });
   });
 
   return {
@@ -284,9 +340,11 @@ export function createApp() {
 if (process.env.NODE_ENV !== 'test') {
   const { app } = createApp();
   const port = Number(process.env.PORT) || 3000;
-  console.log(`[GEV v2 Server] Hono server listening on http://localhost:${port}`);
+  const hostname = process.env.GEV_HOST || '127.0.0.1';
+  console.log(`[GEV v2 Server] Hono server listening on http://${hostname}:${port}`);
   serve({
     fetch: app.fetch,
     port,
+    hostname,
   });
 }

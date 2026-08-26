@@ -1,3 +1,4 @@
+import { type SimClock, SystemClock } from '@gev/core';
 import type { Scene } from 'cesium';
 
 export interface FrameMetrics {
@@ -27,6 +28,7 @@ export interface FrameBudgetMonitorOptions {
   targetBudgetMs?: number; // default 16.66ms for 60 FPS
   targetFps?: number; // default 60
   sampleWindowSize?: number; // default 120 frames
+  clock?: SimClock;
 }
 
 /**
@@ -37,12 +39,13 @@ export class FrameBudgetMonitor {
   public readonly targetBudgetMs: number;
   public readonly targetFps: number;
   public readonly sampleWindowSize: number;
+  public readonly clock: SimClock;
 
   private frameTimes: number[] = [];
   private lastFrameTimestamp: number | null = null;
   private totalFrames = 0;
   private breachCount = 0;
-  private startTime: number = Date.now();
+  private startTime: number;
   private sceneEventListenerRemover: (() => void) | null = null;
   private isMonitoring = false;
 
@@ -50,23 +53,25 @@ export class FrameBudgetMonitor {
     this.targetBudgetMs = options.targetBudgetMs ?? 16.666;
     this.targetFps = options.targetFps ?? 60;
     this.sampleWindowSize = options.sampleWindowSize ?? 120;
+    this.clock = options.clock ?? new SystemClock();
+    this.startTime = this.clock.now();
   }
 
   /**
    * Records a single frame event with the given high-resolution timestamp (ms).
    */
-  recordFrame(
-    nowMs: number = typeof performance !== 'undefined' ? performance.now() : Date.now()
-  ): number {
+  recordFrame(nowMs?: number): number {
+    const timestamp =
+      nowMs ?? (typeof performance !== 'undefined' ? performance.now() : this.clock.now());
     this.totalFrames++;
 
     if (this.lastFrameTimestamp === null) {
-      this.lastFrameTimestamp = nowMs;
+      this.lastFrameTimestamp = timestamp;
       return 0;
     }
 
-    const deltaMs = Math.max(0, nowMs - this.lastFrameTimestamp);
-    this.lastFrameTimestamp = nowMs;
+    const deltaMs = Math.max(0, timestamp - this.lastFrameTimestamp);
+    this.lastFrameTimestamp = timestamp;
 
     this.frameTimes.push(deltaMs);
     if (this.frameTimes.length > this.sampleWindowSize) {
@@ -89,7 +94,7 @@ export class FrameBudgetMonitor {
     }
 
     this.isMonitoring = true;
-    this.startTime = Date.now();
+    this.startTime = this.clock.now();
     this.lastFrameTimestamp = null;
 
     const removeCallback = scene.postRender.addEventListener(() => {
@@ -119,7 +124,7 @@ export class FrameBudgetMonitor {
   getMetrics(): FrameMetrics {
     const samples = [...this.frameTimes];
     const n = samples.length;
-    const now = Date.now();
+    const now = this.clock.now();
     const elapsedSec = Math.max(0.001, (now - this.startTime) / 1000);
 
     if (n === 0) {
@@ -193,7 +198,7 @@ export class FrameBudgetMonitor {
       targetFps: this.targetFps,
       passed,
       metrics,
-      timestamp: Date.now(),
+      timestamp: this.clock.now(),
     };
   }
 
@@ -217,7 +222,7 @@ export class FrameBudgetMonitor {
     this.lastFrameTimestamp = null;
     this.totalFrames = 0;
     this.breachCount = 0;
-    this.startTime = Date.now();
+    this.startTime = this.clock.now();
   }
 
   /**

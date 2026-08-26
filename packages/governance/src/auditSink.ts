@@ -44,10 +44,16 @@ export class SqliteAuditSink implements AuditSink {
   public readonly clock: SimClock;
   private readonly db: DatabaseSync;
   private readonly listeners: Set<(entry: AuditEntry) => void> = new Set();
+  private readonly insertIntentStmt: ReturnType<DatabaseSync['prepare']>;
+  private readonly insertOutcomeStmt: ReturnType<DatabaseSync['prepare']>;
 
   constructor(options: SqliteAuditSinkOptions = {}) {
     this.clock = options.clock ?? new SystemClock();
-    const dbPath = options.dbPath ?? ':memory:';
+    const isTest = process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
+    const defaultDbPath = isTest
+      ? ':memory:'
+      : path.join(process.env.GEV_DATA_DIR || '.gev', 'audit.sqlite');
+    const dbPath = options.dbPath ?? process.env.GEV_AUDIT_DB ?? defaultDbPath;
 
     if (dbPath !== ':memory:') {
       const parentDir = path.dirname(dbPath);
@@ -82,6 +88,20 @@ export class SqliteAuditSink implements AuditSink {
       );
       CREATE INDEX IF NOT EXISTS idx_audit_task ON audit_events(task_ref);
       CREATE INDEX IF NOT EXISTS idx_audit_intent ON audit_events(intent_id);
+      CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit_events(actor);
+      CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit_events(ts);
+    `);
+
+    // Prepare statements once (reused on every intent/outcome call)
+    this.insertIntentStmt = this.db.prepare(`
+      INSERT INTO audit_events (
+        id, kind, ts, actor, action, target, params, task_ref
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    this.insertOutcomeStmt = this.db.prepare(`
+      INSERT INTO audit_events (
+        id, kind, intent_id, ts, status, result, error, duration_ms
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
   }
 
@@ -100,13 +120,8 @@ export class SqliteAuditSink implements AuditSink {
    */
   intent(i: AuditIntent): void {
     const intent = AuditIntentSchema.parse(i);
-    const insertStmt = this.db.prepare(`
-      INSERT INTO audit_events (
-        id, kind, ts, actor, action, target, params, task_ref
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
 
-    insertStmt.run(
+    this.insertIntentStmt.run(
       intent.id,
       intent.kind,
       intent.ts,
@@ -132,13 +147,8 @@ export class SqliteAuditSink implements AuditSink {
   outcome(o: AuditOutcome): void {
     const outcome = AuditOutcomeSchema.parse(o);
     const rowId = crypto.randomUUID();
-    const insertStmt = this.db.prepare(`
-      INSERT INTO audit_events (
-        id, kind, intent_id, ts, status, result, error, duration_ms
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
 
-    insertStmt.run(
+    this.insertOutcomeStmt.run(
       rowId,
       outcome.kind,
       outcome.intent_id,
@@ -163,9 +173,27 @@ export class SqliteAuditSink implements AuditSink {
    */
   tail(q?: AuditQuery): AuditEntry[] {
     const query = q ? AuditQuerySchema.parse(q) : { limit: 100 };
-    const rows = this.db
-      .prepare('SELECT * FROM audit_events ORDER BY rowid ASC LIMIT ?')
-      .all(query.limit) as unknown as SqliteAuditRow[];
+    const conditions: string[] = [];
+    const params: (string | number)[] = [];
+
+    if (query.actor) {
+      conditions.push('actor = ?');
+      params.push(query.actor);
+    }
+    if (query.action_prefix) {
+      conditions.push('action LIKE ?');
+      params.push(`${query.action_prefix}%`);
+    }
+    if (query.since) {
+      conditions.push('ts >= ?');
+      params.push(query.since);
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const sql = `SELECT * FROM audit_events ${where} ORDER BY rowid DESC LIMIT ?`;
+    params.push(query.limit ?? 100);
+
+    const rows = this.db.prepare(sql).all(...params) as unknown as SqliteAuditRow[];
 
     const entries: AuditEntry[] = [];
 
@@ -194,7 +222,8 @@ export class SqliteAuditSink implements AuditSink {
       }
     }
 
-    return entries;
+    // Reverse to chronological order (we fetched newest-first for correct tail)
+    return entries.reverse();
   }
 
   /**
