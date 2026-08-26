@@ -1,5 +1,5 @@
 {
-  "name": "@gev/providers",
+  "name": "@gev/governance",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -18,11 +18,10 @@
   },
   "dependencies": {
     "@gev/contracts": "workspace:*",
-    "@gev/core": "workspace:*",
-    "@gev/security": "workspace:*",
-    "zod": "^3.24.2"
+    "@gev/core": "workspace:*"
   },
   "devDependencies": {
+    "@types/node": "^24.1.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.7"
   }

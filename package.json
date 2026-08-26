@@ -10,13 +10,13 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "docs:check": "node scripts/adg.mjs",
-    "e2e": "pnpm --filter @gev/e2e test:e2e",
+    "e2e": "turbo run build && pnpm --filter @gev/e2e test:e2e",
     "dev": "turbo run dev"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@playwright/test": "^1.50.1",
-    "@types/node": "^24.13.3",
+    "@types/node": "^24.1.0",
     "fast-check": "^3.23.2",
     "turbo": "^2.4.4",
     "typescript": "^5.8.2",
