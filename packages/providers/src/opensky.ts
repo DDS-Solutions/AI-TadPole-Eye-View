@@ -70,14 +70,10 @@ const POSITION_SOURCE_MAP: PositionSource[] = ['ADSB', 'ASTERIX', 'MLAT', 'FLARM
 /**
  * Resolves fixture path robustly by checking local directory and searching upwards to workspace root.
  */
-export function resolveFixturePath(customPath?: string): string {
-  if (customPath && fs.existsSync(customPath)) {
-    return customPath;
-  }
-
+export function resolveFixturePath(fileName = 'flights-opensky.json'): string {
   let currentDir = process.cwd();
   for (let i = 0; i < 5; i++) {
-    const candidate = path.resolve(currentDir, 'fixtures', 'flights-opensky.json');
+    const candidate = path.resolve(currentDir, 'fixtures', fileName);
     if (fs.existsSync(candidate)) {
       return candidate;
     }
@@ -88,7 +84,7 @@ export function resolveFixturePath(customPath?: string): string {
     currentDir = parentDir;
   }
 
-  return path.resolve(process.cwd(), 'fixtures', 'flights-opensky.json');
+  return path.resolve(process.cwd(), 'fixtures', fileName);
 }
 
 /**

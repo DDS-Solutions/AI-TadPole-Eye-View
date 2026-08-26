@@ -12,3 +12,5 @@ This directory records all significant architectural and structural decisions ma
 | [0017](./0017-mcp-server-and-cli-architecture.md) | Operator MCP Server & Unified gev CLI Surface | Accepted | 2026-08-26 |
 | [0018](./0018-active-documentation-guard-and-runbook-architecture.md) | Active Documentation Guard (ADG) & Operational Runbook Architecture | Accepted | 2026-08-26 |
 | [0019](./0019-scene-serializer-and-deep-link-architecture.md) | Scene State Serialization & URL Deep-Linking Architecture | Accepted | 2026-08-26 |
+| [0020](./0020-server-proxies-and-cost-governor-architecture.md) | Server Telemetry Proxies & Cost Governor Architecture | Accepted | 2026-08-26 |
+

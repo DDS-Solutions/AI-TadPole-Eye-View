@@ -1,0 +1,171 @@
+import type { SimClock } from '@gev/core';
+import { SystemClock } from '@gev/core';
+import type { CapBudgetGovernor } from '@gev/governance';
+import type { Context, Next } from 'hono';
+
+export interface ProviderTierConfig {
+  ttlSeconds: number;
+  costPerFetchUsd: number;
+  maxStaleSeconds: number;
+}
+
+export const DEFAULT_PROVIDER_TIERS: Record<string, ProviderTierConfig> = {
+  flights: { ttlSeconds: 5, costPerFetchUsd: 0.0001, maxStaleSeconds: 60 },
+  ships: { ttlSeconds: 15, costPerFetchUsd: 0.0005, maxStaleSeconds: 300 },
+  quakes: { ttlSeconds: 60, costPerFetchUsd: 0.0, maxStaleSeconds: 3600 },
+  firms: { ttlSeconds: 300, costPerFetchUsd: 0.001, maxStaleSeconds: 7200 },
+  gbfs: { ttlSeconds: 30, costPerFetchUsd: 0.0, maxStaleSeconds: 600 },
+};
+
+interface CacheEntry {
+  body: unknown;
+  status: number;
+  timestamp: number;
+  etag: string;
+}
+
+interface ProviderState {
+  cooldownUntil: number;
+  lastFetchTime: number;
+  cachedResponse?: CacheEntry;
+}
+
+export interface CostGovernorOptions {
+  clock?: SimClock;
+  budgetGovernor?: CapBudgetGovernor;
+  tiers?: Record<string, ProviderTierConfig>;
+}
+
+/**
+ * Cost Governor Middleware (PLAN.md §10 Phase 1 Item 2)
+ * Enforces per-provider TTL tiers, Retry-After cooldowns, staleness fallback, and budget tracking.
+ */
+export class CostGovernor {
+  private readonly clock: SimClock;
+  private readonly budgetGovernor?: CapBudgetGovernor;
+  private readonly tiers: Record<string, ProviderTierConfig>;
+  private readonly providerStates: Map<string, ProviderState> = new Map();
+
+  constructor(options: CostGovernorOptions = {}) {
+    this.clock = options.clock ?? new SystemClock();
+    this.budgetGovernor = options.budgetGovernor;
+    this.tiers = options.tiers ?? DEFAULT_PROVIDER_TIERS;
+  }
+
+  /**
+   * Returns a Hono middleware handler for a specific provider feed.
+   */
+  middleware(providerName: string) {
+    const tier = this.tiers[providerName] ?? {
+      ttlSeconds: 10,
+      costPerFetchUsd: 0,
+      maxStaleSeconds: 60,
+    };
+
+    return async (c: Context, next: Next) => {
+      const now = this.clock.now();
+      const state = this.getProviderState(providerName);
+
+      // Check if provider is currently in a Retry-After cooldown
+      if (state.cooldownUntil > now) {
+        const remainingCooldownSec = Math.ceil((state.cooldownUntil - now) / 1000);
+        c.header('Retry-After', remainingCooldownSec.toString());
+        c.header('X-GEV-Cooldown-Active', 'true');
+
+        if (state.cachedResponse) {
+          c.header('X-GEV-Stale', 'true');
+          c.header('X-GEV-Cache-Source', 'cooldown-fallback');
+          return c.json(state.cachedResponse.body, state.cachedResponse.status as 200);
+        }
+      }
+
+      // Check if cache is still fresh within TTL window
+      if (state.cachedResponse && now - state.lastFetchTime < tier.ttlSeconds * 1000) {
+        const ageSec = Math.floor((now - state.lastFetchTime) / 1000);
+        c.header('X-GEV-Cache', 'HIT');
+        c.header('X-GEV-Cache-Age-Sec', ageSec.toString());
+        c.header('X-GEV-TTL-Sec', tier.ttlSeconds.toString());
+        return c.json(state.cachedResponse.body, state.cachedResponse.status as 200);
+      }
+
+      // If budget governor is attached, verify spend budget is allowed
+      if (this.budgetGovernor && tier.costPerFetchUsd > 0) {
+        const verdict = this.budgetGovernor.check({
+          action: `feed.fetch.${providerName}`,
+          estimate: {
+            currency: 'usd',
+            min: tier.costPerFetchUsd,
+            max: tier.costPerFetchUsd,
+          },
+        });
+
+        if (!verdict.allowed) {
+          c.header('X-GEV-Budget-Exceeded', 'true');
+          if (state.cachedResponse) {
+            c.header('X-GEV-Stale', 'true');
+            c.header('X-GEV-Cache-Source', 'budget-fallback');
+            return c.json(state.cachedResponse.body, state.cachedResponse.status as 200);
+          }
+          return c.json(
+            {
+              error: 'STASIS: Budget exceeded for feed',
+              reason: verdict.reason,
+              message: verdict.message,
+            },
+            429
+          );
+        }
+      }
+
+      // Proceed with upstream fetch
+      await next();
+
+      // Inspect response status and headers
+      const status = c.res.status;
+      const retryAfterHeader = c.res.headers.get('Retry-After');
+
+      if (status === 429 && retryAfterHeader) {
+        const retrySec = Number.parseInt(retryAfterHeader, 10) || 30;
+        state.cooldownUntil = now + retrySec * 1000;
+      }
+
+      // If successful, update cached response
+      if (status >= 200 && status < 300) {
+        const cloned = c.res.clone();
+        try {
+          const jsonBody = await cloned.json();
+          state.cachedResponse = {
+            body: jsonBody,
+            status,
+            timestamp: now,
+            etag: `W/"${now}"`,
+          };
+          state.lastFetchTime = now;
+          c.header('X-GEV-Cache', 'MISS');
+          c.header('X-GEV-TTL-Sec', tier.ttlSeconds.toString());
+        } catch {
+          // Ignore non-JSON bodies
+        }
+      } else if (state.cachedResponse && now - state.lastFetchTime < tier.maxStaleSeconds * 1000) {
+        // Staleness fallback on 5xx or rate limits
+        c.header('X-GEV-Stale', 'true');
+        c.header('X-GEV-Cache-Source', 'error-fallback');
+        return c.json(state.cachedResponse.body, 200);
+      }
+
+      return;
+    };
+  }
+
+  private getProviderState(providerName: string): ProviderState {
+    let state = this.providerStates.get(providerName);
+    if (!state) {
+      state = {
+        cooldownUntil: 0,
+        lastFetchTime: 0,
+      };
+      this.providerStates.set(providerName, state);
+    }
+    return state;
+  }
+}

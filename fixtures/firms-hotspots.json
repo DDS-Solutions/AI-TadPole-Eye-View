@@ -1,0 +1,54 @@
+{
+  "time": 1724580000,
+  "count": 4,
+  "hotspots": [
+    {
+      "id": "firms-snpp-10291",
+      "longitude": -121.542,
+      "latitude": 39.812,
+      "brightness_kelvin": 348.6,
+      "frp_mw": 84.2,
+      "satellite": "VIIRS_SNPP",
+      "confidence": "high",
+      "acq_date": "2026-08-25",
+      "acq_time": "1142",
+      "daynight": "D"
+    },
+    {
+      "id": "firms-snpp-10292",
+      "longitude": -121.538,
+      "latitude": 39.815,
+      "brightness_kelvin": 362.1,
+      "frp_mw": 112.5,
+      "satellite": "VIIRS_SNPP",
+      "confidence": "high",
+      "acq_date": "2026-08-25",
+      "acq_time": "1142",
+      "daynight": "D"
+    },
+    {
+      "id": "firms-noaa20-5012",
+      "longitude": 149.201,
+      "latitude": -35.412,
+      "brightness_kelvin": 322.4,
+      "frp_mw": 31.0,
+      "satellite": "VIIRS_NOAA20",
+      "confidence": "nominal",
+      "acq_date": "2026-08-25",
+      "acq_time": "0318",
+      "daynight": "N"
+    },
+    {
+      "id": "firms-modis-8812",
+      "longitude": -55.812,
+      "latitude": -12.419,
+      "brightness_kelvin": 339.8,
+      "frp_mw": 62.4,
+      "satellite": "MODIS_AQUA",
+      "confidence": "nominal",
+      "acq_date": "2026-08-25",
+      "acq_time": "1730",
+      "daynight": "D"
+    }
+  ]
+}

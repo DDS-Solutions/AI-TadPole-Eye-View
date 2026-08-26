@@ -277,8 +277,8 @@ Each layer ships with: provider adapter + fixture tests + Playwright smoke passi
 - [x] SECURITY.md threat model drafted for new topology
 
 ### Phase 1 — Server parity (Weeks 2–3)
-- [ ] Every upstream proxy ported out of vite.config.js into Hono routes
-- [ ] Cost governor (TTL tiers, Retry-After cooldown, staleness cutoff) as middleware + tests
+- [x] Every upstream proxy ported out of vite.config.js into Hono routes
+- [x] Cost governor (TTL tiers, Retry-After cooldown, staleness cutoff) as middleware + tests
 - [ ] Radio proxy w/ TLS pinning + catalog health policy
 - [ ] Overpass sanitizer ported + property tests
 - [ ] CCTV media proxy with full timeout lifecycle
