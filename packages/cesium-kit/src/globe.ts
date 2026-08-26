@@ -1,8 +1,19 @@
-import { Cartesian3, Credit, Ion, OpenStreetMapImageryProvider, Viewer } from 'cesium';
+import {
+  type Cartesian2,
+  Cartesian3,
+  Credit,
+  type Entity,
+  Ion,
+  OpenStreetMapImageryProvider,
+  ScreenSpaceEventHandler,
+  ScreenSpaceEventType,
+  Viewer,
+} from 'cesium';
 
 export interface GlobeOptions {
   container: HTMLElement | string;
   enableDebugBus?: boolean;
+  onEntitySelected?: (entity: Entity | null) => void;
 }
 
 export interface CameraPoseInput {
@@ -20,6 +31,9 @@ export interface CameraPoseInput {
  */
 export class GlobeController {
   public readonly viewer: Viewer;
+  private readonly eventHandler: ScreenSpaceEventHandler | null = null;
+  private selectedEntity: Entity | null = null;
+  public onEntitySelected?: (entity: Entity | null) => void;
 
   constructor(options: GlobeOptions) {
     // Rule 3: Explicitly keyless boot default
@@ -63,6 +77,23 @@ export class GlobeController {
     this.viewer.camera.setView({
       destination: Cartesian3.fromDegrees(-30.0, 30.0, 20000000.0),
     });
+
+    this.onEntitySelected = options.onEntitySelected;
+
+    // Attach click handler for entity picking
+    if (typeof window !== 'undefined' && this.viewer.scene && this.viewer.scene.canvas) {
+      this.eventHandler = new ScreenSpaceEventHandler(this.viewer.scene.canvas);
+      this.eventHandler.setInputAction((click: { position: Cartesian2 }) => {
+        const pickedObject = this.viewer.scene.pick(click.position);
+        if (pickedObject?.id) {
+          this.selectedEntity = pickedObject.id as Entity;
+          this.onEntitySelected?.(this.selectedEntity);
+        } else {
+          this.selectedEntity = null;
+          this.onEntitySelected?.(null);
+        }
+      }, ScreenSpaceEventType.LEFT_CLICK);
+    }
   }
 
   /**
@@ -81,9 +112,27 @@ export class GlobeController {
   }
 
   /**
+   * Returns currently selected entity if any.
+   */
+  getSelectedEntity(): Entity | null {
+    return this.selectedEntity;
+  }
+
+  /**
+   * Selects an entity programmatically.
+   */
+  selectEntity(entity: Entity | null): void {
+    this.selectedEntity = entity;
+    this.onEntitySelected?.(entity);
+  }
+
+  /**
    * Destroys the Cesium viewer and releases WebGL context.
    */
   destroy(): void {
+    if (this.eventHandler && !this.eventHandler.isDestroyed()) {
+      this.eventHandler.destroy();
+    }
     if (!this.viewer.isDestroyed()) {
       this.viewer.destroy();
     }
