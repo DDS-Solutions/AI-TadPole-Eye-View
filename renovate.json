@@ -1,0 +1,10 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":semanticCommits", "group:allNonMajor"],
+  "rangeStrategy": "pin",
+  "schedule": ["weekly"],
+  "packageRules": [
+    { "matchUpdateTypes": ["patch"], "automerge": true, "automergeType": "pr" },
+    { "matchDepTypes": ["peerDependencies"], "enabled": false }
+  ]
+}

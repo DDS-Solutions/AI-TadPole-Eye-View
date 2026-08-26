@@ -1,0 +1,84 @@
+# GEV v2 CI — PLAN.md §13. Green on main from commit one (upstream lesson #44/#54).
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: lint · typecheck · unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # turbo --affected needs history
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Lint, typecheck, unit tests (seed mode — zero live API calls)
+        run: pnpm turbo run lint typecheck test --affected
+        env:
+          GEV_SEED_MODE: '1'
+      - name: ADG — documentation must match code
+        # Fail-open placeholder until Phase 0 item 9 lands scripts/adg.mjs
+        # (workspace script exits 0 with a warning). Flip to fail-closed then.
+        # Spec: PLAN.md §7.3.
+        run: pnpm docs:check
+
+  build:
+    name: build all
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm turbo run build
+        env:
+          GEV_SEED_MODE: '1'
+
+  e2e:
+    name: playwright smoke
+    runs-on: ubuntu-latest
+    needs: [quality, build]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Run smoke specs (condition-waits only — never fixed sleeps)
+        run: pnpm e2e
+        env:
+          GEV_SEED_MODE: '1'
+      - name: Upload failure evidence (traces + screenshots)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-failure-evidence
+          path: e2e/test-results/
+          retention-days: 14

@@ -1,0 +1,29 @@
+{
+  "name": "gev-v2-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "turbo run build",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "docs:check": "node scripts/adg.mjs",
+    "e2e": "pnpm --filter @gev/e2e test:e2e",
+    "dev": "turbo run dev"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "@playwright/test": "^1.50.1",
+    "@types/node": "^26.3.0",
+    "fast-check": "^3.23.2",
+    "turbo": "^2.4.4",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.7"
+  },
+  "packageManager": "pnpm@10.34.5",
+  "engines": {
+    "node": ">=24"
+  }
+}

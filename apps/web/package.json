@@ -1,0 +1,12 @@
+{
+  "name": "@gev/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node serve.mjs",
+    "build": "node -e \"console.log('@gev/web: placeholder build complete')\"",
+    "lint": "biome check .",
+    "typecheck": "node -e \"console.log('@gev/web: placeholder typecheck complete')\""
+  }
+}
