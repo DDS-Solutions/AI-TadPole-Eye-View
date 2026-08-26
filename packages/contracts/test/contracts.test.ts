@@ -10,6 +10,7 @@ import {
   FlightBatch,
   FlightState,
   GevEvents,
+  OPERATOR_TOOLS,
   SceneState,
   Verdict,
 } from '../src/index.js';
@@ -77,7 +78,7 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
           min: 0,
           max: Number.POSITIVE_INFINITY,
         });
-      }).toThrow();
+      }).toThrow(/Number must be finite/);
 
       expect(() => {
         BudgetState.parse({
@@ -88,7 +89,7 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
           warn_threshold_pct: 80,
           last_trip: null,
         });
-      }).toThrow();
+      }).toThrow(/Number must be finite/);
     });
   });
 
@@ -117,7 +118,7 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
           latitude: Number.POSITIVE_INFINITY,
           longitude: 8.5,
         });
-      }).toThrow();
+      }).toThrow(/Number must be finite/);
 
       expect(() => {
         FlightState.parse({
@@ -127,7 +128,7 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
           longitude: 8.5,
           velocity: Number.POSITIVE_INFINITY,
         });
-      }).toThrow();
+      }).toThrow(/Number must be finite/);
     });
 
     it('validates cross-field ordered BoundingBox and rejects inverted boxes (P3)', () => {
@@ -191,7 +192,7 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
           ...scene,
           version: 2,
         });
-      }).toThrow();
+      }).toThrow(/Invalid literal value/);
     });
 
     it('deterministically normalizes AOI polygon ring closure on parse (P4)', () => {
@@ -231,7 +232,70 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
           aois: [],
           sim_time: { iso: '2026-08-25T12:00:00.000Z', rate: 1, paused: false },
         });
-      }).toThrow();
+      }).toThrow(/Number must be finite/);
+    });
+  });
+
+  describe('Operator Tools & Manifests (PLAN.md §7.2)', () => {
+    it('defines standard operator tools with governance flags', () => {
+      expect(OPERATOR_TOOLS.get_feed_health.is_mutating).toBe(false);
+      expect(OPERATOR_TOOLS.get_feed_health.is_cacheable).toBe(true);
+
+      expect(OPERATOR_TOOLS.get_budget.is_mutating).toBe(false);
+      expect(OPERATOR_TOOLS.get_budget.is_cacheable).toBe(false);
+
+      expect(OPERATOR_TOOLS.load_scene.is_mutating).toBe(true);
+      expect(OPERATOR_TOOLS.load_scene.is_dangerous).toBe(true);
+      expect(OPERATOR_TOOLS.save_scene.is_mutating).toBe(true);
+
+      expect(OPERATOR_TOOLS.set_flag.is_mutating).toBe(true);
+      expect(OPERATOR_TOOLS.set_flag.is_dangerous).toBe(true);
+    });
+
+    it('validates tool inputs and outputs', () => {
+      // Rejects empty load_scene input
+      expect(() => OPERATOR_TOOLS.load_scene.inputSchema.parse({})).toThrow(
+        'Either scene_json or scene_path must be provided'
+      );
+
+      // Accepts valid load_scene input
+      const validLoad = OPERATOR_TOOLS.load_scene.inputSchema.parse({
+        scene_path: 'fixtures/scenes/default.json',
+      });
+      expect(validLoad.scene_path).toBe('fixtures/scenes/default.json');
+
+      const budgetOut = OPERATOR_TOOLS.get_budget.outputSchema.parse({
+        cap_usd: 10,
+        spent_usd: 2.5,
+        remaining_usd: 7.5,
+        stasis_active: false,
+      });
+      expect(budgetOut.remaining_usd).toBe(7.5);
+
+      const healthOut = OPERATOR_TOOLS.get_feed_health.outputSchema.parse({
+        feeds: [
+          {
+            provider: 'opensky',
+            status: 'healthy',
+            error_rate: 0,
+            ttl_tier_s: 30,
+            quota_remaining: 4000,
+          },
+        ],
+      });
+      expect(healthOut.feeds.length).toBe(1);
+
+      const saveOut = OPERATOR_TOOLS.save_scene.outputSchema.parse({
+        saved: true,
+        scene_path: 'scenes/saved.json',
+        summary: {
+          version: 1,
+          layer_count: 2,
+          aoi_count: 0,
+          camera_altitude: 20000000,
+        },
+      });
+      expect(saveOut.summary.layer_count).toBe(2);
     });
   });
 });

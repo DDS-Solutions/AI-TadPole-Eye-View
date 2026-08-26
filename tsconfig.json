@@ -1,8 +1,9 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "noEmit": true
+    "noEmit": true,
+    "allowJs": true
   },
-  "include": ["scripts/**/*"],
+  "include": ["scripts/**/*", "e2e/**/*"],
   "exclude": ["node_modules", "dist", "packages/*/dist", "apps/*/dist"]
 }

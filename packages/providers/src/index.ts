@@ -5,4 +5,5 @@ export {
   type RawOpenSkyResponse,
   normalizeOpenSkyState,
   parseOpenSkyPayload,
+  resolveFixturePath,
 } from './opensky.js';
