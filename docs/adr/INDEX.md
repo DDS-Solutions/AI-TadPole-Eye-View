@@ -11,5 +11,7 @@ This directory records all significant architectural and structural decisions ma
 | [0016](file:///g:/AI-TadPole-Eye-View/docs/adr/0016-node-sqlite-governance-audit-wal.md) | Built-in node:sqlite for local governance AuditSink write-ahead log (WAL) | Accepted | 2026-08-26 |
 | [0017](file:///g:/AI-TadPole-Eye-View/docs/adr/0017-mcp-server-and-cli-architecture.md) | Operator MCP Server & Unified gev CLI Surface | Accepted | 2026-08-26 |
 | [0018](file:///g:/AI-TadPole-Eye-View/docs/adr/0018-active-documentation-guard-and-runbook-architecture.md) | Active Documentation Guard (ADG) & Operational Runbook Architecture | Accepted | 2026-08-26 |
+| [0019](file:///g:/AI-TadPole-Eye-View/docs/adr/0019-scene-serializer-and-deep-link-architecture.md) | Scene State Serialization & URL Deep-Linking Architecture | Accepted | 2026-08-26 |
+
 
 

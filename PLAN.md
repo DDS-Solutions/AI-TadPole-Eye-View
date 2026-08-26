@@ -273,7 +273,7 @@ Each layer ships with: provider adapter + fixture tests + Playwright smoke passi
 - [x] governance stubs live (WAL to SQLite, STASIS trip, prompt approvals)
 - [x] ops-mcp + gev CLI skeletons; debug bus
 - [x] AGENTS.md, RUNBOOK.md, adr/INDEX.md, ADG gate
-- [ ] Scene serializer + deep links
+- [x] Scene serializer + deep links
 - [ ] SECURITY.md threat model drafted for new topology
 
 ### Phase 1 — Server parity (Weeks 2–3)

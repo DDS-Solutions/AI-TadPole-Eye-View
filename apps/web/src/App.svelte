@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { GlobeController, FlightLayerController, attachDebugBus } from '@gev/cesium-kit';
   import type { FlightBatch } from '@gev/contracts';
+  import { parseSceneFromUrl } from '@gev/core';
 
   let globeContainer: HTMLDivElement;
   let globe: GlobeController | null = null;
@@ -37,6 +38,15 @@
       globe = new GlobeController({ container: globeContainer });
       flightLayer = new FlightLayerController({ viewer: globe.viewer });
       attachDebugBus(globe, flightLayer);
+
+      // Inspect active deep link scene if present in URL
+      if (typeof window !== 'undefined' && window.location.href) {
+        const sceneFromUrl = parseSceneFromUrl(window.location.href);
+        if (sceneFromUrl) {
+          globe.setCameraPose(sceneFromUrl.camera);
+          statusText = 'Loaded scene from deep link';
+        }
+      }
 
       // Initial poll immediately
       await pollFlights();

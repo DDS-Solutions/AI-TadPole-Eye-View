@@ -5,6 +5,15 @@ export interface GlobeOptions {
   enableDebugBus?: boolean;
 }
 
+export interface CameraPoseInput {
+  longitude: number;
+  latitude: number;
+  altitude: number;
+  heading?: number;
+  pitch?: number;
+  roll?: number;
+}
+
 /**
  * Keyless Cesium Globe Controller (Rule 1 & Rule 3)
  * Initializes a 3D globe with ion-free OpenStreetMap raster imagery.
@@ -53,6 +62,21 @@ export class GlobeController {
     // Initial default camera positioning (global view over Atlantic)
     this.viewer.camera.setView({
       destination: Cartesian3.fromDegrees(-30.0, 30.0, 20000000.0),
+    });
+  }
+
+  /**
+   * Sets the camera pose from standard geographic coordinates and degrees.
+   */
+  setCameraPose(pose: CameraPoseInput): void {
+    const rad = (deg: number) => (deg * Math.PI) / 180;
+    this.viewer.camera.setView({
+      destination: Cartesian3.fromDegrees(pose.longitude, pose.latitude, pose.altitude),
+      orientation: {
+        heading: rad(pose.heading ?? 0),
+        pitch: rad(pose.pitch ?? -90),
+        roll: rad(pose.roll ?? 0),
+      },
     });
   }
 
