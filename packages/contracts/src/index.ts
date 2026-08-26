@@ -10,3 +10,5 @@ export * from './voice.js';
 export * from './ports.js';
 export * from './tools.js';
 export * from './scene.js';
+export * from './launches.js';
+export * from './weather.js';

@@ -1,0 +1,67 @@
+{
+  "time": 1724580000,
+  "count": 3,
+  "missions": [
+    {
+      "id": "mission-sl-g9-1",
+      "name": "Falcon 9 • Starlink Group 9-1",
+      "provider": "SpaceX",
+      "vehicle": "Falcon 9 Block 5",
+      "launch_site": "SLC-4E, Vandenberg SFB, CA",
+      "launch_timestamp": 1724580000,
+      "target_orbit": "LEO (53.0°)",
+      "status": "success",
+      "apogee_km": 298.5,
+      "perigee_km": 286.2,
+      "inclination_deg": 53.05,
+      "is_simulated": false,
+      "trajectory": [
+        { "time_offset_sec": 0, "longitude": -120.61, "latitude": 34.63, "altitude_m": 0, "velocity_ms": 0, "stage": "Liftoff" },
+        { "time_offset_sec": 60, "longitude": -120.65, "latitude": 34.20, "altitude_m": 12500, "velocity_ms": 540, "stage": "Max-Q" },
+        { "time_offset_sec": 145, "longitude": -120.80, "latitude": 33.10, "altitude_m": 68000, "velocity_ms": 1950, "stage": "MECO" },
+        { "time_offset_sec": 160, "longitude": -120.85, "latitude": 32.80, "altitude_m": 82000, "velocity_ms": 2050, "stage": "Stage Sep" },
+        { "time_offset_sec": 510, "longitude": -121.50, "latitude": 28.00, "altitude_m": 210000, "velocity_ms": 7650, "stage": "SECO-1" },
+        { "time_offset_sec": 3200, "longitude": -118.00, "latitude": 30.00, "altitude_m": 295000, "velocity_ms": 7720, "stage": "Payload Deploy" }
+      ]
+    },
+    {
+      "id": "mission-artemis-1",
+      "name": "SLS • Artemis I Lunar Orbit Insertion",
+      "provider": "NASA",
+      "vehicle": "Space Launch System Block 1",
+      "launch_site": "LC-39B, Kennedy Space Center, FL",
+      "launch_timestamp": 1724580000,
+      "target_orbit": "TLI / DRO",
+      "status": "success",
+      "apogee_km": 432210.0,
+      "perigee_km": 185.0,
+      "inclination_deg": 28.5,
+      "is_simulated": true,
+      "trajectory": [
+        { "time_offset_sec": 0, "longitude": -80.60, "latitude": 28.62, "altitude_m": 0, "velocity_ms": 0, "stage": "Liftoff" },
+        { "time_offset_sec": 120, "longitude": -79.80, "latitude": 28.75, "altitude_m": 45000, "velocity_ms": 1420, "stage": "SRB Sep" },
+        { "time_offset_sec": 480, "longitude": -72.50, "latitude": 30.10, "altitude_m": 162000, "velocity_ms": 7800, "stage": "Core Sep" },
+        { "time_offset_sec": 5400, "longitude": -45.00, "latitude": 25.00, "altitude_m": 350000, "velocity_ms": 10500, "stage": "TLI Burn" }
+      ]
+    },
+    {
+      "id": "mission-electron-kinsei",
+      "name": "Electron • 'Owl Spreads Its Wings'",
+      "provider": "Rocket Lab",
+      "vehicle": "Electron",
+      "launch_site": "LC-1A, Māhia Peninsula, NZ",
+      "launch_timestamp": 1724580000,
+      "target_orbit": "SSO (97.5°)",
+      "status": "success",
+      "apogee_km": 505.0,
+      "perigee_km": 495.0,
+      "inclination_deg": 97.4,
+      "is_simulated": false,
+      "trajectory": [
+        { "time_offset_sec": 0, "longitude": 177.86, "latitude": -39.26, "altitude_m": 0, "velocity_ms": 0, "stage": "Liftoff" },
+        { "time_offset_sec": 150, "longitude": 177.95, "latitude": -40.50, "altitude_m": 75000, "velocity_ms": 2300, "stage": "Stage 1 Sep" },
+        { "time_offset_sec": 540, "longitude": 178.50, "latitude": -48.00, "altitude_m": 220000, "velocity_ms": 7500, "stage": "Kick Stage Sep" }
+      ]
+    }
+  ]
+}

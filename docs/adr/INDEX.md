@@ -15,6 +15,8 @@ This directory records all significant architectural and structural decisions ma
 | [0020](./0020-server-proxies-and-cost-governor-architecture.md) | Server Telemetry Proxies & Cost Governor Architecture | Accepted | 2026-08-26 |
 | [0021](./0021-radio-proxy-and-overpass-sanitizer-architecture.md) | Radio Stream Proxy & Overpass QL Sanitizer Architecture | Accepted | 2026-08-26 |
 | [0022](./0022-cctv-media-proxy-voice-tokens-and-m1-audit-stream.md) | CCTV Media Proxy, Realtime Voice Tokens & M1 Audit Stream Architecture | Accepted | 2026-08-26 |
+| [0023](./0023-telemetry-layer-controllers-and-tactical-hud-architecture.md) | Telemetry Layer Controllers & Tactical HUD Architecture | Accepted | 2026-08-26 |
+| [0024](./0024-media-telemetry-layers-and-live-streaming-hud-architecture.md) | Media Telemetry Layers, Orbital Trajectories & Live Streaming HUD Architecture | Accepted | 2026-08-26 |
 
 
 

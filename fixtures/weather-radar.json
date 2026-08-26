@@ -1,0 +1,56 @@
+{
+  "time": 1724580000,
+  "count": 4,
+  "radar_frames": [
+    { "path": "/v2/radar/1724578800", "time": 1724578800 },
+    { "path": "/v2/radar/1724579400", "time": 1724579400 },
+    { "path": "/v2/radar/1724580000", "time": 1724580000 }
+  ],
+  "radar_tile_template": "https://tilecache.rainviewer.com{path}/256/{z}/{x}/{y}/2/1_1.png",
+  "stations": [
+    {
+      "id": "wx-ksfo",
+      "name": "San Francisco Int'l Airport (KSFO)",
+      "longitude": -122.375,
+      "latitude": 37.619,
+      "temp_c": 17.5,
+      "humidity_pct": 74.0,
+      "wind_speed_kmh": 22.0,
+      "wind_direction_deg": 280,
+      "condition": "Partly Cloudy"
+    },
+    {
+      "id": "wx-kjfk",
+      "name": "John F. Kennedy Int'l Airport (KJFK)",
+      "longitude": -73.778,
+      "latitude": 40.641,
+      "temp_c": 24.0,
+      "humidity_pct": 65.0,
+      "wind_speed_kmh": 14.5,
+      "wind_direction_deg": 190,
+      "condition": "Scattered Showers"
+    },
+    {
+      "id": "wx-egll",
+      "name": "London Heathrow (EGLL)",
+      "longitude": -0.454,
+      "latitude": 51.470,
+      "temp_c": 19.2,
+      "humidity_pct": 68.0,
+      "wind_speed_kmh": 18.0,
+      "wind_direction_deg": 240,
+      "condition": "Overcast"
+    },
+    {
+      "id": "wx-rjtt",
+      "name": "Tokyo Haneda (RJTT)",
+      "longitude": 139.781,
+      "latitude": 35.549,
+      "temp_c": 28.5,
+      "humidity_pct": 82.0,
+      "wind_speed_kmh": 11.0,
+      "wind_direction_deg": 160,
+      "condition": "Light Rain"
+    }
+  ]
+}
