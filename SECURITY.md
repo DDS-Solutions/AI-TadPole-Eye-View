@@ -1,6 +1,6 @@
 # Security & Threat Model
 
-**Project:** GEV v2 (`AI-TadPole-Eye-View`) · **Status:** Phase 0 Active · **Companion docs:** [PLAN.md](file:///g:/AI-TadPole-Eye-View/PLAN.md), [AGENTS.md](file:///g:/AI-TadPole-Eye-View/AGENTS.md), [RUNBOOK.md](file:///g:/AI-TadPole-Eye-View/RUNBOOK.md)
+**Project:** GEV v2 (`AI-TadPole-Eye-View`) · **Status:** Phase 0 Active · **Companion docs:** [PLAN.md](./PLAN.md), [AGENTS.md](./AGENTS.md), [RUNBOOK.md](./RUNBOOK.md)
 
 GEV v2 is an agent-native geospatial OSINT telemetry console tracking public data on a 3D globe. This document details the threat model, trust boundaries, STRIDE analysis across the system topology, and incident response procedures.
 
@@ -37,7 +37,7 @@ GEV v2 is an agent-native geospatial OSINT telemetry console tracking public dat
 | Threat Category | Potential Attack Vector | System Countermeasure & Mitigation |
 |---|---|---|
 | **Spoofing** | Rogue client impersonating authorized operator or injecting fake telemetry | Short-lived ephemeral tokens (`ek_`) for AI sessions; strict Zod schema validation on all inbound REST/WS payloads. |
-| **Tampering** | Malformed scene deep links or corrupted state injection | [packages/core/src/sceneSerializer.ts](file:///g:/AI-TadPole-Eye-View/packages/core/src/sceneSerializer.ts) enforces Zod `SceneState.parse()` validation; Overpass sanitizer validates query AST. |
+| **Tampering** | Malformed scene deep links or corrupted state injection | [packages/core/src/sceneSerializer.ts](./packages/core/src/sceneSerializer.ts) enforces Zod `SceneState.parse()` validation; Overpass sanitizer validates query AST. |
 | **Repudiation** | Unaccounted mutating actions or rogue AI tool calls | **Rule 1 (Audit-Before-Action):** Every mutating operation logs `audit.intent` to SQLite WAL *before* execution and `audit.outcome` *after* completion. |
 | **Information Disclosure** | Exposure of API keys, credentials, or internal server infrastructure | All upstream credentials (`OPENAI_API_KEY`, `AISSTREAM_API_KEY`, etc.) remain strictly server-side. Pinned-fetch blocks SSRF against internal cloud metadata endpoints. |
 | **Denial of Service** | Unbounded external feed polling or runaway LLM token spend | Per-feed caching with TTL tiers; byte-capped streams with mandatory timeouts; `CapBudgetGovernor` trips **STASIS** lockdown when spend exceeds caps. |
