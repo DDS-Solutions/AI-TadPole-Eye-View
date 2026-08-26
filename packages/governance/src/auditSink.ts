@@ -43,6 +43,7 @@ export interface SqliteAuditRow {
 export class SqliteAuditSink implements AuditSink {
   public readonly clock: SimClock;
   private readonly db: DatabaseSync;
+  private readonly listeners: Set<(entry: AuditEntry) => void> = new Set();
 
   constructor(options: SqliteAuditSinkOptions = {}) {
     this.clock = options.clock ?? new SystemClock();
@@ -85,6 +86,16 @@ export class SqliteAuditSink implements AuditSink {
   }
 
   /**
+   * Subscribes to real-time audit events. Returns an unsubscribe callback.
+   */
+  subscribe(listener: (entry: AuditEntry) => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  /**
    * MUST be called before executing the described action.
    */
   intent(i: AuditIntent): void {
@@ -105,6 +116,14 @@ export class SqliteAuditSink implements AuditSink {
       intent.params !== undefined ? JSON.stringify(intent.params) : null,
       intent.task_ref
     );
+
+    for (const listener of this.listeners) {
+      try {
+        listener(intent);
+      } catch {
+        // Prevent listener failures from blocking audit writes
+      }
+    }
   }
 
   /**
@@ -129,6 +148,14 @@ export class SqliteAuditSink implements AuditSink {
       outcome.error ?? null,
       outcome.duration_ms ?? null
     );
+
+    for (const listener of this.listeners) {
+      try {
+        listener(outcome);
+      } catch {
+        // Prevent listener failures from blocking audit writes
+      }
+    }
   }
 
   /**

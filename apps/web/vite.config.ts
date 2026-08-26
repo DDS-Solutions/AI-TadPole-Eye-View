@@ -3,7 +3,7 @@ import { defineConfig } from 'vite';
 import { cesiumEngine } from 'vite-plugin-cesium-engine';
 
 export default defineConfig({
-  plugins: [svelte(), cesiumEngine()],
+  plugins: [svelte({ configFile: './svelte.config.js' }), cesiumEngine()],
   server: {
     port: 5180,
     strictPort: true,
