@@ -105,7 +105,6 @@ Hard lines, inherited and sharpened from upstream: **no person-tracking, no face
 
 Code: **MIT**. Bundled datasets and 3D models carry their own licenses — non-commercial data ships as optional download packs, never bundled. Details in [docs/LICENSES.md](./docs/LICENSES.md) and [LICENSE](./LICENSE).
 
-
 ## Credits
 
 Built on ideas and ported modules from [`bilawalsidhu/gods-eye-view`](https://github.com/bilawalsidhu/gods-eye-view) (~2k ⭐). Governance runtime: [`AI-TadPole-OS`](https://github.com/DDS-Solutions/AI-TadPole-OS).
