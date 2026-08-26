@@ -274,7 +274,7 @@ Each layer ships with: provider adapter + fixture tests + Playwright smoke passi
 - [x] ops-mcp + gev CLI skeletons; debug bus
 - [x] AGENTS.md, RUNBOOK.md, adr/INDEX.md, ADG gate
 - [x] Scene serializer + deep links
-- [ ] SECURITY.md threat model drafted for new topology
+- [x] SECURITY.md threat model drafted for new topology
 
 ### Phase 1 — Server parity (Weeks 2–3)
 - [ ] Every upstream proxy ported out of vite.config.js into Hono routes
