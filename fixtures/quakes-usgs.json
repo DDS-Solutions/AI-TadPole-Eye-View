@@ -1,0 +1,62 @@
+{
+  "time": 1724580000,
+  "count": 4,
+  "features": [
+    {
+      "id": "us7000m97q",
+      "mag": 6.2,
+      "place": "124 km W of Hihifo, Tonga",
+      "time": 1724578200000,
+      "updated": 1724579400000,
+      "longitude": -174.912,
+      "latitude": -15.981,
+      "depth_km": 35.0,
+      "significance": 580,
+      "alert": "green",
+      "tsunami": 0,
+      "status": "reviewed"
+    },
+    {
+      "id": "us6000p31f",
+      "mag": 5.4,
+      "place": "45 km SSW of Ovalle, Chile",
+      "time": 1724574600000,
+      "updated": 1724576400000,
+      "longitude": -71.423,
+      "latitude": -30.982,
+      "depth_km": 42.1,
+      "significance": 449,
+      "alert": null,
+      "tsunami": 0,
+      "status": "reviewed"
+    },
+    {
+      "id": "nc74019281",
+      "mag": 3.8,
+      "place": "8 km NE of San Juan Bautista, California",
+      "time": 1724572800000,
+      "updated": 1724575200000,
+      "longitude": -121.481,
+      "latitude": 36.892,
+      "depth_km": 6.4,
+      "significance": 222,
+      "alert": null,
+      "tsunami": 0,
+      "status": "reviewed"
+    },
+    {
+      "id": "ak024azr6w",
+      "mag": 4.9,
+      "place": "72 km SSE of Sand Point, Alaska",
+      "time": 1724571000000,
+      "updated": 1724573000000,
+      "longitude": -160.198,
+      "latitude": 54.712,
+      "depth_km": 28.0,
+      "significance": 371,
+      "alert": null,
+      "tsunami": 0,
+      "status": "reviewed"
+    }
+  ]
+}

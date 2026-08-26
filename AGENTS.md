@@ -11,7 +11,7 @@ If this file and PLAN.md disagree, PLAN.md wins — and open an issue saying so.
 1. Read PLAN.md §0 (resume protocol) in full.
 2. `pnpm gev status` — phase, STASIS state, budget remaining, feed health.
 3. `git log --oneline -20` and scan open PRs.
-4. Read `docs/adr/INDEX.md` — any decisions newer than your last session?
+4. Read `docs/adr/INDEX.md` and [DESIGN.md](./docs/DESIGN.md) (if modifying UI/HUD) — any decisions newer than your last session?
 5. Identify the first unchecked box in PLAN.md §10.
 6. **Wait for a 4-Pillar task brief from the developer (§7 below).**
    Never self-direct into new scope.
@@ -102,6 +102,8 @@ conventional-commit prefixes (`feat:`, `fix:`, `test:`, `docs:`, `chore:`).
 7. **Prod writes require human approval.** Your autonomy is scoped to dev/staging.
 8. **Boundaries are law.** Data flows providers → stores → {UI reads, cesium-kit
    subscribes}. Per-frame writes go through the rAF queue, never runes.
+9. **Design tokens are law.** Follow [DESIGN.md](./docs/DESIGN.md) for all colors,
+   glassmorphism tokens, and monospace telemetry formatting.
 
 ## 7. Task briefing — the 4-Pillar Envelope
 
@@ -157,4 +159,4 @@ Leave the repo better-informed than you found it:
 Fixed sleeps in e2e · component-owned Cesium objects · fetch bypassing pinned-fetch ·
 runes updated at frame rate · `Date.now()` in domain code · live API calls in tests/CI ·
 mythological codenames · bundled non-commercial-licensed data · unreviewed pushes to main ·
-docs referencing symbols that don't exist.
+docs referencing symbols that don't exist · arbitrary UI colors outside `docs/DESIGN.md`.

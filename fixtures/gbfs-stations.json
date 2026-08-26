@@ -1,0 +1,42 @@
+{
+  "time": 1724580000,
+  "system_id": "baywheels-sf",
+  "stations": [
+    {
+      "station_id": "sf-market-4th",
+      "name": "Market St at 4th St",
+      "longitude": -122.405,
+      "latitude": 37.786,
+      "capacity": 35,
+      "num_bikes_available": 14,
+      "num_docks_available": 21,
+      "is_installed": true,
+      "is_renting": true,
+      "is_returning": true
+    },
+    {
+      "station_id": "sf-ferry-building",
+      "name": "San Francisco Ferry Building",
+      "longitude": -122.394,
+      "latitude": 37.795,
+      "capacity": 42,
+      "num_bikes_available": 28,
+      "num_docks_available": 14,
+      "is_installed": true,
+      "is_renting": true,
+      "is_returning": true
+    },
+    {
+      "station_id": "sf-caltrain-4th",
+      "name": "San Francisco Caltrain Station 2 (Townsend St at 4th St)",
+      "longitude": -122.397,
+      "latitude": 37.776,
+      "capacity": 38,
+      "num_bikes_available": 6,
+      "num_docks_available": 32,
+      "is_installed": true,
+      "is_renting": true,
+      "is_returning": true
+    }
+  ]
+}

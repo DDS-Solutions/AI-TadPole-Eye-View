@@ -1,26 +1,42 @@
 import crypto from 'node:crypto';
-import {
-  type Actor,
-  type BoundingBox,
-  BoundingBox as BoundingBoxSchema,
-  GevEvents,
-} from '@gev/contracts';
+import { type Actor, GevEvents } from '@gev/contracts';
 import { SystemClock } from '@gev/core';
 import { CapBudgetGovernor, PromptApprovalGate, SqliteAuditSink } from '@gev/governance';
-import { OpenSkyAdapter } from '@gev/providers';
+import {
+  AisAdapter,
+  FirmsAdapter,
+  GbfsAdapter,
+  OpenSkyAdapter,
+  UsgsQuakeAdapter,
+} from '@gev/providers';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { CostGovernor } from './middleware/costGovernor.js';
+import { createFirmsRouter } from './routes/firms.js';
+import { createFlightsRouter } from './routes/flights.js';
+import { createGbfsRouter } from './routes/gbfs.js';
+import { createQuakesRouter } from './routes/quakes.js';
+import { createShipsRouter } from './routes/ships.js';
 
 export function createApp() {
   const app = new Hono();
   const clock = new SystemClock();
+
+  // Adapters
   const openSkyAdapter = new OpenSkyAdapter({ clock });
+  const aisAdapter = new AisAdapter({ clock });
+  const quakeAdapter = new UsgsQuakeAdapter({ clock });
+  const firmsAdapter = new FirmsAdapter({ clock });
+  const gbfsAdapter = new GbfsAdapter({ clock });
+
+  // Governance & Cost Governor
   const auditSink = new SqliteAuditSink({ clock });
   const budgetGovernor = new CapBudgetGovernor({ clock });
   const approvalGate = new PromptApprovalGate({ clock });
+  const costGovernor = new CostGovernor({ clock, budgetGovernor });
 
-  // Middleware
+  // Global Middleware
   app.use('*', cors());
 
   // Health and provider status
@@ -33,38 +49,31 @@ export function createApp() {
       timestamp: clock.now(),
       stasis_active: govState.stasis_active,
       budget_remaining_usd: Math.max(0, govState.cap_usd - govState.spent_usd),
+      providers: {
+        flights: { healthy: true, source: 'opensky' },
+        ships: { healthy: true, source: 'aisstream' },
+        quakes: { healthy: true, source: 'usgs' },
+        firms: { healthy: true, source: 'firms' },
+        gbfs: { healthy: true, source: 'gbfs' },
+      },
     });
   });
 
-  // Flight telemetry feed proxy
-  app.get('/api/flights', async (c) => {
-    let bbox: BoundingBox | undefined;
-    const lamin = c.req.query('lamin');
-    const lamax = c.req.query('lamax');
-    const lomin = c.req.query('lomin');
-    const lomax = c.req.query('lomax');
+  // Telemetry Feed Routes with Cost Governor Middleware
+  app.use('/api/flights/*', costGovernor.middleware('flights'));
+  app.route('/api/flights', createFlightsRouter(openSkyAdapter));
 
-    if (lamin && lamax && lomin && lomax) {
-      const parsed = BoundingBoxSchema.safeParse({
-        min_lat: Number.parseFloat(lamin),
-        max_lat: Number.parseFloat(lamax),
-        min_lon: Number.parseFloat(lomin),
-        max_lon: Number.parseFloat(lomax),
-      });
+  app.use('/api/ships/*', costGovernor.middleware('ships'));
+  app.route('/api/ships', createShipsRouter(aisAdapter));
 
-      if (parsed.success) {
-        bbox = parsed.data;
-      }
-    }
+  app.use('/api/quakes/*', costGovernor.middleware('quakes'));
+  app.route('/api/quakes', createQuakesRouter(quakeAdapter));
 
-    try {
-      const batch = await openSkyAdapter.getFlights(bbox);
-      return c.json(batch);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown provider error';
-      return c.json({ error: message, source: 'opensky' }, 502);
-    }
-  });
+  app.use('/api/firms/*', costGovernor.middleware('firms'));
+  app.route('/api/firms', createFirmsRouter(firmsAdapter));
+
+  app.use('/api/gbfs/*', costGovernor.middleware('gbfs'));
+  app.route('/api/gbfs', createGbfsRouter(gbfsAdapter));
 
   // Governed Mutating Endpoint (Rule 1, Rule 2 & PLAN.md §6):
   // Strict order: intent → budget.check → approval → execute → outcome
@@ -208,15 +217,29 @@ export function createApp() {
     return c.json(budgetGovernor.state());
   });
 
-  return { app, auditSink, budgetGovernor, approvalGate, clock };
+  return {
+    app,
+    auditSink,
+    budgetGovernor,
+    approvalGate,
+    costGovernor,
+    clock,
+    adapters: {
+      openSky: openSkyAdapter,
+      ais: aisAdapter,
+      quake: quakeAdapter,
+      firms: firmsAdapter,
+      gbfs: gbfsAdapter,
+    },
+  };
 }
 
-const { app } = createApp();
-
-const port = 3000;
-console.log(`[GEV v2 Server] Hono server listening on http://localhost:${port}`);
-
-serve({
-  fetch: app.fetch,
-  port,
-});
+if (process.env.NODE_ENV !== 'test') {
+  const { app } = createApp();
+  const port = Number(process.env.PORT) || 3000;
+  console.log(`[GEV v2 Server] Hono server listening on http://localhost:${port}`);
+  serve({
+    fetch: app.fetch,
+    port,
+  });
+}
