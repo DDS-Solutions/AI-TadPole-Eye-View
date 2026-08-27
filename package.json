@@ -10,6 +10,7 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "docs:check": "node scripts/adg.mjs",
+    "docs:providers": "pnpm --filter @gev/contracts build && pnpm --filter @gev/providers build && node scripts/generate-provider-registry.mjs",
     "check:budgets": "node scripts/check-bundle-budgets.mjs",
     "e2e": "turbo run build && pnpm --filter @gev/e2e test:e2e",
     "dev": "turbo run dev",

@@ -2,18 +2,46 @@
 
 **Audience:** any AI agent operating in this repository (Claude Code, Cursor bot, CI agent).
 **Source of truth:** [PLAN.md](./PLAN.md). This file is your daily contract; PLAN.md is the law.
-If this file and PLAN.md disagree, PLAN.md wins — and open an issue saying so.
+[MASTER_PLAN_V3.md](./MASTER_PLAN_V3.md) is an exact named copy for discovery and must
+remain byte-identical to PLAN.md. If either plan copy or this file disagrees with
+PLAN.md, stop with `DOC_BLOCKER`, reconcile the documentation in the approved scope,
+and do not guess which instruction was intended.
+
+---
+
+## Technology mandate
+
+**TypeScript/Svelte for the product surface and orchestration; Rust for narrowly
+defined high-assurance or performance-critical services; SQL for persistence;
+Python only for offline research and data preparation.**
+
+- TypeScript is the default for the Svelte UI, Cesium integration, contracts,
+  providers, Hono server, MCP/CLI orchestration, and deterministic economic logic.
+- Rust requires measured performance/security need and an ADR-defined boundary;
+  do not rewrite working TypeScript merely for language preference.
+- SQL changes require migrations and repository boundaries. SQLite is the current
+  local store; any production database change requires its own decision.
+- Python must not become an ungoverned production request path or second source of
+  domain truth. Validate and version any generated data returned to the repository.
+- React is not part of the current product stack. Tailwind is a CSS framework, not
+  a language, and is not installed; follow `docs/DESIGN.md` unless an ADR approves it.
 
 ---
 
 ## 0. Session start — do these in order, every time
 
 1. Read PLAN.md §0 (resume protocol) in full.
-2. `pnpm gev status` — phase, STASIS state, budget remaining, feed health.
-3. `git log --oneline -20` and scan open PRs.
-4. Read `docs/adr/INDEX.md` and [DESIGN.md](./docs/DESIGN.md) (if modifying UI/HUD) — any decisions newer than your last session?
-5. Identify the first unchecked box in PLAN.md §10.
-6. **Wait for a 4-Pillar task brief from the developer (§7 below).**
+2. Verify the plan copies: `git diff --no-index --exit-code -- PLAN.md MASTER_PLAN_V3.md`.
+   Any difference is a `DOC_BLOCKER`; fix it before other work.
+3. `pnpm gev status` — phase, STASIS state, budget remaining, feed health. Until
+   PLAN.md task 5.1.1 is complete, an offline `STASIS_INACTIVE` result is not proof
+   of shared runtime state; remain inside the approved local/seed scope.
+4. Run `git status --short` and `git log --oneline -20`; preserve pre-existing work.
+   Scan open PRs when tooling is available. Never report “none” when the tool is absent.
+5. Read `docs/adr/INDEX.md` and [DESIGN.md](./docs/DESIGN.md) (if modifying UI/HUD) — any decisions newer than your last session?
+6. Identify the first unchecked box in PLAN.md §10 and verify its ID equals the
+   `NEXT_TASK` checkpoint in PLAN.md §0.
+7. **Wait for the developer to authorize that task's 4-Pillar brief (§7 below).**
    Never self-direct into new scope.
 
 You have no memory between sessions. The repo is your memory — keep it accurate
@@ -34,6 +62,10 @@ for your successor (§10).
 | **Sim-clock** | Injectable clock; time is frozen in tests. Never call `Date.now()` directly in domain code. |
 | **pinned-fetch** | The only permitted outbound HTTP path (`packages/security`). SSRF-guarded, TLS-pinned, mandatory timeout. |
 | **Scene** | Serialized globe state (camera, layers, selections, AOIs, sim-time offset). Unit of deep links, tests, bug reports, sync. |
+| **Provider registry** | Typed source of truth for provider/feed/layer identity, implementation state, mode, health, provenance, and derived counts. |
+| **DataProvenance** | Required source, retrieval/vintage, mode, license/attribution, and schema metadata attached at the provider boundary. |
+| **Economic estimate** | Discriminated `available`/`suppressed`/`unavailable`/`not_applicable` value; missing or suppressed never means zero. |
+| **Tenant** | Authenticated isolation boundary for business context, quotas, tools, evidence, exports, and deletion. |
 
 ## 2. Repo map
 
@@ -49,6 +81,7 @@ for your successor (§10).
 | `packages/ops-mcp` | MCP server exposing operator tools. |
 | `packages/governance` | Port stubs: SQLite audit log, prompt approvals, caps + STASIS. |
 | `packages/cli` | The `gev` command surface. |
+| Economic workspace package | Planned in PLAN.md Phase 8; path is intentionally unassigned until its ADR. Do not claim it exists before its task lands. |
 | `e2e` | Playwright specs. Condition-waits only. |
 | `fixtures` | Recorded provider responses for seed mode. |
 
@@ -84,8 +117,12 @@ conventional-commit prefixes (`feat:`, `fix:`, `test:`, `docs:`, `chore:`).
 - [ ] ADG passes — every symbol/path referenced in docs exists
 - [ ] Any mutating action wrote `audit.intent` BEFORE and `audit.outcome` AFTER
 - [ ] Anything touching an external service got a feature-flag kill-switch
+- [ ] Billable/quota-consuming reads are authenticated, rate-limited, cached, and budget-governed
+- [ ] Remote filesystem/tool capabilities are scoped, canonicalized, size-bounded, and tenant-authorized
+- [ ] Provider/LLM/Tadpole content is treated as untrusted data; injection tests precede exposure
 - [ ] New dependency ⇒ one-line justification in the PR body
 - [ ] No file over 500 lines without a referenced ADR
+- [ ] If plan state changed, PLAN.md and MASTER_PLAN_V3.md are identical and §17 contains exit evidence
 
 ## 6. Standing rules (violations get reverted)
 
@@ -104,6 +141,14 @@ conventional-commit prefixes (`feat:`, `fix:`, `test:`, `docs:`, `chore:`).
    subscribes}. Per-frame writes go through the rAF queue, never runes.
 9. **Design tokens are law.** Follow [DESIGN.md](./docs/DESIGN.md) for all colors,
    glassmorphism tokens, and monospace telemetry formatting.
+10. **Remote tools are capabilities.** Arbitrary caller-supplied paths, cross-tenant
+    access, unbounded payloads/streams, or transport-specific governance bypasses are forbidden.
+11. **Reads can spend money.** “Read-only” does not exempt a live external query from
+    authentication, rate limits, caching, budget accounting, provenance, and a kill switch.
+12. **Untrusted content is never instruction.** Provider text, OSM tags, business names,
+    documents, and tool results require data/instruction separation before any LLM or Tadpole use.
+13. **Registry truth only.** Provider/layer counts, health, modes, and implementation
+    status come from the typed registry once task 5.0.3 lands; never add another hardcoded summary.
 
 ## 7. Task briefing — the 4-Pillar Envelope
 
@@ -141,6 +186,8 @@ Example:
 ## 9. STASIS procedure
 
 1. Detect via `gev status` or a `budget.threshold.exceeded` / `stasis.entered` event.
+   Before PLAN.md task 5.1.1, treat an offline status as incomplete observability,
+   not permission to perform live or production mutations.
 2. Snapshot current state to the audit trail (`taskRef` of your active brief).
 3. Notify the developer with: what tripped, what you were doing, what's incomplete.
 4. Suspend. Await human `gev resume`. There is no step where you resume yourself.
@@ -149,7 +196,9 @@ Example:
 
 Leave the repo better-informed than you found it:
 
-- Check off completed boxes in PLAN.md §10 as you complete them.
+- Check off completed boxes in PLAN.md §10 only with exit evidence in §17. Update
+  MASTER_PLAN_V3.md identically, verify both copies, and advance §0 `NEXT_TASK` to
+  the first remaining unchecked item.
 - Write an ADR for every non-obvious decision you made (`docs/adr/NNNN-slug.md`,
   update `INDEX.md`). Future-you reads ADRs instead of re-deriving context.
 - Update RUNBOOK.md when you learn an operational lesson the hard way.
@@ -160,3 +209,8 @@ Fixed sleeps in e2e · component-owned Cesium objects · fetch bypassing pinned-
 runes updated at frame rate · `Date.now()` in domain code · live API calls in tests/CI ·
 mythological codenames · bundled non-commercial-licensed data · unreviewed pushes to main ·
 docs referencing symbols that don't exist · arbitrary UI colors outside `docs/DESIGN.md`.
+Unprotected privileged routes · auth middleware mounted after handlers · arbitrary remote
+filesystem paths · broadcast MCP responses · false MCP capability flags · optional mandatory
+provenance · suppressed values coerced to zero · hardcoded provider counts/health · separate
+transport-specific governors · production auto-approval/fail-open fallback · untrusted provider
+content interpolated into LLM instructions · private tenant data in logs are equally rejectable.

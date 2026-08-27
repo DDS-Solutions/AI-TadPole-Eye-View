@@ -1,7 +1,13 @@
 import crypto from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
 import type { Duplex } from 'node:stream';
-import { type Actor, GevEvents } from '@gev/contracts';
+import {
+  type Actor,
+  GevEvents,
+  type ProviderRegistry,
+  ProviderRegistrySchema,
+  SystemHealthResponseSchema,
+} from '@gev/contracts';
 import { SystemClock } from '@gev/core';
 import { CapBudgetGovernor, PromptApprovalGate, SqliteAuditSink } from '@gev/governance';
 import {
@@ -14,13 +20,14 @@ import {
   RadioAdapter,
   UsgsQuakeAdapter,
   WeatherAdapter,
+  createConfiguredProviderRegistry,
 } from '@gev/providers';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { WebSocketServer } from 'ws';
 import { CostGovernor } from './middleware/costGovernor.js';
-import { createOpsAuthMiddleware } from './middleware/opsAuth.js';
+import { type OpsAuthOptions, createOpsAuth } from './middleware/opsAuth.js';
 import { createAuditStreamRouter } from './routes/auditStream.js';
 import { createCctvRouter } from './routes/cctv.js';
 import { CollabRoomManager, createCollabRouter } from './routes/collab.js';
@@ -37,11 +44,20 @@ import { createVoiceRouter } from './routes/voice.js';
 import { createWeatherRouter } from './routes/weather.js';
 import { ServerTelemetryManager } from './telemetry/index.js';
 
-export function createApp() {
+export interface CreateAppOptions {
+  opsAuth?: OpsAuthOptions;
+  providerRegistry?: ProviderRegistry;
+}
+
+export function createApp(options: CreateAppOptions = {}) {
   const app = new Hono();
   const clock = new SystemClock();
   const telemetry = new ServerTelemetryManager();
-  const opsAuth = createOpsAuthMiddleware();
+  const auth = createOpsAuth(options.opsAuth);
+  const opsAuth = auth.middleware();
+  const providerRegistry = ProviderRegistrySchema.parse(
+    options.providerRegistry ?? createConfiguredProviderRegistry()
+  );
 
   // Adapters
   const openSkyAdapter = new OpenSkyAdapter({ clock });
@@ -70,31 +86,30 @@ export function createApp() {
     })
   );
 
+  // Register the control-plane guard before every /ops/* route.
+  app.use('/ops/*', opsAuth);
+
   // Health and provider status
   app.get('/api/health', async (c) => {
     const govState = budgetGovernor.state();
     telemetry.trackEvent('system.health_check');
-    return c.json({
-      status: 'ok',
-      version: '1.1.0',
-      seed_mode: true,
-      timestamp: clock.now(),
-      stasis_active: govState.stasis_active,
-      budget_remaining_usd: Math.max(0, govState.cap_usd - govState.spent_usd),
-      collab_rooms: collabRoomManager.listRooms(),
-      providers: {
-        flights: { healthy: true, source: 'opensky' },
-        ships: { healthy: true, source: 'aisstream' },
-        quakes: { healthy: true, source: 'usgs' },
-        firms: { healthy: true, source: 'firms' },
-        gbfs: { healthy: true, source: 'gbfs' },
-        radio: { healthy: true, source: 'broadcastify' },
-        overpass: { healthy: true, source: 'overpass-api' },
-        cctv: { healthy: true, source: 'dot-traffic' },
-        launches: { healthy: true, source: 'trajectories' },
-        weather: { healthy: true, source: 'rainviewer' },
-      },
-    });
+    const hasDegradedImplementedProvider = providerRegistry.providers.some(
+      (provider) => provider.implementation === 'implemented' && provider.health !== 'healthy'
+    );
+    return c.json(
+      SystemHealthResponseSchema.parse({
+        status: hasDegradedImplementedProvider ? 'degraded' : 'ok',
+        version: '1.1.0',
+        seed_mode: providerRegistry.requested_mode === 'seed',
+        timestamp: clock.now(),
+        stasis_active: govState.stasis_active,
+        budget_spent_usd: govState.spent_usd,
+        budget_cap_usd: govState.cap_usd,
+        budget_remaining_usd: Math.max(0, govState.cap_usd - govState.spent_usd),
+        collab_rooms: collabRoomManager.listRooms(),
+        provider_registry: providerRegistry,
+      })
+    );
   });
 
   // Telemetry Metrics Endpoint (PLAN.md §7.1 & §10)
@@ -103,7 +118,7 @@ export function createApp() {
   });
 
   // Diagnostic Feed Health Endpoint
-  app.route('/api/feeds', createFeedHealthRouter({ clock, budgetGovernor }));
+  app.route('/api/feeds', createFeedHealthRouter({ clock, budgetGovernor, providerRegistry }));
 
   // Telemetry Feed Routes with Cost Governor Middleware
   app.use('/api/flights/*', costGovernor.middleware('flights'));
@@ -125,7 +140,10 @@ export function createApp() {
   app.route('/api/radio', createRadioRouter(radioAdapter));
 
   app.use('/api/overpass/*', costGovernor.middleware('overpass'));
-  app.route('/api/overpass', createOverpassRouter({ seedMode: true }));
+  app.route(
+    '/api/overpass',
+    createOverpassRouter({ seedMode: providerRegistry.requested_mode === 'seed' })
+  );
 
   app.use('/api/cctv/*', costGovernor.middleware('cctv'));
   app.route('/api/cctv', createCctvRouter(cctvAdapter));
@@ -137,10 +155,10 @@ export function createApp() {
   app.route('/api/weather', createWeatherRouter({ adapter: weatherAdapter }));
 
   // Voice Ephemeral Token Provisioning
-  app.route('/api/voice', createVoiceRouter({ clock }));
+  app.route('/api/voice', createVoiceRouter({ auth, clock }));
 
   // T2 Collaborative Intent Rooms Route
-  app.route('/api/collab', createCollabRouter(collabRoomManager));
+  app.route('/api/collab', createCollabRouter(collabRoomManager, { auth }));
 
   // M1 Observer Real-Time Audit SSE Stream
   app.route('/ops/audit', createAuditStreamRouter(auditSink));
@@ -334,6 +352,7 @@ export function createApp() {
 
   return {
     app,
+    auth,
     auditSink,
     budgetGovernor,
     approvalGate,
@@ -341,6 +360,7 @@ export function createApp() {
     collabRoomManager,
     telemetry,
     clock,
+    providerRegistry,
     adapters: {
       openSky: openSkyAdapter,
       ais: aisAdapter,

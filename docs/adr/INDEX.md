@@ -22,4 +22,6 @@ This directory records all significant architectural and structural decisions ma
 | [0027](./0027-shared-tool-registry-contracts-and-governed-actuators-architecture.md) | Shared Tool Registry Contracts & Governed Actuators Architecture | Accepted | 2026-08-26 |
 | [0028](./0028-yjs-collaborative-intent-rooms-and-co-user-presence-architecture.md) | Yjs Collaborative Intent Rooms & Co-User Presence Architecture | Accepted | 2026-08-26 |
 | [0029](./0029-phase-4-hygiene-telemetry-licensing-and-m2-showcase.md) | Phase 4 Hygiene, Licensing Download Packs, Telemetry & Tadpole M2 Showcase | Accepted | 2026-08-26 |
+| [0030](./0030-plan-v3-canonical-resume-and-mirror.md) | V3 canonical plan and deterministic resume checkpoint | Accepted | 2026-08-27 |
+| [0039](./0039-language-placement-and-runtime-boundaries.md) | Language placement and runtime boundaries | Accepted | 2026-08-27 |
 

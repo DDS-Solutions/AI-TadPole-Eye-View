@@ -42,6 +42,12 @@ describe('GEV v2 CLI Surface (@gev/cli)', () => {
     expect(parsed.stasis_active).toBe(false);
     expect(parsed.cap_usd).toBe(10);
     expect(parsed.remaining_usd).toBe(10);
+    expect(parsed.registry_counts).toEqual({
+      providers: { total: 12, active: 10 },
+      feeds: { total: 12, active: 10 },
+      layers: { total: 12, active: 9 },
+    });
+    expect(parsed.provider_registry.providers).toHaveLength(12);
   });
 
   it('runFeedsHealth() displays telemetry feed table', async () => {
@@ -56,6 +62,8 @@ describe('GEV v2 CLI Surface (@gev/cli)', () => {
     expect(logs.some((l) => l.includes('Feed Diagnostics'))).toBe(true);
     expect(logs.some((l) => l.includes('OpenSky'))).toBe(true);
     expect(logs.some((l) => l.includes('HEALTHY'))).toBe(true);
+    expect(logs.some((l) => l.includes('CelesTrak'))).toBe(true);
+    expect(logs.some((l) => l.includes('UNAVAILABLE'))).toBe(true);
   });
 
   it('runAuditTail() displays audit log table', async () => {

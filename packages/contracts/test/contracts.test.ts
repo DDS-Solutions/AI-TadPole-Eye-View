@@ -275,11 +275,15 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
       const healthOut = OPERATOR_TOOLS.get_feed_health.outputSchema.parse({
         feeds: [
           {
+            feed: 'flights',
             provider: 'opensky',
+            implementation: 'implemented',
+            mode: 'seed',
             status: 'healthy',
-            error_rate: 0,
-            ttl_tier_s: 30,
-            quota_remaining: 4000,
+            last_success_ts: null,
+            error_rate: null,
+            ttl_tier_s: null,
+            quota_remaining: null,
           },
         ],
       });

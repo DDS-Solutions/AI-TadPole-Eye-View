@@ -11,6 +11,7 @@ import {
   type LoadSceneOutput,
   OPERATOR_TOOLS,
   type OperatorToolName,
+  type ProviderRegistry,
   type RunDiagnosticsInput,
   type RunDiagnosticsOutput,
   type SaveSceneInput,
@@ -22,7 +23,13 @@ import {
 } from '@gev/contracts';
 import { type SimClock, SystemClock, deserializeScene, getDefaultSceneState } from '@gev/core';
 import { CapBudgetGovernor, PromptApprovalGate, SqliteAuditSink } from '@gev/governance';
-import { OpenSkyAdapter, resolveFixturePath } from '@gev/providers';
+import {
+  OpenSkyAdapter,
+  createConfiguredProviderRegistry,
+  listProviderRegistryFeeds,
+  resolveFixturePath,
+  withDisabledProviders,
+} from '@gev/providers';
 
 export interface OperatorContext {
   clock: SimClock;
@@ -30,6 +37,7 @@ export interface OperatorContext {
   budgetGovernor: CapBudgetGovernor;
   approvalGate: ApprovalGate;
   openSkyAdapter: OpenSkyAdapter;
+  providerRegistry: ProviderRegistry;
   flags: Map<string, boolean>;
 }
 
@@ -41,27 +49,34 @@ export function createOperatorContext(customContext?: Partial<OperatorContext>):
     budgetGovernor: customContext?.budgetGovernor ?? new CapBudgetGovernor({ clock }),
     approvalGate: customContext?.approvalGate ?? new PromptApprovalGate({ clock }),
     openSkyAdapter: customContext?.openSkyAdapter ?? new OpenSkyAdapter({ clock }),
+    providerRegistry: customContext?.providerRegistry ?? createConfiguredProviderRegistry(),
     flags: customContext?.flags ?? new Map<string, boolean>([['opensky.enabled', true]]),
   };
 }
 
 export async function handleGetFeedHealth(
   ctx: OperatorContext,
-  _input: GetFeedHealthInput
+  input: GetFeedHealthInput
 ): Promise<GetFeedHealthOutput> {
-  const isEnabled = ctx.flags.get('opensky.enabled') ?? true;
+  const disabledProviderIds = ctx.providerRegistry.providers
+    .filter((provider) => ctx.flags.get(`${provider.id}.enabled`) === false)
+    .map((provider) => provider.id);
+  const registry = withDisabledProviders(ctx.providerRegistry, disabledProviderIds);
   const remainingRate = ctx.openSkyAdapter.getRateLimitRemaining();
-
-  const feeds: FeedHealthItem[] = [
-    {
-      provider: 'opensky',
-      status: isEnabled ? 'healthy' : 'degraded',
-      last_success_ts: ctx.clock.now(),
-      error_rate: isEnabled ? 0 : 1,
-      quota_remaining: remainingRate ?? 4000,
-      ttl_tier_s: 30,
-    },
-  ];
+  const providerFilter = input.provider?.toLowerCase();
+  const feeds: FeedHealthItem[] = listProviderRegistryFeeds(registry)
+    .filter((feed) => !providerFilter || feed.provider === providerFilter)
+    .map((feed) => ({
+      feed: feed.id,
+      provider: feed.provider,
+      implementation: feed.implementation,
+      mode: feed.mode,
+      status: feed.status,
+      last_success_ts: null,
+      error_rate: null,
+      quota_remaining: feed.provider === 'opensky' ? (remainingRate ?? null) : null,
+      ttl_tier_s: null,
+    }));
 
   return { feeds };
 }

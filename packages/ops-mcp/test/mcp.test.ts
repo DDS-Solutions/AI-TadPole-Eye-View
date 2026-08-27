@@ -70,8 +70,13 @@ describe('GEV v2 Operator MCP Server (@gev/ops-mcp)', () => {
     const healthContent = (healthRes?.result as { content: Array<{ text: string }> }).content[0]
       ?.text;
     const parsedHealth = JSON.parse(healthContent || '{}');
+    expect(parsedHealth.feeds).toHaveLength(12);
+    expect(parsedHealth.feeds[0].feed).toBe('flights');
     expect(parsedHealth.feeds[0].provider).toBe('opensky');
     expect(parsedHealth.feeds[0].status).toBe('healthy');
+    expect(
+      parsedHealth.feeds.find((feed: { provider: string }) => feed.provider === 'celestrak')
+    ).toMatchObject({ implementation: 'planned', status: 'unavailable' });
 
     // get_budget
     const budgetRes = await server.handleRequest({

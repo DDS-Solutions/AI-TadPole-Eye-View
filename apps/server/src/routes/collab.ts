@@ -9,6 +9,7 @@ import { CollabIntentDoc } from '@gev/core';
 import { Hono } from 'hono';
 import { SignJWT, jwtVerify } from 'jose';
 import type { WebSocket } from 'ws';
+import type { OpsAuthAdapter } from '../middleware/opsAuth.js';
 
 // Strong ephemeral secret generated on startup if not explicitly provided in environment
 const JWT_SECRET = new TextEncoder().encode(
@@ -272,7 +273,11 @@ export class CollabRoomManager {
   }
 }
 
-export function createCollabRouter(manager: CollabRoomManager) {
+export interface CollabRouterOptions {
+  auth: OpsAuthAdapter;
+}
+
+export function createCollabRouter(manager: CollabRoomManager, options: CollabRouterOptions) {
   const router = new Hono();
 
   // POST /api/collab/join
@@ -292,12 +297,8 @@ export function createCollabRouter(manager: CollabRoomManager) {
     // RBAC: Check authorization for privileged roles (operator, ai_copilot)
     let assignedRole: 'viewer' | 'operator' | 'ai_copilot' = req.role;
     if (req.role === 'operator' || req.role === 'ai_copilot') {
-      const opsToken = process.env.GEV_OPS_TOKEN;
-      const authHeader = c.req.header('Authorization');
-      const isAuthenticated =
-        !opsToken || (authHeader?.startsWith('Bearer ') && authHeader.slice(7).trim() === opsToken);
-
-      if (!isAuthenticated) {
+      const authDecision = options.auth.authorize(c.req.header('Authorization'));
+      if (authDecision.kind !== 'authenticated') {
         // Unauthenticated join downgraded to viewer
         assignedRole = 'viewer';
       }
