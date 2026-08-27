@@ -289,6 +289,9 @@ export function createApp(options: CreateAppOptions = {}) {
     }
   });
 
+  // Apply Ops Authentication Guard to all /ops/* endpoints
+  app.use('/ops/*', opsAuth);
+
   // Ops Audit Log Query
   app.get('/ops/audit', async (c) => {
     const taskRef = c.req.query('task_ref');

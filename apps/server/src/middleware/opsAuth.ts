@@ -148,3 +148,10 @@ export function createOpsAuth(options: OpsAuthOptions = {}): OpsAuthAdapter {
     },
   });
 }
+
+/**
+ * Convenience wrapper for backwards compatibility with earlier middleware declarations.
+ */
+export function createOpsAuthMiddleware(options: OpsAuthOptions = {}): MiddlewareHandler {
+  return createOpsAuth(options).middleware();
+}
