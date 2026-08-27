@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.2.0](https://github.com/DDS-Solutions/AI-TadPole-Eye-View/compare/v1.1.0...v1.2.0) (2026-08-27)
+
+
+### Features
+
+* complete Phase 4 hygiene, licensing download packs, telemetry, and M2 showcase ([#20](https://github.com/DDS-Solutions/AI-TadPole-Eye-View/issues/20)) ([d1bf733](https://github.com/DDS-Solutions/AI-TadPole-Eye-View/commit/d1bf7339156163e0848ea15fb4782ceff165f22f))
+* **perf,web,cesium-kit:** implement frame-budget monitor, bundle check, virtualized table, and uPlot charts with ADR 0025 ([#16](https://github.com/DDS-Solutions/AI-TadPole-Eye-View/issues/16)) ([e18e298](https://github.com/DDS-Solutions/AI-TadPole-Eye-View/commit/e18e29872dcd2786b1a4a2fc3f0373a69b060123))
+* **phase-3:** Voice Agent, Governed Tool Registry, and Yjs Live Co-Op Rooms ([#19](https://github.com/DDS-Solutions/AI-TadPole-Eye-View/issues/19)) ([f4150ec](https://github.com/DDS-Solutions/AI-TadPole-Eye-View/commit/f4150ec419ff911b636f9ebcc4ae7bdb715bf517))
+* **providers,governance,server:** implement typed provider registry, ops auth & RBAC consistency, and ADR 0030/0039 (Phase 5.0) ([#23](https://github.com/DDS-Solutions/AI-TadPole-Eye-View/issues/23)) ([27fd585](https://github.com/DDS-Solutions/AI-TadPole-Eye-View/commit/27fd585f36d21ee95d9f4e1d0ab092bd49d865f2))
+
+
+### Bug Fixes
+
+* **governance,cesium-kit,server:** remediate code review findings across security, persistence, and layer controllers ([#18](https://github.com/DDS-Solutions/AI-TadPole-Eye-View/issues/18)) ([e7b4425](https://github.com/DDS-Solutions/AI-TadPole-Eye-View/commit/e7b44259464cd48ee13d4dde846b0708174c8ba0))
+* **security,governance,server:** remediate Deep Source Audit findings across auth, RBAC, tool execution, and documentation ([#22](https://github.com/DDS-Solutions/AI-TadPole-Eye-View/issues/22)) ([fed5df9](https://github.com/DDS-Solutions/AI-TadPole-Eye-View/commit/fed5df9a0e7125917360a58b27cca61c5991d0bb))
+
 ## [1.1.0](https://github.com/DDS-Solutions/AI-TadPole-Eye-View/compare/v1.0.0...v1.1.0) (2026-08-26)
 
 
