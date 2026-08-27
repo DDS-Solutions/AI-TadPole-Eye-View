@@ -1,29 +1,44 @@
-import { SystemClock } from '@gev/core';
-import { OpenSkyAdapter } from '@gev/providers';
+import type { ProviderRegistry, ProviderRegistryFeedView } from '@gev/contracts';
+import { createConfiguredProviderRegistry, listProviderRegistryFeeds } from '@gev/providers';
 import pc from 'picocolors';
 
-export async function runFeedsHealth(): Promise<void> {
-  const clock = new SystemClock();
-  const adapter = new OpenSkyAdapter({ clock });
+export interface FeedsHealthOptions {
+  providerRegistry?: ProviderRegistry;
+}
 
-  const isLive = process.env.GEV_LIVE_MODE === '1' && process.env.GEV_SEED_MODE !== '1';
-  const remainingRate = adapter.getRateLimitRemaining();
+function colorStatus(feed: ProviderRegistryFeedView): string {
+  const label = feed.status.toUpperCase().padEnd(12);
+  if (feed.status === 'healthy') {
+    return pc.green(label);
+  }
+  if (feed.status === 'degraded') {
+    return pc.yellow(label);
+  }
+  return pc.dim(label);
+}
+
+export async function runFeedsHealth(options: FeedsHealthOptions = {}): Promise<void> {
+  const providerRegistry = options.providerRegistry ?? createConfiguredProviderRegistry();
+  const feeds = listProviderRegistryFeeds(providerRegistry);
 
   console.log(pc.bold(pc.cyan('\n📡 GEV v2 Feed Diagnostics (PLAN.md §7.2)')));
-  console.log(pc.dim('─────────────────────────────────────────────────────────────'));
   console.log(
-    `${pc.bold('Provider'.padEnd(12))} ${pc.bold('Status'.padEnd(10))} ${pc.bold('Mode'.padEnd(12))} ${pc.bold('Quota Rem.'.padEnd(14))} ${pc.bold('TTL Tier')}`
+    pc.dim('────────────────────────────────────────────────────────────────────────────')
   );
-  console.log(pc.dim('─────────────────────────────────────────────────────────────'));
-
-  const provider = 'OpenSky';
-  const status = pc.green('HEALTHY');
-  const mode = isLive ? pc.yellow('LIVE') : pc.cyan('SEED');
-  const quota = (remainingRate !== undefined ? remainingRate.toString() : '4,000 req/day').padEnd(
-    14
+  console.log(
+    `${pc.bold('Provider'.padEnd(24))} ${pc.bold('Feed'.padEnd(14))} ${pc.bold('Status'.padEnd(12))} ${pc.bold('Mode'.padEnd(14))} ${pc.bold('Implementation')}`
   );
-  const ttl = '30s';
+  console.log(
+    pc.dim('────────────────────────────────────────────────────────────────────────────')
+  );
 
-  console.log(`${provider.padEnd(12)} ${status.padEnd(10)} ${mode.padEnd(12)} ${quota} ${ttl}`);
-  console.log(pc.dim('─────────────────────────────────────────────────────────────\n'));
+  for (const feed of feeds) {
+    const mode = feed.mode.toUpperCase().padEnd(14);
+    console.log(
+      `${feed.provider_name.slice(0, 23).padEnd(24)} ${feed.id.padEnd(14)} ${colorStatus(feed)} ${mode} ${feed.implementation}`
+    );
+  }
+  console.log(
+    pc.dim('────────────────────────────────────────────────────────────────────────────\n')
+  );
 }

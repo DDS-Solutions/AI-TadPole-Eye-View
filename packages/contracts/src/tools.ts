@@ -1,5 +1,11 @@
 import { z } from 'zod';
 import { AuditEntrySchema } from './ports.js';
+import {
+  ProviderHealthSchema,
+  ProviderImplementationStateSchema,
+  ProviderRegistryIdSchema,
+  ProviderRuntimeModeSchema,
+} from './providerRegistry.js';
 
 export const ToolMetadataSchema = z.object({
   name: z.string(),
@@ -17,12 +23,15 @@ export const GetFeedHealthInputSchema = z.object({
 export type GetFeedHealthInput = z.infer<typeof GetFeedHealthInputSchema>;
 
 export const FeedHealthItemSchema = z.object({
-  provider: z.string(),
-  status: z.enum(['healthy', 'degraded', 'unreachable']),
-  last_success_ts: z.number().finite().optional(),
-  error_rate: z.number().finite().min(0).max(1),
-  quota_remaining: z.number().finite().optional(),
-  ttl_tier_s: z.number().finite(),
+  feed: ProviderRegistryIdSchema,
+  provider: ProviderRegistryIdSchema,
+  implementation: ProviderImplementationStateSchema,
+  mode: ProviderRuntimeModeSchema,
+  status: ProviderHealthSchema,
+  last_success_ts: z.number().finite().nonnegative().nullable(),
+  error_rate: z.number().finite().min(0).max(1).nullable(),
+  quota_remaining: z.number().finite().nonnegative().nullable(),
+  ttl_tier_s: z.number().finite().nonnegative().nullable(),
 });
 export type FeedHealthItem = z.infer<typeof FeedHealthItemSchema>;
 

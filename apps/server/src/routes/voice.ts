@@ -4,39 +4,25 @@ import type { SimClock } from '@gev/core';
 import { SystemClock } from '@gev/core';
 import { pinnedFetch } from '@gev/security';
 import { Hono } from 'hono';
+import type { OpsAuthAdapter } from '../middleware/opsAuth.js';
 
 export interface VoiceRouterOptions {
+  auth: OpsAuthAdapter;
   clock?: SimClock;
   apiKey?: string;
-  requireAuth?: boolean;
 }
 
 /**
  * OpenAI Realtime Ephemeral Token Route (PLAN.md §10 Phase 1 Item 6)
  * Issues client-side ephemeral `ek_...` session tokens with auth-default guard.
  */
-export function createVoiceRouter(options: VoiceRouterOptions = {}) {
+export function createVoiceRouter(options: VoiceRouterOptions) {
   const router = new Hono();
   const clock = options.clock ?? new SystemClock();
   const apiKey = options.apiKey ?? process.env.OPENAI_API_KEY;
-  const requireAuth = options.requireAuth ?? process.env.GEV_REQUIRE_AUTH !== '0';
+  router.use('*', options.auth.middleware());
 
   router.post('/session', async (c) => {
-    // Auth-default check: verify bearer authorization if enabled
-    if (requireAuth) {
-      const opsToken = process.env.GEV_OPS_TOKEN;
-      if (!opsToken) {
-        return c.json({ error: 'Voice sessions disabled: GEV_OPS_TOKEN not configured' }, 503);
-      }
-      const authHeader = c.req.header('Authorization');
-      if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.slice(7) !== opsToken) {
-        return c.json(
-          { error: 'Unauthorized: Valid Bearer token required for voice session provisioning' },
-          401
-        );
-      }
-    }
-
     let body: unknown = {};
     try {
       body = await c.req.json();

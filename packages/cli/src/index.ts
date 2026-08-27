@@ -37,7 +37,7 @@ program
 const feeds = program.command('feeds').description('Provider telemetry feed operations');
 feeds
   .command('health')
-  .description('Check health and quota status for all telemetry providers')
+  .description('Check registry-derived health, mode, and implementation status for all feeds')
   .action(async () => {
     await runFeedsHealth();
   });

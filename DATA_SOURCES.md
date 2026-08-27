@@ -1,6 +1,6 @@
 # DATA_SOURCES.md — GEV v2 Data Provenance & Attribution
 
-This document summarizes the provenance, data licensing, attribution, and rate-limiting policies across all 13 geospatial layers in God's Eye View v2 (GEV).
+This document summarizes the provenance, data licensing, attribution, and rate-limiting policies for provider-registry entries in God's Eye View v2 (GEV).
 
 ---
 
@@ -14,20 +14,14 @@ This document summarizes the provenance, data licensing, attribution, and rate-l
 
 ## 2. Layer Provenance Index
 
-| # | Layer | Primary Source | License / Terms | Documentation |
-|---|---|---|---|---|
-| 1 | **Flights** | [OpenSky Network](https://opensky-network.org/) · [adsb.lol](https://adsb.lol/) | Open Data / ToS | [docs/data-sources/flights.md](./docs/data-sources/flights.md) |
-| 2 | **Ships** | [AISStream](https://aisstream.io/) | Developer API Terms | [docs/data-sources/ships.md](./docs/data-sources/ships.md) |
-| 3 | **Satellites** | [CelesTrak](https://celestrak.org/) · [Space-Track](https://www.space-track.org/) | Public Ephemeris | [docs/data-sources/satellites.md](./docs/data-sources/satellites.md) |
-| 4 | **Earthquakes** | [USGS](https://earthquake.usgs.gov/) · [EMSC](https://www.emsc-csem.org/) | Public Domain / CC BY 4.0 | [docs/data-sources/quakes.md](./docs/data-sources/quakes.md) |
-| 5 | **Wildfires** | [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/) | Public Domain | [docs/data-sources/fires.md](./docs/data-sources/fires.md) |
-| 6 | **CCTV** | State & Municipal DOTs | Public Traffic Feeds | [docs/data-sources/cctv.md](./docs/data-sources/cctv.md) |
-| 7 | **Radio** | [Radio Browser](https://www.radio-browser.info/) | Community Open API | [docs/data-sources/radio.md](./docs/data-sources/radio.md) |
-| 8 | **Launches** | Flight Club / Public Telemetry | Reconstructed Models | [docs/data-sources/launches.md](./docs/data-sources/launches.md) |
-| 9 | **Weather** | [RainViewer](https://www.rainviewer.com/) · [NOAA](https://www.weather.gov/) | Free API / Public Domain | [docs/data-sources/weather.md](./docs/data-sources/weather.md) |
-| 10 | **GBFS** | Regional GBFS Municipal Feeds | Open Data | [docs/data-sources/gbfs.md](./docs/data-sources/gbfs.md) |
-| 11 | **Overpass** | [OpenStreetMap](https://www.openstreetmap.org/) | ODbL 1.0 | [docs/data-sources/overpass.md](./docs/data-sources/overpass.md) |
-| 12 | **Cables** | [TeleGeography](https://www.submarinecablemap.com/) | CC BY-NC-SA 4.0 (Download Pack) | [docs/data-sources/cables.md](./docs/data-sources/cables.md) |
+Provider, feed, and layer identities, implementation states, modes, health, source links,
+and derived counts are generated from the executable typed registry:
+
+- [Generated Provider Registry](./docs/generated/provider-registry.md)
+
+Run `pnpm docs:providers` after changing `packages/providers/src/registry.ts`. The
+generated table deliberately includes planned and incomplete entries but does not count
+them as active.
 
 ---
 

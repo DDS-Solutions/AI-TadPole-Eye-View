@@ -1,5 +1,11 @@
+import { type ProviderRegistry, SystemHealthResponseSchema } from '@gev/contracts';
 import { SystemClock } from '@gev/core';
 import { CapBudgetGovernor, SqliteAuditSink } from '@gev/governance';
+import {
+  createConfiguredProviderRegistry,
+  listProviderRegistryFeeds,
+  summarizeProviderRegistry,
+} from '@gev/providers';
 import pc from 'picocolors';
 
 export interface StatusOptions {
@@ -16,23 +22,25 @@ export async function runStatus(options: StatusOptions = {}): Promise<void> {
   let spentUsd = 0;
   let capUsd = 10.0;
   let lastTripReason: string | undefined;
+  let providerRegistry: ProviderRegistry = createConfiguredProviderRegistry();
 
   // Try querying live server health
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 800);
     const res = await fetch(`${serverUrl}/api/health`, { signal: controller.signal });
-    clearTimeout(timeout);
 
     if (res.ok) {
-      const data = (await res.json()) as {
-        status: string;
-        stasis_active: boolean;
-        budget_remaining_usd: number;
-      };
-      isOnline = true;
-      stasisActive = data.stasis_active;
+      const parsed = SystemHealthResponseSchema.safeParse(await res.json());
+      if (parsed.success) {
+        isOnline = true;
+        stasisActive = parsed.data.stasis_active;
+        spentUsd = parsed.data.budget_spent_usd;
+        capUsd = parsed.data.budget_cap_usd;
+        providerRegistry = parsed.data.provider_registry;
+      }
     }
+    clearTimeout(timeout);
   } catch {
     // Offline fallback — inspect local governor & WAL directly
     isOnline = false;
@@ -51,13 +59,20 @@ export async function runStatus(options: StatusOptions = {}): Promise<void> {
   }
 
   const remainingUsd = Math.max(0, capUsd - spentUsd);
+  const registryCounts = summarizeProviderRegistry(providerRegistry);
+  const registryFeeds = listProviderRegistryFeeds(providerRegistry);
+  const feedHealthCounts = {
+    healthy: registryFeeds.filter((feed) => feed.status === 'healthy').length,
+    degraded: registryFeeds.filter((feed) => feed.status === 'degraded').length,
+    unavailable: registryFeeds.filter((feed) => feed.status === 'unavailable').length,
+  };
   const stasisLabel = stasisActive
     ? pc.bgRed(pc.white(pc.bold(' STASIS ACTIVE '))) +
       (lastTripReason ? pc.red(` (${lastTripReason})`) : '')
     : pc.green(pc.bold('STASIS_INACTIVE'));
 
   const modeLabel =
-    process.env.GEV_LIVE_MODE === '1' && process.env.GEV_SEED_MODE !== '1'
+    providerRegistry.requested_mode === 'live'
       ? pc.yellow('LIVE MODE')
       : pc.cyan('SEED MODE (deterministic fixtures)');
 
@@ -71,7 +86,9 @@ export async function runStatus(options: StatusOptions = {}): Promise<void> {
           spent_usd: spentUsd,
           cap_usd: capUsd,
           remaining_usd: remainingUsd,
-          mode: process.env.GEV_LIVE_MODE === '1' ? 'live' : 'seed',
+          mode: providerRegistry.requested_mode,
+          provider_registry: providerRegistry,
+          registry_counts: registryCounts,
         },
         null,
         2
@@ -92,7 +109,10 @@ export async function runStatus(options: StatusOptions = {}): Promise<void> {
   );
   console.log(` ${pc.bold('Provider Mode:')}      ${modeLabel}`);
   console.log(
-    ` ${pc.bold('Feeds Status:')}       OpenSky: ${pc.green('HEALTHY')} (10,000 aircraft replay cached)`
+    ` ${pc.bold('Registry:')}           ${registryCounts.providers.active}/${registryCounts.providers.total} providers · ${registryCounts.feeds.active}/${registryCounts.feeds.total} feeds · ${registryCounts.layers.active}/${registryCounts.layers.total} layers active`
+  );
+  console.log(
+    ` ${pc.bold('Feeds Status:')}       ${pc.green(`${feedHealthCounts.healthy} healthy`)} · ${pc.yellow(`${feedHealthCounts.degraded} degraded`)} · ${pc.dim(`${feedHealthCounts.unavailable} unavailable`)}`
   );
   console.log(pc.dim('───────────────────────────────────────────────\n'));
 }
