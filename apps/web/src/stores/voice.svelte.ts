@@ -72,14 +72,27 @@ class VoiceStore {
   }
 
   async connect(provider: 'mock' | 'openai-realtime' = 'mock'): Promise<void> {
+    if (this.adapter) {
+      await this.adapter.disconnect().catch(() => {});
+      this.adapter = null;
+    }
+
     this.state.provider = provider;
     this.actor.send({ type: 'CONNECT', provider });
 
     try {
       if (provider === 'openai-realtime') {
+        const opsToken =
+          typeof window !== 'undefined'
+            ? localStorage.getItem('gev_ops_token') || sessionStorage.getItem('gev_ops_token')
+            : null;
+
         const res = await fetch('/api/voice/session', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(opsToken ? { Authorization: `Bearer ${opsToken}` } : {}),
+          },
           body: JSON.stringify({ model: 'gpt-4o-realtime-preview' }),
         });
 
@@ -165,6 +178,18 @@ class VoiceStore {
           actor: 'ai',
           task_ref: 'voice-session',
         });
+
+        if (!execRes.success) {
+          const errMsg = execRes.error || 'Tool execution failed';
+          this.actor.send({
+            type: 'ERROR',
+            message: errMsg,
+          });
+          if (this.adapter) {
+            await this.adapter.submitToolResult(call.callId, { error: errMsg });
+          }
+          return;
+        }
 
         this.actor.send({
           type: 'TOOL_RESOLVED',

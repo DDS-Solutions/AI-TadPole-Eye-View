@@ -168,6 +168,8 @@ export type BudgetState = z.infer<typeof BudgetState>;
 export interface BudgetGovernor {
   /** Call before any spend-bearing action. */
   check(a: { action: string; estimate: CostEstimate }): Verdict;
+  /** Records settled dollar spend against cap. */
+  recordSpend?(amountUsd: number): void;
   /** Trips STASIS. Only humans may resume (RUNBOOK.md §STASIS). */
   trip(reason: TripCode, message: string): void;
   state(): BudgetState;

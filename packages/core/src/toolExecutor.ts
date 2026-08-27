@@ -184,11 +184,20 @@ export class GovernedToolExecutor {
 
     // 4. Check ApprovalGate if dangerous
     if (toolDef.is_dangerous && this.approvalGate) {
+      const scopes: (
+        | 'flags.write'
+        | 'repo.write'
+        | 'deploy.preview'
+        | 'deploy.prod'
+        | 'spend.external'
+        | 'data.export'
+      )[] = ['flags.write'];
+
       const approval = await this.approvalGate.request({
         id: generateUuid(),
         ts: new Date().toISOString(),
         intent_id: intentId,
-        scopes: ['flags.write'],
+        scopes,
         rationale: `Execution of dangerous tool '${name}' requires approval`,
         expires_at: new Date(Date.now() + 60000).toISOString(),
       });
@@ -207,17 +216,16 @@ export class GovernedToolExecutor {
       }
     }
 
-    // 5. Execute Handler
+    // 5. Execute Handler (Fail closed if no handler registered)
     const handler = this.handlers.get(name);
     if (!handler) {
-      // Return synthetic success for unmounted client-side actuators in test/seed mode
-      const syntheticResult = { executed: true, tool: name, input: parsedInput };
-      this.logOutcome(intentId, 'ok', start, syntheticResult, undefined, taskRef, actor, name);
+      const err = `No handler registered for tool '${name}'`;
+      this.logOutcome(intentId, 'error', start, undefined, err, taskRef, actor, name);
       return {
-        success: true,
+        success: false,
         tool: name,
         intent_id: intentId,
-        result: syntheticResult as T,
+        error: err,
         duration_ms: performance.now() - start,
       };
     }
@@ -225,7 +233,24 @@ export class GovernedToolExecutor {
     try {
       const output = await handler(parsedInput, context);
       const validatedOutput = toolDef.outputSchema.safeParse(output);
-      const finalResult = validatedOutput.success ? validatedOutput.data : output;
+      if (!validatedOutput.success) {
+        const err = `Output validation error for tool '${name}': ${validatedOutput.error.message}`;
+        this.logOutcome(intentId, 'error', start, undefined, err, taskRef, actor, name);
+        return {
+          success: false,
+          tool: name,
+          intent_id: intentId,
+          error: err,
+          duration_ms: performance.now() - start,
+        };
+      }
+
+      const finalResult = validatedOutput.data;
+
+      // Settle spend with BudgetGovernor on successful execution
+      if (this.budgetGovernor && typeof this.budgetGovernor.recordSpend === 'function') {
+        this.budgetGovernor.recordSpend(0.0005);
+      }
 
       this.logOutcome(intentId, 'ok', start, finalResult, undefined, taskRef, actor, name);
       return {

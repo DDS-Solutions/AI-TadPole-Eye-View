@@ -20,6 +20,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { WebSocketServer } from 'ws';
 import { CostGovernor } from './middleware/costGovernor.js';
+import { createOpsAuthMiddleware } from './middleware/opsAuth.js';
 import { createAuditStreamRouter } from './routes/auditStream.js';
 import { createCctvRouter } from './routes/cctv.js';
 import { CollabRoomManager, createCollabRouter } from './routes/collab.js';
@@ -40,6 +41,7 @@ export function createApp() {
   const app = new Hono();
   const clock = new SystemClock();
   const telemetry = new ServerTelemetryManager();
+  const opsAuth = createOpsAuthMiddleware();
 
   // Adapters
   const openSkyAdapter = new OpenSkyAdapter({ clock });
@@ -74,7 +76,7 @@ export function createApp() {
     telemetry.trackEvent('system.health_check');
     return c.json({
       status: 'ok',
-      version: '0.1.0',
+      version: '1.1.0',
       seed_mode: true,
       timestamp: clock.now(),
       stasis_active: govState.stasis_active,
@@ -269,6 +271,9 @@ export function createApp() {
     }
   });
 
+  // Apply Ops Authentication Guard to all /ops/* endpoints
+  app.use('/ops/*', opsAuth);
+
   // Ops Audit Log Query
   app.get('/ops/audit', async (c) => {
     const taskRef = c.req.query('task_ref');
@@ -289,14 +294,6 @@ export function createApp() {
 
   // Ops STASIS Resume (Rule 1: intent → action → outcome; human-only)
   app.post('/ops/resume', async (c) => {
-    const opsToken = process.env.GEV_OPS_TOKEN;
-    if (opsToken) {
-      const authHeader = c.req.header('Authorization');
-      if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.slice(7) !== opsToken) {
-        return c.json({ error: 'Unauthorized' }, 401);
-      }
-    }
-
     const body = (await c.req.json().catch(() => ({}))) as { reason?: string };
     const reason = body.reason ?? 'Human operator manual override via ops API';
     const state = budgetGovernor.state();
@@ -363,6 +360,20 @@ export function attachWebSocketCollabServer(
   const wss = new WebSocketServer({ noServer: true });
 
   server.on('upgrade', async (req: IncomingMessage, socket: Duplex, head: Buffer) => {
+    // Validate Origin header
+    const origin = req.headers.origin;
+    const allowedOrigin = process.env.GEV_CORS_ORIGIN || 'http://localhost:5173';
+    if (
+      origin &&
+      origin !== allowedOrigin &&
+      !origin.startsWith('http://127.0.0.1') &&
+      !origin.startsWith('http://localhost')
+    ) {
+      socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+
     const url = new URL(req.url || '/', 'http://127.0.0.1');
     if (url.pathname.startsWith('/api/collab/room/')) {
       const token = url.searchParams.get('token');

@@ -1,13 +1,24 @@
 import crypto from 'node:crypto';
-import { RoomJoinRequestSchema, RoomRoleSchema, type UserPresence } from '@gev/contracts';
+import {
+  RoomJoinRequestSchema,
+  RoomRoleSchema,
+  type UserPresence,
+  UserPresenceSchema,
+} from '@gev/contracts';
 import { CollabIntentDoc } from '@gev/core';
 import { Hono } from 'hono';
 import { SignJWT, jwtVerify } from 'jose';
 import type { WebSocket } from 'ws';
 
+// Strong ephemeral secret generated on startup if not explicitly provided in environment
 const JWT_SECRET = new TextEncoder().encode(
-  process.env.GEV_ROOM_JWT_SECRET || 'gev_default_secret_key_32_bytes_min_length_ok'
+  process.env.GEV_ROOM_JWT_SECRET || crypto.randomBytes(32).toString('hex')
 );
+
+const MAX_ACTIVE_ROOMS = 50;
+const MAX_PEERS_PER_ROOM = 20;
+const MAX_FRAME_BYTES = 65536; // 64 KB per frame limit
+const ROOM_IDLE_TTL_MS = 60 * 60 * 1000; // 1 hour idle TTL
 
 export interface RoomPeer {
   clientId: string;
@@ -29,9 +40,47 @@ export interface ActiveRoom {
 export class CollabRoomManager {
   private rooms = new Map<string, ActiveRoom>();
 
+  constructor() {
+    // Periodic eviction of idle rooms every 10 minutes
+    if (typeof setInterval !== 'undefined') {
+      const interval = setInterval(() => this.cleanupIdleRooms(), 10 * 60 * 1000);
+      if (interval && typeof interval.unref === 'function') {
+        interval.unref();
+      }
+    }
+  }
+
+  cleanupIdleRooms(): void {
+    const now = Date.now();
+    for (const [roomId, room] of this.rooms.entries()) {
+      if (room.peers.size === 0 && now - room.lastActivityAt > ROOM_IDLE_TTL_MS) {
+        this.rooms.delete(roomId);
+      }
+    }
+  }
+
   getOrCreateRoom(roomId: string): ActiveRoom {
+    this.cleanupIdleRooms();
+
     let room = this.rooms.get(roomId);
     if (!room) {
+      if (this.rooms.size >= MAX_ACTIVE_ROOMS) {
+        // Evict oldest empty room if capacity reached
+        let oldestKey: string | null = null;
+        let oldestTime = Number.POSITIVE_INFINITY;
+        for (const [id, r] of this.rooms.entries()) {
+          if (r.peers.size === 0 && r.lastActivityAt < oldestTime) {
+            oldestTime = r.lastActivityAt;
+            oldestKey = id;
+          }
+        }
+        if (oldestKey) {
+          this.rooms.delete(oldestKey);
+        } else {
+          throw new Error('Collab server room capacity exceeded');
+        }
+      }
+
       room = {
         roomId,
         doc: new CollabIntentDoc(roomId),
@@ -90,7 +139,7 @@ export class CollabRoomManager {
         sub: payload.sub as string,
         callsign: (payload.callsign as string) || 'Operator',
         roomId: (payload.roomId as string) || 'main',
-        role: roleParsed.success ? roleParsed.data : 'operator',
+        role: roleParsed.success ? roleParsed.data : 'viewer',
       };
     } catch {
       return null;
@@ -107,8 +156,12 @@ export class CollabRoomManager {
     }
   ) {
     const room = this.getOrCreateRoom(tokenPayload.roomId);
-    const clientId = tokenPayload.sub;
+    if (room.peers.size >= MAX_PEERS_PER_ROOM) {
+      ws.close(1008, 'Room peer capacity exceeded');
+      return;
+    }
 
+    const clientId = tokenPayload.sub;
     const peerColors = ['#00f0ff', '#ff0055', '#39ff14', '#ffe600', '#bf00ff', '#ff8800'];
     const assignedColor = peerColors[room.peers.size % peerColors.length] ?? '#00f0ff';
 
@@ -138,12 +191,31 @@ export class CollabRoomManager {
     // 2. Broadcast presence sync to all peers
     this.broadcastPresence(room);
 
-    // 3. Handle incoming frames
+    // 3. Handle incoming frames with strict RBAC and schema guards
     ws.on('message', (data: unknown, isBinary: boolean) => {
       room.lastActivityAt = Date.now();
 
+      // Enforce frame size limit
+      const byteLen =
+        typeof data === 'string'
+          ? Buffer.byteLength(data)
+          : data instanceof Uint8Array || Buffer.isBuffer(data)
+            ? data.length
+            : 0;
+
+      if (byteLen > MAX_FRAME_BYTES) {
+        ws.close(1009, 'Frame size exceeds maximum threshold (64KB)');
+        return;
+      }
+
       if (isBinary) {
-        // Binary Yjs update
+        // RBAC: Reject binary CRDT mutations from viewers
+        if (peer.role === 'viewer') {
+          // Drop unauthorized mutation from viewer
+          return;
+        }
+
+        // Binary Yjs update from authorized operator or copilot
         const bytes = data instanceof Uint8Array ? data : new Uint8Array(data as ArrayBuffer);
         room.doc.applyUpdate(bytes);
 
@@ -159,13 +231,16 @@ export class CollabRoomManager {
           const str = typeof data === 'string' ? data : (data as Buffer).toString('utf-8');
           const parsed = JSON.parse(str);
           if (parsed.type === 'presence' && parsed.presence) {
-            peer.presence = {
-              ...peer.presence,
-              ...parsed.presence,
-              clientId,
-              lastSeenTs: Date.now(),
-            };
-            this.broadcastPresence(room);
+            const validatedPresence = UserPresenceSchema.safeParse(parsed.presence);
+            if (validatedPresence.success) {
+              peer.presence = {
+                ...validatedPresence.data,
+                clientId, // Prevent spoofing clientId
+                role: peer.role, // Prevent spoofing role
+                lastSeenTs: Date.now(),
+              };
+              this.broadcastPresence(room);
+            }
           }
         } catch {
           // Ignore invalid frames
@@ -212,10 +287,28 @@ export function createCollabRouter(manager: CollabRoomManager) {
     const parsed = RoomJoinRequestSchema.safeParse(body);
     const req = parsed.success
       ? parsed.data
-      : { roomId: 'main-ops-room', callsign: 'Operator-1', role: 'operator' as const };
+      : { roomId: 'main-ops-room', callsign: 'Viewer-1', role: 'viewer' as const };
+
+    // RBAC: Check authorization for privileged roles (operator, ai_copilot)
+    let assignedRole: 'viewer' | 'operator' | 'ai_copilot' = req.role;
+    if (req.role === 'operator' || req.role === 'ai_copilot') {
+      const opsToken = process.env.GEV_OPS_TOKEN;
+      const authHeader = c.req.header('Authorization');
+      const isAuthenticated =
+        !opsToken || (authHeader?.startsWith('Bearer ') && authHeader.slice(7).trim() === opsToken);
+
+      if (!isAuthenticated) {
+        // Unauthenticated join downgraded to viewer
+        assignedRole = 'viewer';
+      }
+    }
 
     const room = manager.getOrCreateRoom(req.roomId);
-    const { token, expiresAt } = await manager.createRoomToken(req.roomId, req.callsign, req.role);
+    const { token, expiresAt } = await manager.createRoomToken(
+      req.roomId,
+      req.callsign,
+      assignedRole
+    );
 
     const host = c.req.header('host') || '127.0.0.1:3000';
     const protocol = c.req.url.startsWith('https') ? 'wss' : 'ws';
@@ -224,6 +317,7 @@ export function createCollabRouter(manager: CollabRoomManager) {
     return c.json({
       roomId: req.roomId,
       roomToken: token,
+      role: assignedRole,
       wsUrl,
       expiresAt,
       initialState: room.doc.toJSON(),
