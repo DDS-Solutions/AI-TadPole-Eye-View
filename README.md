@@ -9,7 +9,7 @@
 
 A live 3D OSINT console tracking **flights, ships, earthquakes, wildfires, bike transit, weather radar, public CCTV, radio, and submarine cables** on a photorealistic globe — designed from commit one so AI agents can develop, deploy, monitor, and debug it *alongside humans*, under enforceable governance (audit trails, approval gates, spend caps).
 
-**Full build plan:** [PLAN.md](./PLAN.md) | **AI operating manual:** [AGENTS.md](./AGENTS.md) | **Data provenance:** [DATA_SOURCES.md](./DATA_SOURCES.md) | **Licenses:** [docs/LICENSES.md](./docs/LICENSES.md)
+**Full build plan:** [PLAN.md](./PLAN.md) / [MASTER_PLAN_V3.md](./MASTER_PLAN_V3.md) | **AI operating manual:** [AGENTS.md](./AGENTS.md) | **Data provenance:** [DATA_SOURCES.md](./DATA_SOURCES.md) | **Licenses:** [docs/LICENSES.md](./docs/LICENSES.md)
 
 ---
 
@@ -130,7 +130,7 @@ node scripts/adg.mjs  # run Active Documentation Guard
 
 ## Documentation
 
-- [PLAN.md](./PLAN.md) — master build plan, phased roadmap, progress tracker (single source of truth)
+- [PLAN.md](./PLAN.md) / [MASTER_PLAN_V3.md](./MASTER_PLAN_V3.md) — Master Implementation Plan V3, phased roadmap, progress tracker, and deterministic resume protocol (single source of truth with ADR 0030 synchronized mirror)
 - [AGENTS.md](./AGENTS.md) — how AI agents operate in this repo
 - [SECURITY.md](./SECURITY.md) — threat model
 - [DATA_SOURCES.md](./DATA_SOURCES.md) — dataset provenance, rate limits, and honest labeling
