@@ -1007,8 +1007,8 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   drift, missing designated docs, broad planned-path markers, and CRLF line evidence.
 - Runtime status remained offline with `STASIS_INACTIVE`; per §0 this is partial
   observability only. All work stayed local/seed with zero live-service calls.
-- Branch: `codex/adg-5.0.4`. GitHub CLI remains unavailable, so open PR inspection and
-  PR creation were not possible in this environment.
+- Branch: `codex/adg-5.0.4`; implementation commit `b05a19e`. GitHub CLI remains
+  unavailable, so open PR inspection and PR creation were not possible in this environment.
 - Next task: **5.0.5 Restore the quality baseline**. Its exact ready-to-authorize
   4-Pillar brief is in §10; no task 5.0.5 implementation has started or been authorized.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.0.5. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
