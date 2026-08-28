@@ -199,7 +199,6 @@ describe('operations route authentication coverage', () => {
       context.auditSink.close();
     }
   });
-
   it('leaves the explicitly public health route outside the operations guard', async () => {
     const { app, auditSink } = createProtectedApp();
 
