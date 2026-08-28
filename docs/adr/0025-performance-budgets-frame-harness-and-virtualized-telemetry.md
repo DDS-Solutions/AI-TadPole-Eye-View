@@ -18,6 +18,12 @@ Phase 2 of [PLAN.md](../../PLAN.md) §10 and §13 mandates:
    - Implemented `FrameBudgetMonitor` in [`packages/cesium-kit/src/frameBudget.ts`](../../packages/cesium-kit/src/frameBudget.ts) capturing rolling frame deltas, instantaneous/average FPS, percentiles (p50, p95, p99), and budget breaches (>16.66ms).
    - Attached to Cesium's `scene.postRender` event and exposed to operator tooling via `window.__gev.getFrameReport()` and `window.__gev.getFrameMetrics()`.
    - Verified through automated Vitest benchmarks ingesting 1,000+ simultaneous entities across all 9 telemetry layers in `< 16.6ms p95`.
+   - The wall-clock ingestion benchmark runs as the dedicated single-worker
+     `pnpm test:performance` gate after ordinary parallel unit work completes. The
+     package's normal `test` task excludes only `test/frameBudget.test.ts`; root
+     `pnpm test`, `pnpm gev test`, and CI then invoke the isolated performance gate.
+     This prevents unrelated workspace workers from contaminating p95 without retries,
+     sample trimming, or weakening the 16.6ms threshold.
 
 2. **Deterministic Bundle Budgets & Rollup Chunking**:
    - Configured Vite Rollup `manualChunks` in [`apps/web/vite.config.ts`](../../apps/web/vite.config.ts) to isolate `@cesium/engine`, `svelte`, `uplot`, and `@tanstack/svelte-virtual` into independent vendor chunks.

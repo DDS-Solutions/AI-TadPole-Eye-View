@@ -61,16 +61,28 @@ test.describe('GEV v2 Multi-Layer Telemetry, Virtualized Table & Frame Monitor S
       )
       .toBe(9);
 
-    // 5. Assert HUD stat badge counts in the header
-    await expect(page.locator('#flight-count')).not.toHaveText('0');
-    await expect(page.locator('#ship-count')).not.toHaveText('0');
-    await expect(page.locator('#quake-count')).not.toHaveText('0');
-    await expect(page.locator('#firms-count')).not.toHaveText('0');
-    await expect(page.locator('#gbfs-count')).not.toHaveText('0');
-    await expect(page.locator('#cctv-count')).not.toHaveText('0');
-    await expect(page.locator('#radio-count')).not.toHaveText('0');
-    await expect(page.locator('#launch-count')).not.toHaveText('0');
-    await expect(page.locator('#weather-count')).not.toHaveText('0');
+    // 5. Condition-wait for all HUD stat badge counts in one browser round trip.
+    const hudCountSelector = [
+      '#flight-count',
+      '#ship-count',
+      '#quake-count',
+      '#firms-count',
+      '#gbfs-count',
+      '#cctv-count',
+      '#radio-count',
+      '#launch-count',
+      '#weather-count',
+    ].join(', ');
+    await expect
+      .poll(async () => {
+        return await page.locator(hudCountSelector).evaluateAll((elements) => {
+          return elements.filter((element) => {
+            const count = element.textContent?.trim();
+            return count !== undefined && count !== '' && count !== '0';
+          }).length;
+        });
+      })
+      .toBe(9);
 
     // 6. Test Frame Budget Monitor integration on window.__gev
     const frameReport = await page.evaluate(() => window.__gev?.getFrameReport?.());
@@ -95,11 +107,13 @@ test.describe('GEV v2 Multi-Layer Telemetry, Virtualized Table & Frame Monitor S
 
     // Test Search input inside the table
     const searchInput = page.locator('#telemetry-search-input');
-    await searchInput.fill('Flight');
-    await expect(searchInput).toHaveValue('Flight');
-    await searchInput.fill('');
+    const firstRowName = (await virtualRows.first().locator('.col-id').textContent())?.trim() ?? '';
+    expect(firstRowName).not.toBe('');
+    await searchInput.fill(firstRowName);
+    await expect(searchInput).toHaveValue(firstRowName);
 
-    // Test Selecting a row from the virtual table
+    // Test selecting a matching row from the filtered virtual table.
+    await expect(virtualRows.first()).toBeVisible();
     await virtualRows.first().click();
 
     // Assert Entity Info Card is open and displays uPlot time series chart

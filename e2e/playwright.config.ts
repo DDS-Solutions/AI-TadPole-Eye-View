@@ -12,7 +12,12 @@ export default defineConfig({
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: 'http://localhost:5180',
-    trace: 'retain-on-failure',
+    trace: {
+      mode: 'retain-on-failure',
+      screenshots: false,
+      snapshots: false,
+      sources: true,
+    },
     screenshot: 'on',
     launchOptions: {
       args: [
