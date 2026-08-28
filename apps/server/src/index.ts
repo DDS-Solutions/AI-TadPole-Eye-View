@@ -125,7 +125,6 @@ export function createApp(options: CreateAppOptions = {}) {
         budget_spent_usd: govState.spent_usd,
         budget_cap_usd: govState.cap_usd,
         budget_remaining_usd: Math.max(0, govState.cap_usd - govState.spent_usd),
-        collab_rooms: collabRoomManager.listRooms(),
         provider_registry: providerRegistry,
       })
     );
