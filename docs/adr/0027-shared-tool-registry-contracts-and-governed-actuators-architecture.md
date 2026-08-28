@@ -25,9 +25,22 @@ Every tool invocation must enforce:
 2. **Schema Generators:**
    `getOpenAIToolDefinitions()` and `getMcpToolDefinitions()` generate OpenAI Realtime function declarations and MCP tools automatically from the single source of truth.
 3. **GovernedToolExecutor:**
-   Implemented in `@gev/core`, the `GovernedToolExecutor` encapsulates the full 6-step lifecycle: schema validation → STASIS & budget check → pre-execution `audit.intent` → approval gate check → execution → post-execution `audit.outcome`.
+   Implemented in `@gev/core`, the `GovernedToolExecutor` is the only tool lifecycle.
+   Contract membership, consumer capability, input, required ports, and handler presence
+   are preflight checks that fail before action and therefore emit no orphan outcome.
+   A valid invocation then follows one strict order: durable `audit.intent` → durable
+   governance check → dangerous-tool approval → one handler dispatch → output validation
+   → exactly one `audit.outcome` attempt. Every consumer receives the same normalized
+   success, blocked, or error result. Mutating tools are blocked during STASIS; status,
+   diagnostics, and audit reads validate durable state but remain available for observability.
+4. **Consumer and transport wiring:**
+   Each consumer composes the executor with the shared runtime ports and an explicit
+   capability set. Local stdio MCP registers and advertises exactly seven tools and derives
+   input/output schemas from the registry. Browser-local handlers cannot execute without
+   shared governance ports and never claim process-local state as shared authority.
 
 ## Consequences
 - Single point of maintenance for all operator actuators.
 - Guaranteed audit trail across voice agent, co-user, and remote MCP interactions.
 - Prevents rogue mutations during STASIS lock.
+- Invalid or unsupported calls fail before handler dispatch and cannot create orphan outcomes.

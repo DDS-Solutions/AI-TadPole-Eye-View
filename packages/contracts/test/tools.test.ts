@@ -112,6 +112,31 @@ describe('Phase 3 Tool & Collab Contracts (@gev/contracts)', () => {
       expect(params.properties.altitude_m.default).toBe(500000);
       expect(params.properties.duration_s.default).toBe(2);
     });
+
+    it('projects filtered MCP input/output schemas and governance metadata from the registry', () => {
+      const definitions = getMcpToolDefinitions(['get_budget', 'set_flag']);
+
+      expect(definitions.map((definition) => definition.name)).toEqual(['get_budget', 'set_flag']);
+      expect(definitions[1]).toMatchObject({
+        inputSchema: {
+          type: 'object',
+          required: ['flag', 'enabled'],
+          properties: {
+            flag: { type: 'string' },
+            enabled: { type: 'boolean' },
+          },
+        },
+        outputSchema: {
+          type: 'object',
+          required: ['flag', 'enabled', 'updated'],
+        },
+        _metadata: {
+          is_mutating: true,
+          is_dangerous: true,
+          is_cacheable: false,
+        },
+      });
+    });
   });
 
   describe('Collab & T2 Multiplayer Contracts', () => {

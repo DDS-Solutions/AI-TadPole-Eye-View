@@ -1,14 +1,18 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createGovernanceRuntimeContext } from '@gev/governance';
+import { type GovernanceRuntimeContext, createGovernanceRuntimeContext } from '@gev/governance';
 import { afterEach, describe, expect, it } from 'vitest';
+import { createOperatorContext } from '../src/context.js';
 import { GevMcpServer } from '../src/server.js';
-import { createOperatorContext } from '../src/tools.js';
 
 const tempDirectories: string[] = [];
+const runtimeContexts: GovernanceRuntimeContext[] = [];
 
 afterEach(() => {
+  for (const context of runtimeContexts.splice(0).reverse()) {
+    context.close();
+  }
   for (const directory of tempDirectories.splice(0)) {
     fs.rmSync(directory, { recursive: true, force: true });
   }
@@ -21,6 +25,7 @@ describe('MCP shared governance runtime wiring', () => {
     const dbPath = path.join(directory, 'governance.sqlite');
     const writer = createGovernanceRuntimeContext({ dbPath, capUsd: 1 });
     const reader = createGovernanceRuntimeContext({ dbPath });
+    runtimeContexts.push(writer, reader);
     const operatorContext = createOperatorContext({ governanceContext: reader });
     const server = new GevMcpServer({ context: operatorContext });
 
@@ -46,8 +51,5 @@ describe('MCP shared governance runtime wiring', () => {
         authoritative: true,
       },
     });
-
-    reader.close();
-    writer.close();
   });
 });

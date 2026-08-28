@@ -88,9 +88,11 @@ describe('GEV v2 Operator MCP Server (@gev/ops-mcp)', () => {
         code: -32601,
         message: expect.stringContaining('unavailable'),
       });
-      await expect(executeOperatorTool(ctx, toolName, args)).rejects.toThrow(
-        'unavailable on the local stdio MCP transport'
-      );
+      const directResult = await executeOperatorTool(ctx, toolName, args);
+      expect(directResult).toMatchObject({
+        success: false,
+        code: 'TOOL_UNAVAILABLE',
+      });
       expect(ctx.auditSink.tail({ limit: 10 })).toEqual([]);
     }
   );
@@ -114,6 +116,9 @@ describe('GEV v2 Operator MCP Server (@gev/ops-mcp)', () => {
     const healthContent = (healthRes?.result as { content: Array<{ text: string }> }).content[0]
       ?.text;
     const parsedHealth = JSON.parse(healthContent || '{}');
+    expect((healthRes?.result as { structuredContent: unknown }).structuredContent).toEqual(
+      parsedHealth
+    );
     expect(parsedHealth.feeds).toHaveLength(12);
     expect(parsedHealth.feeds[0].feed).toBe('flights');
     expect(parsedHealth.feeds[0].provider).toBe('opensky');
@@ -136,6 +141,9 @@ describe('GEV v2 Operator MCP Server (@gev/ops-mcp)', () => {
     const budgetContent = (budgetRes?.result as { content: Array<{ text: string }> }).content[0]
       ?.text;
     const parsedBudget = JSON.parse(budgetContent || '{}');
+    expect((budgetRes?.result as { structuredContent: unknown }).structuredContent).toEqual(
+      parsedBudget
+    );
     expect(parsedBudget.cap_usd).toBe(10.0);
     expect(parsedBudget.stasis_active).toBe(false);
   });
@@ -170,12 +178,33 @@ describe('GEV v2 Operator MCP Server (@gev/ops-mcp)', () => {
     const second = entries[1];
     expect(first?.kind).toBe(GevEvents.AuditIntent);
     if (first?.kind === GevEvents.AuditIntent) {
-      expect(first.action).toBe('ops.set_flag');
+      expect(first.action).toBe('tool.set_flag');
     }
     expect(second?.kind).toBe(GevEvents.AuditOutcome);
     if (second?.kind === GevEvents.AuditOutcome) {
       expect(second.status).toBe('ok');
     }
+  });
+
+  it('normalizes invalid input before action and emits no audit entries', async () => {
+    const ctx = createOperatorContext();
+    const server = new GevMcpServer({ context: ctx });
+
+    const res = await server.handleRequest({
+      jsonrpc: '2.0',
+      id: 7,
+      method: 'tools/call',
+      params: {
+        name: 'set_flag',
+        arguments: { flag: 'opensky.enabled', enabled: 'not-a-boolean' },
+      },
+    });
+
+    expect(res?.result).toMatchObject({
+      isError: true,
+      _meta: { execution: { status: 'error', code: 'INPUT_VALIDATION_FAILED' } },
+    });
+    expect(ctx.auditSink.tail({ limit: 10 })).toEqual([]);
   });
 
   it('runs diagnostics check across governance, feeds, and memory', async () => {

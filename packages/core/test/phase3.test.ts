@@ -10,6 +10,37 @@ import {
   voiceSessionMachine,
 } from '../src/index.js';
 
+function createAllowingBudgetGovernor(): BudgetGovernor {
+  return {
+    check: () => ({ allowed: true, remaining_usd: 10 }),
+    trip: () => {},
+    state: () => ({
+      period_start: '2024-01-01T00:00:00.000Z',
+      cap_usd: 10,
+      spent_usd: 0,
+      warn_threshold_pct: 80,
+      stasis_active: false,
+      last_trip: null,
+    }),
+  };
+}
+
+function createApprovingGate(): ApprovalGate {
+  return {
+    request: async (request) => ({
+      request_id: request.id,
+      decision: 'approved',
+      signature: 'test-signature',
+      decided_by: 'human',
+      decided_at: request.ts,
+    }),
+  };
+}
+
+function createAuditSink(): AuditSink {
+  return { intent: () => {}, outcome: () => {}, tail: () => [] };
+}
+
 describe('Phase 3 Core Framework (@gev/core)', () => {
   describe('GovernedToolExecutor', () => {
     it('executes tool, validates schemas, and logs AuditIntent and AuditOutcome', async () => {
@@ -23,7 +54,12 @@ describe('Phase 3 Core Framework (@gev/core)', () => {
       };
 
       const clock = new FrozenClock(1_725_000_000_000);
-      const executor = new GovernedToolExecutor({ auditSink: mockAuditSink, clock });
+      const executor = new GovernedToolExecutor({
+        auditSink: mockAuditSink,
+        approvalGate: createApprovingGate(),
+        budgetGovernor: createAllowingBudgetGovernor(),
+        clock,
+      });
 
       executor.register('fly_to_location', (input) => {
         return {
@@ -84,12 +120,18 @@ describe('Phase 3 Core Framework (@gev/core)', () => {
         }),
       };
 
-      const executor = new GovernedToolExecutor({ budgetGovernor: mockGovernor });
+      const executor = new GovernedToolExecutor({
+        auditSink: createAuditSink(),
+        approvalGate: createApprovingGate(),
+        budgetGovernor: mockGovernor,
+      });
+      executor.register('toggle_layer', (input) => ({ ...input, updated: true }));
       const res = await executor.execute('toggle_layer', { layer: 'flights', enabled: true });
 
       expect(res.success).toBe(false);
       expect(res.blocked).toBe(true);
-      expect(res.error).toContain('STASIS active');
+      expect(res.code).toBe('BUDGET_DENIED');
+      expect(res.error).toContain('Hard cap exceeded');
     });
 
     it('queries ApprovalGate for dangerous tools', async () => {
@@ -104,7 +146,14 @@ describe('Phase 3 Core Framework (@gev/core)', () => {
         request: approvalSpy,
       };
 
-      const executor = new GovernedToolExecutor({ approvalGate: mockApprovalGate });
+      const executor = new GovernedToolExecutor({
+        auditSink: createAuditSink(),
+        approvalGate: mockApprovalGate,
+        budgetGovernor: createAllowingBudgetGovernor(),
+      });
+      executor.register('load_scene', () => {
+        throw new Error('handler must not execute after approval denial');
+      });
       const res = await executor.execute('load_scene', { scene_json: '{"version":1}' });
 
       expect(approvalSpy).toHaveBeenCalledTimes(1);

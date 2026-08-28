@@ -1,3 +1,4 @@
+import { type OperatorToolName, getOpenAIToolDefinitions } from '@gev/contracts';
 import {
   type AgentProviderAdapter,
   GovernedToolExecutor,
@@ -8,6 +9,14 @@ import {
 } from '@gev/core';
 import { createActor } from 'xstate';
 import { runtimeClock } from '../runtimeClock.js';
+
+export const VOICE_OPERATOR_TOOL_NAMES = [
+  'fly_to_location',
+  'toggle_layer',
+  'select_entity',
+  'inspect_telemetry',
+  'query_aoi',
+] as const satisfies readonly OperatorToolName[];
 
 export interface VoiceStoreState {
   status:
@@ -48,7 +57,12 @@ class VoiceStore {
 
   private actor = createActor(createVoiceSessionMachine(runtimeClock));
   private adapter: AgentProviderAdapter | null = null;
-  public executor: GovernedToolExecutor = new GovernedToolExecutor();
+  // Browser code has no durable shared governance ports. The common executor therefore
+  // remains intentionally fail-closed until a server-authoritative consumer supplies them.
+  public executor: GovernedToolExecutor = new GovernedToolExecutor({
+    clock: runtimeClock,
+    allowedTools: VOICE_OPERATOR_TOOL_NAMES,
+  });
   private audioCtx: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
   private animFrameId: number | null = null;
@@ -102,7 +116,10 @@ class VoiceStore {
         }
 
         const data = (await res.json()) as { client_secret: string; session_id: string };
-        this.adapter = new OpenAIRealtimeAdapter({ clientSecret: data.client_secret });
+        this.adapter = new OpenAIRealtimeAdapter({
+          clientSecret: data.client_secret,
+          tools: getOpenAIToolDefinitions(VOICE_OPERATOR_TOOL_NAMES),
+        });
       } else {
         this.adapter = new MockAgentAdapter();
       }

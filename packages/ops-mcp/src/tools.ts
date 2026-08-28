@@ -1,28 +1,26 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import {
-  type DiagnosticCheck,
-  type FeedHealthItem,
-  type GetBudgetOutput,
-  type GetFeedHealthInput,
-  type GetFeedHealthOutput,
-  GevEvents,
-  type LoadSceneInput,
-  type LoadSceneOutput,
-  OPERATOR_TOOLS,
-  type OperatorToolName,
-  type RunDiagnosticsInput,
-  type RunDiagnosticsOutput,
-  type SaveSceneInput,
-  type SaveSceneOutput,
-  type SceneState,
-  type SceneToolSummary,
-  type SetFlagInput,
-  type SetFlagOutput,
-  type TailLogsInput,
-  type TailLogsOutput,
+import type {
+  DiagnosticCheck,
+  FeedHealthItem,
+  GetBudgetOutput,
+  GetFeedHealthInput,
+  GetFeedHealthOutput,
+  LoadSceneInput,
+  LoadSceneOutput,
+  OperatorToolName,
+  RunDiagnosticsInput,
+  RunDiagnosticsOutput,
+  SaveSceneInput,
+  SaveSceneOutput,
+  SceneState,
+  SceneToolSummary,
+  SetFlagInput,
+  SetFlagOutput,
+  TailLogsInput,
+  TailLogsOutput,
 } from '@gev/contracts';
-import { deserializeScene } from '@gev/core';
+import { type ToolExecutionResult, deserializeScene } from '@gev/core';
 import {
   listProviderRegistryFeeds,
   resolveFixturePath,
@@ -30,11 +28,6 @@ import {
 } from '@gev/providers';
 import type { OperatorContext } from './context.js';
 
-export {
-  DEFAULT_SCENE_ROOT,
-  createOperatorContext,
-  type OperatorContext,
-} from './context.js';
 export const MAX_SCENE_BYTES = 1024 * 1024;
 export const MCP_OPERATOR_TOOL_NAMES = [
   'get_feed_health',
@@ -354,122 +347,26 @@ export async function handleSetFlag(
   };
 }
 
-/**
- * Dispatches tool execution by name and enforces governance contracts.
- */
+/** Registers the seven local stdio implementations on the shared governed executor. */
+export function registerOperatorToolHandlers(ctx: OperatorContext): void {
+  ctx.toolExecutor
+    .register('get_feed_health', (input) => handleGetFeedHealth(ctx, input))
+    .register('get_budget', () => handleGetBudget(ctx))
+    .register('run_diagnostics', (input) => handleRunDiagnostics(ctx, input))
+    .register('load_scene', (input) => handleLoadScene(ctx, input))
+    .register('save_scene', (input) => handleSaveScene(ctx, input))
+    .register('tail_logs', (input) => handleTailLogs(ctx, input))
+    .register('set_flag', (input) => handleSetFlag(ctx, input));
+}
+
+/** Executes through the one core lifecycle; this function performs no governance itself. */
 export async function executeOperatorTool(
   ctx: OperatorContext,
-  name: OperatorToolName,
-  args: Record<string, unknown> = {}
-): Promise<unknown> {
-  if (!isMcpOperatorToolName(name)) {
-    throw new Error(`Tool ${name} is unavailable on the local stdio MCP transport`);
-  }
-  const tool = OPERATOR_TOOLS[name];
-
-  const startTime = ctx.clock.now();
-  const intentId = crypto.randomUUID();
-
-  // Governance & STASIS checks for mutating operations
-  if (tool.is_mutating) {
-    const govState = ctx.budgetGovernor.state();
-    if (govState.stasis_active) {
-      throw new Error(
-        `STASIS active (${govState.last_trip?.code ?? 'governance lock'}). Tool ${name} blocked.`
-      );
-    }
-  }
-
-  // Gate dangerous tools through ApprovalGate
-  if (tool.is_dangerous) {
-    const nowIso = new Date(startTime).toISOString();
-    const expiresIso = new Date(startTime + 60_000).toISOString();
-    const approval = await ctx.approvalGate.request({
-      id: crypto.randomUUID(),
-      ts: nowIso,
-      intent_id: intentId,
-      scopes: ['flags.write'],
-      rationale: `Dangerous operator tool invocation requested for ${name}`,
-      expires_at: expiresIso,
-    });
-    if (approval.decision !== 'approved') {
-      throw new Error(
-        `Approval denied for dangerous tool ${name}: decision was ${approval.decision}`
-      );
-    }
-  }
-
-  // Audit intent if mutating
-  if (tool.is_mutating) {
-    ctx.auditSink.intent({
-      kind: GevEvents.AuditIntent,
-      id: intentId,
-      ts: new Date(startTime).toISOString(),
-      actor: 'ai',
-      action: `ops.${name}`,
-      target: name,
-      params: args,
-      task_ref: 'mcp-tool-call',
-    });
-  }
-
-  try {
-    let result: unknown;
-    switch (name) {
-      case 'get_feed_health':
-        result = await handleGetFeedHealth(ctx, tool.inputSchema.parse(args) as GetFeedHealthInput);
-        break;
-      case 'get_budget':
-        result = await handleGetBudget(ctx);
-        break;
-      case 'run_diagnostics':
-        result = await handleRunDiagnostics(
-          ctx,
-          tool.inputSchema.parse(args) as RunDiagnosticsInput
-        );
-        break;
-      case 'load_scene':
-        result = await handleLoadScene(ctx, tool.inputSchema.parse(args) as LoadSceneInput);
-        break;
-      case 'save_scene':
-        result = await handleSaveScene(ctx, tool.inputSchema.parse(args) as SaveSceneInput);
-        break;
-      case 'tail_logs':
-        result = await handleTailLogs(ctx, tool.inputSchema.parse(args) as TailLogsInput);
-        break;
-      case 'set_flag':
-        result = await handleSetFlag(ctx, tool.inputSchema.parse(args) as SetFlagInput);
-        break;
-      default:
-        throw new Error(`Unhandled operator tool: ${name}`);
-    }
-
-    result = tool.outputSchema.parse(result);
-
-    if (tool.is_mutating) {
-      ctx.auditSink.outcome({
-        kind: GevEvents.AuditOutcome,
-        intent_id: intentId,
-        ts: new Date(ctx.clock.now()).toISOString(),
-        status: 'ok',
-        result,
-        duration_ms: ctx.clock.now() - startTime,
-      });
-    }
-
-    return result;
-  } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : 'Unknown tool error';
-    if (tool.is_mutating) {
-      ctx.auditSink.outcome({
-        kind: GevEvents.AuditOutcome,
-        intent_id: intentId,
-        ts: new Date(ctx.clock.now()).toISOString(),
-        status: 'error',
-        error: errorMsg,
-        duration_ms: ctx.clock.now() - startTime,
-      });
-    }
-    throw err;
-  }
+  name: string,
+  args: unknown = {}
+): Promise<ToolExecutionResult> {
+  return ctx.toolExecutor.execute(name, args, {
+    actor: 'ai',
+    task_ref: 'mcp-tool-call',
+  });
 }
