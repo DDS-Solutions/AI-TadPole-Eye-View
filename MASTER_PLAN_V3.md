@@ -1056,8 +1056,8 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   remain enabled.
 - Passing evidence for the partial fix: root `pnpm lint` checked all 163 files;
   canonical `pnpm gev qa` passed the unchanged 30-second smoke in 20.4 seconds with
-  no retries or fixed sleeps; and
-  `e2e/test-results/globe-phase2-virtual-telemetry.png` was visually inspected with
+  no retries or fixed sleeps; and Playwright output screenshot
+  (globe-phase2-virtual-telemetry.png) was visually inspected with
   all nine populated telemetry badges, virtualized rows, selected-entity inspector,
   filter controls, and OpenStreetMap attribution visible.
 - `LOGIC_BLOCKER`: three measured benchmark approaches could not produce one honest
@@ -1094,8 +1094,8 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   snapshots. The smoke uses one condition-wait for all HUD counts and searches for a
   real row identifier before selecting it. It retains the existing 30-second timeout,
   contains no fixed sleep or retry, and passed in 21.6 seconds.
-- Real-render evidence at
-  `e2e/test-results/globe-phase2-virtual-telemetry.png` was visually inspected: all nine
+- Real-render evidence in Playwright output screenshot
+  (globe-phase2-virtual-telemetry.png) was visually inspected: all nine
   telemetry badges were populated; the matching filtered row and selected-flight
   inspector rendered; filters and OpenStreetMap attribution remained visible.
 - Files changed for task 5.0.5: `.github/workflows/ci.yml`, `package.json`,
