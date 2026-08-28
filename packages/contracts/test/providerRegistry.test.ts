@@ -93,6 +93,12 @@ describe('Provider registry contracts', () => {
       budget_spent_usd: 0,
       budget_cap_usd: 10,
       budget_remaining_usd: 10,
+      governance_authority: {
+        kind: 'shared_sqlite',
+        authoritative: true,
+        schema_version: 1,
+        state_revision: 0,
+      },
       provider_registry: validRegistry,
     });
     expect(health.provider_registry.requested_mode).toBe('seed');

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { GovernanceAuthoritySchema } from './governance.js';
 
 export const ProviderRegistryIdSchema = z
   .string()
@@ -193,6 +194,7 @@ export const SystemHealthResponseSchema = z
     budget_spent_usd: z.number().finite().nonnegative(),
     budget_cap_usd: z.number().finite().nonnegative(),
     budget_remaining_usd: z.number().finite().nonnegative(),
+    governance_authority: GovernanceAuthoritySchema,
     provider_registry: ProviderRegistrySchema,
   })
   .passthrough();

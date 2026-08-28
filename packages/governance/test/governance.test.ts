@@ -155,6 +155,7 @@ describe('Governance Port Stubs (@gev/governance)', () => {
       governor.resume('human');
       expect(governor.state().stasis_active).toBe(false);
       expect(governor.state().last_trip?.resumed_by).toBe('human');
+      governor.close();
     });
   });
 

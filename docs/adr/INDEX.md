@@ -25,4 +25,5 @@ This directory records all significant architectural and structural decisions ma
 | [0030](./0030-plan-v3-canonical-resume-and-mirror.md) | V3 canonical plan and deterministic resume checkpoint | Accepted | 2026-08-27 |
 | [0039](./0039-language-placement-and-runtime-boundaries.md) | Language placement and runtime boundaries | Accepted | 2026-08-27 |
 | [0040](./0040-architectural-drift-inventory-and-follow-up-gates.md) | Architectural drift inventory and follow-up gates | Accepted | 2026-08-28 |
+| [0041](./0041-durable-shared-governance-runtime.md) | Durable shared governance runtime | Accepted | 2026-08-28 |
 

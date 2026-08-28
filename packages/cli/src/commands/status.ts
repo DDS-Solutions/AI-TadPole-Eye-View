@@ -1,6 +1,6 @@
 import { type ProviderRegistry, SystemHealthResponseSchema } from '@gev/contracts';
 import { SystemClock } from '@gev/core';
-import { CapBudgetGovernor, SqliteAuditSink } from '@gev/governance';
+import { createGovernanceRuntimeContext } from '@gev/governance';
 import {
   createConfiguredProviderRegistry,
   listProviderRegistryFeeds,
@@ -11,6 +11,7 @@ import pc from 'picocolors';
 export interface StatusOptions {
   serverUrl?: string;
   json?: boolean;
+  governanceDbPath?: string;
 }
 
 export const PROJECT_PHASE = 'Phase 5.1 — Durable Shared Governance';
@@ -24,12 +25,22 @@ export async function runStatus(options: StatusOptions = {}): Promise<void> {
   let spentUsd = 0;
   let capUsd = 10.0;
   let lastTripReason: string | undefined;
+  let governanceObservation: {
+    source: 'server' | 'offline_snapshot';
+    authoritative: boolean;
+    runtime: {
+      kind: 'shared_sqlite' | 'process_local';
+      authoritative: boolean;
+      schema_version: number;
+      state_revision: number;
+    };
+  } | null = null;
   let providerRegistry: ProviderRegistry = createConfiguredProviderRegistry();
 
   // Try querying live server health
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 800);
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 800);
     const res = await fetch(`${serverUrl}/api/health`, { signal: controller.signal });
 
     if (res.ok) {
@@ -39,25 +50,42 @@ export async function runStatus(options: StatusOptions = {}): Promise<void> {
         stasisActive = parsed.data.stasis_active;
         spentUsd = parsed.data.budget_spent_usd;
         capUsd = parsed.data.budget_cap_usd;
+        governanceObservation = {
+          source: 'server',
+          authoritative: parsed.data.governance_authority.authoritative,
+          runtime: parsed.data.governance_authority,
+        };
         providerRegistry = parsed.data.provider_registry;
       }
     }
-    clearTimeout(timeout);
   } catch {
     // Offline fallback — inspect local governor & WAL directly
     isOnline = false;
+  } finally {
+    clearTimeout(timeout);
   }
 
   if (!isOnline) {
-    // Offline fallback: read from shared on-disk governance state
-    const governor = new CapBudgetGovernor({ clock });
-    const auditSink = new SqliteAuditSink({ clock });
-    const state = governor.state();
-    stasisActive = state.stasis_active;
-    spentUsd = state.spent_usd;
-    capUsd = state.cap_usd;
-    lastTripReason = state.last_trip?.code;
-    auditSink.close();
+    // Offline inspection can read the durable file but cannot prove the active
+    // server/MCP processes are attached to it, so it is never authoritative.
+    const governanceContext = createGovernanceRuntimeContext({
+      clock,
+      dbPath: options.governanceDbPath,
+    });
+    try {
+      const state = governanceContext.budgetGovernor.state();
+      stasisActive = state.stasis_active;
+      spentUsd = state.spent_usd;
+      capUsd = state.cap_usd;
+      lastTripReason = state.last_trip?.code;
+      governanceObservation = {
+        source: 'offline_snapshot',
+        authoritative: false,
+        runtime: governanceContext.authority(),
+      };
+    } finally {
+      governanceContext.close();
+    }
   }
 
   const remainingUsd = Math.max(0, capUsd - spentUsd);
@@ -88,6 +116,7 @@ export async function runStatus(options: StatusOptions = {}): Promise<void> {
           spent_usd: spentUsd,
           cap_usd: capUsd,
           remaining_usd: remainingUsd,
+          governance_observation: governanceObservation,
           mode: providerRegistry.requested_mode,
           provider_registry: providerRegistry,
           registry_counts: registryCounts,
@@ -103,9 +132,12 @@ export async function runStatus(options: StatusOptions = {}): Promise<void> {
   console.log(pc.dim('───────────────────────────────────────────────'));
   console.log(` ${pc.bold('Project Phase:')}      ${PROJECT_PHASE}`);
   console.log(
-    ` ${pc.bold('Server Status:')}      ${isOnline ? pc.green('ONLINE (http://localhost:3000)') : pc.dim('OFFLINE (local inspection)')}`
+    ` ${pc.bold('Server Status:')}      ${isOnline ? pc.green(`ONLINE (${serverUrl})`) : pc.dim('OFFLINE (local inspection)')}`
   );
   console.log(` ${pc.bold('Governance:')}         ${stasisLabel}`);
+  console.log(
+    ` ${pc.bold('Governance Source:')}  ${governanceObservation?.authoritative ? pc.green('AUTHORITATIVE SERVER') : pc.yellow('NON-AUTHORITATIVE OFFLINE SNAPSHOT')}`
+  );
   console.log(
     ` ${pc.bold('Budget Remaining:')}   $${remainingUsd.toFixed(2)} / $${capUsd.toFixed(2)} USD`
   );

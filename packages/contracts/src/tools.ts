@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { GovernanceAuthoritySchema } from './governance.js';
 import { AuditEntrySchema } from './ports.js';
 import {
   ProviderHealthSchema,
@@ -51,6 +52,7 @@ export const GetBudgetOutputSchema = z.object({
   remaining_usd: z.number().finite().nonnegative(),
   stasis_active: z.boolean(),
   trip_reason: z.string().optional(),
+  governance_authority: GovernanceAuthoritySchema,
 });
 export type GetBudgetOutput = z.infer<typeof GetBudgetOutputSchema>;
 

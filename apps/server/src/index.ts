@@ -9,7 +9,7 @@ import {
   SystemHealthResponseSchema,
 } from '@gev/contracts';
 import { type SimClock, SystemClock } from '@gev/core';
-import { CapBudgetGovernor, PromptApprovalGate, SqliteAuditSink } from '@gev/governance';
+import { type GovernanceRuntimeContext, createGovernanceRuntimeContext } from '@gev/governance';
 import {
   AisAdapter,
   CctvAdapter,
@@ -54,13 +54,25 @@ export interface CreateAppOptions {
   opsAuth?: OpsAuthOptions;
   providerRegistry?: ProviderRegistry;
   clock?: SimClock;
+  governanceContext?: GovernanceRuntimeContext;
+  governanceDbPath?: string;
   voiceApiKey?: string;
   resolveClientId?: (c: Context) => string;
 }
 
 export function createApp(options: CreateAppOptions = {}) {
   const app = new Hono();
-  const clock = options.clock ?? new SystemClock();
+  if (
+    options.clock &&
+    options.governanceContext &&
+    options.clock !== options.governanceContext.clock
+  ) {
+    throw new Error('Server clock must be the shared governance runtime clock');
+  }
+  const clock = options.governanceContext?.clock ?? options.clock ?? new SystemClock();
+  const governanceContext =
+    options.governanceContext ??
+    createGovernanceRuntimeContext({ clock, dbPath: options.governanceDbPath });
   const telemetry = new ServerTelemetryManager({ clock });
   const auth = createOpsAuth(options.opsAuth);
   const opsAuth = auth.middleware();
@@ -89,10 +101,8 @@ export function createApp(options: CreateAppOptions = {}) {
   const launchAdapter = new LaunchAdapter({ clock });
   const weatherAdapter = new WeatherAdapter({ clock });
 
-  // Governance, Cost Governor & Collab Manager
-  const auditSink = new SqliteAuditSink({ clock });
-  const budgetGovernor = new CapBudgetGovernor({ clock });
-  const approvalGate = new PromptApprovalGate({ clock });
+  // One shared governance runtime is used by every server route and middleware.
+  const { auditSink, budgetGovernor, approvalGate } = governanceContext;
   const costGovernor = new CostGovernor({ clock, budgetGovernor });
   const collabRoomManager = new CollabRoomManager(clock);
 
@@ -125,6 +135,7 @@ export function createApp(options: CreateAppOptions = {}) {
         budget_spent_usd: govState.spent_usd,
         budget_cap_usd: govState.cap_usd,
         budget_remaining_usd: Math.max(0, govState.cap_usd - govState.spent_usd),
+        governance_authority: governanceContext.authority(),
         provider_registry: providerRegistry,
       })
     );
@@ -400,6 +411,7 @@ export function createApp(options: CreateAppOptions = {}) {
     telemetry,
     clock,
     providerRegistry,
+    governanceContext,
     adapters: {
       openSky: openSkyAdapter,
       ais: aisAdapter,

@@ -1,6 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { CapBudgetGovernor } from '@gev/governance';
 import { describe, expect, it, vi } from 'vitest';
 import { runAuditTail } from '../src/commands/audit.js';
 import { runFeedsHealth } from '../src/commands/feeds.js';
@@ -101,20 +100,12 @@ describe('GEV v2 CLI Surface (@gev/cli)', () => {
     }
   });
 
-  it('runResume() lifts STASIS lock and records resumption event', async () => {
-    const governor = new CapBudgetGovernor();
-    governor.recordSpend(100.0); // trip STASIS
+  it('runResume() refuses a process-local offline fallback', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('server offline'));
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
 
-    const logs: string[] = [];
-    const spy = vi.spyOn(console, 'log').mockImplementation((msg) => {
-      logs.push(msg);
-    });
-
-    await runResume('Manual operator testing resumption');
-    spy.mockRestore();
-
-    expect(
-      logs.some((l) => l.includes('STASIS LIFTED') || l.includes('STASIS is not currently active'))
-    ).toBe(true);
+    await expect(
+      runResume('Manual operator testing resumption', { governanceDbPath: ':memory:' })
+    ).rejects.toThrow(/requires durable shared SQLite governance state/);
   });
 });
