@@ -1,15 +1,20 @@
 import crypto from 'node:crypto';
 import {
   RoomJoinRequestSchema,
-  RoomRoleSchema,
+  RoomJoinResponseSchema,
+  RoomTokenPayloadSchema,
   type UserPresence,
-  UserPresenceSchema,
+  UserPresencePatchSchema,
 } from '@gev/contracts';
-import { CollabIntentDoc } from '@gev/core';
+import { CollabIntentDoc, type SimClock, SystemClock } from '@gev/core';
 import { Hono } from 'hono';
 import { SignJWT, jwtVerify } from 'jose';
 import type { WebSocket } from 'ws';
-import type { OpsAuthAdapter } from '../middleware/opsAuth.js';
+import {
+  type InMemoryRateLimiter,
+  type OpsAuthAdapter,
+  createRateLimitMiddleware,
+} from '../middleware/opsAuth.js';
 
 // Strong ephemeral secret generated on startup if not explicitly provided in environment
 const JWT_SECRET = new TextEncoder().encode(
@@ -20,6 +25,33 @@ const MAX_ACTIVE_ROOMS = 50;
 const MAX_PEERS_PER_ROOM = 20;
 const MAX_FRAME_BYTES = 65536; // 64 KB per frame limit
 const ROOM_IDLE_TTL_MS = 60 * 60 * 1000; // 1 hour idle TTL
+
+export function isAllowedWebSocketOrigin(
+  origin: string | undefined,
+  allowedOrigin: string
+): boolean {
+  if (!origin) return false;
+  try {
+    const parsed = new URL(origin);
+    const configured = new URL(allowedOrigin);
+    if (
+      parsed.pathname !== '/' ||
+      parsed.search ||
+      parsed.hash ||
+      parsed.username ||
+      parsed.password
+    ) {
+      return false;
+    }
+    if (parsed.origin === configured.origin) return true;
+    return (
+      (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+      (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1')
+    );
+  } catch {
+    return false;
+  }
+}
 
 export interface RoomPeer {
   clientId: string;
@@ -41,7 +73,7 @@ export interface ActiveRoom {
 export class CollabRoomManager {
   private rooms = new Map<string, ActiveRoom>();
 
-  constructor() {
+  constructor(private readonly clock: SimClock = new SystemClock()) {
     // Periodic eviction of idle rooms every 10 minutes
     if (typeof setInterval !== 'undefined') {
       const interval = setInterval(() => this.cleanupIdleRooms(), 10 * 60 * 1000);
@@ -52,7 +84,7 @@ export class CollabRoomManager {
   }
 
   cleanupIdleRooms(): void {
-    const now = Date.now();
+    const now = this.clock.now();
     for (const [roomId, room] of this.rooms.entries()) {
       if (room.peers.size === 0 && now - room.lastActivityAt > ROOM_IDLE_TTL_MS) {
         this.rooms.delete(roomId);
@@ -86,12 +118,12 @@ export class CollabRoomManager {
         roomId,
         doc: new CollabIntentDoc(roomId),
         peers: new Map(),
-        createdAt: Date.now(),
-        lastActivityAt: Date.now(),
+        createdAt: this.clock.now(),
+        lastActivityAt: this.clock.now(),
       };
       this.rooms.set(roomId, room);
     }
-    room.lastActivityAt = Date.now();
+    room.lastActivityAt = this.clock.now();
     return room;
   }
 
@@ -111,20 +143,22 @@ export class CollabRoomManager {
     roomId: string,
     callsign: string,
     role: 'viewer' | 'operator' | 'ai_copilot'
-  ): Promise<{ token: string; expiresAt: number }> {
-    const expiresAt = Math.floor(Date.now() / 1000) + 3600; // 1 hour
+  ): Promise<{ token: string; clientId: string; expiresAt: number }> {
+    const issuedAt = Math.floor(this.clock.now() / 1000);
+    const expiresAt = issuedAt + 3600; // 1 hour
+    const clientId = `usr_${crypto.randomUUID().slice(0, 8)}`;
     const token = await new SignJWT({
-      sub: `usr_${crypto.randomUUID().slice(0, 8)}`,
+      sub: clientId,
       callsign,
       roomId,
       role,
     })
       .setProtectedHeader({ alg: 'HS256' })
-      .setIssuedAt()
+      .setIssuedAt(issuedAt)
       .setExpirationTime(expiresAt)
       .sign(JWT_SECRET);
 
-    return { token, expiresAt };
+    return { token, clientId, expiresAt };
   }
 
   async verifyRoomToken(token: string): Promise<{
@@ -134,17 +168,28 @@ export class CollabRoomManager {
     role: 'viewer' | 'operator' | 'ai_copilot';
   } | null> {
     try {
-      const { payload } = await jwtVerify(token, JWT_SECRET);
-      const roleParsed = RoomRoleSchema.safeParse(payload.role);
+      const { payload } = await jwtVerify(token, JWT_SECRET, {
+        currentDate: new Date(this.clock.now()),
+      });
+      const parsed = RoomTokenPayloadSchema.safeParse(payload);
+      if (!parsed.success) return null;
       return {
-        sub: payload.sub as string,
-        callsign: (payload.callsign as string) || 'Operator',
-        roomId: (payload.roomId as string) || 'main',
-        role: roleParsed.success ? roleParsed.data : 'viewer',
+        sub: parsed.data.sub,
+        callsign: parsed.data.callsign,
+        roomId: parsed.data.roomId,
+        role: parsed.data.role,
       };
     } catch {
       return null;
     }
+  }
+
+  async verifyRoomTokenForRoom(
+    token: string,
+    requestedRoomId: string
+  ): ReturnType<CollabRoomManager['verifyRoomToken']> {
+    const payload = await this.verifyRoomToken(token);
+    return payload?.roomId === requestedRoomId ? payload : null;
   }
 
   handleWebSocketPeer(
@@ -177,7 +222,7 @@ export class CollabRoomManager {
         callsign: tokenPayload.callsign,
         role: tokenPayload.role,
         color: assignedColor,
-        lastSeenTs: Date.now(),
+        lastSeenTs: this.clock.now(),
       },
     };
 
@@ -194,7 +239,7 @@ export class CollabRoomManager {
 
     // 3. Handle incoming frames with strict RBAC and schema guards
     ws.on('message', (data: unknown, isBinary: boolean) => {
-      room.lastActivityAt = Date.now();
+      room.lastActivityAt = this.clock.now();
 
       // Enforce frame size limit
       const byteLen =
@@ -218,7 +263,12 @@ export class CollabRoomManager {
 
         // Binary Yjs update from authorized operator or copilot
         const bytes = data instanceof Uint8Array ? data : new Uint8Array(data as ArrayBuffer);
-        room.doc.applyUpdate(bytes);
+        try {
+          room.doc.applyValidatedUpdate(bytes, clientId);
+        } catch {
+          ws.close(1008, 'Invalid collaborative intent update');
+          return;
+        }
 
         // Broadcast binary update to all OTHER peers in the room
         for (const [peerId, otherPeer] of room.peers.entries()) {
@@ -230,15 +280,18 @@ export class CollabRoomManager {
         // Text / JSON presence update
         try {
           const str = typeof data === 'string' ? data : (data as Buffer).toString('utf-8');
-          const parsed = JSON.parse(str);
-          if (parsed.type === 'presence' && parsed.presence) {
-            const validatedPresence = UserPresenceSchema.safeParse(parsed.presence);
+          const envelope = JSON.parse(str) as { type?: unknown; presence?: unknown };
+          if (envelope.type === 'presence' && envelope.presence) {
+            const validatedPresence = UserPresencePatchSchema.safeParse(envelope.presence);
             if (validatedPresence.success) {
               peer.presence = {
+                ...peer.presence,
                 ...validatedPresence.data,
-                clientId, // Prevent spoofing clientId
-                role: peer.role, // Prevent spoofing role
-                lastSeenTs: Date.now(),
+                clientId,
+                callsign: peer.callsign,
+                role: peer.role,
+                color: peer.color,
+                lastSeenTs: this.clock.now(),
               };
               this.broadcastPresence(room);
             }
@@ -275,24 +328,40 @@ export class CollabRoomManager {
 
 export interface CollabRouterOptions {
   auth: OpsAuthAdapter;
+  rateLimiter?: InMemoryRateLimiter;
+  resolveClientId?: Parameters<typeof createRateLimitMiddleware>[1]['resolveClientId'];
 }
 
 export function createCollabRouter(manager: CollabRoomManager, options: CollabRouterOptions) {
   const router = new Hono();
 
+  router.use('/rooms', options.auth.middleware());
+  router.use('/room/*', options.auth.middleware());
+  if (options.rateLimiter && options.resolveClientId) {
+    router.use(
+      '/join',
+      createRateLimitMiddleware(options.rateLimiter, {
+        bucket: 'collab-join',
+        limit: 20,
+        resolveClientId: options.resolveClientId,
+      })
+    );
+  }
+
   // POST /api/collab/join
   router.post('/join', async (c) => {
-    let body: unknown = {};
+    let body: unknown;
     try {
       body = await c.req.json();
     } catch {
-      // Use defaults
+      return c.json({ error: 'Invalid JSON request body' }, 400);
     }
 
     const parsed = RoomJoinRequestSchema.safeParse(body);
-    const req = parsed.success
-      ? parsed.data
-      : { roomId: 'main-ops-room', callsign: 'Viewer-1', role: 'viewer' as const };
+    if (!parsed.success) {
+      return c.json({ error: 'Invalid room join request' }, 400);
+    }
+    const req = parsed.data;
 
     // RBAC: Check authorization for privileged roles (operator, ai_copilot)
     let assignedRole: 'viewer' | 'operator' | 'ai_copilot' = req.role;
@@ -305,7 +374,7 @@ export function createCollabRouter(manager: CollabRoomManager, options: CollabRo
     }
 
     const room = manager.getOrCreateRoom(req.roomId);
-    const { token, expiresAt } = await manager.createRoomToken(
+    const { token, clientId, expiresAt } = await manager.createRoomToken(
       req.roomId,
       req.callsign,
       assignedRole
@@ -315,14 +384,17 @@ export function createCollabRouter(manager: CollabRoomManager, options: CollabRo
     const protocol = c.req.url.startsWith('https') ? 'wss' : 'ws';
     const wsUrl = `${protocol}://${host}/api/collab/room/${encodeURIComponent(req.roomId)}?token=${encodeURIComponent(token)}`;
 
-    return c.json({
-      roomId: req.roomId,
-      roomToken: token,
-      role: assignedRole,
-      wsUrl,
-      expiresAt,
-      initialState: room.doc.toJSON(),
-    });
+    return c.json(
+      RoomJoinResponseSchema.parse({
+        roomId: req.roomId,
+        clientId,
+        roomToken: token,
+        role: assignedRole,
+        wsUrl,
+        expiresAt,
+        initialState: room.doc.toJSON(),
+      })
+    );
   });
 
   // GET /api/collab/rooms

@@ -4,12 +4,18 @@ import type { SimClock } from '@gev/core';
 import { SystemClock } from '@gev/core';
 import { pinnedFetch } from '@gev/security';
 import { Hono } from 'hono';
-import type { OpsAuthAdapter } from '../middleware/opsAuth.js';
+import {
+  type InMemoryRateLimiter,
+  type OpsAuthAdapter,
+  createRateLimitMiddleware,
+} from '../middleware/opsAuth.js';
 
 export interface VoiceRouterOptions {
   auth: OpsAuthAdapter;
   clock?: SimClock;
   apiKey?: string;
+  rateLimiter?: InMemoryRateLimiter;
+  resolveClientId?: Parameters<typeof createRateLimitMiddleware>[1]['resolveClientId'];
 }
 
 /**
@@ -21,6 +27,16 @@ export function createVoiceRouter(options: VoiceRouterOptions) {
   const clock = options.clock ?? new SystemClock();
   const apiKey = options.apiKey ?? process.env.OPENAI_API_KEY;
   router.use('*', options.auth.middleware());
+  if (options.rateLimiter && options.resolveClientId) {
+    router.use(
+      '/session',
+      createRateLimitMiddleware(options.rateLimiter, {
+        bucket: 'voice-session',
+        limit: 5,
+        resolveClientId: options.resolveClientId,
+      })
+    );
+  }
 
   router.post('/session', async (c) => {
     let body: unknown = {};

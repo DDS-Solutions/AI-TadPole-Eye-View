@@ -40,7 +40,7 @@
         <span class="peer-dot"></span>
         <span class="peer-name">{peer.callsign}</span>
         <span class="peer-role">[{peer.role.slice(0, 3).toUpperCase()}]</span>
-        {#if peer.clientId !== collabStore.state.roomToken?.slice(0, 8)}
+        {#if peer.clientId !== collabStore.state.clientId}
           <button
             class="follow-btn"
             class:active={collabStore.state.followLeaderId === peer.clientId}

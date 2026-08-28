@@ -5,7 +5,7 @@
 [![Status](https://img.shields.io/badge/status-Early%20Stage%20WIP-orange)](./PLAN.md) [![Phase](https://img.shields.io/badge/phase-5.0%20(Hardening)-blue)](./PLAN.md) [![Governance](https://img.shields.io/badge/governed%20by-AI--TadPole--OS-purple)](https://github.com/DDS-Solutions/AI-TadPole-OS) [![License](https://img.shields.io/badge/code-MIT-blue)](#license)
 
 > ⚠️ **Project Status: Early Stage WIP (Work in Progress)**  
-> This repository is an active, ground-up rewrite of [bilawalsidhu/gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view) into an agent-native architecture under [AI-TadPole-OS](https://github.com/DDS-Solutions/AI-TadPole-OS) governance. Core telemetry layers, security perimeters, typed provider registries, and M1–M3 cryptographic governance mechanics are implemented and verified in seed/simulation mode. Full live multi-agent orchestration (M4) and remaining telemetry layers are in active development.
+> This repository is an active, ground-up rewrite of [bilawalsidhu/gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view) into an agent-native architecture designed for [AI-TadPole-OS](https://github.com/DDS-Solutions/AI-TadPole-OS) governance. Core telemetry layers, security perimeters, typed provider registries, and local governance stubs work in seed mode. Verified shared M2/M3 governance, a hash-chained audit store, M4 orchestration, and remaining telemetry layers are still in development.
 
 A live 3D OSINT console tracking **flights, ships, earthquakes, wildfires, bike transit, weather radar, public CCTV, radio, and submarine cables** on a photorealistic globe — designed from commit one so AI agents can develop, deploy, monitor, and debug it *alongside humans*, under enforceable governance (audit trails, approval gates, spend caps).
 
@@ -18,7 +18,7 @@ A live 3D OSINT console tracking **flights, ships, earthquakes, wildfires, bike 
 Two experiments in one project:
 
 1. **A serious OSINT console.** Multi-layer live feeds, honest data labeling, keyless boot by default, privacy-first architecture.
-2. **A governed AI dev team.** Every feature was built, tested, and operated by autonomous AI agents working under [AI-TadPole-OS](https://github.com/DDS-Solutions/AI-TadPole-OS) oversight — with a tamper-evident audit trail proving it.
+2. **A governed AI dev team.** The repository is being built so humans and AI agents can share audited, approval-gated workflows under [AI-TadPole-OS](https://github.com/DDS-Solutions/AI-TadPole-OS). The current SQLite WAL records intent and outcome but is not yet tamper-evident; hash-chain verification is planned in `PLAN.md` task 5.1.5.
 
 Most agent demos show swarm diagrams. This one shows a working product and the receipts for how it got there.
 
@@ -61,22 +61,22 @@ Most agent demos show swarm diagrams. This one shows a working product and the r
 
 - **Monorepo:** `apps/web` (Svelte 5 SPA) | `apps/server` (Hono API and WebSocket Server) | `packages/{contracts, core, security, providers, cesium-kit, ops-mcp, governance, cli}`
 - **Contracts-first:** Zod schemas define REST payloads, WebSocket messages, collaborative intent documents, capabilities, and AI tool definitions from a single source of truth (`packages/contracts`).
-- **Security by construction:** Every outbound fetch goes through an SSRF-guarded, TLS-pinned fetcher with mandatory timeouts (`packages/security`). Unbounded requests are unrepresentable.
+- **Security by construction:** Product outbound HTTP goes through an SSRF-guarded, TLS-pinned fetcher with mandatory timeouts and byte limits (`packages/security`). Local MCP scene I/O is root-confined and size-bounded; the remaining collaboration boundaries are explicitly tracked as hardening work.
 
-## Governance (the Tadpole seam)
+## Governance (the AI-Tadpole-OS seam)
 
-AI actions in this repo run under five enforced ports — local stubs backed by SQLite WAL and Ed25519 cryptographic signatures:
+The repository defines five governance ports. Current implementations are local seed/demo stubs; durable shared enforcement remains Phase 5.1 work:
 
 | Rung | Capability | Status | Honest Notes |
 |---|---|---|---|
-| **M1 Observer** | Tadpole reads the live audit stream (`/ops/audit`) + feed health | IMPLEMENTED | `auditStream.ts` server route, SSE streaming, `SqliteAuditSink` WAL. |
-| **M2 Gatekeeper** | Mutating ops require Ed25519-signed approvals (`ApprovalGate`) | IMPLEMENTED | `TadpoleM2Gatekeeper` + `MerkleAuditChain` in `governance/`, wired in demo + ops-mcp. |
-| **M3 Governor** | Budget enforcement + STASIS lockdown (`BudgetGovernor`) | IMPLEMENTED | `CapBudgetGovernor` STASIS trip + human-only resume; verified in `gev demo`. |
+| **M1 Observer** | Authenticated audit stream (`/ops/audit`) + feed health | PARTIAL | Server routes and `SqliteAuditSink` WAL exist; external authenticated/resumable observer proof is incomplete. |
+| **M2 Gatekeeper** | Signed approval controls mutations | SEED/DEMO STUB | Ed25519 helpers and a local `TadpoleM2Gatekeeper` demo exist, but the server/MCP path still uses local prompt/auto policy and lacks signer identity, nonce, expiry-linkage, and replay proof. |
+| **M3 Governor** | Shared budget ledger + durable STASIS | LOCAL STUB | `CapBudgetGovernor` works in-process; state is not durable or shared and authenticated human-only resume is not yet proven across processes. |
 | **M4 Runtime** | Real AI agent team operates the live console end-to-end under governance | NOT YET REACHED (WIP) | `gev demo` simulates M1–M3 in-process (CLI only). M4 = an actual agent process driving a running server via ops-mcp under live governance — in progress. |
 
-> **Truth note on the demo:** `gev demo` is a verified CLI simulation of M1–M3 governance mechanics (audit WAL, STASIS trip, Merkle chain integrity, human resume). It is NOT a live agent team controlling a running browser + globe. That is M4 scope.
+> **Truth note on the demo:** `gev demo` exercises local M1–M3-shaped mechanics (audit WAL, STASIS trip, and an in-memory hash-chain helper). It does not prove a hash-chained SQLite WAL, external M2 approval, shared M3 state, or a live agent team controlling the globe.
 
-Spend caps trip **STASIS** — all agents suspend until a human resumes them. No self-resume. Ever.
+The current governor trips in-process **STASIS**. Durable cross-process suspension and authenticated human-only resume are required by Phase 5.1 and must not be inferred from the local demo.
 
 ## Quick start
 
@@ -84,6 +84,7 @@ Spend caps trip **STASIS** — all agents suspend until a human resumes them. No
 git clone https://github.com/DDS-Solutions/AI-Tadpole-Eye-View
 cd AI-Tadpole-Eye-View
 pnpm install
+pnpm build            # required once after a fresh clone; builds the CLI and workspace packages
 pnpm gev dev          # http://localhost:5173 — keyless seed mode by default
 ```
 
@@ -101,17 +102,17 @@ node scripts/adg.mjs  # run Active Documentation Guard
 ### Fully built
 
 - **Monorepo & Tooling:** Monorepo scaffold, Turborepo (`turbo.json`), Biome (`biome.json`), pnpm workspace.
-- **`packages/contracts` (18 files):** Zod schemas for all feeds, ports, voice, collab, scene, tools, capabilities, and provider registry.
-- **`packages/security` (5 files):** pinned-fetch (SSRF guard, TLS pinning, Overpass QL sanitizer, redirect rejection, byte caps).
-- **`packages/core` (10 files):** cockpitMath, geoMath, scopeMask, sim-clock, scene serializer, XState voice machine, agent adapters, tool executor, collab intent doc.
-- **`packages/governance` (5 files):** `SqliteAuditSink` (WAL + subscriber), `CapBudgetGovernor` (STASIS), `PromptApprovalGate`, `TadpoleM2Gatekeeper` (Ed25519), `MerkleAuditChain`.
-- **`packages/providers` (12 files):** Typed provider registry, OpenSky, AIS, USGS, FIRMS, GBFS, Radio, CCTV, Launch, Weather, Cables (download pack), Overpass.
-- **`packages/cesium-kit` (15 files):** Globe, BaseLayer, FlightLayer, MarineLayer, QuakeLayer, FirmsLayer, GbfsLayer, CctvLayer, RadioLayer, LaunchLayer, WeatherLayer, CollabLayer, DebugBus, FrameBudget.
-- **`packages/ops-mcp` (3 files):** MCP server with full Zod-described tool set and sandboxed execution.
-- **`packages/cli` (7 files):** `gev` command surface: `status`, `demo`, `audit`, `feeds`, `scene`, `resume`.
-- **`apps/server` (18 files):** Hono server with provider proxy routes, CCTV media proxy, voice token route, collab WS, audit SSE, feed health endpoint, telemetry, cost governor & ops auth middleware.
-- **`apps/web` (12 files):** Svelte 5 SPA: `App.svelte`, 7 HUD components, 3 Svelte rune stores (layers, voice, collab).
-- **`e2e/smoke.spec.ts`:** Playwright smoke test (condition-waits only, no fixed sleeps).
+- **`packages/contracts`:** Zod schemas for feeds, ports, voice, collaboration, scenes, tools, capabilities, and the provider registry.
+- **`packages/security`:** pinned-fetch, SSRF defense, TLS socket pinning, the Overpass QL sanitizer, redirect rejection, and byte caps.
+- **`packages/core`:** pure math/domain modules, sim-clock, scene serialization, voice state machine, agent adapters, tool executor, and collaborative intent document.
+- **`packages/governance`:** local `SqliteAuditSink`, `CapBudgetGovernor`, approval stubs, Ed25519 helpers, and the disconnected in-memory hash-chain demo helper.
+- **`packages/providers`:** typed provider registry plus OpenSky, AIS, USGS, FIRMS, GBFS, Radio, CCTV, Launch, Weather, Cables, and Overpass adapters.
+- **`packages/cesium-kit`:** imperative globe and layer controllers, debug bus, and frame-budget monitor.
+- **`packages/ops-mcp`:** hand-written stdio MCP server exposing seven verified local tools. Browser-console-only tools are not advertised or executable over stdio; scene I/O is filename-only, size-bounded, and atomic beneath `.gev/scenes` (override with `GEV_MCP_SCENE_ROOT`).
+- **`packages/cli`:** `gev` command surface for status, demo, audit, feeds, scenes, resume, development, tests, and QA.
+- **`apps/server`:** Hono provider proxies, media/voice/collaboration routes, audit SSE, feed health, telemetry, cost governor, and operations auth.
+- **`apps/web`:** Svelte 5 SPA and tactical HUD backed by Cesium layer controllers.
+- **`e2e/smoke.spec.ts`:** condition-wait Playwright smoke coverage exists; its current teardown timeout is tracked by task 5.0.5.
 - **`fixtures/` (9 datasets):** Recorded fixtures for implemented providers (including 1.25 MB OpenSky replay).
 - **Architecture Decisions & Documentation:** ADRs 0014–0030, 0039 (18 decision records), DESIGN.md, SECURITY.md, RUNBOOK.md, DATA_SOURCES.md, AGENTS.md, PLAN.md.
 
@@ -125,7 +126,7 @@ node scripts/adg.mjs  # run Active Documentation Guard
 - **Satellites layer:** No provider file, no SGP4 / egm96 math in `core/`, no Cesium layer. Listed in PLAN.md section 8.
 - **M4 Runtime:** Live autonomous AI agent process operating the running console via ops-mcp under governance.
 - **T3 TAK/CoT bridge:** Post-parity roadmap item per PLAN.md section 9.
-- **k6 load tests:** `load/` directory exists but contains no scripts. `check-bundle-budgets.mjs` exists but k6 runner not configured.
+- **k6 expansion:** `load/k6-proxies.js` exists with proxy thresholds; broader scenarios and CI execution are still pending.
 - **Full self-hosted telemetry stack:** GlitchTip / PostHog / Plausible referenced in PLAN.md. `ServerTelemetryManager` class exists in `apps/server` but external self-hosted services are not configured.
 
 ## Documentation

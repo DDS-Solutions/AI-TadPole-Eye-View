@@ -1,6 +1,6 @@
 # Security & Threat Model
 
-**Project:** GEV v2 (`AI-TadPole-Eye-View`) · **Status:** Phase 0 Active · **Companion docs:** [PLAN.md](./PLAN.md), [AGENTS.md](./AGENTS.md), [RUNBOOK.md](./RUNBOOK.md)
+**Project:** GEV v2 (`AI-TadPole-Eye-View`) · **Status:** Phase 5.0 hardening · **Companion docs:** [PLAN.md](./PLAN.md), [AGENTS.md](./AGENTS.md), [RUNBOOK.md](./RUNBOOK.md)
 
 GEV v2 is an agent-native geospatial OSINT telemetry console tracking public data on a 3D globe. This document details the threat model, trust boundaries, STRIDE analysis across the system topology, and incident response procedures.
 
@@ -17,7 +17,8 @@ GEV v2 is an agent-native geospatial OSINT telemetry console tracking public dat
                                       ▼
 ┌───────────────────────────────────────────────────────────────────────────┐
 │ [SEMI-TRUSTED] Backend Server (Hono)                                      │
-│  - Ephemeral token minting (ek_), rate limiting, feed caching             │
+│  - Authenticated ephemeral token minting (ek_) and feed caching           │
+│  - Per-client request rate limits are pending hardening work              │
 │  - Upstream proxy routing via pinned-fetch (SSRF guarded, TLS pinned)     │
 └──────────────────────┬───────────────────────────────┬────────────────────┘
                        │                               │
@@ -41,7 +42,14 @@ GEV v2 is an agent-native geospatial OSINT telemetry console tracking public dat
 | **Repudiation** | Unaccounted mutating actions or rogue AI tool calls | **Rule 1 (Audit-Before-Action):** Every mutating operation logs `audit.intent` to SQLite WAL *before* execution and `audit.outcome` *after* completion. |
 | **Information Disclosure** | Exposure of API keys, credentials, or internal server infrastructure | All upstream credentials (`OPENAI_API_KEY`, `AISSTREAM_API_KEY`, etc.) remain strictly server-side. Pinned-fetch blocks SSRF against internal cloud metadata endpoints. |
 | **Denial of Service** | Unbounded external feed polling or runaway LLM token spend | Per-feed caching with TTL tiers; byte-capped streams with mandatory timeouts; `CapBudgetGovernor` trips **STASIS** lockdown when spend exceeds caps. |
-| **Elevation of Privilege** | AI agent attempting self-resumption or modifying safety governors | **STASIS is human-only:** `gev resume` requires verified operator override. Mutating MCP tools require explicit approval gate checks. |
+| **Elevation of Privilege** | AI agent attempting self-resumption or modifying safety governors | Human-only STASIS resume and shared approval verification are required controls. The current local seed API and MCP stubs do not yet provide the final enforcement proof; remediation is tracked before task 5.0.4 and in PLAN.md Phase 5.1. |
+
+### Current hardening limitations
+
+- The SQLite audit sink is a durable WAL but is not hash chained; tamper verification is task 5.1.5.
+- Local stdio MCP exposes only verified local-state tools and confines scene files to a configured root. A future network MCP transport must reuse those capability and confinement checks rather than introduce a transport-specific bypass.
+- Collaboration still requires exact Origin enforcement, staged CRDT validation, remote-update origin tagging, and request/concurrency limits.
+- Local tokenless seed mode is development-only and does not prove authenticated human resume or shared cross-process STASIS.
 
 ---
 
@@ -72,7 +80,7 @@ The system wraps autonomous AI operations in rigid governance boundaries:
 
 Please report security issues **privately** — do not open public issues for exploitable vulnerabilities.
 
-- **GitHub Private Advisory:** [Report a vulnerability](https://github.com/DDS-Solutions/AI-Tadpole-Eye-View/security/advisories/new)
+- **GitHub Private Advisory:** [Report a vulnerability](https://github.com/DDS-Solutions/AI-TadPole-Eye-View/security/advisories/new)
 - **Direct Maintainer Contact:** Via security contact link on the GitHub Organization profile.
 
 Include reproduction steps, affected commits, and estimated impact. Fixes are prioritized and credited in public advisories upon remediation.

@@ -12,22 +12,21 @@ import pc from 'picocolors';
 
 export interface DemoResult {
   success: boolean;
+  simulation: 'local-seed';
   eventsRecorded: number;
   merkleHead: string;
   stasisTripRecovered: boolean;
 }
 
 /**
- * Governed Agent Team Live Showcase (PLAN.md §10 Phase 4 Showcase)
- * Truthfully demonstrates M1 Observer, M2 Gatekeeper, and M3 Governor rungs.
+ * Local seed simulation of M1–M3-shaped governance mechanics.
+ * This does not prove external approval, shared STASIS, or a hash-chained WAL.
  */
 export async function runDemo(): Promise<DemoResult> {
   console.log(
     pc.bold(pc.cyan('\n═══════════════════════════════════════════════════════════════════════'))
   );
-  console.log(
-    pc.bold(pc.cyan('  🌍 GEV v2 Governed Agent Team Live Showcase (PLAN.md §10 Phase 4)'))
-  );
+  console.log(pc.bold(pc.cyan('  🌍 GEV v2 Local Governance Simulation (Seed Mode)')));
   console.log(
     pc.bold(pc.cyan('═══════════════════════════════════════════════════════════════════════\n'))
   );
@@ -58,28 +57,26 @@ export async function runDemo(): Promise<DemoResult> {
     approvalGate: gatekeeper,
   });
 
-  // ─── STEP 1: M1 Observer Plane Initialization ─────────────────────────
-  console.log(pc.bold(pc.white('▶ [STEP 1] Initializing M1 Observer Plane & Sim-Clock...')));
+  // ─── STEP 1: Local observer-shaped simulation initialization ──────────
+  console.log(pc.bold(pc.white('▶ [STEP 1] Initializing Local Audit Observer & Sim-Clock...')));
   console.log(`   Sim-Clock Epoch:  ${new Date(clock.now()).toISOString()}`);
   console.log(`   Budget Cap:       $${budgetGovernor.state().cap_usd.toFixed(2)} USD`);
-  console.log('   M2 Gatekeeper:    Ed25519 Cryptographic Approval Gate Active\n');
+  console.log('   Approval Stub:    Locally generated Ed25519 demo key (not external M2)\n');
 
-  // ─── STEP 2: Governed AI Actuators (Layer Toggle & Sim-Time Move) ───────
-  console.log(pc.bold(pc.white('▶ [STEP 2] AI Copilot Executing Governed Tactical Actuators...')));
+  // ─── STEP 2: Real local MCP state mutations ───────────────────────────
+  console.log(pc.bold(pc.white('▶ [STEP 2] Exercising Audited Local Kill-Switch State...')));
 
-  // Action 1: Toggle Flight Layer
-  const toggleResult = await executeOperatorTool(ctx, 'toggle_layer', {
-    layer: 'flights',
+  const disableResult = await executeOperatorTool(ctx, 'set_flag', {
+    flag: 'opensky.enabled',
+    enabled: false,
+  });
+  console.log(`   Disable Result:   ${JSON.stringify(disableResult)}`);
+
+  const enableResult = await executeOperatorTool(ctx, 'set_flag', {
+    flag: 'opensky.enabled',
     enabled: true,
   });
-  console.log(`   Result: ${JSON.stringify(toggleResult)}\n`);
-
-  // Action 2: Set Simulation Time & Rate
-  const simTimeResult = await executeOperatorTool(ctx, 'set_sim_time', {
-    offset_s: 3600,
-    playback_rate: 2,
-  });
-  console.log(`   Result: ${JSON.stringify(simTimeResult)}\n`);
+  console.log(`   Enable Result:    ${JSON.stringify(enableResult)}\n`);
 
   // ─── STEP 3: M3 Governor STASIS Tripwire ──────────────────────────────
   console.log(pc.bold(pc.white('▶ [STEP 3] Triggering Budget Governor STASIS Tripwire...')));
@@ -101,11 +98,11 @@ export async function runDemo(): Promise<DemoResult> {
   }
   console.log(`   STASIS State:     ${pc.bgRed(pc.white(' STASIS ACTIVE '))}\n`);
 
-  // ─── STEP 4: Operator Intervention & Human Recovery ──────────────────
+  // ─── STEP 4: Explicitly simulated local human recovery ───────────────
   console.log(
-    pc.bold(pc.white('▶ [STEP 4] Operator Intervention & Human Resume (RUNBOOK.md §STASIS)...'))
+    pc.bold(pc.white('▶ [STEP 4] Simulating Local Human Resume (not shared-runtime proof)...'))
   );
-  console.log(pc.dim('   Human operator audits WAL and issues signed resume override...'));
+  console.log(pc.dim('   Demo injects a local human actor after inspecting the in-memory WAL...'));
 
   // Log human intent to resume
   const resumeIntentId = crypto.randomUUID();
@@ -134,13 +131,13 @@ export async function runDemo(): Promise<DemoResult> {
   console.log(`   STASIS Resumed:   ${pc.green('STASIS_INACTIVE')}`);
   console.log(`   Resumed By:       ${budgetGovernor.state().last_trip?.resumed_by}\n`);
 
-  // ─── STEP 5: Merkle Audit Verification ────────────────────────────────
-  console.log(pc.bold(pc.white('▶ [STEP 5] Cryptographic Audit Chain Integrity Verification...')));
+  // ─── STEP 5: Disconnected in-memory chain helper verification ─────────
+  console.log(pc.bold(pc.white('▶ [STEP 5] Verifying In-Memory Hash-Chain Demo Helper...')));
   const headHash = merkleChain.getHeadHash();
   const isChainValid = MerkleAuditChain.verifyChain(auditEventsList, headHash);
   console.log(`   Merkle Head Hash: ${pc.cyan(headHash)}`);
   console.log(
-    `   WAL Integrity:    ${isChainValid ? pc.green('✔ TAMPER-EVIDENT VALID') : pc.red('✖ INVALID')}\n`
+    `   Helper Integrity: ${isChainValid ? pc.green('✔ VALID (WAL remains unhashed)') : pc.red('✖ INVALID')}\n`
   );
 
   console.log(
@@ -148,9 +145,7 @@ export async function runDemo(): Promise<DemoResult> {
   );
   console.log(
     pc.bold(
-      pc.green(
-        `  ✅ Governed Agent Team Showcase Succeeded (${auditEventsList.length} WAL entries, M1-M3 green)`
-      )
+      pc.green(`  ✅ Local Seed Simulation Succeeded (${auditEventsList.length} WAL entries)`)
     )
   );
   console.log(
@@ -161,6 +156,7 @@ export async function runDemo(): Promise<DemoResult> {
 
   return {
     success: true,
+    simulation: 'local-seed',
     eventsRecorded: auditEventsList.length,
     merkleHead: headHash,
     stasisTripRecovered: !budgetGovernor.state().stasis_active,

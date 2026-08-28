@@ -1,4 +1,5 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
+import type { SimClock } from '@gev/core';
 import type { Context, MiddlewareHandler, Next } from 'hono';
 
 export interface OpsAuthOptions {
@@ -22,7 +23,7 @@ export type OpsAuthDecision =
       kind: 'local_seed';
       allowed: true;
       authenticated: false;
-      actor: 'local-dev';
+      actor: 'system';
     }
   | {
       kind: 'denied';
@@ -37,6 +38,76 @@ export interface OpsAuthAdapter {
   readonly config: Readonly<ResolvedOpsAuthConfig>;
   authorize(authorization?: string): OpsAuthDecision;
   middleware(): MiddlewareHandler;
+}
+
+export interface RateLimitDecision {
+  allowed: boolean;
+  remaining: number;
+  retryAfterSeconds: number;
+}
+
+interface RateLimitWindow {
+  count: number;
+  startedAtMs: number;
+}
+
+/** Shared, clock-injected fixed-window protection for bounded in-memory surfaces. */
+export class InMemoryRateLimiter {
+  private readonly windows = new Map<string, RateLimitWindow>();
+
+  constructor(
+    private readonly clock: SimClock,
+    private readonly windowMs = 60_000
+  ) {}
+
+  consume(bucket: string, clientId: string, limit: number): RateLimitDecision {
+    const now = this.clock.now();
+    const key = `${bucket}:${clientId}`;
+    let window = this.windows.get(key);
+
+    if (!window || now - window.startedAtMs >= this.windowMs) {
+      window = { count: 0, startedAtMs: now };
+      this.windows.set(key, window);
+    }
+
+    if (window.count >= limit) {
+      return {
+        allowed: false,
+        remaining: 0,
+        retryAfterSeconds: Math.max(
+          1,
+          Math.ceil((window.startedAtMs + this.windowMs - now) / 1000)
+        ),
+      };
+    }
+
+    window.count += 1;
+    return {
+      allowed: true,
+      remaining: limit - window.count,
+      retryAfterSeconds: 0,
+    };
+  }
+}
+
+export interface RateLimitMiddlewareOptions {
+  bucket: string;
+  limit: number;
+  resolveClientId: (c: Context) => string;
+}
+
+export function createRateLimitMiddleware(
+  limiter: InMemoryRateLimiter,
+  options: RateLimitMiddlewareOptions
+): MiddlewareHandler {
+  return async (c: Context, next: Next) => {
+    const decision = limiter.consume(options.bucket, options.resolveClientId(c), options.limit);
+    if (!decision.allowed) {
+      c.header('Retry-After', String(decision.retryAfterSeconds));
+      return c.json({ error: 'Rate limit exceeded', code: 'RATE_LIMITED' }, 429);
+    }
+    return await next();
+  };
 }
 
 function normalizedTokenDigest(token: string): Buffer {
@@ -92,7 +163,7 @@ export function createOpsAuth(options: OpsAuthOptions = {}): OpsAuthAdapter {
         kind: 'local_seed',
         allowed: true,
         authenticated: false,
-        actor: 'local-dev',
+        actor: 'system',
       };
     }
 

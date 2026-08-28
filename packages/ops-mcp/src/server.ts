@@ -1,7 +1,14 @@
 import readline from 'node:readline';
 import type { Readable, Writable } from 'node:stream';
-import { OPERATOR_TOOLS, type OperatorToolName } from '@gev/contracts';
-import { type OperatorContext, createOperatorContext, executeOperatorTool } from './tools.js';
+import { OPERATOR_TOOLS } from '@gev/contracts';
+import {
+  MCP_OPERATOR_TOOL_NAMES,
+  type McpOperatorToolName,
+  type OperatorContext,
+  createOperatorContext,
+  executeOperatorTool,
+  isMcpOperatorToolName,
+} from './tools.js';
 
 export interface McpServerOptions {
   context?: OperatorContext;
@@ -28,7 +35,7 @@ export interface JsonRpcResponse {
 }
 
 /** JSON Schema input descriptors for MCP client tool discovery. */
-const TOOL_INPUT_SCHEMAS: Record<OperatorToolName, Record<string, unknown>> = {
+const TOOL_INPUT_SCHEMAS: Record<McpOperatorToolName, Record<string, unknown>> = {
   get_feed_health: {
     type: 'object',
     properties: {
@@ -53,15 +60,21 @@ const TOOL_INPUT_SCHEMAS: Record<OperatorToolName, Record<string, unknown>> = {
     type: 'object',
     properties: {
       scene_json: { type: 'string', description: 'Raw JSON string of SceneState' },
-      scene_path: { type: 'string', description: 'File path to load scene from' },
+      scene_path: {
+        type: 'string',
+        description: 'Root-level .json filename under the configured MCP scene root',
+      },
     },
   },
   save_scene: {
     type: 'object',
     properties: {
-      title: { type: 'string', description: 'Optional scene title' },
-      save_path: { type: 'string', description: 'File path to save JSON to' },
+      save_path: {
+        type: 'string',
+        description: 'Root-level .json filename under the configured MCP scene root',
+      },
     },
+    required: ['save_path'],
   },
   tail_logs: {
     type: 'object',
@@ -77,60 +90,6 @@ const TOOL_INPUT_SCHEMAS: Record<OperatorToolName, Record<string, unknown>> = {
       enabled: { type: 'boolean', description: 'Enable/disable flag state' },
     },
     required: ['flag', 'enabled'],
-  },
-  fly_to_location: {
-    type: 'object',
-    properties: {
-      lat: { type: 'number', description: 'Latitude (-90 to 90)' },
-      lon: { type: 'number', description: 'Longitude (-180 to 180)' },
-      altitude_m: { type: 'number', description: 'Altitude in meters' },
-      duration_s: { type: 'number', description: 'Flight duration in seconds' },
-    },
-    required: ['lat', 'lon'],
-  },
-  toggle_layer: {
-    type: 'object',
-    properties: {
-      layer: { type: 'string', description: 'Layer identifier (e.g. flights, marine, quakes)' },
-      enabled: { type: 'boolean', description: 'Enable/disable layer' },
-    },
-    required: ['layer', 'enabled'],
-  },
-  select_entity: {
-    type: 'object',
-    properties: {
-      layer: { type: 'string', description: 'Layer identifier' },
-      id: { type: 'string', description: 'Entity identifier' },
-      track_camera: { type: 'boolean', description: 'Whether to track with camera' },
-    },
-    required: ['layer', 'id'],
-  },
-  inspect_telemetry: {
-    type: 'object',
-    properties: {
-      layer: { type: 'string', description: 'Layer identifier' },
-      id: { type: 'string', description: 'Entity identifier' },
-    },
-    required: ['layer', 'id'],
-  },
-  query_aoi: {
-    type: 'object',
-    properties: {
-      south: { type: 'number', description: 'South latitude bound' },
-      west: { type: 'number', description: 'West longitude bound' },
-      north: { type: 'number', description: 'North latitude bound' },
-      east: { type: 'number', description: 'East longitude bound' },
-      layers: { type: 'array', items: { type: 'string' }, description: 'Target layers' },
-    },
-    required: ['south', 'west', 'north', 'east'],
-  },
-  set_sim_time: {
-    type: 'object',
-    properties: {
-      offset_s: { type: 'number', description: 'Simulation time offset in seconds' },
-      playback_rate: { type: 'number', description: 'Playback speed multiplier' },
-    },
-    required: ['offset_s'],
   },
 };
 
@@ -228,13 +187,10 @@ export class GevMcpServer {
         };
 
       case 'tools/list': {
-        const tools = Object.values(OPERATOR_TOOLS).map((tool) => ({
+        const tools = MCP_OPERATOR_TOOL_NAMES.map((name) => OPERATOR_TOOLS[name]).map((tool) => ({
           name: tool.name,
           description: tool.description,
-          inputSchema: TOOL_INPUT_SCHEMAS[tool.name as OperatorToolName] ?? {
-            type: 'object',
-            properties: {},
-          },
+          inputSchema: TOOL_INPUT_SCHEMAS[tool.name as McpOperatorToolName],
           _metadata: {
             is_mutating: tool.is_mutating,
             is_dangerous: tool.is_dangerous,
@@ -250,22 +206,33 @@ export class GevMcpServer {
       }
 
       case 'tools/call': {
-        const toolName = req.params?.name as OperatorToolName | undefined;
+        const requestedToolName = req.params?.name;
         const toolArgs = (req.params?.arguments as Record<string, unknown>) ?? {};
 
-        if (!toolName || !(toolName in OPERATOR_TOOLS)) {
+        if (typeof requestedToolName !== 'string' || !(requestedToolName in OPERATOR_TOOLS)) {
           return {
             jsonrpc: '2.0',
             id,
             error: {
               code: -32601,
-              message: `Unknown tool: ${toolName}`,
+              message: `Unknown tool: ${String(requestedToolName)}`,
+            },
+          };
+        }
+
+        if (!isMcpOperatorToolName(requestedToolName)) {
+          return {
+            jsonrpc: '2.0',
+            id,
+            error: {
+              code: -32601,
+              message: `Tool unavailable on local stdio MCP transport: ${requestedToolName}`,
             },
           };
         }
 
         try {
-          const result = await executeOperatorTool(this.ctx, toolName, toolArgs);
+          const result = await executeOperatorTool(this.ctx, requestedToolName, toolArgs);
           return {
             jsonrpc: '2.0',
             id,

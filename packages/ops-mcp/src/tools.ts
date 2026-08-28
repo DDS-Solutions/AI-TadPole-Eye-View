@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import path from 'node:path';
 import {
   type ApprovalGate,
   type DiagnosticCheck,
@@ -16,6 +17,8 @@ import {
   type RunDiagnosticsOutput,
   type SaveSceneInput,
   type SaveSceneOutput,
+  type SceneState,
+  type SceneToolSummary,
   type SetFlagInput,
   type SetFlagOutput,
   type TailLogsInput,
@@ -30,7 +33,22 @@ import {
   resolveFixturePath,
   withDisabledProviders,
 } from '@gev/providers';
-
+export const MAX_SCENE_BYTES = 1024 * 1024;
+export const DEFAULT_SCENE_ROOT = path.join('.gev', 'scenes');
+export const MCP_OPERATOR_TOOL_NAMES = [
+  'get_feed_health',
+  'get_budget',
+  'run_diagnostics',
+  'load_scene',
+  'save_scene',
+  'tail_logs',
+  'set_flag',
+] as const satisfies readonly OperatorToolName[];
+export type McpOperatorToolName = (typeof MCP_OPERATOR_TOOL_NAMES)[number];
+const MCP_OPERATOR_TOOL_NAME_SET: ReadonlySet<string> = new Set(MCP_OPERATOR_TOOL_NAMES);
+export function isMcpOperatorToolName(name: string): name is McpOperatorToolName {
+  return MCP_OPERATOR_TOOL_NAME_SET.has(name);
+}
 export interface OperatorContext {
   clock: SimClock;
   auditSink: SqliteAuditSink;
@@ -39,8 +57,9 @@ export interface OperatorContext {
   openSkyAdapter: OpenSkyAdapter;
   providerRegistry: ProviderRegistry;
   flags: Map<string, boolean>;
+  sceneRoot: string;
+  sceneState: SceneState;
 }
-
 export function createOperatorContext(customContext?: Partial<OperatorContext>): OperatorContext {
   const clock = customContext?.clock ?? new SystemClock();
   return {
@@ -51,9 +70,141 @@ export function createOperatorContext(customContext?: Partial<OperatorContext>):
     openSkyAdapter: customContext?.openSkyAdapter ?? new OpenSkyAdapter({ clock }),
     providerRegistry: customContext?.providerRegistry ?? createConfiguredProviderRegistry(),
     flags: customContext?.flags ?? new Map<string, boolean>([['opensky.enabled', true]]),
+    sceneRoot: path.resolve(
+      customContext?.sceneRoot ?? process.env.GEV_MCP_SCENE_ROOT ?? DEFAULT_SCENE_ROOT
+    ),
+    sceneState: customContext?.sceneState ?? getDefaultSceneState(clock),
   };
 }
-
+function validateSceneFileName(scenePath: string): string {
+  const candidate = scenePath.trim();
+  if (!candidate || candidate !== scenePath || candidate.includes('\0')) {
+    throw new Error('Scene path must be a non-empty filename without surrounding whitespace');
+  }
+  if (
+    path.isAbsolute(candidate) ||
+    path.win32.isAbsolute(candidate) ||
+    path.posix.isAbsolute(candidate) ||
+    /^[A-Za-z]:/.test(candidate)
+  ) {
+    throw new Error('Scene path must be relative to the configured scene root');
+  }
+  if (candidate.includes('/') || candidate.includes('\\') || candidate.includes(':')) {
+    throw new Error('Scene path must be a root-level filename; directories are not allowed');
+  }
+  if (
+    candidate === '.' ||
+    candidate === '..' ||
+    path.extname(candidate).toLowerCase() !== '.json'
+  ) {
+    throw new Error('Scene path must use a .json filename');
+  }
+  return candidate;
+}
+function assertWithinSceneRoot(root: string, candidate: string): void {
+  const relative = path.relative(root, candidate);
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new Error('Scene path escapes the configured scene root');
+  }
+}
+async function canonicalSceneRoot(sceneRoot: string, create: boolean): Promise<string> {
+  if (create) {
+    await fs.promises.mkdir(sceneRoot, { recursive: true });
+  }
+  const canonicalRoot = await fs.promises.realpath(sceneRoot);
+  const rootStat = await fs.promises.stat(canonicalRoot);
+  if (!rootStat.isDirectory()) {
+    throw new Error('Configured scene root is not a directory');
+  }
+  return canonicalRoot;
+}
+async function readSceneFile(
+  sceneRoot: string,
+  requestedPath: string
+): Promise<{
+  raw: string;
+  scenePath: string;
+}> {
+  const scenePath = validateSceneFileName(requestedPath);
+  const root = await canonicalSceneRoot(sceneRoot, false);
+  const candidate = path.join(root, scenePath);
+  assertWithinSceneRoot(root, candidate);
+  const linkStat = await fs.promises.lstat(candidate);
+  if (linkStat.isSymbolicLink()) {
+    throw new Error('Scene path symbolic links are not allowed');
+  }
+  if (!linkStat.isFile()) {
+    throw new Error('Scene path must reference a regular file');
+  }
+  const canonicalFile = await fs.promises.realpath(candidate);
+  assertWithinSceneRoot(root, canonicalFile);
+  const handle = await fs.promises.open(canonicalFile, 'r');
+  try {
+    const fileStat = await handle.stat();
+    if (!fileStat.isFile() || fileStat.size > MAX_SCENE_BYTES) {
+      throw new Error(`Scene file exceeds the ${MAX_SCENE_BYTES} byte limit`);
+    }
+    const raw = await handle.readFile({ encoding: 'utf-8' });
+    if (Buffer.byteLength(raw, 'utf-8') > MAX_SCENE_BYTES) {
+      throw new Error(`Scene file exceeds the ${MAX_SCENE_BYTES} byte limit`);
+    }
+    return { raw, scenePath };
+  } finally {
+    await handle.close();
+  }
+}
+async function writeSceneFile(
+  sceneRoot: string,
+  requestedPath: string,
+  raw: string
+): Promise<string> {
+  const scenePath = validateSceneFileName(requestedPath);
+  const root = await canonicalSceneRoot(sceneRoot, true);
+  const candidate = path.join(root, scenePath);
+  assertWithinSceneRoot(root, candidate);
+  try {
+    const existing = await fs.promises.lstat(candidate);
+    if (existing.isSymbolicLink()) {
+      throw new Error('Scene path symbolic links are not allowed');
+    }
+    if (!existing.isFile()) {
+      throw new Error('Scene path must reference a regular file');
+    }
+    assertWithinSceneRoot(root, await fs.promises.realpath(candidate));
+  } catch (error: unknown) {
+    if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) {
+      throw error;
+    }
+  }
+  const bytes = Buffer.byteLength(raw, 'utf-8');
+  if (bytes > MAX_SCENE_BYTES) {
+    throw new Error(`Serialized scene exceeds the ${MAX_SCENE_BYTES} byte limit`);
+  }
+  const tempPath = path.join(root, `.${scenePath}.${crypto.randomUUID()}.tmp`);
+  let handle: fs.promises.FileHandle | undefined;
+  try {
+    handle = await fs.promises.open(tempPath, 'wx', 0o600);
+    await handle.writeFile(raw, { encoding: 'utf-8' });
+    await handle.sync();
+    await handle.close();
+    handle = undefined;
+    await fs.promises.rename(tempPath, candidate);
+  } finally {
+    await handle?.close().catch(() => undefined);
+    await fs.promises.unlink(tempPath).catch(() => undefined);
+  }
+  return scenePath;
+}
+function summarizeScene(scene: SceneState): SceneToolSummary {
+  return {
+    version: scene.version,
+    layer_count: scene.layers.length,
+    enabled_layer_count: scene.layers.filter((layer) => layer.enabled).length,
+    aoi_count: scene.aois.length,
+    camera_altitude: scene.camera.altitude,
+    selected_entity: scene.selected_entity,
+  };
+}
 export async function handleGetFeedHealth(
   ctx: OperatorContext,
   input: GetFeedHealthInput
@@ -77,10 +228,8 @@ export async function handleGetFeedHealth(
       quota_remaining: feed.provider === 'opensky' ? (remainingRate ?? null) : null,
       ttl_tier_s: null,
     }));
-
   return { feeds };
 }
-
 export async function handleGetBudget(ctx: OperatorContext): Promise<GetBudgetOutput> {
   const state = ctx.budgetGovernor.state();
   return {
@@ -91,14 +240,12 @@ export async function handleGetBudget(ctx: OperatorContext): Promise<GetBudgetOu
     trip_reason: state.last_trip?.code,
   };
 }
-
 export async function handleRunDiagnostics(
   ctx: OperatorContext,
   input: RunDiagnosticsInput
 ): Promise<RunDiagnosticsOutput> {
   const checks: DiagnosticCheck[] = [];
   const scope = input.scope ?? 'all';
-
   if (scope === 'all' || scope === 'governance') {
     const govState = ctx.budgetGovernor.state();
     checks.push({
@@ -108,27 +255,41 @@ export async function handleRunDiagnostics(
         ? `STASIS lock active: ${govState.last_trip?.code}`
         : 'Governor operational',
     });
-
-    const entries = ctx.auditSink.tail({ limit: 1 });
-    checks.push({
-      name: 'audit_wal',
-      status: entries.length >= 0 ? 'pass' : 'fail',
-      message: 'SQLite Audit WAL accessible',
-    });
+    try {
+      const entries = ctx.auditSink.tail({ limit: 1 });
+      checks.push({
+        name: 'audit_wal',
+        status: 'pass',
+        message: `SQLite audit query succeeded (${entries.length} entries returned)`,
+      });
+    } catch {
+      checks.push({
+        name: 'audit_wal',
+        status: 'fail',
+        message: 'SQLite audit query failed',
+      });
+    }
   }
-
   if (scope === 'all' || scope === 'feeds') {
     const fixturePath = resolveFixturePath();
-    const fixtureExists = fs.existsSync(fixturePath);
-    checks.push({
-      name: 'fixture_access',
-      status: fixtureExists ? 'pass' : 'fail',
-      message: fixtureExists
-        ? `Deterministic seed fixtures found at ${fixturePath}`
-        : 'Missing fixture file',
-    });
+    try {
+      await fs.promises.access(fixturePath, fs.constants.R_OK);
+      const fixtureStat = await fs.promises.stat(fixturePath);
+      checks.push({
+        name: 'fixture_access',
+        status: fixtureStat.isFile() ? 'pass' : 'fail',
+        message: fixtureStat.isFile()
+          ? 'Deterministic seed fixture is readable'
+          : 'Seed fixture path is not a regular file',
+      });
+    } catch {
+      checks.push({
+        name: 'fixture_access',
+        status: 'fail',
+        message: 'Deterministic seed fixture is not readable',
+      });
+    }
   }
-
   if (scope === 'all' || scope === 'memory') {
     const mem = process.memoryUsage();
     const heapUsedMb = Math.round(mem.heapUsed / (1024 * 1024));
@@ -138,36 +299,42 @@ export async function handleRunDiagnostics(
       message: `Heap used: ${heapUsedMb}MB`,
     });
   }
-
   const hasFail = checks.some((c) => c.status === 'fail');
   const hasWarn = checks.some((c) => c.status === 'warn');
-
   return {
     status: hasFail ? 'fail' : hasWarn ? 'warn' : 'ok',
     timestamp: ctx.clock.now(),
     checks,
   };
 }
-
 export async function handleLoadScene(
-  _ctx: OperatorContext,
+  ctx: OperatorContext,
   input: LoadSceneInput
 ): Promise<LoadSceneOutput> {
-  let raw = input.scene_json;
-  if (!raw && input.scene_path) {
-    raw = await fs.promises.readFile(input.scene_path, 'utf-8');
-  }
-
-  if (!raw) {
-    throw new Error('Either scene_json or scene_path must be provided to load_scene');
+  let raw: string;
+  let source: 'inline' | 'file';
+  let scenePath: string | undefined;
+  if (input.scene_json !== undefined) {
+    if (Buffer.byteLength(input.scene_json, 'utf-8') > MAX_SCENE_BYTES) {
+      throw new Error(`Inline scene exceeds the ${MAX_SCENE_BYTES} byte limit`);
+    }
+    raw = input.scene_json;
+    source = 'inline';
+  } else {
+    const file = await readSceneFile(ctx.sceneRoot, input.scene_path as string);
+    raw = file.raw;
+    scenePath = file.scenePath;
+    source = 'file';
   }
 
   const validated = deserializeScene(raw);
+  ctx.sceneState = validated;
 
   return {
     loaded: true,
-    entity_count: validated.layers.reduce((acc, l) => acc + (l.enabled ? 10 : 0), 0),
-    version: validated.version,
+    source,
+    scene_path: scenePath,
+    summary: summarizeScene(validated),
   };
 }
 
@@ -175,21 +342,17 @@ export async function handleSaveScene(
   ctx: OperatorContext,
   input: SaveSceneInput
 ): Promise<SaveSceneOutput> {
-  const scene = getDefaultSceneState(ctx.clock);
-
-  if (input.save_path) {
-    await fs.promises.writeFile(input.save_path, JSON.stringify(scene, null, 2), 'utf-8');
-  }
+  const scene = ctx.sceneState;
+  const scenePath = await writeSceneFile(
+    ctx.sceneRoot,
+    input.save_path,
+    `${JSON.stringify(scene, null, 2)}\n`
+  );
 
   return {
     saved: true,
-    scene_path: input.save_path,
-    summary: {
-      version: scene.version,
-      layer_count: scene.layers.length,
-      aoi_count: scene.aois.length,
-      camera_altitude: scene.camera.altitude,
-    },
+    scene_path: scenePath,
+    summary: summarizeScene(scene),
   };
 }
 
@@ -224,10 +387,10 @@ export async function executeOperatorTool(
   name: OperatorToolName,
   args: Record<string, unknown> = {}
 ): Promise<unknown> {
-  const tool = OPERATOR_TOOLS[name];
-  if (!tool) {
-    throw new Error(`Unknown operator tool: ${name}`);
+  if (!isMcpOperatorToolName(name)) {
+    throw new Error(`Tool ${name} is unavailable on the local stdio MCP transport`);
   }
+  const tool = OPERATOR_TOOLS[name];
 
   const startTime = ctx.clock.now();
   const intentId = crypto.randomUUID();
@@ -302,65 +465,11 @@ export async function executeOperatorTool(
       case 'set_flag':
         result = await handleSetFlag(ctx, tool.inputSchema.parse(args) as SetFlagInput);
         break;
-      case 'fly_to_location': {
-        const input = tool.inputSchema.parse(args) as {
-          lat: number;
-          lon: number;
-          altitude_m?: number;
-        };
-        result = {
-          moved: true,
-          target: { lat: input.lat, lon: input.lon, altitude_m: input.altitude_m ?? 500000 },
-        };
-        break;
-      }
-      case 'toggle_layer': {
-        const input = tool.inputSchema.parse(args) as { layer: string; enabled: boolean };
-        ctx.flags.set(`layer.${input.layer}.enabled`, input.enabled);
-        result = { layer: input.layer, enabled: input.enabled, updated: true };
-        break;
-      }
-      case 'select_entity': {
-        const input = tool.inputSchema.parse(args) as { layer: string; id: string };
-        result = { selected: true, layer: input.layer, id: input.id, entity_found: true };
-        break;
-      }
-      case 'inspect_telemetry': {
-        const input = tool.inputSchema.parse(args) as { layer: string; id: string };
-        result = {
-          layer: input.layer,
-          id: input.id,
-          found: true,
-          data: { status: 'active', layer: input.layer },
-        };
-        break;
-      }
-      case 'query_aoi': {
-        const input = tool.inputSchema.parse(args) as {
-          south: number;
-          west: number;
-          north: number;
-          east: number;
-        };
-        result = {
-          total_entities: 42,
-          counts_by_layer: { flights: 30, marine: 12 },
-          bounds: { south: input.south, west: input.west, north: input.north, east: input.east },
-        };
-        break;
-      }
-      case 'set_sim_time': {
-        const input = tool.inputSchema.parse(args) as { offset_s: number; playback_rate?: number };
-        result = {
-          sim_time_offset_s: input.offset_s,
-          playback_rate: input.playback_rate ?? 1,
-          updated: true,
-        };
-        break;
-      }
       default:
         throw new Error(`Unhandled operator tool: ${name}`);
     }
+
+    result = tool.outputSchema.parse(result);
 
     if (tool.is_mutating) {
       ctx.auditSink.outcome({

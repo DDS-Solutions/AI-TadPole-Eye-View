@@ -39,6 +39,15 @@ export const UserPresenceSchema = z.object({
 });
 export type UserPresence = z.infer<typeof UserPresenceSchema>;
 
+export const UserPresencePatchSchema = z
+  .object({
+    cursor: GeoCursorSchema.optional(),
+    camera: CameraPose.optional(),
+    selectedEntity: EntityReferenceSchema.nullable().optional(),
+  })
+  .strict();
+export type UserPresencePatch = z.infer<typeof UserPresencePatchSchema>;
+
 export const AoiAnnotationSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -67,6 +76,8 @@ export type RoomJoinRequest = z.infer<typeof RoomJoinRequestSchema>;
 
 export const RoomJoinResponseSchema = z.object({
   roomId: z.string(),
+  clientId: z.string().min(1),
+  role: RoomRoleSchema,
   roomToken: z.string(),
   wsUrl: z.string(),
   expiresAt: z.number().finite(),

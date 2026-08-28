@@ -148,6 +148,58 @@ describe('operations route authentication coverage', () => {
     }
   });
 
+  it('derives audit actors from authentication and ignores spoofed X-Actor values', async () => {
+    const protectedContext = createProtectedApp();
+    const localContext = createApp({ opsAuth: { opsToken: '', requireAuth: false } });
+
+    try {
+      const protectedTask = 'task-authenticated-actor';
+      const protectedResponse = await protectedContext.app.request('/ops/seed/reload', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${OPS_TOKEN}`,
+          'X-Actor': 'ai',
+          'X-Task-Ref': protectedTask,
+        },
+      });
+      expect(protectedResponse.status).toBe(200);
+      expect(protectedContext.auditSink.tailByTaskRef(protectedTask)[0]).toMatchObject({
+        actor: 'human',
+      });
+
+      const localTask = 'task-local-actor';
+      const localResponse = await localContext.app.request('/ops/seed/reload', {
+        method: 'POST',
+        headers: { 'X-Actor': 'human', 'X-Task-Ref': localTask },
+      });
+      expect(localResponse.status).toBe(200);
+      expect(localContext.auditSink.tailByTaskRef(localTask)[0]).toMatchObject({ actor: 'system' });
+    } finally {
+      protectedContext.auditSink.close();
+      localContext.auditSink.close();
+    }
+  });
+
+  it('keeps STASIS active when tokenless local seed attempts a human-only resume', async () => {
+    const context = createApp({ opsAuth: { opsToken: '', requireAuth: false } });
+    context.budgetGovernor.trip('BUDGET_BREACH', 'test trip');
+
+    try {
+      const response = await context.app.request('/ops/resume', {
+        method: 'POST',
+        headers: { 'X-Actor': 'human', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: 'spoofed local resume' }),
+      });
+
+      expect(response.status).toBe(403);
+      await expect(response.json()).resolves.toMatchObject({ code: 'HUMAN_AUTH_REQUIRED' });
+      expect(context.budgetGovernor.state().stasis_active).toBe(true);
+      expect(context.auditSink.tailByTaskRef('ops-resume')).toEqual([]);
+    } finally {
+      context.auditSink.close();
+    }
+  });
+
   it('leaves the explicitly public health route outside the operations guard', async () => {
     const { app, auditSink } = createProtectedApp();
 
