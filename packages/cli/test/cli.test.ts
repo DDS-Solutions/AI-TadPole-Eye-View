@@ -6,7 +6,7 @@ import { runAuditTail } from '../src/commands/audit.js';
 import { runFeedsHealth } from '../src/commands/feeds.js';
 import { runResume } from '../src/commands/resume.js';
 import { runSceneLoad, runSceneSave } from '../src/commands/scene.js';
-import { runStatus } from '../src/commands/status.js';
+import { PROJECT_PHASE, runStatus } from '../src/commands/status.js';
 
 describe('GEV v2 CLI Surface (@gev/cli)', () => {
   it('runStatus() completes in < 100ms in offline fallback mode', async () => {
@@ -23,7 +23,7 @@ describe('GEV v2 CLI Surface (@gev/cli)', () => {
 
     expect(duration).toBeLessThan(150); // fast local execution
     expect(logs.some((l) => l.includes('GEV v2 Console Status'))).toBe(true);
-    expect(logs.some((l) => l.includes('Phase 4'))).toBe(true);
+    expect(logs.some((l) => l.includes(PROJECT_PHASE))).toBe(true);
     expect(logs.some((l) => l.includes('STASIS_INACTIVE'))).toBe(true);
   });
 
@@ -38,7 +38,7 @@ describe('GEV v2 CLI Surface (@gev/cli)', () => {
 
     expect(logs.length).toBe(1);
     const parsed = JSON.parse(logs[0] || '{}');
-    expect(parsed.phase).toContain('Phase 4');
+    expect(parsed.phase).toBe(PROJECT_PHASE);
     expect(parsed.stasis_active).toBe(false);
     expect(parsed.cap_usd).toBe(10);
     expect(parsed.remaining_usd).toBe(10);

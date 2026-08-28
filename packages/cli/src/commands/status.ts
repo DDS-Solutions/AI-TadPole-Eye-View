@@ -13,6 +13,8 @@ export interface StatusOptions {
   json?: boolean;
 }
 
+export const PROJECT_PHASE = 'Phase 5.0 — Safety and Source-of-Truth Bootstrap';
+
 export async function runStatus(options: StatusOptions = {}): Promise<void> {
   const clock = new SystemClock();
   const serverUrl = options.serverUrl ?? 'http://localhost:3000';
@@ -80,7 +82,7 @@ export async function runStatus(options: StatusOptions = {}): Promise<void> {
     console.log(
       JSON.stringify(
         {
-          phase: 'Phase 4 — Hygiene & Showcase (Parity Achieved)',
+          phase: PROJECT_PHASE,
           server_online: isOnline,
           stasis_active: stasisActive,
           spent_usd: spentUsd,
@@ -99,7 +101,7 @@ export async function runStatus(options: StatusOptions = {}): Promise<void> {
 
   console.log(pc.bold(pc.cyan('\n🌍 GEV v2 Console Status (PLAN.md §0)')));
   console.log(pc.dim('───────────────────────────────────────────────'));
-  console.log(` ${pc.bold('Project Phase:')}      Phase 4 (Hygiene & Showcase — Parity Achieved)`);
+  console.log(` ${pc.bold('Project Phase:')}      ${PROJECT_PHASE}`);
   console.log(
     ` ${pc.bold('Server Status:')}      ${isOnline ? pc.green('ONLINE (http://localhost:3000)') : pc.dim('OFFLINE (local inspection)')}`
   );

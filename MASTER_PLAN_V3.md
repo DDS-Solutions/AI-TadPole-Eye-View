@@ -2,8 +2,8 @@
 
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
-**Verified against repository:** 2026-08-27
-**Status:** IN PROGRESS — Phase 5.0 tasks 5.0.1–5.0.3c complete
+**Verified against repository:** 2026-08-28
+**Status:** IN PROGRESS — Phase 5.0 tasks 5.0.1–5.0.4 complete
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,9 +20,9 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=5.0
-NEXT_TASK=5.0.4
+NEXT_TASK=5.0.5
 NEXT_TASK_STATUS=READY
-LAST_VERIFIED_UTC=2026-08-27
+LAST_VERIFIED_UTC=2026-08-28
 STASIS_OBSERVABILITY=PARTIAL_UNTIL_TASK_5.1.1
 IMPLEMENTATION_STARTED=YES
 ```
@@ -299,7 +299,7 @@ The repository contains Phase 0–4 implementation commits. V3 does not repeat t
 - [x] **5.0.3a Reconcile release and documentation integrity.** Preserve historical tags, establish the root package manifest as product-version authority, gate release automation, and correct public governance/security/build claims.
 - [x] **5.0.3b Make local MCP truthful and confine scene files.** Remove fabricated console-state results from the default stdio surface, sandbox scene I/O, and replace tautological diagnostics with verified evidence.
 - [x] **5.0.3c Repair current server and collaboration trust boundaries.** Derive audit identity from auth, enforce human-only resume, harden WebSocket/room boundaries, validate CRDT updates, stop client echo, and add bounded abuse controls.
-- [ ] **5.0.4 Make ADG meaningful.** Validate symbol membership, paths, phase/status/version claims, plan-copy equality, and designated root docs; distinguish explicitly planned paths from implemented paths.
+- [x] **5.0.4 Make ADG meaningful.** Validate symbol membership, paths, phase/status/version claims, plan-copy equality, and designated root docs; distinguish explicitly planned paths from implemented paths.
 - [ ] **5.0.5 Restore the quality baseline.** Fix web lint and Playwright smoke timeout by root cause; run uncached affected lint/typecheck/test/build/QA.
 - [ ] **5.0.6 Reconcile architectural drift.** Inventory direct wall-clock use, files over 500 lines, hardcoded design colors, duplicate Cesium dependencies, and claimed-but-absent stack items; fix or create scoped follow-up ADR tasks.
 - [ ] **5.0 exit:** no unprotected privileged route; status is registry-derived; plan copies match; ADG detects seeded drift; all mandatory baseline gates green.
@@ -480,7 +480,7 @@ tested approaches, record LOGIC_BLOCKER with minimal binary fixtures and bounded
 alternatives.
 ```
 
-#### Ready-to-authorize brief for task 5.0.4 after 5.0.3c
+#### Completed brief for task 5.0.4
 
 ```text
 [SCOPE_CONTRACT] scripts/adg.mjs, focused ADG fixture/test harness and package
@@ -510,6 +510,34 @@ endings. If current root documentation contradicts PLAN.md, stop with DOC_BLOCKE
 request the smallest reconciliation scope. After three tested parser/validation
 approaches fail, record LOGIC_BLOCKER with false-positive/false-negative evidence and
 bounded alternatives.
+```
+
+#### Ready-to-authorize brief for NEXT_TASK 5.0.5
+
+```text
+[SCOPE_CONTRACT] Existing Biome failures under apps/web; formatting-only baseline
+failures in apps/server/src/middleware/costGovernor.ts and apps/server/test/load.test.ts;
+e2e/smoke.spec.ts plus only the Playwright/Vite/server startup helpers required to
+root-cause its late filter-interaction timeout; and
+packages/cesium-kit/test/frameBudget.test.ts for the recorded benchmark-title/assertion
+mismatch. Out of scope: new product features, visual redesign, provider/runtime
+refactors, live services, production deployment, and Phase 5.1 work.
+
+[PERFORMANCE_THRESHOLD] Root lint is green without ignoring files; the canonical smoke
+passes within its existing 30-second budget using condition waits only; the Cesium
+benchmark title, measurement, and assertion enforce one honest ADR-backed threshold;
+uncached affected lint/typecheck/test/build and canonical QA pass; zero live calls.
+
+[ARCHITECTURE_MODE] PLAN.md §2 rules 2, 3, 6, 9, and 13; §3 UI/Cesium boundaries;
+§13 acceptance policy; ADRs 0023–0025; and docs/DESIGN.md for every touched UI file.
+Preserve provider → store → UI/Cesium flow, the rAF queue, SimClock determinism, and
+existing design tokens. No deviations without ADR.
+
+[FAILURE_MODES] Do not raise the smoke timeout, add fixed sleeps, skip lint paths,
+weaken a benchmark to match a slow run, or hide a rendering/startup race with retries.
+Preserve real-render screenshot evidence. If three measured approaches cannot isolate
+the timeout or frame-budget mismatch, record LOGIC_BLOCKER with traces, timing evidence,
+and bounded alternatives.
 ```
 
 ### Phase 5.1 — Durable shared governance
@@ -947,5 +975,42 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
 - Next task: **5.0.4 Make ADG meaningful**. Its exact ready-to-authorize 4-Pillar brief
   is in §10; no task 5.0.4 code has started or been authorized by this checkpoint.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.0.4. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 5.0.4 completion checkpoint — 2026-08-28
+
+- Scope completed: ADG now validates every designated root Markdown file plus
+  `docs/**/*.md`; resolves implemented paths relative to the source document and
+  workspace root; confines source lookup to declared modules; follows TypeScript/
+  JavaScript re-exports; and validates only module-qualified symbol claims rather than
+  counting repository-wide substrings.
+- Planned-versus-implemented behavior: a missing concrete future path passes only when
+  the same line carries the exact `adg:planned-path <path>` marker. Mismatched, wildcard,
+  template, traversal, stale, and non-workspace markers fail. Template examples remain a
+  separate prefix-validated category; build output and dependencies are excluded.
+- Claim integrity: ADG enforces byte-identical PLAN.md/MASTER_PLAN_V3.md, checkpoint-to-
+  first-unchecked-task consistency, plan metadata/status/current phase, README and
+  SECURITY current-phase claims, root package/CHANGELOG version agreement, designated
+  root-document presence, and the CLI's declared project phase.
+- CLI reconciliation: console and JSON status now share one `PROJECT_PHASE` declaration,
+  report `Phase 5.0 — Safety and Source-of-Truth Bootstrap`, and are guarded against
+  future PLAN.md drift. The narrow CLI scope amendment was explicitly developer-authorized.
+- Files changed for task 5.0.4: `package.json`, `scripts/adg.mjs`,
+  `scripts/adg.test.mjs`, `scripts/lib/adg-core.mjs`,
+  `scripts/lib/adg-claims.mjs`, `packages/cli/src/commands/status.ts`,
+  `packages/cli/test/cli.test.ts`, and this synchronized checkpoint pair.
+- Passing evidence: focused ADG adversarial tests (11/11), real `pnpm docs:check`
+  across 46 documents/356 paths/19 module-qualified symbols, focused CLI tests (7/7),
+  CLI typecheck/build and runtime `pnpm gev status`, changed-file Biome check,
+  `git diff --check`, and uncached affected workspace typecheck/test (26/26 tasks).
+  Seeded cases prove deterministic failure for missing paths, wrong-module symbols,
+  stale README and CLI phases, impossible task status, stale product version, plan-copy
+  drift, missing designated docs, broad planned-path markers, and CRLF line evidence.
+- Runtime status remained offline with `STASIS_INACTIVE`; per §0 this is partial
+  observability only. All work stayed local/seed with zero live-service calls.
+- Branch: `codex/adg-5.0.4`; implementation commit `b05a19e`. GitHub CLI remains
+  unavailable, so open PR inspection and PR creation were not possible in this environment.
+- Next task: **5.0.5 Restore the quality baseline**. Its exact ready-to-authorize
+  4-Pillar brief is in §10; no task 5.0.5 implementation has started or been authorized.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.0.5. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
