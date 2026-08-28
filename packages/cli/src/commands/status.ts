@@ -13,7 +13,7 @@ export interface StatusOptions {
   json?: boolean;
 }
 
-export const PROJECT_PHASE = 'Phase 5.0 — Safety and Source-of-Truth Bootstrap';
+export const PROJECT_PHASE = 'Phase 5.1 — Durable Shared Governance';
 
 export async function runStatus(options: StatusOptions = {}): Promise<void> {
   const clock = new SystemClock();

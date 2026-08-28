@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-08-28
-**Status:** IN PROGRESS — Phase 5.0 tasks 5.0.1–5.0.5 complete
+**Status:** IN PROGRESS — Phase 5.0 exit verified; Phase 5.1 ready
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -19,8 +19,8 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 
 ```text
 PLAN_VERSION=3.0
-CURRENT_PHASE=5.0
-NEXT_TASK=5.0.6
+CURRENT_PHASE=5.1
+NEXT_TASK=5.1.1
 NEXT_TASK_STATUS=READY
 LAST_VERIFIED_UTC=2026-08-28
 STASIS_OBSERVABILITY=PARTIAL_UNTIL_TASK_5.1.1
@@ -301,8 +301,8 @@ The repository contains Phase 0–4 implementation commits. V3 does not repeat t
 - [x] **5.0.3c Repair current server and collaboration trust boundaries.** Derive audit identity from auth, enforce human-only resume, harden WebSocket/room boundaries, validate CRDT updates, stop client echo, and add bounded abuse controls.
 - [x] **5.0.4 Make ADG meaningful.** Validate symbol membership, paths, phase/status/version claims, plan-copy equality, and designated root docs; distinguish explicitly planned paths from implemented paths.
 - [x] **5.0.5 Restore the quality baseline.** Fix web lint and Playwright smoke timeout by root cause; run uncached affected lint/typecheck/test/build/QA.
-- [ ] **5.0.6 Reconcile architectural drift.** Inventory direct wall-clock use, files over 500 lines, hardcoded design colors, duplicate Cesium dependencies, and claimed-but-absent stack items; fix or create scoped follow-up ADR tasks.
-- [ ] **5.0 exit:** no unprotected privileged route; status is registry-derived; plan copies match; ADG detects seeded drift; all mandatory baseline gates green.
+- [x] **5.0.6 Reconcile architectural drift.** Inventory direct wall-clock use, files over 500 lines, hardcoded design colors, duplicate Cesium dependencies, and claimed-but-absent stack items; fix or create scoped follow-up ADR tasks.
+- [x] **5.0 exit:** no unprotected privileged route; status is registry-derived; plan copies match; ADG detects seeded drift; all mandatory baseline gates green.
 
 #### Completed brief for task 5.0.1
 
@@ -540,7 +540,7 @@ the timeout or frame-budget mismatch, record LOGIC_BLOCKER with traces, timing e
 and bounded alternatives.
 ```
 
-#### Ready-to-authorize brief for NEXT_TASK 5.0.6
+#### Completed brief for task 5.0.6
 
 ```text
 [SCOPE_CONTRACT] Repository-wide inventory and narrowly scoped reconciliation for
@@ -577,6 +577,34 @@ LOGIC_BLOCKER with exact paths, measurements, and bounded alternatives.
 - [ ] 5.1.4 Implement M3 ledger reservation/settlement after OQ-3; retries are idempotent and outage behavior is fail closed for billable/mutating work.
 - [ ] 5.1.5 Add a versioned hash-chain migration to the SQLite audit WAL, integrity verification, redaction, retention, and corruption tests.
 - [ ] 5.1 exit: two-process tests prove shared STASIS; only a human resume clears it; approvals resist replay; audit tampering is detected.
+
+#### Ready-to-authorize brief for NEXT_TASK 5.1.1
+
+```text
+[SCOPE_CONTRACT] apps/server shared runtime composition; packages/governance durable
+budget/STASIS state and migrations; packages/ops-mcp transport/tool context wiring;
+packages/cli connected/local status path; required contracts and focused tests. Out
+of scope: tool-executor consolidation (5.1.2), real M2 approvals (5.1.3), M3
+reservation/settlement (5.1.4), audit hash-chain work (5.1.5), live Tadpole/services,
+production deployment, provider work, and UI features.
+
+[PERFORMANCE_THRESHOLD] Deterministic two-process and restart tests prove one
+transactionally persisted budget/STASIS state, cross-process breach visibility, and
+human-only resume. Connected CLI/MCP/server paths report the same state; offline status
+remains explicitly non-authoritative. Root lint, affected uncached typecheck/test/build,
+ADG, architecture drift, and canonical seed-mode gates pass with zero live calls.
+
+[ARCHITECTURE_MODE] PLAN.md §2 rules 1, 2, 3, 8, and 13; §3 boundaries/data flow;
+ADRs 0016, 0017, 0027, 0030, 0039, and 0040. Compose one runtime context; use versioned
+SQLite migrations/transactions and SimClock. No process-local fallback may claim
+shared authority.
+
+[FAILURE_MODES] Do not create separate governors per transport, auto-resume STASIS,
+fail open on lock/corruption, infer shared state from an offline CLI, or mix later
+approval/ledger/hash-chain scope into this task. Exercise Windows SQLite locking and
+crash/restart behavior. After three failed persistence/concurrency approaches, record
+LOGIC_BLOCKER with database evidence and bounded alternatives.
+```
 
 ### Phase 5.2 — Provenance and missing geospatial layers
 
@@ -1117,5 +1145,42 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
 - Next task: **5.0.6 Reconcile architectural drift**. Its exact ready-to-authorize
   4-Pillar brief is in §10; no task 5.0.6 implementation has started or been authorized.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.0.6. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 5.0.6 and Phase 5.0 exit checkpoint — 2026-08-28
+
+- The developer authorized exactly the embedded task 5.0.6 brief. Work remained
+  local/seed with zero live-service calls; no Phase 5.1 implementation was started.
+- Added the deterministic `pnpm architecture:check` inventory/guard and ADR 0040.
+  Every direct clock, source file over 500 lines, color-bearing UI file, direct Cesium
+  declaration, and installed-stack claim is classified as compliant, fixed,
+  ADR-exempt, or a fingerprinted bounded follow-up. Eight legacy Svelte color files
+  remain gated for tokenization before their next visual edit or task 7.3.
+- Replaced domain/request-path wall-clock calls with injected `SimClock` instances,
+  added deterministic clock/ID tests, and centralized Cesium and web data-visualization
+  colors in design tokens. Documentation now distinguishes installed capabilities from
+  proposed Redis, OpenTelemetry, PWA, satellite, and UI-stack work.
+- Preserved the simultaneous Cesium declarations after measuring the current build and
+  recording the lock/import evidence; no dependency was added or removed without the
+  comparative clean-install, bundle, and real-render proof required by the brief.
+- Root-caused two gate failures without weakening their thresholds: server load testing
+  is now isolated from unrelated workers, and the smoke uses condition/actionability
+  checks plus a viewport screenshot instead of a slow full-page software-WebGL capture.
+- Passing evidence: `pnpm turbo run lint typecheck test build --affected --force`
+  completed 40/40 uncached tasks; `pnpm test:performance` measured server p95 12.30 ms
+  below 300 ms and Cesium ingestion p95 6.86 ms below 16.6 ms; `pnpm check:budgets`
+  passed at 1,213.62 KB total JavaScript gzip and 1,121.35 KB Cesium-vendor gzip;
+  `pnpm gev qa` passed 1/1 in 27.7 seconds with its real-render screenshot visually
+  inspected. Root lint, ADG/docs check, architecture drift, and diff checks passed.
+- Phase 5.0 exit is supported by the task 5.0.1–5.0.6 evidence: privileged routes are
+  protected, status is registry-derived, ADG detects seeded drift, plan copies match,
+  and every mandatory baseline gate is green.
+- Branch: `codex/architectural-drift-5.0.6`; implementation commit `deb88fb`. GitHub
+  CLI remains unavailable, so open PR inspection and PR creation were not possible.
+  The pre-existing line-ending-only status entries `packages/contracts/src/tools.ts`
+  and `packages/ops-mcp/src/tools.ts` remain uncommitted and are not task changes.
+- Next task: **5.1.1 Compose one shared runtime context and persist budget/STASIS state**.
+  Its exact ready-to-authorize 4-Pillar brief is in §10; no Phase 5.1 implementation
+  has started or been authorized.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.1.1. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
