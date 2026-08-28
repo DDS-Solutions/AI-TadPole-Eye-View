@@ -255,8 +255,15 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
     it('validates tool inputs and outputs', () => {
       // Rejects empty load_scene input
       expect(() => OPERATOR_TOOLS.load_scene.inputSchema.parse({})).toThrow(
-        'Either scene_json or scene_path must be provided'
+        'Exactly one of scene_json or scene_path must be provided'
       );
+
+      expect(() =>
+        OPERATOR_TOOLS.load_scene.inputSchema.parse({
+          scene_json: '{}',
+          scene_path: 'default.json',
+        })
+      ).toThrow('Exactly one of scene_json or scene_path must be provided');
 
       // Accepts valid load_scene input
       const validLoad = OPERATOR_TOOLS.load_scene.inputSchema.parse({
@@ -291,12 +298,14 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
 
       const saveOut = OPERATOR_TOOLS.save_scene.outputSchema.parse({
         saved: true,
-        scene_path: 'scenes/saved.json',
+        scene_path: 'saved.json',
         summary: {
           version: 1,
           layer_count: 2,
+          enabled_layer_count: 2,
           aoi_count: 0,
           camera_altitude: 20000000,
+          selected_entity: null,
         },
       });
       expect(saveOut.summary.layer_count).toBe(2);

@@ -1,6 +1,11 @@
+import { FrozenClock } from '@gev/core';
 import fc from 'fast-check';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createOpsAuth, timingSafeTokenMatches } from '../src/middleware/opsAuth.js';
+import {
+  InMemoryRateLimiter,
+  createOpsAuth,
+  timingSafeTokenMatches,
+} from '../src/middleware/opsAuth.js';
 
 describe('shared privileged server authentication adapter', () => {
   afterEach(() => {
@@ -61,8 +66,32 @@ describe('shared privileged server authentication adapter', () => {
       kind: 'local_seed',
       allowed: true,
       authenticated: false,
-      actor: 'local-dev',
+      actor: 'system',
     });
+  });
+
+  it('enforces independent clock-driven per-client limits and resets each minute', () => {
+    const clock = new FrozenClock();
+    const limiter = new InMemoryRateLimiter(clock);
+
+    for (let count = 0; count < 5; count += 1) {
+      expect(limiter.consume('voice-session', 'client-a', 5).allowed).toBe(true);
+    }
+    expect(limiter.consume('voice-session', 'client-a', 5)).toMatchObject({
+      allowed: false,
+      retryAfterSeconds: 60,
+    });
+
+    for (const bucket of ['collab-join', 'collab-ws-upgrade']) {
+      for (let count = 0; count < 20; count += 1) {
+        expect(limiter.consume(bucket, 'client-a', 20).allowed).toBe(true);
+      }
+      expect(limiter.consume(bucket, 'client-a', 20).allowed).toBe(false);
+    }
+
+    clock.setTime(clock.now() + 60_000);
+    expect(limiter.consume('voice-session', 'client-a', 5).allowed).toBe(true);
+    expect(limiter.consume('voice-session', 'client-b', 5).allowed).toBe(true);
   });
 
   it('PROPERTY: exact arbitrary token values compare successfully', () => {

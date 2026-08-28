@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-08-27
-**Status:** IN PROGRESS — Phase 5.0 tasks 5.0.1–5.0.3 complete
+**Status:** IN PROGRESS — Phase 5.0 tasks 5.0.1–5.0.3c complete
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -296,6 +296,9 @@ The repository contains Phase 0–4 implementation commits. V3 does not repeat t
 - [x] **5.0.1 Secure all existing operations routes.** Move/mount auth before protected handlers; protect audit streaming and seed reload; add route-coverage tests.
 - [x] **5.0.2 Repair authentication consistency.** One auth adapter/config, timing-safe comparison, production fail-closed behavior, privileged collaboration-role tests.
 - [x] **5.0.3 Create one provider registry.** Derive health, feed/layer/provider counts, modes, CLI status, MCP health, and documentation tables from it.
+- [x] **5.0.3a Reconcile release and documentation integrity.** Preserve historical tags, establish the root package manifest as product-version authority, gate release automation, and correct public governance/security/build claims.
+- [x] **5.0.3b Make local MCP truthful and confine scene files.** Remove fabricated console-state results from the default stdio surface, sandbox scene I/O, and replace tautological diagnostics with verified evidence.
+- [x] **5.0.3c Repair current server and collaboration trust boundaries.** Derive audit identity from auth, enforce human-only resume, harden WebSocket/room boundaries, validate CRDT updates, stop client echo, and add bounded abuse controls.
 - [ ] **5.0.4 Make ADG meaningful.** Validate symbol membership, paths, phase/status/version claims, plan-copy equality, and designated root docs; distinguish explicitly planned paths from implemented paths.
 - [ ] **5.0.5 Restore the quality baseline.** Fix web lint and Playwright smoke timeout by root cause; run uncached affected lint/typecheck/test/build/QA.
 - [ ] **5.0.6 Reconcile architectural drift.** Inventory direct wall-clock use, files over 500 lines, hardcoded design colors, duplicate Cesium dependencies, and claimed-but-absent stack items; fix or create scoped follow-up ADR tasks.
@@ -379,7 +382,105 @@ scoped consumers after three tested approaches, record LOGIC_BLOCKER with drift
 evidence and bounded alternatives.
 ```
 
-#### Ready-to-authorize brief for NEXT_TASK 5.0.4
+#### Authorized brief for task 5.0.3a
+
+```text
+[SCOPE_CONTRACT] PLAN.md, MASTER_PLAN_V3.md, VERSION_CONTROL.md, README.md,
+SECURITY.md, CHANGELOG.md, .github/workflows/release.yml, the root/runtime version
+source, scripts/adg.mjs only for removal of its hardcoded expected version, and
+focused documentation/version tests. Preserve the existing README.md terminology
+edit. Out of scope: MCP implementation, collaboration/runtime security fixes,
+provider/UI work, live services, tag deletion, or history rewriting.
+
+[PERFORMANCE_THRESHOLD] One authoritative version source; no hardcoded ADG expected
+version; release automation cannot create another release until the documented human
+policy gate passes; root documentation accurately labels seed/demo governance and
+current layer state; designated documentation checks pass; focused tests and
+typechecks pass; plan copies remain byte-identical; zero live calls.
+
+[ARCHITECTURE_MODE] PLAN.md §2 rules 7 and 13, §3 installed-versus-proposed truth,
+§6 M-rung evidence requirements, task 5.0.4 prerequisites, and ADR 0030. Preserve
+published tag history and distinguish historical releases from production-readiness
+criteria.
+
+[FAILURE_MODES] Do not rewrite or delete existing tags, claim durable tamper evidence,
+mark simulated M2/M3 as production integration, or weaken readiness criteria merely
+to match current versions. If the future release scheme cannot be selected
+unambiguously, record DOC_BLOCKER with bounded choices and stop before changing
+release automation.
+```
+
+#### Authorized brief for task 5.0.3b
+
+```text
+[SCOPE_CONTRACT] packages/ops-mcp/src/tools.ts, packages/ops-mcp/src/server.ts,
+focused packages/ops-mcp tests, packages/contracts/src/tools.ts and its focused tests
+only where truthful availability/output contracts require change, and packages/cli
+demo wording/tests only to preserve explicit simulation labeling. Out of scope: web
+tool executors, Streamable HTTP MCP, Phase 5.1 shared-runtime consolidation, server
+routes, collaboration/UI work, live services, and production deployment.
+
+[PERFORMANCE_THRESHOLD] Default stdio tools/list exposes only tools backed by current
+context state or verified evidence; the six console-only placeholder tools are absent
+and direct calls fail explicitly rather than return plausible data. Scene reads and
+writes are confined to an operator-configured root (default .gev/scenes), accept only
+.json, cap input at 1 MiB, reject traversal/absolute/UNC/symlink escape, and save
+atomically without overwriting outside the root. Scene results report only values
+derivable from SceneState. Diagnostics pass only after the checked operation succeeds.
+Focused tests cover Windows/POSIX traversal, symlink escape where supported,
+oversized input, unsupported tools, audit ordering, and zero live calls; changed-file
+lint plus affected typecheck/test pass.
+
+[ARCHITECTURE_MODE] PLAN.md §2 rules 1, 7, 8, 10, and 13; §5 rules 6–8; §7.2 shared
+tool truth; and the local-stdio exception in §5 rule 4. Fail closed at capability and
+filesystem boundaries. Preserve the CLI demo only as visibly labeled simulation; do
+not pre-implement HTTP MCP or the Phase 5.1 shared context.
+
+[FAILURE_MODES] Never make fabricated output acceptable merely by adding a subtle
+simulated flag, never authorize arbitrary paths because stdio is local, and never use
+string-prefix containment. Do not follow a symlink outside the configured root or
+leave a partially written scene. If cross-platform canonical confinement cannot be
+made deterministic after three tested approaches, record LOGIC_BLOCKER with failing
+path cases and bounded alternatives.
+```
+
+#### Ready-to-authorize brief for NEXT_TASK 5.0.3c
+
+```text
+[SCOPE_CONTRACT] apps/server/src/index.ts, apps/server/src/middleware/opsAuth.ts,
+apps/server/src/routes/{collab,voice}.ts, packages/contracts/src/collab.ts,
+packages/core/src/collabDoc.ts, apps/web/src/stores/collab.svelte.ts,
+apps/web/src/components/CollabBar.svelte, packages/cesium-kit/src/collabLayer.ts, and
+focused core/server/web-compatible tests. Out of scope: production identity/tenancy,
+HTTP MCP, provider refactors, follow-camera redesign, live services, and Phase 5.1
+durable governance.
+
+[PERFORMANCE_THRESHOLD] Audit actor comes only from the auth decision; tokenless local
+seed access cannot perform human-only resume. WebSocket Origin comparison is parsed
+and exact, missing Origin is rejected, and URL room ID must equal the verified token
+room. Room enumeration/detail requires operations auth. Join responses contract-validate
+the assigned role and clientId; self-presence is not rendered or followable. Authorized
+CRDT updates validate on a staged document before commit, invalid updates do not poison
+the room, and remote-origin updates are never echoed. In-memory limits enforce at most
+5 voice sessions, 20 joins, and 20 WebSocket upgrades per client per minute pending
+Phase 7 tenant policy. Focused spoofing, Origin, room-binding, poisoning, echo, limit,
+and role-downgrade tests pass with injected clocks and zero live calls.
+
+[ARCHITECTURE_MODE] PLAN.md §2 rules 1, 6–10, and 13; §5 authentication, origin,
+limits, and human-resume requirements; existing viewer-only seed access; and the
+providers → stores → UI/Cesium boundary. Use design tokens for touched UI and read
+docs/DESIGN.md before UI edits. No new auth environment contract or transport-specific
+governor.
+
+[FAILURE_MODES] Never trust X-Actor, silently treat local-dev as human, mutate the live
+Y.Doc before validation, rebroadcast remote updates, compare Origin by prefix, or make
+room IDs decorative. Rate limits must not call live services or rely on wall-clock in
+tests. If staged Yjs validation cannot preserve valid concurrent updates after three
+tested approaches, record LOGIC_BLOCKER with minimal binary fixtures and bounded
+alternatives.
+```
+
+#### Ready-to-authorize brief for task 5.0.4 after 5.0.3c
 
 ```text
 [SCOPE_CONTRACT] scripts/adg.mjs, focused ADG fixture/test harness and package
@@ -709,6 +810,142 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   observability remains partial until task 5.1.1 while the server is offline.
 - Next task: **5.0.4 Make ADG meaningful**. Its ready-to-authorize 4-Pillar brief is in
   §10; it has not been started or authorized by this checkpoint.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.0.4. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 5.0.3a completion checkpoint — 2026-08-27
+
+- Scope completed: existing `v1.0.0` and `v1.1.0` history is preserved and labeled
+  as early-stage seed/simulation releases rather than maturity evidence. The root
+  package manifest is now the sole product-version authority; server health derives
+  from it, the unused hardcoded capability manifest was removed, and ADG no longer
+  embeds an expected release number.
+- Release behavior: release-please remains configured but its workflow is disabled by
+  default. A human must set the repository variable `GEV_RELEASES_ENABLED=true` only
+  after the documented readiness evidence is recorded; release tags and history were
+  not changed.
+- Documentation truth: README, SECURITY, VERSION_CONTROL, and CHANGELOG now distinguish
+  local seed/demo governance from verified external M2/M3 integration, describe the
+  SQLite WAL as non-hash-chained, identify the current MCP/collaboration hardening
+  gaps, acknowledge the existing k6 script, and require the build step on a fresh
+  clone. The pre-existing README terminology edit was preserved.
+- Files changed for task 5.0.3a: `.github/workflows/release.yml`, `CHANGELOG.md`,
+  `README.md`, `SECURITY.md`, `VERSION_CONTROL.md`, `apps/server/src/index.ts`,
+  `apps/server/src/productVersion.ts`, `apps/server/test/productVersion.test.ts`,
+  `packages/contracts/src/capabilities.ts`, `scripts/adg.mjs`, and this synchronized
+  plan checkpoint pair.
+- Branch: `codex/adg-5.0.4`. Commit not created because the working tree remains an
+  owner-controlled pre-5.0.4 remediation workspace. GitHub CLI is unavailable, so
+  open PR inspection and PR creation were not possible in this environment.
+- Passing evidence: contracts tests (24/24), server tests (66/66), focused contracts
+  and server typechecks, changed-code Biome check (5 files), `pnpm docs:check`
+  (38 documents, 237 path references, 102 symbol references), `git diff --check`,
+  and zero-diff synchronized-plan verification. Tests prove runtime/root version
+  equality and reject malformed manifest versions; all work stayed local with zero
+  live-service calls.
+- Remaining risk: the current ADG still counts rather than validates many inline
+  symbols and does not yet enforce designated-root-document or phase/status claim
+  truth. Those are intentionally retained for task 5.0.4. MCP truth/filesystem and
+  server/collaboration trust-boundary findings are now explicit prerequisite tasks.
+- Next task: **5.0.3b Make local MCP truthful and confine scene files**. Its exact
+  ready-to-authorize 4-Pillar brief is in §10; no task 5.0.3b code has been started.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.0.3b. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 5.0.3b completion checkpoint — 2026-08-27
+
+- Capability truth: the default stdio `tools/list` now exposes exactly seven tools
+  backed by the local operator context or verified evidence. `fly_to_location`,
+  `toggle_layer`, `select_entity`, `inspect_telemetry`, `query_aoi`, and
+  `set_sim_time` remain available to real browser executors through the shared
+  contracts registry but are neither advertised nor executable through stdio; direct
+  calls fail before audit or action.
+- Scene confinement: the operator context owns a real validated `SceneState` and a
+  canonical scene root (`.gev/scenes`, configurable with `GEV_MCP_SCENE_ROOT`). Scene
+  paths accept one root-level `.json` filename only, reject absolute/drive/UNC/
+  traversal/directory/alternate-stream forms and symbolic links, enforce a 1 MiB byte
+  limit, and save through a same-root exclusive temporary file plus atomic rename.
+  Failed writes remove the temporary file.
+- Scene truth: load updates the local context state; save serializes that current state.
+  The fabricated entity count was removed. Load/save summaries now contain only scene
+  version, layer counts, AOI count, camera altitude, and selected entity values derived
+  from the validated scene contract. Exactly one inline payload or filename is required
+  for load, and save requires a filename.
+- Diagnostics and demo truth: the audit diagnostic passes only after a SQLite query
+  succeeds and reports failure without crashing when it does not; fixture diagnostics
+  verify readable regular files. `gev demo` now uses real local kill-switch mutations
+  and labels the workflow, generated Ed25519 key, human resume, and disconnected hash
+  helper explicitly as a local seed simulation rather than external M2/M3 proof.
+- Files changed for task 5.0.3b: `packages/contracts/src/tools.ts`,
+  `packages/contracts/test/contracts.test.ts`, `packages/ops-mcp/src/server.ts`,
+  `packages/ops-mcp/src/tools.ts`, `packages/ops-mcp/test/mcp.test.ts`,
+  `packages/ops-mcp/test/sceneSecurity.test.ts`,
+  `packages/cli/src/commands/demo.ts`, `packages/cli/test/demo.test.ts`, the focused
+  README/SECURITY truth corrections required by the completed hardening, and this
+  synchronized plan checkpoint pair.
+- Passing evidence: contracts tests (24/24), MCP tests (28/28), CLI tests (7/7),
+  focused typechecks/builds, changed-file Biome, affected workspace typecheck/test
+  (26/26 tasks), documentation guard, `git diff --check`, and byte-identical plan
+  verification. Adversarial coverage includes all six unsupported direct calls,
+  Windows/POSIX traversal, absolute/UNC/drive/alternate-stream forms, symlink escape
+  where supported, oversized file and multibyte inline input, atomic replacement,
+  failed-rename cleanup, audit ordering, failed diagnostics, and zero live calls.
+- Branch: `codex/adg-5.0.4`. Commit not created because this remains an
+  owner-controlled pre-5.0.4 remediation workspace. GitHub CLI is unavailable, so PR
+  inspection and creation were not possible in this environment.
+- Remaining boundary: these guarantees cover the local stdio transport. A future
+  network MCP endpoint must reuse the same capability filter, context, confinement,
+  audit, approval, and budget path; it is explicitly outside this task.
+- Next task: **5.0.3c Repair current server and collaboration trust boundaries**. Its
+  exact ready-to-authorize 4-Pillar brief is in §10; no task 5.0.3c code has started.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.0.3c. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 5.0.3c completion checkpoint — 2026-08-27
+
+- Authenticated identity is now authoritative: audit intent actors come only from the
+  shared operations-auth decision, caller-supplied `X-Actor` is ignored, local seed is
+  represented as `system`, and STASIS resume requires an authenticated human even when
+  no lock is active. The duplicate operations-auth registration was removed.
+- Collaboration transport boundaries now reject missing or malformed Origins and compare
+  parsed hosts exactly, bind the URL room to the verified JWT room, validate complete JWT
+  payloads against the shared contract, inject the simulation clock, and protect room
+  enumeration/detail behind operations auth. Public health no longer exposes room IDs.
+- Join responses contract-validate the assigned role and server-issued `clientId`.
+  Presence accepts only bounded cursor/camera/selection patches while callsign, role,
+  color, client ID, and last-seen time remain server-owned. The web store validates join
+  and presence payloads, removes self-presence before rendering, and prevents self-follow.
+- Authorized CRDT updates are applied first to an isolated clone and schema-validated
+  before live commit. Invalid updates close the peer without mutating or broadcasting
+  room state. A shared remote-origin marker prevents browser echo of server updates.
+- One clock-injected in-memory limiter instance is shared across transports and enforces
+  per-client fixed-minute caps of 5 voice sessions, 20 collaboration joins, and 20
+  WebSocket upgrades. Tests inject client identity and time; no new auth environment
+  contract or transport-specific governor was added.
+- Files changed for task 5.0.3c: `apps/server/src/index.ts`,
+  `apps/server/src/middleware/opsAuth.ts`, `apps/server/src/routes/collab.ts`,
+  `apps/server/src/routes/voice.ts`, focused server tests,
+  `packages/contracts/src/collab.ts`, `packages/core/src/collabDoc.ts`,
+  `packages/core/test/collabDoc.test.ts`, `apps/web/src/stores/collab.svelte.ts`,
+  `apps/web/src/components/CollabBar.svelte`, and this synchronized checkpoint pair.
+- Passing evidence: the full monorepo build/lint/typecheck/test gate completed 40/40
+  tasks; contracts 24/24, core 39/39, server 75/75, MCP 28/28, CLI 7/7, security
+  34/34, providers 24/24, governance 9/9, and Cesium 12/12 tests passed. Focused
+  adversarial tests cover actor spoofing, human-only resume, exact/missing Origin,
+  room-token binding, role downgrade, protected room reads, staged CRDT poisoning,
+  remote-origin echo suppression, self-presence removal, all three abuse limits, clock
+  reset, and zero live calls. ADG passed across 38 documents, 254 paths, and 104 symbol
+  references; bundle budgets and byte-identical plan verification passed.
+- Browser evidence: the unchanged canonical 30-second Playwright smoke reproduced its
+  pre-existing late filter-interaction timeout twice. A diagnostic run with only the
+  timeout raised to 90 seconds passed in 36.6 seconds and produced the expected rendered
+  screenshot. No e2e source was changed; restoring the mandatory 30-second baseline by
+  root cause remains explicitly assigned to task 5.0.5.
+- Additional task 5.0.5 baseline evidence: the Cesium ingestion benchmark is titled
+  `< 16.6ms p95` but currently asserts only `< 250ms`; the full gate printed 42.63ms p95
+  and passed. This pre-existing test-claim mismatch was not changed in task 5.0.3c.
+- Branch: `codex/adg-5.0.4`. Commit not created because this remains an
+  owner-controlled pre-5.0.4 remediation workspace. GitHub CLI is unavailable, so PR
+  inspection and creation were not possible in this environment.
+- Next task: **5.0.4 Make ADG meaningful**. Its exact ready-to-authorize 4-Pillar brief
+  is in §10; no task 5.0.4 code has started or been authorized by this checkpoint.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.0.4. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.

@@ -1,5 +1,11 @@
 # Changelog
 
+> **Historical release notice:** `v1.0.0` and `v1.1.0` were generated while the
+> project was still an early-stage seed/simulation scaffold. These immutable tags do
+> not certify production readiness or completed M2/M3 governance. Automated releases
+> are gated pending the evidence defined in [VERSION_CONTROL.md](./VERSION_CONTROL.md)
+> and `PLAN.md` §14.
+
 ## [1.1.0](https://github.com/DDS-Solutions/AI-TadPole-Eye-View/compare/v1.0.0...v1.1.0) (2026-08-26)
 
 

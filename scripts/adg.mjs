@@ -325,15 +325,18 @@ async function runActiveDocumentationGuard() {
     }
   }
 
-  // 4. Validate Version Consistency across repo manifests
+  // 4. Validate the canonical root product version shape. Cross-document and
+  // runtime consistency is implemented by PLAN.md task 5.0.4.
   const rootPkgPath = path.join(ROOT, 'package.json');
   if (fs.existsSync(rootPkgPath)) {
     const rootPkg = JSON.parse(fs.readFileSync(rootPkgPath, 'utf-8'));
-    if (rootPkg.version !== '1.1.0') {
+    const semverPattern =
+      /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
+    if (typeof rootPkg.version !== 'string' || !semverPattern.test(rootPkg.version)) {
       errors.push({
         file: 'package.json',
         line: 1,
-        message: `Version mismatch: root package.json version is ${rootPkg.version}, expected 1.1.0`,
+        message: `Canonical product version is not valid SemVer: ${String(rootPkg.version)}`,
       });
     }
   }

@@ -1,7 +1,21 @@
 import { PassThrough } from 'node:stream';
-import { GevEvents } from '@gev/contracts';
+import { GevEvents, type OperatorToolName } from '@gev/contracts';
 import { describe, expect, it } from 'vitest';
-import { GevMcpServer, createOperatorContext } from '../src/index.js';
+import {
+  GevMcpServer,
+  MCP_OPERATOR_TOOL_NAMES,
+  createOperatorContext,
+  executeOperatorTool,
+} from '../src/index.js';
+
+const UNAVAILABLE_CONSOLE_CALLS: Array<[OperatorToolName, Record<string, unknown>]> = [
+  ['fly_to_location', { lat: 0, lon: 0 }],
+  ['toggle_layer', { layer: 'flights', enabled: true }],
+  ['select_entity', { layer: 'flights', id: 'fake' }],
+  ['inspect_telemetry', { layer: 'flights', id: 'fake' }],
+  ['query_aoi', { south: -1, west: -1, north: 1, east: 1 }],
+  ['set_sim_time', { offset_s: 0 }],
+];
 
 describe('GEV v2 Operator MCP Server (@gev/ops-mcp)', () => {
   it('handles MCP initialize handshake', async () => {
@@ -34,7 +48,11 @@ describe('GEV v2 Operator MCP Server (@gev/ops-mcp)', () => {
     const result = res?.result as {
       tools: Array<{ name: string; _metadata: Record<string, boolean> }>;
     };
-    expect(result.tools.length).toBeGreaterThanOrEqual(6);
+    const names = result.tools.map((tool) => tool.name);
+    expect(names).toEqual(MCP_OPERATOR_TOOL_NAMES);
+    for (const [unavailableName] of UNAVAILABLE_CONSOLE_CALLS) {
+      expect(names).not.toContain(unavailableName);
+    }
 
     const feedHealthTool = result.tools.find((t) => t.name === 'get_feed_health');
     expect(feedHealthTool?._metadata.is_mutating).toBe(false);
@@ -50,6 +68,32 @@ describe('GEV v2 Operator MCP Server (@gev/ops-mcp)', () => {
     expect(setFlagTool?.inputSchema.properties.flag).toBeDefined();
     expect(setFlagTool?.inputSchema.required).toContain('flag');
   });
+
+  it.each(UNAVAILABLE_CONSOLE_CALLS)(
+    'fails closed when unadvertised console-only tool %s is called directly',
+    async (toolName, args) => {
+      const ctx = createOperatorContext();
+      const server = new GevMcpServer({ context: ctx });
+      const res = await server.handleRequest({
+        jsonrpc: '2.0',
+        id: 20,
+        method: 'tools/call',
+        params: {
+          name: toolName,
+          arguments: args,
+        },
+      });
+
+      expect(res?.error).toMatchObject({
+        code: -32601,
+        message: expect.stringContaining('unavailable'),
+      });
+      await expect(executeOperatorTool(ctx, toolName, args)).rejects.toThrow(
+        'unavailable on the local stdio MCP transport'
+      );
+      expect(ctx.auditSink.tail({ limit: 10 })).toEqual([]);
+    }
+  );
 
   it('executes get_feed_health and get_budget tools', async () => {
     const ctx = createOperatorContext();
@@ -161,18 +205,14 @@ describe('GEV v2 Operator MCP Server (@gev/ops-mcp)', () => {
 
     server.start();
 
-    const outputData: string[] = [];
-    output.on('data', (chunk) => {
-      outputData.push(chunk.toString());
+    const responseLine = new Promise<string>((resolve) => {
+      output.once('data', (chunk) => resolve(chunk.toString()));
     });
 
     // Write a JSON-RPC request line
     input.write(`${JSON.stringify({ jsonrpc: '2.0', id: 10, method: 'ping' })}\n`);
 
-    await new Promise((r) => setTimeout(r, 50));
-
-    expect(outputData.length).toBeGreaterThan(0);
-    const parsed = JSON.parse(outputData[0]?.trim() || '{}');
+    const parsed = JSON.parse((await responseLine).trim());
     expect(parsed.id).toBe(10);
     expect(parsed.result).toEqual({});
   });

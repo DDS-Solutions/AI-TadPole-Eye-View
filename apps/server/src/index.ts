@@ -8,7 +8,7 @@ import {
   ProviderRegistrySchema,
   SystemHealthResponseSchema,
 } from '@gev/contracts';
-import { SystemClock } from '@gev/core';
+import { type SimClock, SystemClock } from '@gev/core';
 import { CapBudgetGovernor, PromptApprovalGate, SqliteAuditSink } from '@gev/governance';
 import {
   AisAdapter,
@@ -23,14 +23,20 @@ import {
   createConfiguredProviderRegistry,
 } from '@gev/providers';
 import { serve } from '@hono/node-server';
-import { Hono } from 'hono';
+import { getConnInfo } from '@hono/node-server/conninfo';
+import { type Context, Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { WebSocketServer } from 'ws';
 import { CostGovernor } from './middleware/costGovernor.js';
-import { type OpsAuthOptions, createOpsAuth } from './middleware/opsAuth.js';
+import { InMemoryRateLimiter, type OpsAuthOptions, createOpsAuth } from './middleware/opsAuth.js';
+import { PRODUCT_VERSION } from './productVersion.js';
 import { createAuditStreamRouter } from './routes/auditStream.js';
 import { createCctvRouter } from './routes/cctv.js';
-import { CollabRoomManager, createCollabRouter } from './routes/collab.js';
+import {
+  CollabRoomManager,
+  createCollabRouter,
+  isAllowedWebSocketOrigin,
+} from './routes/collab.js';
 import { createFirmsRouter } from './routes/firms.js';
 import { createFlightsRouter } from './routes/flights.js';
 import { createGbfsRouter } from './routes/gbfs.js';
@@ -47,14 +53,27 @@ import { ServerTelemetryManager } from './telemetry/index.js';
 export interface CreateAppOptions {
   opsAuth?: OpsAuthOptions;
   providerRegistry?: ProviderRegistry;
+  clock?: SimClock;
+  voiceApiKey?: string;
+  resolveClientId?: (c: Context) => string;
 }
 
 export function createApp(options: CreateAppOptions = {}) {
   const app = new Hono();
-  const clock = new SystemClock();
+  const clock = options.clock ?? new SystemClock();
   const telemetry = new ServerTelemetryManager();
   const auth = createOpsAuth(options.opsAuth);
   const opsAuth = auth.middleware();
+  const rateLimiter = new InMemoryRateLimiter(clock);
+  const resolveClientId =
+    options.resolveClientId ??
+    ((c: Context) => {
+      try {
+        return getConnInfo(c).remote.address ?? 'unknown-client';
+      } catch {
+        return 'unknown-client';
+      }
+    });
   const providerRegistry = ProviderRegistrySchema.parse(
     options.providerRegistry ?? createConfiguredProviderRegistry()
   );
@@ -75,7 +94,7 @@ export function createApp(options: CreateAppOptions = {}) {
   const budgetGovernor = new CapBudgetGovernor({ clock });
   const approvalGate = new PromptApprovalGate({ clock });
   const costGovernor = new CostGovernor({ clock, budgetGovernor });
-  const collabRoomManager = new CollabRoomManager();
+  const collabRoomManager = new CollabRoomManager(clock);
 
   // Global Middleware
   app.use(
@@ -99,14 +118,13 @@ export function createApp(options: CreateAppOptions = {}) {
     return c.json(
       SystemHealthResponseSchema.parse({
         status: hasDegradedImplementedProvider ? 'degraded' : 'ok',
-        version: '1.1.0',
+        version: PRODUCT_VERSION,
         seed_mode: providerRegistry.requested_mode === 'seed',
         timestamp: clock.now(),
         stasis_active: govState.stasis_active,
         budget_spent_usd: govState.spent_usd,
         budget_cap_usd: govState.cap_usd,
         budget_remaining_usd: Math.max(0, govState.cap_usd - govState.spent_usd),
-        collab_rooms: collabRoomManager.listRooms(),
         provider_registry: providerRegistry,
       })
     );
@@ -155,10 +173,22 @@ export function createApp(options: CreateAppOptions = {}) {
   app.route('/api/weather', createWeatherRouter({ adapter: weatherAdapter }));
 
   // Voice Ephemeral Token Provisioning
-  app.route('/api/voice', createVoiceRouter({ auth, clock }));
+  app.route(
+    '/api/voice',
+    createVoiceRouter({
+      auth,
+      clock,
+      apiKey: options.voiceApiKey,
+      rateLimiter,
+      resolveClientId,
+    })
+  );
 
   // T2 Collaborative Intent Rooms Route
-  app.route('/api/collab', createCollabRouter(collabRoomManager, { auth }));
+  app.route(
+    '/api/collab',
+    createCollabRouter(collabRoomManager, { auth, rateLimiter, resolveClientId })
+  );
 
   // M1 Observer Real-Time Audit SSE Stream
   app.route('/ops/audit', createAuditStreamRouter(auditSink));
@@ -168,8 +198,7 @@ export function createApp(options: CreateAppOptions = {}) {
   app.post('/ops/seed/reload', async (c) => {
     const startTime = clock.now();
     const taskRef = c.req.header('X-Task-Ref') || `task-${crypto.randomUUID().slice(0, 8)}`;
-    const actorHeader = c.req.header('X-Actor') as Actor | undefined;
-    const actor: Actor = actorHeader === 'human' || actorHeader === 'system' ? actorHeader : 'ai';
+    const actor = (c.var as unknown as { opsActor: Actor }).opsActor;
     const intentId = crypto.randomUUID();
     const intentTs = new Date(startTime).toISOString();
 
@@ -289,9 +318,6 @@ export function createApp(options: CreateAppOptions = {}) {
     }
   });
 
-  // Apply Ops Authentication Guard to all /ops/* endpoints
-  app.use('/ops/*', opsAuth);
-
   // Ops Audit Log Query
   app.get('/ops/audit', async (c) => {
     const taskRef = c.req.query('task_ref');
@@ -312,6 +338,17 @@ export function createApp(options: CreateAppOptions = {}) {
 
   // Ops STASIS Resume (Rule 1: intent → action → outcome; human-only)
   app.post('/ops/resume', async (c) => {
+    const identity = c.var as unknown as { opsActor: Actor; opsAuthenticated: boolean };
+    const actor = identity.opsActor;
+    if (identity.opsAuthenticated !== true || actor !== 'human') {
+      return c.json(
+        {
+          error: 'STASIS resume requires an authenticated human operator',
+          code: 'HUMAN_AUTH_REQUIRED',
+        },
+        403
+      );
+    }
     const body = (await c.req.json().catch(() => ({}))) as { reason?: string };
     const reason = body.reason ?? 'Human operator manual override via ops API';
     const state = budgetGovernor.state();
@@ -328,14 +365,14 @@ export function createApp(options: CreateAppOptions = {}) {
       kind: GevEvents.AuditIntent,
       id: intentId,
       ts: new Date(startTime).toISOString(),
-      actor: 'human',
+      actor,
       action: 'governance.resume',
       target: 'stasis.lock',
       params: { reason },
       task_ref: 'ops-resume',
     });
 
-    budgetGovernor.resume('human');
+    budgetGovernor.resume(actor);
 
     // Rule 1: Audit outcome AFTER mutation
     auditSink.outcome({
@@ -357,6 +394,8 @@ export function createApp(options: CreateAppOptions = {}) {
     budgetGovernor,
     approvalGate,
     costGovernor,
+    rateLimiter,
+    resolveClientId,
     collabRoomManager,
     telemetry,
     clock,
@@ -375,27 +414,32 @@ export function createApp(options: CreateAppOptions = {}) {
 
 export function attachWebSocketCollabServer(
   server: ReturnType<typeof serve>,
-  collabRoomManager: CollabRoomManager
+  collabRoomManager: CollabRoomManager,
+  rateLimiter: InMemoryRateLimiter,
+  allowedOrigin = process.env.GEV_CORS_ORIGIN || 'http://localhost:5173'
 ) {
   const wss = new WebSocketServer({ noServer: true });
 
   server.on('upgrade', async (req: IncomingMessage, socket: Duplex, head: Buffer) => {
-    // Validate Origin header
     const origin = req.headers.origin;
-    const allowedOrigin = process.env.GEV_CORS_ORIGIN || 'http://localhost:5173';
-    if (
-      origin &&
-      origin !== allowedOrigin &&
-      !origin.startsWith('http://127.0.0.1') &&
-      !origin.startsWith('http://localhost')
-    ) {
+    if (!isAllowedWebSocketOrigin(origin, allowedOrigin)) {
       socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
       socket.destroy();
       return;
     }
 
     const url = new URL(req.url || '/', 'http://127.0.0.1');
-    if (url.pathname.startsWith('/api/collab/room/')) {
+    const pathMatch = /^\/api\/collab\/room\/([^/]+)$/.exec(url.pathname);
+    if (pathMatch) {
+      const clientId = req.socket.remoteAddress ?? 'unknown-client';
+      const rateDecision = rateLimiter.consume('collab-ws-upgrade', clientId, 20);
+      if (!rateDecision.allowed) {
+        socket.write(
+          `HTTP/1.1 429 Too Many Requests\r\nRetry-After: ${rateDecision.retryAfterSeconds}\r\n\r\n`
+        );
+        socket.destroy();
+        return;
+      }
       const token = url.searchParams.get('token');
       if (!token) {
         socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
@@ -403,7 +447,15 @@ export function attachWebSocketCollabServer(
         return;
       }
 
-      const verified = await collabRoomManager.verifyRoomToken(token);
+      let requestedRoomId: string;
+      try {
+        requestedRoomId = decodeURIComponent(pathMatch[1] ?? '');
+      } catch {
+        socket.write('HTTP/1.1 400 Bad Request\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+      const verified = await collabRoomManager.verifyRoomTokenForRoom(token, requestedRoomId);
       if (!verified) {
         socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
         socket.destroy();
@@ -420,9 +472,8 @@ export function attachWebSocketCollabServer(
 
   return wss;
 }
-
 if (process.env.NODE_ENV !== 'test') {
-  const { app, collabRoomManager } = createApp();
+  const { app, collabRoomManager, rateLimiter } = createApp();
   const port = Number(process.env.PORT) || 3000;
   const hostname = process.env.GEV_HOST || '127.0.0.1';
   const server = serve({
@@ -431,5 +482,5 @@ if (process.env.NODE_ENV !== 'test') {
     hostname,
   });
 
-  attachWebSocketCollabServer(server, collabRoomManager);
+  attachWebSocketCollabServer(server, collabRoomManager, rateLimiter);
 }

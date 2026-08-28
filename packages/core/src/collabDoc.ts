@@ -3,8 +3,22 @@ import {
   type EntityReference,
   type RoomIntentState,
   RoomIntentStateSchema,
+  type UserPresence,
 } from '@gev/contracts';
 import * as Y from 'yjs';
+
+export const REMOTE_COLLAB_UPDATE_ORIGIN = Symbol('remote-collab-update');
+
+export function shouldBroadcastCollabUpdate(origin: unknown): boolean {
+  return origin !== REMOTE_COLLAB_UPDATE_ORIGIN;
+}
+
+export function filterRemoteCollabPresences(
+  presences: UserPresence[],
+  localClientId: string | null
+): UserPresence[] {
+  return presences.filter((presence) => presence.clientId !== localClientId);
+}
 
 /**
  * Collaborative Intent CRDT Document.
@@ -114,8 +128,18 @@ export class CollabIntentDoc {
     return Y.encodeStateAsUpdate(this.doc);
   }
 
-  applyUpdate(update: Uint8Array): void {
-    Y.applyUpdate(this.doc, update);
+  applyUpdate(update: Uint8Array, origin?: unknown): void {
+    Y.applyUpdate(this.doc, update, origin);
+  }
+
+  /** Validate an update against an isolated clone before it can mutate the live room. */
+  applyValidatedUpdate(update: Uint8Array, origin?: unknown): RoomIntentState {
+    const stagedDoc = new Y.Doc();
+    Y.applyUpdate(stagedDoc, this.encodeState());
+    Y.applyUpdate(stagedDoc, update, origin);
+    const stagedState = new CollabIntentDoc(this.roomId, stagedDoc).toJSON();
+    Y.applyUpdate(this.doc, update, origin);
+    return stagedState;
   }
 
   onUpdate(callback: (update: Uint8Array, origin: unknown) => void): () => void {

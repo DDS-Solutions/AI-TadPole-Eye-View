@@ -6,6 +6,7 @@ import {
   ProviderRegistryIdSchema,
   ProviderRuntimeModeSchema,
 } from './providerRegistry.js';
+import { SelectedEntity } from './scene.js';
 
 export const ToolMetadataSchema = z.object({
   name: z.string(),
@@ -76,39 +77,47 @@ export type RunDiagnosticsOutput = z.infer<typeof RunDiagnosticsOutputSchema>;
 // 4. load_scene
 export const LoadSceneInputSchema = z
   .object({
-    scene_json: z.string().optional(),
-    scene_path: z.string().optional(),
+    scene_json: z.string().min(1).optional(),
+    scene_path: z.string().min(1).optional(),
   })
-  .refine((data) => Boolean(data.scene_json || data.scene_path), {
-    message: 'Either scene_json or scene_path must be provided',
+  .strict()
+  .refine((data) => (data.scene_json === undefined) !== (data.scene_path === undefined), {
+    message: 'Exactly one of scene_json or scene_path must be provided',
   });
 export type LoadSceneInput = z.infer<typeof LoadSceneInputSchema>;
 
+export const SceneToolSummarySchema = z.object({
+  version: z.number().finite(),
+  layer_count: z.number().int().nonnegative(),
+  enabled_layer_count: z.number().int().nonnegative(),
+  aoi_count: z.number().int().nonnegative(),
+  camera_altitude: z.number().finite().nonnegative(),
+  selected_entity: SelectedEntity,
+});
+export type SceneToolSummary = z.infer<typeof SceneToolSummarySchema>;
+
 export const LoadSceneOutputSchema = z.object({
   loaded: z.boolean(),
-  entity_count: z.number().finite().nonnegative(),
-  version: z.number().finite(),
+  source: z.enum(['inline', 'file']),
+  scene_path: z.string().optional(),
+  summary: SceneToolSummarySchema,
 });
 export type LoadSceneOutput = z.infer<typeof LoadSceneOutputSchema>;
 
 // 5. save_scene
-export const SaveSceneInputSchema = z.object({
-  title: z.string().optional(),
-  save_path: z.string().optional(),
-});
+export const SaveSceneInputSchema = z
+  .object({
+    save_path: z.string().min(1),
+  })
+  .strict();
 export type SaveSceneInput = z.infer<typeof SaveSceneInputSchema>;
 
-export const SaveSceneSummarySchema = z.object({
-  version: z.number().finite(),
-  layer_count: z.number().finite().nonnegative(),
-  aoi_count: z.number().finite().nonnegative(),
-  camera_altitude: z.number().finite(),
-});
+export const SaveSceneSummarySchema = SceneToolSummarySchema;
 export type SaveSceneSummary = z.infer<typeof SaveSceneSummarySchema>;
 
 export const SaveSceneOutputSchema = z.object({
   saved: z.boolean(),
-  scene_path: z.string().optional(),
+  scene_path: z.string(),
   summary: SaveSceneSummarySchema,
 });
 export type SaveSceneOutput = z.infer<typeof SaveSceneOutputSchema>;
@@ -260,7 +269,7 @@ export type OperatorToolDefinition<
 export const OPERATOR_TOOLS = {
   get_feed_health: {
     name: 'get_feed_health',
-    description: 'Query telemetry provider health status, error rates, and remaining quotas',
+    description: 'Query provider registry health and observed quota data where available',
     is_mutating: false,
     is_dangerous: false,
     is_cacheable: true,
@@ -278,7 +287,7 @@ export const OPERATOR_TOOLS = {
   },
   run_diagnostics: {
     name: 'run_diagnostics',
-    description: 'Execute health, memory, and governance self-checks across services',
+    description: 'Execute verified local fixture, memory, audit, and governance self-checks',
     is_mutating: false,
     is_dangerous: false,
     is_cacheable: false,

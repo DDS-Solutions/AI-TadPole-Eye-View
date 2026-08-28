@@ -1,4 +1,6 @@
-# Release automation using release-please per VERSION_CONTROL.md §7
+# Release automation using release-please per VERSION_CONTROL.md §7.
+# Disabled by default: a human may set GEV_RELEASES_ENABLED=true only after the
+# documented release-evidence gate is satisfied.
 name: release
 
 on:
@@ -11,6 +13,7 @@ permissions:
 
 jobs:
   release-please:
+    if: ${{ vars.GEV_RELEASES_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: googleapis/release-please-action@v4
