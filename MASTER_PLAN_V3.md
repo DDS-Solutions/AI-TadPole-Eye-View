@@ -20,10 +20,10 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=5.1
-NEXT_TASK=5.1.1
+NEXT_TASK=5.1.2
 NEXT_TASK_STATUS=READY
 LAST_VERIFIED_UTC=2026-08-28
-STASIS_OBSERVABILITY=PARTIAL_UNTIL_TASK_5.1.1
+STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
 IMPLEMENTATION_STARTED=YES
 ```
 
@@ -34,7 +34,7 @@ The value of `NEXT_TASK` must always equal the first unchecked task in §10. A t
 1. Read `AGENTS.md` and this §0 completely.
 2. Verify the two plan files match: `git diff --no-index --exit-code -- PLAN.md MASTER_PLAN_V3.md`. Any difference is a `DOC_BLOCKER`; reconcile before other work.
 3. Run `pnpm gev status`. If it reports `STASIS_ACTIVE`, snapshot and stop. Never self-resume.
-4. Until task 5.1.1 makes governance state durable and shared, an offline `STASIS_INACTIVE` result is not authoritative. Limit work to the developer-approved local/seed scope when the server is offline; never infer authorization for live or production operations.
+4. Budget/STASIS state is durable in the shared SQLite governance database after task 5.1.1, but an offline CLI read remains a non-authoritative snapshot because it cannot prove which state an absent server/MCP process would use. Require connected status for authoritative confirmation; never infer authorization for live or production operations.
 5. Run `git status --short` and `git log --oneline -20`. Preserve all pre-existing changes. Attempt `gh pr list`; if `gh` is unavailable, record that fact instead of claiming there are no open PRs.
 6. Read `docs/adr/INDEX.md`. If UI/HUD work is in scope, also read `docs/DESIGN.md`.
 7. Find the first unchecked task with `rg -n "^- \[ \]" PLAN.md`; it must match `NEXT_TASK` above.
@@ -67,7 +67,7 @@ Before ending a completed implementation task:
 
 ### 1.1 Mission
 
-GEV v2 is a governed geospatial and economic-intelligence console for SMB digital-twin users. It combines deterministic provider ingestion, Cesium visualization, operator tools, audit/approval/budget controls, and a future Tadpole runtime connection without weakening privacy, licensing, or human-control boundaries.
+GEV v2 is a governed geospatial and economic-intelligence console for AI-Tadpole-OS SMB digital-twin users. It combines deterministic provider ingestion, Cesium visualization, operator tools, audit/approval/budget controls, and a future Tadpole runtime connection without weakening privacy, licensing, or human-control boundaries.
 
 ### 1.2 Repository reality at V3 creation
 
@@ -571,7 +571,7 @@ LOGIC_BLOCKER with exact paths, measurements, and bounded alternatives.
 
 ### Phase 5.1 — Durable shared governance
 
-- [ ] 5.1.1 Compose one shared runtime context for server, CLI connection mode, MCP transports, and tools; persist budget/STASIS state transactionally.
+- [x] 5.1.1 Compose one shared runtime context for server, CLI connection mode, MCP transports, and tools; persist budget/STASIS state transactionally.
 - [ ] 5.1.2 Consolidate the duplicate tool executors into one validated governance pipeline.
 - [ ] 5.1.3 Implement real M2 approval verification after OQ-2; production defaults deny when the gate is unavailable.
 - [ ] 5.1.4 Implement M3 ledger reservation/settlement after OQ-3; retries are idempotent and outage behavior is fail closed for billable/mutating work.
@@ -604,6 +604,39 @@ fail open on lock/corruption, infer shared state from an offline CLI, or mix lat
 approval/ledger/hash-chain scope into this task. Exercise Windows SQLite locking and
 crash/restart behavior. After three failed persistence/concurrency approaches, record
 LOGIC_BLOCKER with database evidence and bounded alternatives.
+```
+
+#### Ready-to-authorize brief for NEXT_TASK 5.1.2
+
+```text
+[SCOPE_CONTRACT] packages/core governed tool executor and focused tests;
+packages/ops-mcp tool-handler registration, context/transport wiring, and focused tests;
+packages/contracts tool schema/metadata extraction needed to keep the registry file under
+its ADR 0040 split gate; apps/web voice/co-user executor wiring and packages/cli demo only
+where required to consume the same pipeline. Out of scope: real M2 verification (5.1.3),
+M3 reservation/settlement (5.1.4), audit hash chains (5.1.5), HTTP MCP (Phase 6), new
+tools/features, live services, provider work, visual redesign, and production deployment.
+
+[PERFORMANCE_THRESHOLD] Exactly one executor lifecycle owns input validation, durable
+STASIS/budget checks, audit intent/outcome ordering, approval invocation, handler dispatch,
+output validation, and error normalization for every registered consumer. Stdio retains
+exactly its seven permitted tools; unsupported tools remain unadvertised and fail before
+action. Tests prove no double execution/audit, no orphan outcome, identical blocked/error/
+success semantics across consumers, fail-closed missing handlers/ports, and validated
+structured output. Root lint, affected uncached typecheck/test/build, ADG, architecture
+drift, and canonical seed-mode gates pass with zero live calls.
+
+[ARCHITECTURE_MODE] PLAN.md §2 rules 1–3, 7–8, 10–11, and 13; §3 boundaries/data flow;
+ADRs 0027, 0039, 0040, and 0041. Reuse the task 5.1.1 durable runtime context and
+SimClock. Split contract schemas/metadata/projections cohesively under ADR 0040; preserve
+transport capability filters and filesystem confinement. No deviation without ADR.
+
+[FAILURE_MODES] Do not wrap one executor around another, audit the same action twice,
+emit an outcome for an intent that was never stored, let schema failure reach a handler,
+make browser-local state claim shared authority, widen stdio capabilities, auto-approve,
+or claim M3 settlement/idempotency. Preserve intent-before-mutation and outcome-after-
+success/failure. After three failed parity approaches, record LOGIC_BLOCKER with the exact
+consumer/lifecycle mismatch and bounded alternatives.
 ```
 
 ### Phase 5.2 — Provenance and missing geospatial layers
@@ -1182,5 +1215,51 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   Its exact ready-to-authorize 4-Pillar brief is in §10; no Phase 5.1 implementation
   has started or been authorized.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.1.1. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 5.1.1 completion checkpoint — 2026-08-28
+
+- The developer authorized exactly the embedded task 5.1.1 brief. Work remained
+  local/seed with zero live-service calls; no task 5.1.2 executor consolidation, real
+  M2 approval, M3 reservation/settlement, audit hash chain, provider work, UI feature,
+  or production deployment was started.
+- Durable authority: schema migration version 1 adds one transactionally maintained
+  `governance_budget_state` row beside the existing SQLite audit WAL. Separate server,
+  CLI, and MCP processes resolve one absolute database path, use WAL plus a bounded
+  busy timeout, serialize mutations with `BEGIN IMMEDIATE`, and reread state instead of
+  caching a process-local copy. Costs persist as conservative integer micro-dollars.
+- Shared composition: `createGovernanceRuntimeContext` owns the clock, audit sink,
+  budget governor, approval gate, authority descriptor, and close lifecycle. Server
+  routes/middleware and MCP tool contexts receive those exact references. Health and
+  `get_budget` carry a validated authority contract; offline CLI output is explicitly
+  `NON-AUTHORITATIVE OFFLINE SNAPSHOT`.
+- Fail-closed recovery: corrupt/future/invalid state and exhausted locks never create an
+  in-memory fallback. The governor enforces human-only resume. CLI cannot bypass a
+  running server rejection, a remote transport failure, or process-local state; its
+  offline local-human path writes audit intent, durable resume, then audit outcome.
+- Deterministic evidence covers versioned migration/restart, conflicting configuration,
+  two-process Windows writer contention with 200 lossless updates, abrupt child exit,
+  cross-process trip visibility, non-human resume rejection, corrupt database retention,
+  conservative sub-micro-dollar accounting, server/MCP shared reads, connected versus
+  offline CLI authority, and refusal/no-bypass paths. Focused contracts/governance/MCP/
+  server/CLI suites passed 156 tests and their complete 23-task lint/typecheck/test/build
+  matrix passed uncached.
+- Required gates passed: root Biome checked 176 files; the affected uncached workspace
+  lint/typecheck/test/build gate completed 40/40 tasks; ADG checked 48 documents and
+  386 paths; architecture drift and `git diff --check` passed. Canonical `pnpm gev test`
+  passed all unit suites plus server load p95 13.59 ms under 300 ms and Cesium ingestion
+  p95 7.90 ms under 16.6 ms. Bundle validation passed at 1,213.72 KB total JavaScript
+  gzip. Canonical `pnpm gev qa` passed 1/1 in 38.4 seconds; its real-render screenshot
+  was inspected with populated telemetry counts, selected/filtered rows, inspector, and
+  OpenStreetMap attribution visible. No UI/HUD product file changed.
+- Documentation: ADR 0041 records the shared database, transaction, rounding, authority,
+  and recovery decisions; RUNBOOK documents database-path precedence, non-authoritative
+  offline status, and human recovery. The owner-added AI-Tadpole-OS mission wording was
+  preserved and mirrored while reconciling the mandatory plan-copy invariant.
+- Branch: `codex/durable-shared-governance-5.1.1`; implementation commit `4b21716`.
+  GitHub CLI remains unavailable, so open PR inspection and PR creation were not possible.
+- Next task: **5.1.2 Consolidate the duplicate tool executors into one validated
+  governance pipeline**. Its exact ready-to-authorize 4-Pillar brief is in §10; no
+  task 5.1.2 implementation has started or been authorized.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.1.2. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
