@@ -8,6 +8,7 @@ import {
   NearFarScalar,
 } from 'cesium';
 import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
+import { CESIUM_DESIGN_TOKENS } from './designTokens.js';
 
 export interface QuakeLayerOptions extends BaseLayerOptions {
   minMagnitude?: number;
@@ -15,7 +16,7 @@ export interface QuakeLayerOptions extends BaseLayerOptions {
 
 /**
  * USGS Earthquakes Layer Controller (PLAN.md §8 Layer 3 & DESIGN.md §2.2)
- * Renders Seismic telemetry with Amber Orange (#fb923c) magnitude-scaled primitives.
+ * Renders seismic telemetry with the seismic design channel.
  * Drains incoming collections through requestAnimationFrame queue straight into Cesium.
  */
 export class QuakeLayerController extends BaseLayerController<
@@ -24,8 +25,12 @@ export class QuakeLayerController extends BaseLayerController<
 > {
   private minMagnitude: number;
 
-  private static readonly AMBER_ORANGE = Color.fromCssColorString('#fb923c');
-  private static readonly OUTLINE_COLOR = Color.fromCssColorString('#451a03');
+  private static readonly AMBER_ORANGE = Color.fromCssColorString(
+    CESIUM_DESIGN_TOKENS.channels.seismic
+  );
+  private static readonly OUTLINE_COLOR = Color.fromCssColorString(
+    CESIUM_DESIGN_TOKENS.outlines.seismic
+  );
 
   constructor(options: QuakeLayerOptions) {
     super(options, 'gev-quakes');

@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-  type ApprovalGate,
   type DiagnosticCheck,
   type FeedHealthItem,
   type GetBudgetOutput,
@@ -12,7 +11,6 @@ import {
   type LoadSceneOutput,
   OPERATOR_TOOLS,
   type OperatorToolName,
-  type ProviderRegistry,
   type RunDiagnosticsInput,
   type RunDiagnosticsOutput,
   type SaveSceneInput,
@@ -24,17 +22,20 @@ import {
   type TailLogsInput,
   type TailLogsOutput,
 } from '@gev/contracts';
-import { type SimClock, SystemClock, deserializeScene, getDefaultSceneState } from '@gev/core';
-import { CapBudgetGovernor, PromptApprovalGate, SqliteAuditSink } from '@gev/governance';
+import { deserializeScene } from '@gev/core';
 import {
-  OpenSkyAdapter,
-  createConfiguredProviderRegistry,
   listProviderRegistryFeeds,
   resolveFixturePath,
   withDisabledProviders,
 } from '@gev/providers';
+import type { OperatorContext } from './context.js';
+
+export {
+  DEFAULT_SCENE_ROOT,
+  createOperatorContext,
+  type OperatorContext,
+} from './context.js';
 export const MAX_SCENE_BYTES = 1024 * 1024;
-export const DEFAULT_SCENE_ROOT = path.join('.gev', 'scenes');
 export const MCP_OPERATOR_TOOL_NAMES = [
   'get_feed_health',
   'get_budget',
@@ -48,33 +49,6 @@ export type McpOperatorToolName = (typeof MCP_OPERATOR_TOOL_NAMES)[number];
 const MCP_OPERATOR_TOOL_NAME_SET: ReadonlySet<string> = new Set(MCP_OPERATOR_TOOL_NAMES);
 export function isMcpOperatorToolName(name: string): name is McpOperatorToolName {
   return MCP_OPERATOR_TOOL_NAME_SET.has(name);
-}
-export interface OperatorContext {
-  clock: SimClock;
-  auditSink: SqliteAuditSink;
-  budgetGovernor: CapBudgetGovernor;
-  approvalGate: ApprovalGate;
-  openSkyAdapter: OpenSkyAdapter;
-  providerRegistry: ProviderRegistry;
-  flags: Map<string, boolean>;
-  sceneRoot: string;
-  sceneState: SceneState;
-}
-export function createOperatorContext(customContext?: Partial<OperatorContext>): OperatorContext {
-  const clock = customContext?.clock ?? new SystemClock();
-  return {
-    clock,
-    auditSink: customContext?.auditSink ?? new SqliteAuditSink({ clock }),
-    budgetGovernor: customContext?.budgetGovernor ?? new CapBudgetGovernor({ clock }),
-    approvalGate: customContext?.approvalGate ?? new PromptApprovalGate({ clock }),
-    openSkyAdapter: customContext?.openSkyAdapter ?? new OpenSkyAdapter({ clock }),
-    providerRegistry: customContext?.providerRegistry ?? createConfiguredProviderRegistry(),
-    flags: customContext?.flags ?? new Map<string, boolean>([['opensky.enabled', true]]),
-    sceneRoot: path.resolve(
-      customContext?.sceneRoot ?? process.env.GEV_MCP_SCENE_ROOT ?? DEFAULT_SCENE_ROOT
-    ),
-    sceneState: customContext?.sceneState ?? getDefaultSceneState(clock),
-  };
 }
 function validateSceneFileName(scenePath: string): string {
   const candidate = scenePath.trim();
@@ -238,6 +212,7 @@ export async function handleGetBudget(ctx: OperatorContext): Promise<GetBudgetOu
     remaining_usd: Math.max(0, state.cap_usd - state.spent_usd),
     stasis_active: state.stasis_active,
     trip_reason: state.last_trip?.code,
+    governance_authority: ctx.governanceContext.authority(),
   };
 }
 export async function handleRunDiagnostics(

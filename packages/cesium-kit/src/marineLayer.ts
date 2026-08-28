@@ -1,19 +1,24 @@
 import type { ShipBatch, ShipState } from '@gev/contracts';
 import { Cartesian3, Color, ConstantPositionProperty, JulianDate, NearFarScalar } from 'cesium';
 import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
+import { CESIUM_DESIGN_TOKENS } from './designTokens.js';
 
 export interface MarineLayerOptions extends BaseLayerOptions {}
 
 /**
  * Maritime AIS Layer Controller (PLAN.md §8 Layer 2 & DESIGN.md §2.2)
- * Renders AIS vessel vectors with Emerald Teal (#2dd4bf) styling.
+ * Renders AIS vessel vectors with the maritime design channel.
  * Drains incoming position batches through requestAnimationFrame queue straight into Cesium.
  */
 export class MarineLayerController extends BaseLayerController<ShipState, MarineLayerOptions> {
   private vesselTypeFilter = 'all';
 
-  private static readonly EMERALD_TEAL = Color.fromCssColorString('#2dd4bf');
-  private static readonly OUTLINE_COLOR = Color.fromCssColorString('#0f172a');
+  private static readonly EMERALD_TEAL = Color.fromCssColorString(
+    CESIUM_DESIGN_TOKENS.channels.maritime
+  );
+  private static readonly OUTLINE_COLOR = Color.fromCssColorString(
+    CESIUM_DESIGN_TOKENS.outlines.maritime
+  );
 
   constructor(options: MarineLayerOptions) {
     super(options, 'gev-marine');

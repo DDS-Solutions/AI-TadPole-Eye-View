@@ -1,16 +1,21 @@
 import type { LaunchCatalog, LaunchMission } from '@gev/contracts';
 import { Cartesian3, Color, ConstantProperty, NearFarScalar } from 'cesium';
 import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
+import { CESIUM_DESIGN_TOKENS } from './designTokens.js';
 
 export interface LaunchLayerOptions extends BaseLayerOptions {}
 
 /**
  * Space Launch Replays & Orbital Trajectories Layer Controller (PLAN.md §8 Layer 8)
- * Renders orbital trajectory arcs with Gold/Yellow (#facc15) styling.
+ * Renders orbital trajectory arcs with the launch design channel.
  */
 export class LaunchLayerController extends BaseLayerController<LaunchMission, LaunchLayerOptions> {
-  private static readonly GOLD_YELLOW = Color.fromCssColorString('#facc15');
-  private static readonly ARC_COLOR = Color.fromCssColorString('rgba(250, 204, 21, 0.75)');
+  private static readonly GOLD_YELLOW = Color.fromCssColorString(
+    CESIUM_DESIGN_TOKENS.channels.launch
+  );
+  private static readonly ARC_COLOR = Color.fromCssColorString(
+    CESIUM_DESIGN_TOKENS.effects.launchArc
+  );
 
   constructor(options: LaunchLayerOptions) {
     super(options, 'gev-launches');
@@ -51,7 +56,7 @@ export class LaunchLayerController extends BaseLayerController<LaunchMission, La
         point: {
           pixelSize: 9,
           color: LaunchLayerController.GOLD_YELLOW,
-          outlineColor: Color.BLACK,
+          outlineColor: Color.fromCssColorString(CESIUM_DESIGN_TOKENS.outlines.default),
           outlineWidth: 1.5,
           scaleByDistance: new NearFarScalar(1.5e2, 1.8, 8.0e6, 0.7),
         },

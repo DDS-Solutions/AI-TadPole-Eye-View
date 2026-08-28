@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { WEB_CHANNEL_COLORS } from '../designTokens.js';
   import { layerStore, type UnifiedTelemetryItem } from '../stores/layers.svelte.js';
 
   let scrollContainer: HTMLDivElement | null = $state(null);
@@ -46,25 +47,25 @@
   function getKindColor(kind: string): string {
     switch (kind) {
       case 'flight':
-        return '#38bdf8';
+        return WEB_CHANNEL_COLORS.flight;
       case 'marine':
-        return '#2dd4bf';
+        return WEB_CHANNEL_COLORS.marine;
       case 'quake':
-        return '#fb923c';
+        return WEB_CHANNEL_COLORS.quake;
       case 'firms':
-        return '#f43f5e';
+        return WEB_CHANNEL_COLORS.firms;
       case 'gbfs':
-        return '#818cf8';
+        return WEB_CHANNEL_COLORS.gbfs;
       case 'cctv':
-        return '#c084fc';
+        return WEB_CHANNEL_COLORS.cctv;
       case 'radio':
-        return '#38bdf8';
+        return WEB_CHANNEL_COLORS.radio;
       case 'launch':
-        return '#fbbf24';
+        return WEB_CHANNEL_COLORS.launch;
       case 'weather':
-        return '#60a5fa';
+        return WEB_CHANNEL_COLORS.weather;
       default:
-        return '#94a3b8';
+        return WEB_CHANNEL_COLORS.muted;
     }
   }
 </script>
@@ -348,9 +349,9 @@
   .btn-quake.active { background: #fb923c; color: #030712; }
   .btn-firms.active { background: #f43f5e; color: #ffffff; }
   .btn-gbfs.active { background: #818cf8; color: #030712; }
-  .btn-cctv.active { background: #c084fc; color: #030712; }
-  .btn-radio.active { background: #38bdf8; color: #030712; }
-  .btn-launch.active { background: #fbbf24; color: #030712; }
+  .btn-cctv.active { background: #a855f7; color: #030712; }
+  .btn-radio.active { background: #06b6d4; color: #030712; }
+  .btn-launch.active { background: #facc15; color: #030712; }
   .btn-weather.active { background: #60a5fa; color: #030712; }
 
   .search-actions {

@@ -1,18 +1,23 @@
 import type { CctvCamera, CctvCatalog } from '@gev/contracts';
 import { Cartesian3, Color, ConstantPositionProperty, JulianDate, NearFarScalar } from 'cesium';
 import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
+import { CESIUM_DESIGN_TOKENS } from './designTokens.js';
 
 export interface CctvLayerOptions extends BaseLayerOptions {}
 
 /**
  * Public CCTV & Traffic Camera Layer Controller (PLAN.md §8 Layer 6)
- * Renders verified DOT traffic cameras with Purple/Violet (#a855f7) styling.
+ * Renders verified DOT traffic cameras with the CCTV design channel.
  */
 export class CctvLayerController extends BaseLayerController<CctvCamera, CctvLayerOptions> {
   private agencyFilter = 'all';
 
-  private static readonly PURPLE_VIOLET = Color.fromCssColorString('#a855f7');
-  private static readonly OUTLINE_COLOR = Color.fromCssColorString('#3b0764');
+  private static readonly PURPLE_VIOLET = Color.fromCssColorString(
+    CESIUM_DESIGN_TOKENS.channels.cctv
+  );
+  private static readonly OUTLINE_COLOR = Color.fromCssColorString(
+    CESIUM_DESIGN_TOKENS.outlines.cctv
+  );
 
   constructor(options: CctvLayerOptions) {
     super(options, 'gev-cctv');

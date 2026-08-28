@@ -8,6 +8,7 @@ import {
   NearFarScalar,
 } from 'cesium';
 import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
+import { CESIUM_DESIGN_TOKENS } from './designTokens.js';
 
 export interface FirmsLayerOptions extends BaseLayerOptions {
   minFrp?: number;
@@ -16,15 +17,19 @@ export interface FirmsLayerOptions extends BaseLayerOptions {
 
 /**
  * NASA FIRMS Thermal Hotspots Layer Controller (PLAN.md §8 Layer 4 & DESIGN.md §2.2)
- * Renders Thermal telemetry with Rose Red (#f43f5e) FRP-scaled cluster primitives.
+ * Renders thermal telemetry with the thermal design channel.
  * Drains incoming batches through requestAnimationFrame queue straight into Cesium.
  */
 export class FirmsLayerController extends BaseLayerController<ThermalHotspot, FirmsLayerOptions> {
   private minFrp: number;
   private confidenceFilter: string;
 
-  private static readonly ROSE_RED = Color.fromCssColorString('#f43f5e');
-  private static readonly OUTLINE_COLOR = Color.fromCssColorString('#881337');
+  private static readonly ROSE_RED = Color.fromCssColorString(
+    CESIUM_DESIGN_TOKENS.channels.thermal
+  );
+  private static readonly OUTLINE_COLOR = Color.fromCssColorString(
+    CESIUM_DESIGN_TOKENS.outlines.thermal
+  );
 
   constructor(options: FirmsLayerOptions) {
     super(options, 'gev-firms');

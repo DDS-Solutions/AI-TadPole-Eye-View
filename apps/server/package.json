@@ -7,7 +7,8 @@
     "dev": "node --watch src/index.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --exclude test/load.test.ts",
+    "test:load": "vitest run test/load.test.ts --no-file-parallelism --maxWorkers=1",
     "start": "node dist/index.js",
     "lint": "biome check ."
   },

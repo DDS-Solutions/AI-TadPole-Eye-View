@@ -1,5 +1,8 @@
+import { FrozenClock } from '@gev/core';
+import { Hono } from 'hono';
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../src/index.js';
+import { CostGovernor } from '../src/middleware/costGovernor.js';
 
 describe('Cost Governor Middleware & Data Proxies (PLAN.md §10 Phase 1)', () => {
   it('serves telemetry feeds with Cost Governor headers (flights, ships, quakes, firms, gbfs)', async () => {
@@ -73,5 +76,22 @@ describe('Cost Governor Middleware & Data Proxies (PLAN.md §10 Phase 1)', () =>
     expect(
       quakesData.features.some((f: { place: string }) => f.place.includes('San Juan Bautista'))
     ).toBe(true);
+  });
+
+  it('evaluates HTTP-date Retry-After headers against the injected clock', async () => {
+    const clock = new FrozenClock(Date.parse('2026-08-28T12:00:00.000Z'));
+    const governor = new CostGovernor({ clock });
+    const app = new Hono();
+    app.use('/feed/*', governor.middleware('ships'));
+    app.get('/feed/data', (c) => {
+      c.header('Retry-After', 'Fri, 28 Aug 2026 12:02:00 GMT');
+      return c.json({ error: 'rate limited' }, 429);
+    });
+
+    expect((await app.request('/feed/data')).status).toBe(429);
+    const cooldownResponse = await app.request('/feed/data');
+
+    expect(cooldownResponse.status).toBe(429);
+    expect(cooldownResponse.headers.get('Retry-After')).toBe('120');
   });
 });

@@ -10,20 +10,30 @@
 
 ### What happens during STASIS:
 1. `BudgetGovernor.trip(reason, message)` triggers.
-2. `stasis_active` flag is set to `true` in governance state.
+2. `stasis_active` is transactionally persisted in the shared SQLite governance state.
 3. All autonomous agent actions suspend immediately (no self-resumption allowed).
 4. An `audit.outcome` snapshot with status `'blocked'` and the corresponding trip code is logged to the SQLite WAL.
+
+The local governance database path resolves in this order: explicit process option,
+`GEV_GOVERNANCE_DB`, legacy `GEV_AUDIT_DB`, then `GEV_DATA_DIR/audit.sqlite`
+(default `.gev/audit.sqlite`). All server, CLI, and local MCP processes must resolve
+the same path. Never copy, delete, or replace this database to clear STASIS.
 
 ### Trip Code Reference:
 | Trip Code | Root Cause | Immediate Operator Remediation |
 |---|---|---|
-| `BUDGET_BREACH` | Spend exceeded session or hourly spend cap | Review cost allocation via `gev status`; adjust cap in environment if authorized |
+| `BUDGET_BREACH` | Spend met/exceeded the durable cap, or an estimate would exceed it | Review cost allocation via connected `gev status`; resume only after the attempted work is reduced or otherwise remediated |
 | `LOGIC_BLOCKER` | Agent encountered unresolvable blocker (~3 consecutive failures) | Inspect audit log `task_ref` via `gev audit tail`; provide human guidance |
 | `COMPLIANCE_DRIFT` | Boundary violation (e.g. unpinned fetch attempt, missing audit intent) | Revert offending branch; patch compliance guard |
 
 ### Resuming from STASIS (Human-only):
 > [!CAUTION]
 > AI agents are strictly forbidden from resuming themselves from STASIS. Only a verified human operator may resume the system using `gev resume`.
+
+When the server is online, `gev resume` must succeed through its authenticated human
+operations route. A refusal is final and must not fall back to direct database access.
+When the server is offline, the local CLI is the explicit human-operated recovery path
+and writes the same durable state plus its audit intent/outcome pair.
 
 ```bash
 # Step 1: Inspect current system status and trip cause (< 100ms)
@@ -38,6 +48,13 @@ pnpm gev resume "Budget cap increased after review"
 # Step 4: Confirm STASIS state has returned to STASIS_INACTIVE
 pnpm gev status
 ```
+
+An offline status is labeled `NON-AUTHORITATIVE OFFLINE SNAPSHOT`: it can inspect the
+configured durable file but cannot prove which state an absent server or MCP process
+would use. Start the server and re-run status for authoritative confirmation. Changing
+`GEV_BUDGET_CAP_USD` does not overwrite an existing persisted cap; a mismatch fails
+closed. Budget-period reset and governed cap changes are intentionally deferred to the
+M3 ledger task.
 
 ---
 

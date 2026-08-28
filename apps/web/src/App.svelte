@@ -30,6 +30,7 @@
   import { layerStore } from './stores/layers.svelte.js';
   import { voiceStore } from './stores/voice.svelte.js';
   import { collabStore } from './stores/collab.svelte.js';
+  import { runtimeClock } from './runtimeClock.js';
   import HudHeader from './components/HudHeader.svelte';
   import LayerControlPanel from './components/LayerControlPanel.svelte';
   import EntityInfoCard from './components/EntityInfoCard.svelte';
@@ -238,7 +239,7 @@
     const props: Record<string, unknown> = {};
     if (entity.properties) {
       const propertyNames = entity.properties.propertyNames;
-      const now = JulianDate.now();
+      const now = JulianDate.fromIso8601(runtimeClock.iso());
       for (const name of propertyNames) {
         props[name] = entity.properties.getValue(now)?.[name];
       }

@@ -28,4 +28,4 @@ them as active.
 ## 3. Security & Rate Governance
 
 - All outbound telemetry requests pass through `packages/security/pinned-fetch` with TLS IP pinning, SSRF mitigation, and mandatory timeouts.
-- Server proxies enforce dynamic rate-limits, Redis caching, and Cost Governor TTL tiering.
+- Server proxies currently enforce bounded in-process TTL caching and Cost Governor tiers. Redis is not installed; any shared production cache requires its own architecture and deployment decision.

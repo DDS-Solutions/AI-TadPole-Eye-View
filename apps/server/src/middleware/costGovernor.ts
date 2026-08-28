@@ -204,7 +204,7 @@ export class CostGovernor {
     }
     const dateMs = Date.parse(header);
     if (!Number.isNaN(dateMs)) {
-      const diffSec = Math.ceil((dateMs - Date.now()) / 1000);
+      const diffSec = Math.ceil((dateMs - this.clock.now()) / 1000);
       return Math.min(1800, Math.max(30, diffSec));
     }
     return 30;

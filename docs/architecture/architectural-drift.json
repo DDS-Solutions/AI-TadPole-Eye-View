@@ -1,0 +1,210 @@
+{
+  "version": 1,
+  "task": "5.0.6",
+  "adr": "0040",
+  "wallClock": [
+    {
+      "path": "packages/cesium-kit/src/frameBudget.ts",
+      "occurrences": 1,
+      "classification": "compliant",
+      "reason": "Monotonic frame-budget instrumentation with an injectable clock fallback; it does not define domain time."
+    },
+    {
+      "path": "packages/cli/src/commands/scene.ts",
+      "occurrences": 1,
+      "classification": "compliant",
+      "reason": "CLI infrastructure uses wall time only to make an omitted output filename unique; serialized scene time remains contract-owned."
+    },
+    {
+      "path": "packages/core/src/clock.ts",
+      "occurrences": 2,
+      "classification": "compliant",
+      "reason": "SystemClock is the sole production wall-clock implementation behind SimClock."
+    },
+    {
+      "path": "scripts/lib/adg-core.mjs",
+      "occurrences": 2,
+      "classification": "compliant",
+      "reason": "Offline build-tool timing reports ADG duration and never enters product or domain state."
+    }
+  ],
+  "largeFiles": [
+    {
+      "path": "apps/web/src/App.svelte",
+      "lines": 566,
+      "classification": "adr-exempt",
+      "adr": "0040",
+      "followUp": "DRIFT-LARGE-APP",
+      "owner": "apps/web and packages/cesium-kit owners",
+      "gate": "Extract feed orchestration before the next direct App.svelte feature edit or task 5.2.2/5.2.3 wiring, whichever comes first."
+    },
+    {
+      "path": "apps/web/src/components/EntityInfoCard.svelte",
+      "lines": 502,
+      "classification": "adr-exempt",
+      "adr": "0040",
+      "followUp": "DRIFT-LARGE-ENTITY-INFO",
+      "owner": "apps/web UI owner",
+      "gate": "Extract entity-kind presenters before the next direct feature edit to this component."
+    },
+    {
+      "path": "apps/web/src/components/LayerControlPanel.svelte",
+      "lines": 690,
+      "classification": "adr-exempt",
+      "adr": "0040",
+      "followUp": "DRIFT-LARGE-LAYER-CONTROL",
+      "owner": "apps/web UI owner",
+      "gate": "Extract per-channel controls before the next direct feature edit to this component."
+    },
+    {
+      "path": "apps/web/src/components/VirtualizedTelemetryTable.svelte",
+      "lines": 525,
+      "classification": "adr-exempt",
+      "adr": "0040",
+      "followUp": "DRIFT-LARGE-TELEMETRY-TABLE",
+      "owner": "apps/web UI owner",
+      "gate": "Resolve the installed TanStack-versus-manual windowing boundary and split controls/rows before task 7.3 or the next direct feature edit."
+    },
+    {
+      "path": "packages/contracts/src/tools.ts",
+      "lines": 543,
+      "classification": "adr-exempt",
+      "adr": "0040",
+      "followUp": "DRIFT-LARGE-TOOL-CONTRACTS",
+      "owner": "packages/contracts and packages/ops-mcp owners",
+      "gate": "Split schemas, metadata, and transport projections as part of task 5.1.2 before expanding the tool registry."
+    }
+  ],
+  "colors": [
+    {
+      "path": "apps/web/src/App.svelte",
+      "occurrences": 6,
+      "fingerprint": "c80452b2cec830f4db09a05157b550666f41d330c95ae590627b0d988c0eafe7",
+      "classification": "follow-up",
+      "followUp": "DRIFT-COLOR-WEB-HUD",
+      "owner": "apps/web UI owner",
+      "gate": "Migrate the exact fingerprint to semantic CSS custom properties before task 7.3 or the next visual edit to this file."
+    },
+    {
+      "path": "apps/web/src/components/CollabBar.svelte",
+      "occurrences": 36,
+      "fingerprint": "021dae77ab823e4be216cecfca37b50c5c9702ec5afcd5a65b2d098927aaa9c1",
+      "classification": "follow-up",
+      "followUp": "DRIFT-COLOR-COLLAB",
+      "owner": "apps/web UI and collaboration owners",
+      "gate": "Add an accepted collaboration channel to DESIGN.md and tokenize this exact palette before the next visual edit to CollabBar."
+    },
+    {
+      "path": "apps/web/src/components/EntityInfoCard.svelte",
+      "occurrences": 47,
+      "fingerprint": "761d499d39185ba1799e5476435635eac6bdaddc724efedb6d9b438047495e8d",
+      "classification": "follow-up",
+      "followUp": "DRIFT-COLOR-WEB-HUD",
+      "owner": "apps/web UI owner",
+      "gate": "Migrate the exact fingerprint to semantic CSS custom properties before task 7.3 or the next visual edit to this file."
+    },
+    {
+      "path": "apps/web/src/components/HudHeader.svelte",
+      "occurrences": 52,
+      "fingerprint": "a4891deeb9b917c34a75546c2d1dfe6de0cc1936fbaaff937320c4edc136c813",
+      "classification": "follow-up",
+      "followUp": "DRIFT-COLOR-WEB-HUD",
+      "owner": "apps/web UI owner",
+      "gate": "Migrate the exact fingerprint to semantic CSS custom properties before task 7.3 or the next visual edit to this file."
+    },
+    {
+      "path": "apps/web/src/components/LayerControlPanel.svelte",
+      "occurrences": 49,
+      "fingerprint": "7d52144e148517ca9a4d68ebde7082e2627da16ffb0570972556c76ac85f68fc",
+      "classification": "follow-up",
+      "followUp": "DRIFT-COLOR-WEB-HUD",
+      "owner": "apps/web UI owner",
+      "gate": "Migrate the exact fingerprint to semantic CSS custom properties before task 7.3 or the next visual edit to this file."
+    },
+    {
+      "path": "apps/web/src/components/TelemetryTimelineChart.svelte",
+      "occurrences": 15,
+      "fingerprint": "e544fb94f1415f2f9b52c74b2ada325f1b3d4aecf0ea96dbe540250f8f35ba53",
+      "classification": "follow-up",
+      "followUp": "DRIFT-COLOR-WEB-HUD",
+      "owner": "apps/web UI owner",
+      "gate": "Migrate the exact fingerprint to semantic CSS custom properties before task 7.3 or the next visual edit to this file."
+    },
+    {
+      "path": "apps/web/src/components/VirtualizedTelemetryTable.svelte",
+      "occurrences": 65,
+      "fingerprint": "d8273b522bb0c51437a488e376350030e0411d8c2dbd7ee5309d6f5e88a062f6",
+      "classification": "follow-up",
+      "followUp": "DRIFT-COLOR-WEB-HUD",
+      "owner": "apps/web UI owner",
+      "gate": "Migrate the exact fingerprint to semantic CSS custom properties before task 7.3 or the next visual edit to this file."
+    },
+    {
+      "path": "apps/web/src/components/VoiceControlOrb.svelte",
+      "occurrences": 53,
+      "fingerprint": "052409af04fd22fa6856aa511ec3d4d437b85c086e1b93074944d8e1674c6956",
+      "classification": "follow-up",
+      "followUp": "DRIFT-COLOR-VOICE",
+      "owner": "apps/web UI and voice owners",
+      "gate": "Add an accepted voice-state palette to DESIGN.md and tokenize this exact fingerprint before the next visual edit to VoiceControlOrb."
+    },
+    {
+      "path": "apps/web/src/designTokens.ts",
+      "occurrences": 10,
+      "fingerprint": "8f1236b60e51d78eb769a6b854581ffa7b3c22191d7888fb2b85b6a8d9d8c9e1",
+      "classification": "fixed",
+      "reason": "Task 5.0.6 centralized chart and dynamic table channel values and corrected CCTV, radio, and launch mismatches."
+    },
+    {
+      "path": "packages/cesium-kit/src/designTokens.ts",
+      "occurrences": 19,
+      "fingerprint": "54cc9d7742787d1a6d5b1a82e9785e8f8e6bd0252bfbc8ff7a7734a2da2d4aaa",
+      "classification": "fixed",
+      "reason": "Task 5.0.6 centralized Cesium channel, outline, and effect values used by every controller."
+    }
+  ],
+  "cesiumDirect": [
+    {
+      "path": "apps/web/package.json",
+      "section": "dependencies",
+      "name": "@cesium/engine",
+      "range": "^26.2.0"
+    },
+    {
+      "path": "apps/web/package.json",
+      "section": "dependencies",
+      "name": "cesium",
+      "range": "^1.126.0"
+    },
+    {
+      "path": "packages/cesium-kit/package.json",
+      "section": "dependencies",
+      "name": "@cesium/engine",
+      "range": "^26.2.0"
+    },
+    {
+      "path": "packages/cesium-kit/package.json",
+      "section": "dependencies",
+      "name": "cesium",
+      "range": "^1.126.0"
+    }
+  ],
+  "cesiumImports": {
+    "cesium": 16,
+    "@cesium/engine": 0
+  },
+  "stackPackages": {
+    "maplibre": false,
+    "tailwind": false,
+    "redis": false,
+    "opentelemetry": false,
+    "react": false,
+    "shadcn-svelte": false,
+    "bits-ui": false,
+    "paneforge": false,
+    "svelte-sonner": false,
+    "vite-plugin-pwa": false,
+    "@tanstack/svelte-virtual": true,
+    "uplot": true
+  }
+}

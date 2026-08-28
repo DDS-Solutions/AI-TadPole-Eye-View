@@ -1,3 +1,4 @@
+import { FrozenClock } from '@gev/core';
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../src/index.js';
 
@@ -41,7 +42,8 @@ describe('Radio Proxy & Overpass Server Routes (PLAN.md §10 Phase 1 Items 3 & 4
   });
 
   it('POST /api/overpass sanitizes and executes valid queries', async () => {
-    const { app } = createApp();
+    const clock = new FrozenClock(1_700_000_000_000);
+    const { app } = createApp({ clock });
 
     const res = await app.request('/api/overpass', {
       method: 'POST',
@@ -56,6 +58,7 @@ describe('Radio Proxy & Overpass Server Routes (PLAN.md §10 Phase 1 Items 3 & 4
     const data = await res.json();
     expect(data.elements.length).toBeGreaterThan(0);
     expect(data.sanitization.complexity_score).toBeGreaterThan(0);
+    expect(data.osm3s.timestamp_osm_base).toBe(clock.iso());
   });
 
   it('POST /api/overpass rejects malicious unbounded query', async () => {

@@ -4,9 +4,10 @@ import {
   MockAgentAdapter,
   OpenAIRealtimeAdapter,
   type TranscriptEntry,
-  voiceSessionMachine,
+  createVoiceSessionMachine,
 } from '@gev/core';
 import { createActor } from 'xstate';
+import { runtimeClock } from '../runtimeClock.js';
 
 export interface VoiceStoreState {
   status:
@@ -35,7 +36,7 @@ class VoiceStore {
         id: 'init-msg',
         role: 'system',
         text: 'Tactical Voice Agent initialized in Seed/Mock mode. Click microphone or type to issue commands.',
-        ts: Date.now(),
+        ts: runtimeClock.now(),
       },
     ],
     activeTool: null,
@@ -45,7 +46,7 @@ class VoiceStore {
     stasisActive: false,
   });
 
-  private actor = createActor(voiceSessionMachine);
+  private actor = createActor(createVoiceSessionMachine(runtimeClock));
   private adapter: AgentProviderAdapter | null = null;
   public executor: GovernedToolExecutor = new GovernedToolExecutor();
   private audioCtx: AudioContext | null = null;
@@ -109,7 +110,7 @@ class VoiceStore {
       this.wireAdapterEvents(this.adapter);
       await this.adapter.connect();
 
-      this.actor.send({ type: 'CONNECTED', sessionId: `sess_${Date.now()}` });
+      this.actor.send({ type: 'CONNECTED', sessionId: `sess_${runtimeClock.now()}` });
       this.startAudioVisualizer();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : String(err);
@@ -220,15 +221,15 @@ class VoiceStore {
       this.analyser = this.audioCtx.createAnalyser();
       this.analyser.fftSize = 64;
 
-      const loop = () => {
+      const loop = (frameTimeMs: number) => {
         if (!this.analyser || this.state.status === 'idle') return;
 
         if (this.state.status === 'speaking') {
           // Synthetic audio pulsing during agent speech
-          this.state.audioLevel = 0.4 + 0.5 * Math.sin(Date.now() / 120);
+          this.state.audioLevel = 0.4 + 0.5 * Math.sin(frameTimeMs / 120);
         } else if (this.state.status === 'listening' && !this.state.isMuted) {
           // Subtle resting wave
-          this.state.audioLevel = 0.15 + 0.1 * Math.sin(Date.now() / 300);
+          this.state.audioLevel = 0.15 + 0.1 * Math.sin(frameTimeMs / 300);
         } else {
           this.state.audioLevel = 0.05;
         }

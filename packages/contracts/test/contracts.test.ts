@@ -10,6 +10,7 @@ import {
   FlightBatch,
   FlightState,
   GevEvents,
+  GovernanceAuthoritySchema,
   OPERATOR_TOOLS,
   SceneState,
   Verdict,
@@ -50,6 +51,19 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
           status: 'blocked',
         });
       }).toThrow(/blocked outcomes must state why/);
+    });
+  });
+
+  describe('Governance authority contracts', () => {
+    it('rejects process-local state that claims shared authority', () => {
+      expect(() =>
+        GovernanceAuthoritySchema.parse({
+          kind: 'process_local',
+          authoritative: true,
+          schema_version: 1,
+          state_revision: 0,
+        })
+      ).toThrow(/must set authoritative=false/);
     });
   });
 
@@ -276,6 +290,12 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
         spent_usd: 2.5,
         remaining_usd: 7.5,
         stasis_active: false,
+        governance_authority: {
+          kind: 'shared_sqlite',
+          authoritative: true,
+          schema_version: 1,
+          state_revision: 2,
+        },
       });
       expect(budgetOut.remaining_usd).toBe(7.5);
 

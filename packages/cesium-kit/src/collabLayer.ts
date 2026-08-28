@@ -9,6 +9,7 @@ import {
   VerticalOrigin,
 } from 'cesium';
 import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
+import { CESIUM_DESIGN_TOKENS } from './designTokens.js';
 
 export interface CollabLayerOptions extends BaseLayerOptions {
   localClientId?: string;
@@ -79,7 +80,10 @@ export class CollabLayerController extends BaseLayerController<UserPresence, Col
       presence.cursor.altitude_m ?? 500
     );
 
-    const peerColor = Color.fromCssColorString(presence.color || '#00f0ff');
+    const peerColor = Color.fromCssColorString(
+      presence.color || CESIUM_DESIGN_TOKENS.channels.collaborationFallback
+    );
+    const outlineColor = Color.fromCssColorString(CESIUM_DESIGN_TOKENS.outlines.default);
     let entity = this.entityMap.get(id);
 
     if (!entity) {
@@ -90,7 +94,7 @@ export class CollabLayerController extends BaseLayerController<UserPresence, Col
         point: {
           pixelSize: 10,
           color: peerColor,
-          outlineColor: Color.BLACK,
+          outlineColor,
           outlineWidth: 2,
           heightReference: HeightReference.NONE,
         },
@@ -98,7 +102,7 @@ export class CollabLayerController extends BaseLayerController<UserPresence, Col
           text: presence.callsign,
           font: "11px 'JetBrains Mono', 'Fira Code', monospace",
           fillColor: peerColor,
-          outlineColor: Color.BLACK,
+          outlineColor,
           outlineWidth: 2,
           style: 2, // FILL_AND_OUTLINE
           verticalOrigin: VerticalOrigin.BOTTOM,

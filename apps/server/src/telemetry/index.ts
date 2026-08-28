@@ -1,4 +1,6 @@
 import crypto from 'node:crypto';
+import type { SimClock } from '@gev/core';
+import { SystemClock } from '@gev/core';
 
 export interface TelemetrySpan {
   id: string;
@@ -26,6 +28,7 @@ export interface TelemetrySinkConfig {
   enableGlitchTip?: boolean;
   posthogEndpoint?: string;
   glitchtipDsn?: string;
+  clock?: SimClock;
 }
 
 /**
@@ -37,6 +40,7 @@ export class ServerTelemetryManager {
   private readonly environment: string;
   private readonly spans: TelemetrySpan[] = [];
   private readonly events: TelemetryEvent[] = [];
+  private readonly clock: SimClock;
   private readonly errors: Array<{
     error: string;
     context: Record<string, unknown>;
@@ -46,6 +50,7 @@ export class ServerTelemetryManager {
   constructor(config: TelemetrySinkConfig = {}) {
     this.serviceName = config.serviceName ?? 'gev-server';
     this.environment = config.environment ?? process.env.NODE_ENV ?? 'development';
+    this.clock = config.clock ?? new SystemClock();
   }
 
   /**
@@ -60,7 +65,7 @@ export class ServerTelemetryManager {
       id: crypto.randomUUID(),
       traceId: crypto.randomUUID(),
       name,
-      startTime: Date.now(),
+      startTime: this.clock.now(),
       attributes: {
         service: this.serviceName,
         env: this.environment,
@@ -71,12 +76,12 @@ export class ServerTelemetryManager {
 
     try {
       const result = await fn(span);
-      span.endTime = Date.now();
+      span.endTime = this.clock.now();
       span.durationMs = span.endTime - span.startTime;
       this.recordSpan(span);
       return result;
     } catch (err: unknown) {
-      span.endTime = Date.now();
+      span.endTime = this.clock.now();
       span.durationMs = span.endTime - span.startTime;
       span.status = 'error';
       span.error = err instanceof Error ? err.message : String(err);
@@ -115,7 +120,7 @@ export class ServerTelemetryManager {
     const payload: TelemetryEvent = {
       event,
       distinctId: 'anonymous-operator',
-      timestamp: Date.now(),
+      timestamp: this.clock.now(),
       properties: {
         service: this.serviceName,
         ...cleanProps,
@@ -136,7 +141,7 @@ export class ServerTelemetryManager {
     this.errors.push({
       error: errorMsg,
       context,
-      timestamp: Date.now(),
+      timestamp: this.clock.now(),
     });
     if (this.errors.length > 200) {
       this.errors.shift();

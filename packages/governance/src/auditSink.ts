@@ -1,7 +1,5 @@
 import crypto from 'node:crypto';
-import fs from 'node:fs';
-import path from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+import type { DatabaseSync } from 'node:sqlite';
 import {
   type AuditEntry,
   type AuditIntent,
@@ -14,6 +12,7 @@ import {
   GevEvents,
 } from '@gev/contracts';
 import { type SimClock, SystemClock } from '@gev/core';
+import { openGovernanceDatabase } from './governanceDb.js';
 
 export interface SqliteAuditSinkOptions {
   dbPath?: string;
@@ -46,29 +45,11 @@ export class SqliteAuditSink implements AuditSink {
   private readonly listeners: Set<(entry: AuditEntry) => void> = new Set();
   private readonly insertIntentStmt: ReturnType<DatabaseSync['prepare']>;
   private readonly insertOutcomeStmt: ReturnType<DatabaseSync['prepare']>;
+  private closed = false;
 
   constructor(options: SqliteAuditSinkOptions = {}) {
     this.clock = options.clock ?? new SystemClock();
-    const isTest = process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
-    const defaultDbPath = isTest
-      ? ':memory:'
-      : path.join(process.env.GEV_DATA_DIR || '.gev', 'audit.sqlite');
-    const dbPath = options.dbPath ?? process.env.GEV_AUDIT_DB ?? defaultDbPath;
-
-    if (dbPath !== ':memory:') {
-      const parentDir = path.dirname(dbPath);
-      if (!fs.existsSync(parentDir)) {
-        fs.mkdirSync(parentDir, { recursive: true });
-      }
-    }
-
-    this.db = new DatabaseSync(dbPath);
-
-    // Initialize WAL and schema
-    if (dbPath !== ':memory:') {
-      this.db.exec('PRAGMA journal_mode = WAL;');
-      this.db.exec('PRAGMA synchronous = NORMAL;');
-    }
+    this.db = openGovernanceDatabase({ dbPath: options.dbPath, clock: this.clock }).db;
 
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS audit_events (
@@ -270,6 +251,10 @@ export class SqliteAuditSink implements AuditSink {
    * Closes SQLite database connection.
    */
   close(): void {
+    if (this.closed) {
+      return;
+    }
+    this.closed = true;
     this.db.close();
   }
 }

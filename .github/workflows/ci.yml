@@ -32,15 +32,14 @@ jobs:
         run: pnpm turbo run lint typecheck test --affected
         env:
           GEV_SEED_MODE: '1'
-      - name: Cesium frame-budget performance gate (isolated single worker)
+      - name: Performance gates (isolated single workers)
         run: pnpm test:performance
         env:
           GEV_SEED_MODE: '1'
       - name: ADG — documentation must match code
-        # Fail-open placeholder until Phase 0 item 9 lands scripts/adg.mjs
-        # (workspace script exits 0 with a warning). Flip to fail-closed then.
-        # Spec: PLAN.md §7.3.
         run: pnpm docs:check
+      - name: Architectural drift inventory
+        run: pnpm architecture:check
 
   build:
     name: build all
