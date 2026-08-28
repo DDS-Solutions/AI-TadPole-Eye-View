@@ -1109,8 +1109,8 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   with zero cache hits; final `pnpm test:performance` passed 2/2 tests; canonical
   `pnpm gev qa` passed 1/1; `git diff --check`, ADG, and plan-copy equality passed.
   All work remained local/seed with zero live-service calls.
-- Branch: `codex/quality-baseline-5.0.5`. GitHub CLI remains unavailable, so open PR
-  inspection and PR creation were not possible. The two line-ending-normalized files
+- Branch: `codex/quality-baseline-5.0.5`. Implementation commit: `6886915`. GitHub CLI
+  remains unavailable, so open PR inspection and PR creation were not possible. The two line-ending-normalized files
   `packages/contracts/src/tools.ts` and `packages/ops-mcp/src/tools.ts` still appear in
   short status on this Windows checkout, but have empty diffs and filtered hashes equal
   to their index entries; they are not task changes.
