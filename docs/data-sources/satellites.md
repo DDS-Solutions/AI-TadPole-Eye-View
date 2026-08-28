@@ -1,36 +1,39 @@
 # Satellites & Orbital Mechanics — Data Source Provenance
 
-**Layer:** Satellites & Orbital Constellations  
-**Package:** `packages/core/src/geoMath.ts` · `packages/cesium-kit/src/launchLayer.ts`  
-**Upstream Providers:** [CelesTrak](https://celestrak.org/) · [Space-Track.org](https://www.space-track.org/)  
-**Layer Status:** Production Parity
+**Layer:** Satellites & Orbital Constellations
+
+**Planned package boundary:** provider, contract, propagation, server, store, and layer paths are intentionally unassigned until PLAN.md task 5.2.3
+
+**Candidate upstream providers:** [CelesTrak](https://celestrak.org/) · [Space-Track.org](https://www.space-track.org/)
+**Layer Status:** Incomplete / unavailable; launch replays are not a satellite catalog
 
 ---
 
 ## 1. Provenance & Attribution
 
-- **Primary Sources:** Two-Line Element (TLE) and General Perturbations (GP) orbital element sets curated by CelesTrak (Dr. T.S. Kelso) and 18th Space Defense Squadron (Space-Track.org).
-- **Attribution Notice:** *"Orbital ephemeris data provided by CelesTrak (https://celestrak.org) and Space-Track.org."*
-- **Terms of Service:** Public orbital elements published for spaceflight safety and academic use.
+- **Candidate sources:** Two-Line Element (TLE) and General Perturbations (GP/OMM) orbital element sets from CelesTrak or Space-Track.org.
+- **Open decision:** PLAN.md OQ-7 must verify production-source choice, terms, attribution, redistribution allowance, and refresh policy before implementation.
+- **Current repository:** No satellite provider, contract, fixture, propagation dependency, server route, store, Cesium layer, or UI wiring is present.
 
 ---
 
 ## 2. Ingestion & Orbital Mechanics Engine
 
-- **Propagation Engine:** Pure mathematical SGP4/SDP4 algorithm wrapper (`satellite.js`) with Earth Gravitational Model 1996 (EGM96) geoid height corrections.
-- **Sim-Clock Integration:** Computes true satellite sub-point (`latitude`, `longitude`, `altitude_km`) and orbital path geometry dynamically evaluated against injectable simulation time (`SimClock`).
-- **Normalized Entity Fields:** `norad_id`, `name`, `intl_designator`, `inclination_deg`, `period_min`, `apogee_km`, `perigee_km`, `tle_line1`, `tle_line2`.
+- **Propagation dependency:** None is installed. Task 5.2.3 must select and review an implementation with deterministic fixture tests and measured bundle/runtime impact.
+- **Sim-clock requirement:** Future propagation must evaluate against injectable `SimClock`; it must not call wall-clock APIs directly.
+- **Contract requirement:** Future normalized fields and provenance are defined only when the task's Zod boundary lands; this document does not reserve an implemented schema.
 
 ---
 
 ## 3. Cost Governor & Rate Limits
 
-- **Catalog Refresh:** Daily TLE fetch cached on disk/Redis with 24-hour TTL.
-- **Offline / Airgap:** Pre-bundled orbital catalogs for key constellations (ISS, Starlink, GPS, GLONASS, Galileo, Weather).
+- **Catalog refresh:** Not implemented. Any live refresh must use pinned-fetch, authentication where required, bounded caching, rate/budget governance, provenance, and a kill switch.
+- **Cache truth:** Redis is not installed. A production shared cache is a later deployment decision.
+- **Offline / airgap:** No orbital catalog is bundled. A future deterministic fixture requires verified redistribution terms and must be labeled seed data.
 
 ---
 
 ## 4. Honest Data Labeling
 
-- **Mathematical Model:** Satellite coordinates are propagated mathematical predictions of orbital paths from empirical element sets, labeled as `PROPAGATED SGP4 EPHEMERIS`.
-- **Decay Warning:** Objects with old TLE epochs (> 14 days) display `EPOCH DEGRADED` telemetry flags.
+- **Required future label:** Propagated coordinates must be described as mathematical predictions from a named element-set vintage, never live positions.
+- **Required future warning:** Staleness/degradation thresholds must be contract-defined and tested before the layer is described as available.

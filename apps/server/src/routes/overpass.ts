@@ -1,13 +1,17 @@
 import { OverpassQueryRequest } from '@gev/contracts';
+import type { SimClock } from '@gev/core';
+import { SystemClock } from '@gev/core';
 import { pinnedFetch, sanitizeOverpassQuery } from '@gev/security';
 import { Hono } from 'hono';
 
 export interface OverpassRouterOptions {
   seedMode?: boolean;
+  clock?: SimClock;
 }
 
 export function createOverpassRouter(options: OverpassRouterOptions = {}) {
   const router = new Hono();
+  const clock = options.clock ?? new SystemClock();
   const isSeedMode =
     options.seedMode ??
     (process.env.GEV_SEED_MODE === '1' ||
@@ -42,7 +46,7 @@ export function createOverpassRouter(options: OverpassRouterOptions = {}) {
           version: 0.6,
           generator: 'GEV-Overpass-Seed/1.0',
           osm3s: {
-            timestamp_osm_base: new Date().toISOString(),
+            timestamp_osm_base: clock.iso(),
             copyright: 'The data included in this document is from www.openstreetmap.org.',
           },
           elements: [

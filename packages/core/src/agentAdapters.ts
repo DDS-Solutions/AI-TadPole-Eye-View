@@ -265,6 +265,11 @@ export interface MockAgentAdapterOptions {
 export class MockAgentAdapter implements AgentProviderAdapter {
   status: AgentStatus = 'idle';
   private events: AgentAdapterEvents = {};
+  private callCounter: number;
+
+  constructor(options: MockAgentAdapterOptions = {}) {
+    this.callCounter = Math.trunc(options.deterministicSeed ?? 0);
+  }
 
   setEvents(events: AgentAdapterEvents): void {
     this.events = { ...this.events, ...events };
@@ -286,7 +291,7 @@ export class MockAgentAdapter implements AgentProviderAdapter {
     if (lower.includes('tokyo') || lower.includes('fly to')) {
       this.events.onTextDelta?.('Navigating camera to Tokyo, Japan. ');
       this.events.onToolCall?.({
-        callId: `mock_call_${Date.now()}`,
+        callId: this.nextCallId(),
         name: 'fly_to_location',
         arguments: { lat: 35.6762, lon: 139.6503, altitude_m: 50000 },
       });
@@ -296,7 +301,7 @@ export class MockAgentAdapter implements AgentProviderAdapter {
     if (lower.includes('layer') || lower.includes('flight') || lower.includes('toggle')) {
       this.events.onTextDelta?.('Updating layer status on the tactical HUD. ');
       this.events.onToolCall?.({
-        callId: `mock_call_${Date.now()}`,
+        callId: this.nextCallId(),
         name: 'toggle_layer',
         arguments: { layer: 'flights', enabled: true },
       });
@@ -306,7 +311,7 @@ export class MockAgentAdapter implements AgentProviderAdapter {
     if (lower.includes('health') || lower.includes('feeds')) {
       this.events.onTextDelta?.('Querying telemetry provider health statuses. ');
       this.events.onToolCall?.({
-        callId: `mock_call_${Date.now()}`,
+        callId: this.nextCallId(),
         name: 'get_feed_health',
         arguments: {},
       });
@@ -327,6 +332,11 @@ export class MockAgentAdapter implements AgentProviderAdapter {
 
   async cancelResponse(): Promise<void> {
     this.events.onTextDelta?.('[INTERRUPTED]');
+  }
+
+  private nextCallId(): string {
+    this.callCounter += 1;
+    return `mock_call_${this.callCounter}`;
   }
 
   async submitToolResult(callId: string, result: unknown): Promise<void> {

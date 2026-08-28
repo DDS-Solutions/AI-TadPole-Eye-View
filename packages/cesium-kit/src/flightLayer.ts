@@ -1,6 +1,7 @@
 import type { FlightBatch, FlightState } from '@gev/contracts';
 import { Cartesian3, Color, ConstantPositionProperty, NearFarScalar } from 'cesium';
 import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
+import { CESIUM_DESIGN_TOKENS } from './designTokens.js';
 
 export interface FlightLayerOptions extends BaseLayerOptions {}
 
@@ -41,8 +42,8 @@ export class FlightLayerController extends BaseLayerController<FlightState, Flig
         position,
         point: {
           pixelSize: 6,
-          color: Color.CYAN,
-          outlineColor: Color.BLACK,
+          color: Color.fromCssColorString(CESIUM_DESIGN_TOKENS.channels.aviation),
+          outlineColor: Color.fromCssColorString(CESIUM_DESIGN_TOKENS.outlines.default),
           outlineWidth: 1,
           scaleByDistance: new NearFarScalar(1.5e2, 1.5, 8.0e6, 0.5),
         },

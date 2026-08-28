@@ -8,6 +8,7 @@ import {
   NearFarScalar,
 } from 'cesium';
 import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
+import { CESIUM_DESIGN_TOKENS } from './designTokens.js';
 
 export interface GbfsLayerOptions extends BaseLayerOptions {
   minBikesAvailable?: number;
@@ -15,14 +16,18 @@ export interface GbfsLayerOptions extends BaseLayerOptions {
 
 /**
  * GBFS Bikeshare Transit Layer Controller (PLAN.md §8 Layer 5 & DESIGN.md §2.2)
- * Renders Urban Mobility telemetry with Indigo Violet (#818cf8) station capacity visualizers.
+ * Renders urban mobility telemetry with the mobility design channel.
  * Drains incoming batches through requestAnimationFrame queue straight into Cesium.
  */
 export class GbfsLayerController extends BaseLayerController<BikeStation, GbfsLayerOptions> {
   private minBikesAvailable: number;
 
-  private static readonly INDIGO_VIOLET = Color.fromCssColorString('#818cf8');
-  private static readonly OUTLINE_COLOR = Color.fromCssColorString('#1e1b4b');
+  private static readonly INDIGO_VIOLET = Color.fromCssColorString(
+    CESIUM_DESIGN_TOKENS.channels.mobility
+  );
+  private static readonly OUTLINE_COLOR = Color.fromCssColorString(
+    CESIUM_DESIGN_TOKENS.outlines.mobility
+  );
 
   constructor(options: GbfsLayerOptions) {
     super(options, 'gev-gbfs');

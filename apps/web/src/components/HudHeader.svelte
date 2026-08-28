@@ -1,13 +1,14 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
+  import { runtimeClock } from '../runtimeClock.js';
   import { layerStore } from '../stores/layers.svelte.js';
 
-  let currentTime = $state(new Date().toUTCString());
+  let currentTime = $state(new Date(runtimeClock.now()).toUTCString());
   let timer: ReturnType<typeof setInterval> | null = null;
 
   if (typeof window !== 'undefined') {
     timer = setInterval(() => {
-      currentTime = new Date().toUTCString();
+      currentTime = new Date(runtimeClock.now()).toUTCString();
     }, 1000);
   }
 

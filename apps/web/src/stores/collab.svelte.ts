@@ -12,6 +12,7 @@ import {
   filterRemoteCollabPresences,
   shouldBroadcastCollabUpdate,
 } from '@gev/core';
+import { runtimeClock } from '../runtimeClock.js';
 
 export interface CollabStoreState {
   isConnected: boolean;
@@ -158,7 +159,7 @@ class CollabStore {
   }
 
   updateCursor(lat: number, lon: number, altitude_m = 500): void {
-    const now = Date.now();
+    const now = runtimeClock.now();
     // Throttle cursor broadcasts to 50ms (20 Hz)
     if (now - this.lastCursorBroadcast < 50 || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
       return;
@@ -174,7 +175,7 @@ class CollabStore {
   }
 
   updateCamera(camera: CameraPose): void {
-    const now = Date.now();
+    const now = runtimeClock.now();
     // Throttle camera pose broadcasts to 100ms (10 Hz)
     if (now - this.lastCameraBroadcast < 100 || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
       return;

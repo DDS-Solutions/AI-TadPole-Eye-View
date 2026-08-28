@@ -1,6 +1,7 @@
 import type { WeatherCollection, WeatherStation } from '@gev/contracts';
 import { Cartesian3, Color, ConstantPositionProperty, NearFarScalar } from 'cesium';
 import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
+import { CESIUM_DESIGN_TOKENS } from './designTokens.js';
 
 export interface WeatherLayerOptions extends BaseLayerOptions {
   enableRadarImagery?: boolean;
@@ -8,7 +9,7 @@ export interface WeatherLayerOptions extends BaseLayerOptions {
 
 /**
  * Weather Radar & Meteorological Observations Layer Controller (PLAN.md §8 Layer 9)
- * Renders meteorological observations with Sky Blue (#60a5fa) styling.
+ * Renders meteorological observations with the weather design channel.
  */
 export class WeatherLayerController extends BaseLayerController<
   WeatherStation,
@@ -16,8 +17,12 @@ export class WeatherLayerController extends BaseLayerController<
 > {
   public radarTileTemplate?: string;
 
-  private static readonly SKY_BLUE = Color.fromCssColorString('#60a5fa');
-  private static readonly OUTLINE_COLOR = Color.fromCssColorString('#1e3a8a');
+  private static readonly SKY_BLUE = Color.fromCssColorString(
+    CESIUM_DESIGN_TOKENS.channels.weather
+  );
+  private static readonly OUTLINE_COLOR = Color.fromCssColorString(
+    CESIUM_DESIGN_TOKENS.outlines.weather
+  );
 
   constructor(options: WeatherLayerOptions) {
     super(options, 'gev-weather');

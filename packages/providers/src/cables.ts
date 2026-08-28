@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { type SimClock, SystemClock } from '@gev/core';
 import { pinnedFetch } from '@gev/security';
 
 export interface CableLandingPoint {
@@ -40,7 +41,7 @@ export interface CableDownloadOptions {
 /**
  * Generates a clean synthetic cable topology for seed/airgap mode with zero NC encumbrance.
  */
-export function loadSyntheticCablePack(): CableCatalog {
+export function loadSyntheticCablePack(clock: SimClock = new SystemClock()): CableCatalog {
   return {
     cables: [
       {
@@ -159,14 +160,17 @@ export function loadSyntheticCablePack(): CableCatalog {
     ],
     source: 'synthetic_seed',
     license: 'MIT / CC0 (Procedural Synthetic Topology)',
-    timestamp: Date.now(),
+    timestamp: clock.now(),
   };
 }
 
 /**
  * Downloads official TeleGeography cable pack, strictly requiring explicit license agreement.
  */
-export async function downloadCablePack(options: CableDownloadOptions): Promise<CableCatalog> {
+export async function downloadCablePack(
+  options: CableDownloadOptions,
+  clock: SimClock = new SystemClock()
+): Promise<CableCatalog> {
   if (!options.licenseAccepted) {
     throw new Error(
       'TeleGeography cable data requires explicit runtime license agreement (CC BY-NC-SA 4.0). Pass { licenseAccepted: true } to proceed.'
@@ -244,7 +248,7 @@ export async function downloadCablePack(options: CableDownloadOptions): Promise<
     cables,
     source: 'download_pack',
     license: 'Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC BY-NC-SA 4.0)',
-    timestamp: Date.now(),
+    timestamp: clock.now(),
   };
 }
 
@@ -253,24 +257,32 @@ export async function downloadCablePack(options: CableDownloadOptions): Promise<
  */
 export class CablePackLoader {
   private readonly defaultOptions: CableDownloadOptions;
+  private readonly clock: SimClock;
 
-  constructor(defaultOptions: Partial<CableDownloadOptions> = {}) {
+  constructor(
+    defaultOptions: Partial<CableDownloadOptions> = {},
+    clock: SimClock = new SystemClock()
+  ) {
     this.defaultOptions = {
       licenseAccepted: defaultOptions.licenseAccepted ?? false,
       packUrl: defaultOptions.packUrl,
       expectedSha256: defaultOptions.expectedSha256,
       timeoutMs: defaultOptions.timeoutMs,
     };
+    this.clock = clock;
   }
 
   loadSyntheticSeedPack(): CableCatalog {
-    return loadSyntheticCablePack();
+    return loadSyntheticCablePack(this.clock);
   }
 
   async downloadPack(overrideOptions?: Partial<CableDownloadOptions>): Promise<CableCatalog> {
-    return downloadCablePack({
-      ...this.defaultOptions,
-      ...overrideOptions,
-    });
+    return downloadCablePack(
+      {
+        ...this.defaultOptions,
+        ...overrideOptions,
+      },
+      this.clock
+    );
   }
 }

@@ -1,6 +1,6 @@
 /**
  * Injectable sim-clock abstraction.
- * Enables deterministic simulation and freezing of time in tests without Date.now() drift.
+ * Enables deterministic simulation and freezing of time in tests without wall-clock drift.
  * Spec: PLAN.md §2 Rule 6.
  */
 

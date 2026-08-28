@@ -6,6 +6,8 @@ import {
   OPERATOR_TOOLS,
   type OperatorToolName,
 } from '@gev/contracts';
+import type { SimClock } from './clock.js';
+import { SystemClock } from './clock.js';
 
 function generateUuid(): string {
   if (
@@ -36,6 +38,7 @@ export interface GovernedToolExecutorOptions {
   auditSink?: AuditSink;
   approvalGate?: ApprovalGate;
   budgetGovernor?: BudgetGovernor;
+  clock?: SimClock;
 }
 
 export interface ToolExecutionResult<T = unknown> {
@@ -58,11 +61,13 @@ export class GovernedToolExecutor {
   private auditSink?: AuditSink;
   private approvalGate?: ApprovalGate;
   private budgetGovernor?: BudgetGovernor;
+  private readonly clock: SimClock;
 
   constructor(options: GovernedToolExecutorOptions = {}) {
     this.auditSink = options.auditSink;
     this.approvalGate = options.approvalGate;
     this.budgetGovernor = options.budgetGovernor;
+    this.clock = options.clock ?? new SystemClock();
   }
 
   /**
@@ -100,7 +105,7 @@ export class GovernedToolExecutor {
     rawInput: unknown,
     context: ToolExecutionContext = {}
   ): Promise<ToolExecutionResult<T>> {
-    const start = performance.now();
+    const start = this.clock.now();
     const intentId = generateUuid();
     const actor = context.actor ?? 'ai';
     const taskRef = context.task_ref ?? 'phase3-tool-execution';
@@ -114,7 +119,7 @@ export class GovernedToolExecutor {
         tool: name,
         intent_id: intentId,
         error: err,
-        duration_ms: performance.now() - start,
+        duration_ms: this.clock.now() - start,
       };
     }
 
@@ -130,7 +135,7 @@ export class GovernedToolExecutor {
         tool: name,
         intent_id: intentId,
         error: err,
-        duration_ms: performance.now() - start,
+        duration_ms: this.clock.now() - start,
       };
     }
 
@@ -146,7 +151,7 @@ export class GovernedToolExecutor {
           intent_id: intentId,
           error: err,
           blocked: true,
-          duration_ms: performance.now() - start,
+          duration_ms: this.clock.now() - start,
         };
       }
 
@@ -163,7 +168,7 @@ export class GovernedToolExecutor {
           intent_id: intentId,
           error: err,
           blocked: true,
-          duration_ms: performance.now() - start,
+          duration_ms: this.clock.now() - start,
         };
       }
     }
@@ -173,7 +178,7 @@ export class GovernedToolExecutor {
       this.auditSink.intent({
         kind: GevEvents.AuditIntent,
         id: intentId,
-        ts: new Date().toISOString(),
+        ts: this.clock.iso(),
         actor,
         action: `tool.${name}`,
         target: 'console',
@@ -195,11 +200,11 @@ export class GovernedToolExecutor {
 
       const approval = await this.approvalGate.request({
         id: generateUuid(),
-        ts: new Date().toISOString(),
+        ts: this.clock.iso(),
         intent_id: intentId,
         scopes,
         rationale: `Execution of dangerous tool '${name}' requires approval`,
-        expires_at: new Date(Date.now() + 60000).toISOString(),
+        expires_at: new Date(this.clock.now() + 60000).toISOString(),
       });
 
       if (approval.decision !== 'approved') {
@@ -211,7 +216,7 @@ export class GovernedToolExecutor {
           intent_id: intentId,
           error: err,
           blocked: true,
-          duration_ms: performance.now() - start,
+          duration_ms: this.clock.now() - start,
         };
       }
     }
@@ -226,7 +231,7 @@ export class GovernedToolExecutor {
         tool: name,
         intent_id: intentId,
         error: err,
-        duration_ms: performance.now() - start,
+        duration_ms: this.clock.now() - start,
       };
     }
 
@@ -241,7 +246,7 @@ export class GovernedToolExecutor {
           tool: name,
           intent_id: intentId,
           error: err,
-          duration_ms: performance.now() - start,
+          duration_ms: this.clock.now() - start,
         };
       }
 
@@ -258,7 +263,7 @@ export class GovernedToolExecutor {
         tool: name,
         intent_id: intentId,
         result: finalResult as T,
-        duration_ms: performance.now() - start,
+        duration_ms: this.clock.now() - start,
       };
     } catch (execErr: unknown) {
       const err = execErr instanceof Error ? execErr.message : String(execErr);
@@ -268,7 +273,7 @@ export class GovernedToolExecutor {
         tool: name,
         intent_id: intentId,
         error: err,
-        duration_ms: performance.now() - start,
+        duration_ms: this.clock.now() - start,
       };
     }
   }
@@ -287,11 +292,11 @@ export class GovernedToolExecutor {
     this.auditSink.outcome({
       kind: GevEvents.AuditOutcome,
       intent_id: intentId,
-      ts: new Date().toISOString(),
+      ts: this.clock.iso(),
       status,
       result,
       error,
-      duration_ms: performance.now() - startTime,
+      duration_ms: this.clock.now() - startTime,
     });
   }
 }

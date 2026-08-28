@@ -11,7 +11,7 @@ GEV v2 is a high-density, real-time geospatial intelligence console. The visual 
 
 - **Globe as Primary Surface**: The 3D globe (CesiumJS) is the primary viewport. UI components float as glassmorphic HUD overlays above the canvas.
 - **Strict Pointer Pass-Through**: Container overlays must specify `pointer-events: none`, while interactive cards, toolbars, and inputs specify `pointer-events: auto`.
-- **Zero Layout Shift / Monospace Precision**: Dynamic telemetry values, coordinates, timestamps, and squawk codes must use fixed-width monospace typography (`font-mono` / `JetBrains Mono` / `ui-monospace`).
+- **Zero Layout Shift / Monospace Precision**: Dynamic telemetry values, coordinates, timestamps, and squawk codes must use fixed-width monospace typography (the current semantic `.mono` class, `JetBrains Mono`, or `ui-monospace`). Tailwind utility names are not an installed styling surface.
 - **Decoupled 60 FPS Rendering**: UI state is reactive via Svelte 5 runes (`$state`, `$derived`). Per-frame Cesium rendering passes through the imperative rAF queue in `packages/cesium-kit`, preventing HUD rerenders from degrading globe performance.
 
 ---
@@ -52,13 +52,15 @@ Every telemetry domain is strictly mapped to a dedicated color channel across gl
 
 ---
 
-## 4. Component Architecture ([PLAN.md §3.3](../PLAN.md))
+## 4. Installed and proposed component architecture ([PLAN.md §3.3](../PLAN.md))
 
-1. **Primitives**: Built with `shadcn-svelte` and `bits-ui` for accessible keyboard navigation and screen reader support.
-2. **Docking Panes**: Managed via `paneforge` for resizable multi-column split views (e.g. Map View | Telemetry Table | Audit Stream).
-3. **High-Density Lists**: Tables rendering > 100 items must use `@tanstack/svelte-virtual` to maintain 60 FPS scrolling.
-4. **Time-Series Charts**: Rendered with `uPlot` on Canvas for sub-millisecond redraw latency.
-5. **Toasts & Alerts**: Managed via `svelte-sonner` with dark tactical styling.
+Package manifests are the installed source of truth:
+
+1. **Primitives**: Current controls are native Svelte components with component-scoped CSS. `shadcn-svelte` and `bits-ui` are not installed; adopting either requires the normal dependency and accessibility review.
+2. **Docking Panes**: `paneforge` is not installed. The current HUD uses fixed overlays; resizable panes remain proposed work.
+3. **High-Density Lists**: `@tanstack/svelte-virtual` is installed, but the current `VirtualizedTelemetryTable.svelte` uses its own bounded window calculation and does not import that package. Do not attribute the implementation to TanStack until a measured migration lands.
+4. **Time-Series Charts**: `uPlot` is installed and used by `TelemetryTimelineChart.svelte` for Canvas rendering.
+5. **Toasts & Alerts**: `svelte-sonner` is not installed. Current alerts are local component state; a toast dependency requires review before adoption.
 
 ---
 

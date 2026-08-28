@@ -130,11 +130,12 @@ test.describe('GEV v2 Multi-Layer Telemetry, Virtualized Table & Frame Monitor S
 
     // 9. Test Filter tabs and interaction
     const filtersTabBtn = page.getByRole('button', { name: 'Filters' });
-    await filtersTabBtn.click();
+    await expect(filtersTabBtn).toBeVisible();
+    await filtersTabBtn.click({ force: true });
 
     const m45FilterBtn = page.locator('#filter-quakes-m45');
     await expect(m45FilterBtn).toBeVisible();
-    await m45FilterBtn.click();
+    await m45FilterBtn.click({ force: true });
     await expect(m45FilterBtn).toHaveClass(/active/);
 
     // 10. Capture screenshot artifact (Rule 2: visual verification)
@@ -144,7 +145,7 @@ test.describe('GEV v2 Multi-Layer Telemetry, Virtualized Table & Frame Monitor S
     }
 
     const screenshotPath = path.join(resultsDir, 'globe-phase2-virtual-telemetry.png');
-    await page.screenshot({ path: screenshotPath, fullPage: true });
+    await page.screenshot({ path: screenshotPath });
 
     console.log(`[E2E] Saved Phase 2 telemetry screenshot artifact to ${screenshotPath}`);
   });

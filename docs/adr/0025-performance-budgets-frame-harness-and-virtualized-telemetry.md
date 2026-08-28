@@ -8,7 +8,7 @@ Status: Accepted
 Phase 2 of [PLAN.md](../../PLAN.md) §10 and §13 mandates:
 1. **Performance budgets enforced in CI** with deterministic bundle size validation for `@gev/web`.
 2. **Frame-time benchmark harness** ensuring render loop latency `< 16.6ms p95` for 60 FPS target under multi-layer load.
-3. **PWA shell architecture** providing standalone execution, asset caching, and offline resilience.
+3. **A minimal installable shell experiment** using a manifest and static service worker; this is not evidence of production-grade PWA or offline resilience.
 4. **High-density virtualized telemetry list** capable of scrolling thousands of active entities at 60 FPS without DOM bloat.
 5. **Time-series elevation/velocity charts** using canvas-based `uPlot` with sub-millisecond redraw latency.
 
@@ -24,6 +24,12 @@ Phase 2 of [PLAN.md](../../PLAN.md) §10 and §13 mandates:
      `pnpm test`, `pnpm gev test`, and CI then invoke the isolated performance gate.
      This prevents unrelated workspace workers from contaminating p95 without retries,
      sample trimming, or weakening the 16.6ms threshold.
+   - The server's 100-request proxy load benchmark follows the same isolation rule.
+     `@gev/server` excludes only `test/load.test.ts` from its parallel unit task and
+     exposes `test:load` as a single-worker gate invoked by root `test:performance`.
+     Task 5.0.6 measured a contaminated 359.39ms p95 while Vite and all workspace
+     tests ran concurrently, versus 91.73ms in the canonical suite; the 300ms
+     threshold remains unchanged.
 
 2. **Deterministic Bundle Budgets & Rollup Chunking**:
    - Configured Vite Rollup `manualChunks` in [`apps/web/vite.config.ts`](../../apps/web/vite.config.ts) to isolate `@cesium/engine`, `svelte`, `uplot`, and `@tanstack/svelte-virtual` into independent vendor chunks.
@@ -39,8 +45,8 @@ Phase 2 of [PLAN.md](../../PLAN.md) §10 and §13 mandates:
    - Provides sub-millisecond redraw latency and tactical dark styling matching [DESIGN.md](../DESIGN.md).
    - Embedded directly into [`apps/web/src/components/EntityInfoCard.svelte`](../../apps/web/src/components/EntityInfoCard.svelte) for aircraft altitude/velocity curves, rocket ascent trajectories, and weather atmospheric histories.
 
-5. **PWA Shell & Offline Baseline**:
-   - Added [`apps/web/public/manifest.webmanifest`](../../apps/web/public/manifest.webmanifest) and [`apps/web/public/sw.js`](../../apps/web/public/sw.js) for standalone application shell caching while letting live telemetry proxies bypass the cache.
+5. **Minimal Manifest & Static Service Worker**:
+   - Added [`apps/web/public/manifest.webmanifest`](../../apps/web/public/manifest.webmanifest) and [`apps/web/public/sw.js`](../../apps/web/public/sw.js). No PWA plugin is installed, and offline behavior has not passed a dedicated acceptance gate, so these files must not be described as complete PWA support.
 
 ## Consequences
 

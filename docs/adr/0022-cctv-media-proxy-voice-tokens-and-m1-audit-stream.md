@@ -7,7 +7,7 @@ Accepted (2026-08-26)
 PLAN.md §10 Phase 1 Items 5, 6, 7, and 8 complete the server parity tier:
 1. **CCTV Media Proxy**: Traffic camera snapshot and stream proxying with timeout lifecycle and SSRF bounds.
 2. **Realtime Voice Tokens**: Ephemeral client-secret (`ek_...`) provisioning for OpenAI Realtime voice agents with auth-default controls.
-3. **Feed Health & Telemetry**: Diagnostic endpoint reporting latency, error rates, and OpenTelemetry trace propagation.
+3. **Feed Health & Telemetry**: Diagnostic endpoint reporting latency, error rates, and `traceparent`-compatible correlation. Official OpenTelemetry packages are not installed; the local telemetry ring buffer is compatibility-oriented, not an OTel SDK/exporter deployment.
 4. **M1 Observer Merge-Rung**: Server-Sent Events (SSE) live audit stream enabling external agent governance runtimes (Tadpole OS) to observe GEV audit logs in real-time.
 
 ## Decision

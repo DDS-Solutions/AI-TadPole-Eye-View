@@ -1,18 +1,23 @@
 import type { RadioCatalog, RadioStation } from '@gev/contracts';
 import { Cartesian3, Color, ConstantPositionProperty, JulianDate, NearFarScalar } from 'cesium';
 import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
+import { CESIUM_DESIGN_TOKENS } from './designTokens.js';
 
 export interface RadioLayerOptions extends BaseLayerOptions {}
 
 /**
  * Global Radio & ATC Broadcast Layer Controller (PLAN.md §8 Layer 7)
- * Renders radio transmission towers with Cyan/Lime (#06b6d4) styling.
+ * Renders radio transmission towers with the radio design channel.
  */
 export class RadioLayerController extends BaseLayerController<RadioStation, RadioLayerOptions> {
   private categoryFilter = 'all';
 
-  private static readonly CYAN_STREAM = Color.fromCssColorString('#06b6d4');
-  private static readonly OUTLINE_COLOR = Color.fromCssColorString('#083344');
+  private static readonly CYAN_STREAM = Color.fromCssColorString(
+    CESIUM_DESIGN_TOKENS.channels.radio
+  );
+  private static readonly OUTLINE_COLOR = Color.fromCssColorString(
+    CESIUM_DESIGN_TOKENS.outlines.radio
+  );
 
   constructor(options: RadioLayerOptions) {
     super(options, 'gev-radio');

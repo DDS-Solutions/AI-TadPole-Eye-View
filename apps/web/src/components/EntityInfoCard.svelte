@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { WEB_CHANNEL_COLORS } from '../designTokens.js';
   import { layerStore } from '../stores/layers.svelte.js';
   import TelemetryTimelineChart from './TelemetryTimelineChart.svelte';
 
@@ -97,8 +98,8 @@
           xAxisLabel="Time (s)"
           data={getFlightTimeSeries(entity.data)}
           seriesConfigs={[
-            { label: 'Altitude (m)', stroke: '#38bdf8', valueFormat: (v) => `${v.toFixed(0)}m` },
-            { label: 'Velocity (m/s)', stroke: '#2dd4bf', valueFormat: (v) => `${v.toFixed(0)}m/s` },
+            { label: 'Altitude (m)', stroke: WEB_CHANNEL_COLORS.flight, valueFormat: (v) => `${v.toFixed(0)}m` },
+            { label: 'Velocity (m/s)', stroke: WEB_CHANNEL_COLORS.marine, valueFormat: (v) => `${v.toFixed(0)}m/s` },
           ]}
           height={120}
         />
@@ -304,8 +305,8 @@
             xAxisLabel="Time (s)"
             data={getLaunchTimeSeries(entity.data.trajectory as Array<{ time_offset_sec: number; altitude_m: number; velocity_ms: number }>)}
             seriesConfigs={[
-              { label: 'Alt (km)', stroke: '#fbbf24', valueFormat: (v) => `${v.toFixed(1)}km` },
-              { label: 'Velocity (m/s)', stroke: '#38bdf8', valueFormat: (v) => `${v.toFixed(0)}m/s` },
+              { label: 'Alt (km)', stroke: WEB_CHANNEL_COLORS.launch, valueFormat: (v) => `${v.toFixed(1)}km` },
+              { label: 'Velocity (m/s)', stroke: WEB_CHANNEL_COLORS.flight, valueFormat: (v) => `${v.toFixed(0)}m/s` },
             ]}
             height={130}
           />
@@ -339,8 +340,8 @@
           xAxisLabel="Hours Ago"
           data={getWeatherTimeSeries(entity.data)}
           seriesConfigs={[
-            { label: 'Temp (°C)', stroke: '#38bdf8', valueFormat: (v) => `${v.toFixed(1)}°C` },
-            { label: 'Wind (km/h)', stroke: '#2dd4bf', valueFormat: (v) => `${v.toFixed(1)}km/h` },
+            { label: 'Temp (°C)', stroke: WEB_CHANNEL_COLORS.flight, valueFormat: (v) => `${v.toFixed(1)}°C` },
+            { label: 'Wind (km/h)', stroke: WEB_CHANNEL_COLORS.marine, valueFormat: (v) => `${v.toFixed(1)}km/h` },
           ]}
           height={120}
         />

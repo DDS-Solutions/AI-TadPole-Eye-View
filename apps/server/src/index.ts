@@ -61,7 +61,7 @@ export interface CreateAppOptions {
 export function createApp(options: CreateAppOptions = {}) {
   const app = new Hono();
   const clock = options.clock ?? new SystemClock();
-  const telemetry = new ServerTelemetryManager();
+  const telemetry = new ServerTelemetryManager({ clock });
   const auth = createOpsAuth(options.opsAuth);
   const opsAuth = auth.middleware();
   const rateLimiter = new InMemoryRateLimiter(clock);
@@ -160,7 +160,7 @@ export function createApp(options: CreateAppOptions = {}) {
   app.use('/api/overpass/*', costGovernor.middleware('overpass'));
   app.route(
     '/api/overpass',
-    createOverpassRouter({ seedMode: providerRegistry.requested_mode === 'seed' })
+    createOverpassRouter({ seedMode: providerRegistry.requested_mode === 'seed', clock })
   );
 
   app.use('/api/cctv/*', costGovernor.middleware('cctv'));
@@ -191,7 +191,7 @@ export function createApp(options: CreateAppOptions = {}) {
   );
 
   // M1 Observer Real-Time Audit SSE Stream
-  app.route('/ops/audit', createAuditStreamRouter(auditSink));
+  app.route('/ops/audit', createAuditStreamRouter(auditSink, clock));
 
   // Governed Mutating Endpoint (Rule 1, Rule 2 & PLAN.md §6):
   // Strict order: intent → budget.check → approval → execute → outcome

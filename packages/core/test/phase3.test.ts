@@ -3,8 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
 import {
   CollabIntentDoc,
+  FrozenClock,
   GovernedToolExecutor,
   MockAgentAdapter,
+  createVoiceSessionMachine,
   voiceSessionMachine,
 } from '../src/index.js';
 
@@ -20,7 +22,8 @@ describe('Phase 3 Core Framework (@gev/core)', () => {
         tail: () => [],
       };
 
-      const executor = new GovernedToolExecutor({ auditSink: mockAuditSink });
+      const clock = new FrozenClock(1_725_000_000_000);
+      const executor = new GovernedToolExecutor({ auditSink: mockAuditSink, clock });
 
       executor.register('fly_to_location', (input) => {
         return {
@@ -51,6 +54,7 @@ describe('Phase 3 Core Framework (@gev/core)', () => {
         expect.objectContaining({
           action: 'tool.fly_to_location',
           params: expect.objectContaining({ lat: 48.8566, lon: 2.3522 }),
+          ts: clock.iso(),
         })
       );
 
@@ -60,6 +64,8 @@ describe('Phase 3 Core Framework (@gev/core)', () => {
         expect.objectContaining({
           status: 'ok',
           result: expect.objectContaining({ moved: true }),
+          ts: clock.iso(),
+          duration_ms: 0,
         })
       );
     });
@@ -152,6 +158,23 @@ describe('Phase 3 Core Framework (@gev/core)', () => {
       expect(actor.getSnapshot().context.lastBargeInTs).not.toBeNull();
     });
 
+    it('uses the injected clock for transcript IDs, timestamps, and barge-in state', () => {
+      const clock = new FrozenClock(1_700_000_000_123);
+      const actor = createActor(createVoiceSessionMachine(clock));
+      actor.start();
+      actor.send({ type: 'CONNECT' });
+      actor.send({ type: 'CONNECTED', sessionId: 'sess_clock' });
+      actor.send({ type: 'USER_TEXT', text: 'Clock test' });
+
+      expect(actor.getSnapshot().context.transcript[0]).toMatchObject({
+        id: 'user_1700000000123_1',
+        ts: 1_700_000_000_123,
+      });
+
+      actor.send({ type: 'VAD_SPEECH_START' });
+      expect(actor.getSnapshot().context.lastBargeInTs).toBe(1_700_000_000_123);
+    });
+
     it('halts and freezes on STASIS_TRIPPED and resumes cleanly', () => {
       const actor = createActor(voiceSessionMachine);
       actor.start();
@@ -172,7 +195,7 @@ describe('Phase 3 Core Framework (@gev/core)', () => {
 
   describe('Agent Provider Adapters', () => {
     it('MockAgentAdapter dispatches deterministic tool calls based on user query', async () => {
-      const adapter = new MockAgentAdapter();
+      const adapter = new MockAgentAdapter({ deterministicSeed: 40 });
       const toolCallSpy = vi.fn();
       const textDeltaSpy = vi.fn();
 
@@ -190,6 +213,7 @@ describe('Phase 3 Core Framework (@gev/core)', () => {
       expect(toolCallSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'fly_to_location',
+          callId: 'mock_call_41',
           arguments: expect.objectContaining({ lat: 35.6762, lon: 139.6503 }),
         })
       );

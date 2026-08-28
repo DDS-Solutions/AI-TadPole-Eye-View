@@ -1,4 +1,6 @@
 import type { AuditEntry } from '@gev/contracts';
+import type { SimClock } from '@gev/core';
+import { SystemClock } from '@gev/core';
 import type { SqliteAuditSink } from '@gev/governance';
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
@@ -11,7 +13,10 @@ export interface AuditStreamRouterOptions {
  * M1 Observer Merge-Rung: Real-Time SSE Audit Stream (PLAN.md §6 & §10 Phase 1 Item 8)
  * Exposes live audit events via Server-Sent Events to external runtimes (Tadpole console).
  */
-export function createAuditStreamRouter(auditSink: SqliteAuditSink) {
+export function createAuditStreamRouter(
+  auditSink: SqliteAuditSink,
+  clock: SimClock = new SystemClock()
+) {
   const router = new Hono();
 
   router.get('/stream', async (c) => {
@@ -20,7 +25,7 @@ export function createAuditStreamRouter(auditSink: SqliteAuditSink) {
       await stream.writeSSE({
         event: 'audit.connected',
         data: JSON.stringify({
-          time: new Date().toISOString(),
+          time: clock.iso(),
           status: 'connected',
           m_rung: 'M1_OBSERVER',
         }),
@@ -58,7 +63,7 @@ export function createAuditStreamRouter(auditSink: SqliteAuditSink) {
         if (!stream.aborted) {
           await stream.writeSSE({
             event: 'audit.heartbeat',
-            data: JSON.stringify({ time: new Date().toISOString() }),
+            data: JSON.stringify({ time: clock.iso() }),
           });
         }
       }
