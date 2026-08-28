@@ -14,7 +14,8 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
-    "test": "vitest run"
+    "test": "vitest run --exclude test/frameBudget.test.ts",
+    "test:performance": "vitest run test/frameBudget.test.ts --no-file-parallelism --maxWorkers=1"
   },
   "dependencies": {
     "@cesium/engine": "^26.2.0",

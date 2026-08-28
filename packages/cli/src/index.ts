@@ -97,7 +97,7 @@ program
   .command('test')
   .description('Run unit and property test suites across all monorepo packages')
   .action(() => {
-    const proc = spawn('pnpm', ['turbo', 'run', 'test'], { stdio: 'inherit', shell: true });
+    const proc = spawn('pnpm', ['test'], { stdio: 'inherit', shell: true });
     proc.on('exit', (code) => {
       process.exit(code ?? 0);
     });

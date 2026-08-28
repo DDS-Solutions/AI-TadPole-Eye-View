@@ -13,6 +13,8 @@ import { QuakeLayerController } from '../src/quakeLayer.js';
 import { RadioLayerController } from '../src/radioLayer.js';
 import { WeatherLayerController } from '../src/weatherLayer.js';
 
+const INGESTION_P95_BUDGET_MS = 16.6;
+
 function createMockViewer(): Viewer {
   const dataSources = new Set<CustomDataSource>();
   return {
@@ -87,7 +89,7 @@ describe('Cesium Frame Budget Monitor & Ingestion Benchmark (PLAN.md §10 Phase 
     expect(monitor.getMetrics().breachCount).toBe(0);
   });
 
-  it('BENCHMARK: drains 1,000+ simultaneous multi-layer entities < 16.6ms p95 across 50 frame cycles', () => {
+  it(`BENCHMARK: drains 1,000+ simultaneous multi-layer entities < ${INGESTION_P95_BUDGET_MS}ms p95 across 50 frame cycles`, () => {
     const viewer = createMockViewer();
 
     // 1. Initialize all 9 layer controllers
@@ -338,12 +340,11 @@ describe('Cesium Frame Budget Monitor & Ingestion Benchmark (PLAN.md §10 Phase 
     const max = latencies[latencies.length - 1] ?? 0;
 
     console.log(
-      `[Benchmark 1000+ Multi-Layer Ingestion] N=${iterations} | Entities=${totalIngestedEntities} | p50: ${p50.toFixed(2)}ms | p95: ${p95.toFixed(2)}ms | max: ${max.toFixed(2)}ms`
+      `[Benchmark 1000+ Multi-Layer Ingestion] N=${iterations} | Entities=${totalIngestedEntities} | Budget=${INGESTION_P95_BUDGET_MS.toFixed(1)}ms p95 | p50: ${p50.toFixed(2)}ms | p95: ${p95.toFixed(2)}ms | max: ${max.toFixed(2)}ms`
     );
 
-    // Assert: Ingesting 1,000+ entities across all 9 layers completes under deterministic threshold in CI
-    expect(p50).toBeLessThan(150.0);
-    expect(p95).toBeLessThan(250.0);
+    // ADR 0025: 1,000+ entities across all 9 layers must drain inside one 60 FPS frame at p95.
+    expect(p95).toBeLessThan(INGESTION_P95_BUDGET_MS);
     expect(flight.getEntityCount()).toBe(400);
     expect(marine.getEntityCount()).toBe(200);
     expect(quakes.getEntityCount()).toBe(100);

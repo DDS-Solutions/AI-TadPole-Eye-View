@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-08-28
-**Status:** IN PROGRESS — Phase 5.0 tasks 5.0.1–5.0.4 complete
+**Status:** IN PROGRESS — Phase 5.0 tasks 5.0.1–5.0.5 complete
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=5.0
-NEXT_TASK=5.0.5
+NEXT_TASK=5.0.6
 NEXT_TASK_STATUS=READY
 LAST_VERIFIED_UTC=2026-08-28
 STASIS_OBSERVABILITY=PARTIAL_UNTIL_TASK_5.1.1
@@ -300,7 +300,7 @@ The repository contains Phase 0–4 implementation commits. V3 does not repeat t
 - [x] **5.0.3b Make local MCP truthful and confine scene files.** Remove fabricated console-state results from the default stdio surface, sandbox scene I/O, and replace tautological diagnostics with verified evidence.
 - [x] **5.0.3c Repair current server and collaboration trust boundaries.** Derive audit identity from auth, enforce human-only resume, harden WebSocket/room boundaries, validate CRDT updates, stop client echo, and add bounded abuse controls.
 - [x] **5.0.4 Make ADG meaningful.** Validate symbol membership, paths, phase/status/version claims, plan-copy equality, and designated root docs; distinguish explicitly planned paths from implemented paths.
-- [ ] **5.0.5 Restore the quality baseline.** Fix web lint and Playwright smoke timeout by root cause; run uncached affected lint/typecheck/test/build/QA.
+- [x] **5.0.5 Restore the quality baseline.** Fix web lint and Playwright smoke timeout by root cause; run uncached affected lint/typecheck/test/build/QA.
 - [ ] **5.0.6 Reconcile architectural drift.** Inventory direct wall-clock use, files over 500 lines, hardcoded design colors, duplicate Cesium dependencies, and claimed-but-absent stack items; fix or create scoped follow-up ADR tasks.
 - [ ] **5.0 exit:** no unprotected privileged route; status is registry-derived; plan copies match; ADG detects seeded drift; all mandatory baseline gates green.
 
@@ -538,6 +538,35 @@ weaken a benchmark to match a slow run, or hide a rendering/startup race with re
 Preserve real-render screenshot evidence. If three measured approaches cannot isolate
 the timeout or frame-budget mismatch, record LOGIC_BLOCKER with traces, timing evidence,
 and bounded alternatives.
+```
+
+#### Ready-to-authorize brief for NEXT_TASK 5.0.6
+
+```text
+[SCOPE_CONTRACT] Repository-wide inventory and narrowly scoped reconciliation for
+direct wall-clock use, source files over 500 lines, hardcoded UI/design colors,
+simultaneous cesium/@cesium/engine dependencies, and documentation claims for absent
+stack items. Add focused ADR or follow-up task evidence where a safe fix exceeds this
+task. Out of scope: new product features, visual redesign, provider/runtime feature
+work, dependency removal without measured runtime/bundle proof, live services,
+production deployment, and Phase 5.1 work.
+
+[PERFORMANCE_THRESHOLD] A deterministic checked-in inventory classifies every finding
+as compliant, fixed, ADR-exempt, or a bounded follow-up with owner/gate. Safe in-scope
+fixes pass root lint, affected typecheck/test/build, ADG, bundle budgets when dependency
+claims change, and canonical QA when rendering/UI files change. Zero live calls.
+
+[ARCHITECTURE_MODE] PLAN.md §2 rules 1, 6, 13, and 15; §3 boundaries and installed-
+versus-proposed truth; §13 acceptance policy; ADRs 0023–0025, 0030, and 0039; and
+docs/DESIGN.md for UI color findings. Preserve SimClock, cesium-kit ownership, design
+tokens, and package-manifest truth. No dependency or architecture change without
+measured evidence and an ADR.
+
+[FAILURE_MODES] Do not mechanically replace permitted infrastructure clocks, split
+cohesive files without ownership evidence, normalize intentional Cesium package usage,
+or make docs true by deleting valid caveats. Do not add broad ignore lists or arbitrary
+color exceptions. After three failed reconciliation approaches for one finding, record
+LOGIC_BLOCKER with exact paths, measurements, and bounded alternatives.
 ```
 
 ### Phase 5.1 — Durable shared governance
@@ -1012,5 +1041,81 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
 - Next task: **5.0.5 Restore the quality baseline**. Its exact ready-to-authorize
   4-Pillar brief is in §10; no task 5.0.5 implementation has started or been authorized.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.0.5. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 5.0.5 LOGIC_BLOCKER checkpoint — 2026-08-28
+
+- Authorized scope remained exactly the embedded task 5.0.5 brief. No product
+  feature, visual redesign, provider/runtime refactor, live-service call, production
+  deployment, task 5.0.6 work, or Phase 5.1 work was started.
+- Playwright root cause and completed partial fix: the canonical smoke's
+  `retain-on-failure` trace captured continuous WebGL screenshots and DOM snapshots
+  while software-rendered Cesium displayed 10,032 entities. The unchanged smoke passed
+  in 20.1 seconds with tracing disabled. `e2e/playwright.config.ts` now retains
+  lightweight action/source/network traces while disabling trace screenshots and DOM
+  snapshots; Playwright's failure screenshot and the test's real-render screenshot
+  remain enabled.
+- Passing evidence for the partial fix: root `pnpm lint` checked all 163 files;
+  canonical `pnpm gev qa` passed the unchanged 30-second smoke in 20.4 seconds with
+  no retries or fixed sleeps; and
+  `e2e/test-results/globe-phase2-virtual-telemetry.png` was visually inspected with
+  all nine populated telemetry badges, virtualized rows, selected-entity inspector,
+  filter controls, and OpenStreetMap attribution visible.
+- `LOGIC_BLOCKER`: three measured benchmark approaches could not produce one honest
+  ADR-0025-backed 16.6 ms p95 assertion that also passes the required default parallel
+  uncached affected gate. Direct wall-clock measurement passed focused at 8.04 ms p95
+  but failed the parallel gate at 33.76 ms. Windows process CPU time was too coarsely
+  quantized to be meaningful (0 ms p50, 31 ms p95, 79 ms max). Median-of-three
+  wall-clock sampling passed focused at 5.90 ms p95 but failed the parallel gate at
+  23.31 ms. The pre-existing title/assertion mismatch was restored rather than leaving
+  an experimental or predictably failing gate in the worktree.
+- Bounded resolution options: (1) authorize an isolated/serialized performance-job
+  scope that preserves the 16.6 ms ADR threshold under controlled load; (2) authorize
+  an ADR 0025 amendment with a measured ingestion budget distinct from the 16.6 ms
+  render-frame monitor; or (3) expand implementation scope to profile and optimize the
+  nine Cesium controllers until the 16.6 ms p95 gate passes under default parallel
+  workspace load.
+- Branch: `codex/quality-baseline-5.0.5`. GitHub CLI remains unavailable, so open PR
+  inspection and PR creation were not possible. Task 5.0.5 remains unchecked and
+  `NEXT_TASK` remains 5.0.5; no later task is authorized.
+
+### Task 5.0.5 completion checkpoint — 2026-08-28
+
+- The developer authorized blocker option 1: preserve ADR 0025's 16.6 ms p95 budget
+  and isolate its wall-clock benchmark from unrelated workspace workers. Ordinary
+  Cesium tests now exclude only `test/frameBudget.test.ts`; root `pnpm test`, canonical
+  `pnpm gev test`, and CI run that file afterward through the single-worker
+  `pnpm test:performance` gate. No retries, trimming, or threshold increase was added.
+- The benchmark title, log, and assertion now share the exact 16.6 ms p95 constant.
+  ADR 0025 documents the isolated-gate method, and CI runs it after parallel lint,
+  typecheck, and unit work. Final isolated evidence was 6.75 ms p95 and 8.99 ms max
+  across 50 cycles ingesting 1,060 entities through all nine controllers.
+- The Playwright timeout was fixed at root cause. Retained traces keep actions, sources,
+  and network data but no longer capture continuous software-WebGL screenshots/DOM
+  snapshots. The smoke uses one condition-wait for all HUD counts and searches for a
+  real row identifier before selecting it. It retains the existing 30-second timeout,
+  contains no fixed sleep or retry, and passed in 21.6 seconds.
+- Real-render evidence at
+  `e2e/test-results/globe-phase2-virtual-telemetry.png` was visually inspected: all nine
+  telemetry badges were populated; the matching filtered row and selected-flight
+  inspector rendered; filters and OpenStreetMap attribution remained visible.
+- Files changed for task 5.0.5: `.github/workflows/ci.yml`, `package.json`,
+  `packages/cesium-kit/package.json`, `packages/cesium-kit/test/frameBudget.test.ts`,
+  `packages/cli/src/index.ts`, `e2e/playwright.config.ts`, `e2e/smoke.spec.ts`,
+  `docs/adr/0025-performance-budgets-frame-harness-and-virtualized-telemetry.md`, and
+  the synchronized plan checkpoint pair. No UI/HUD product file changed.
+- Passing evidence: root Biome checked 163 files; focused Cesium and CLI typechecks;
+  canonical `pnpm gev test` ran 16 ordinary tasks followed by the isolated benchmark;
+  `pnpm turbo run lint typecheck test build --affected --force` completed 40/40 tasks
+  with zero cache hits; final `pnpm test:performance` passed 2/2 tests; canonical
+  `pnpm gev qa` passed 1/1; `git diff --check`, ADG, and plan-copy equality passed.
+  All work remained local/seed with zero live-service calls.
+- Branch: `codex/quality-baseline-5.0.5`. GitHub CLI remains unavailable, so open PR
+  inspection and PR creation were not possible. The two line-ending-normalized files
+  `packages/contracts/src/tools.ts` and `packages/ops-mcp/src/tools.ts` still appear in
+  short status on this Windows checkout, but have empty diffs and filtered hashes equal
+  to their index entries; they are not task changes.
+- Next task: **5.0.6 Reconcile architectural drift**. Its exact ready-to-authorize
+  4-Pillar brief is in §10; no task 5.0.6 implementation has started or been authorized.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.0.6. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
