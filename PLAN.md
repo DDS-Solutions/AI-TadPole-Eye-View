@@ -20,8 +20,8 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=5.1
-NEXT_TASK=5.1.2
-NEXT_TASK_STATUS=READY
+NEXT_TASK=5.1.3
+NEXT_TASK_STATUS=BLOCKED
 LAST_VERIFIED_UTC=2026-08-28
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
 IMPLEMENTATION_STARTED=YES
@@ -572,7 +572,7 @@ LOGIC_BLOCKER with exact paths, measurements, and bounded alternatives.
 ### Phase 5.1 — Durable shared governance
 
 - [x] 5.1.1 Compose one shared runtime context for server, CLI connection mode, MCP transports, and tools; persist budget/STASIS state transactionally.
-- [ ] 5.1.2 Consolidate the duplicate tool executors into one validated governance pipeline.
+- [x] 5.1.2 Consolidate the duplicate tool executors into one validated governance pipeline.
 - [ ] 5.1.3 Implement real M2 approval verification after OQ-2; production defaults deny when the gate is unavailable.
 - [ ] 5.1.4 Implement M3 ledger reservation/settlement after OQ-3; retries are idempotent and outage behavior is fail closed for billable/mutating work.
 - [ ] 5.1.5 Add a versioned hash-chain migration to the SQLite audit WAL, integrity verification, redaction, retention, and corruption tests.
@@ -637,6 +637,41 @@ make browser-local state claim shared authority, widen stdio capabilities, auto-
 or claim M3 settlement/idempotency. Preserve intent-before-mutation and outcome-after-
 success/failure. After three failed parity approaches, record LOGIC_BLOCKER with the exact
 consumer/lifecycle mismatch and bounded alternatives.
+```
+
+#### Decision-blocked brief for NEXT_TASK 5.1.3
+
+```text
+[SCOPE_CONTRACT] The accepted OQ-2 decision and its ADR; packages/contracts approval
+request/result fields only where the approved signed format requires them;
+packages/governance M2 signature, signer/key, nonce, expiry, and gate-availability
+verification; task 5.1.2 executor/runtime wiring only where required to consume the
+verified gate; focused server, MCP, CLI, and governance tests. Out of scope: M3
+reservation/settlement (5.1.4), audit hash chains (5.1.5), HTTP MCP (Phase 6), identity/
+tenancy (Phase 7), new tools/features, provider work, visual redesign, live services not
+explicitly approved by OQ-2, and production deployment.
+
+[PERFORMANCE_THRESHOLD] Deterministic tests prove approved signatures bind the exact
+intent, scopes, signer, nonce, issue/decision time, and expiry defined by OQ-2; tampering,
+replay, stale/future decisions, wrong signers/keys/scopes/intents, and unavailable gates
+fail before handler dispatch. Production policy defaults deny when verification is absent
+or unavailable; explicit seed/test policy remains labeled and deterministic. The shared
+executor retains one intent/outcome pair and identical blocked/error semantics. Root lint,
+affected uncached typecheck/test/build, ADG, architecture drift, and canonical seed-mode
+gates pass with zero unauthorized live calls.
+
+[ARCHITECTURE_MODE] PLAN.md §2 rules 1–3, 7–8, and 10–11; §3 boundaries/data flow;
+ADRs 0027, 0039, 0040, and 0041 plus the accepted OQ-2 ADR. Reuse the durable runtime
+context, shared executor, and SimClock. Verification occurs at the ApprovalGate boundary;
+private signing material never enters contracts, logs, browser bundles, fixtures, or error
+messages. No contract/default/policy deviation without ADR.
+
+[FAILURE_MODES] OQ-2 is unresolved: do not authorize implementation or invent a signature
+format, signer, key custody/rotation, nonce store, or expiry rule. After OQ-2, do not retain
+production auto-approval, accept unsigned/self-signed approvals, trust caller-supplied
+identity, reuse nonces, fail open on key/gate/storage errors, or mix M3 settlement into the
+gate. After three failed verification/replay approaches, record LOGIC_BLOCKER with exact
+cryptographic/state evidence and bounded alternatives.
 ```
 
 ### Phase 5.2 — Provenance and missing geospatial layers
@@ -1261,5 +1296,55 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   governance pipeline**. Its exact ready-to-authorize 4-Pillar brief is in §10; no
   task 5.1.2 implementation has started or been authorized.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.1.2. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 5.1.2 completion checkpoint — 2026-08-28
+
+- The developer authorized exactly the embedded task 5.1.2 brief. Work remained local
+  and in seed mode with zero live-service calls; real M2 verification, M3 reservation/
+  settlement, audit hash chains, HTTP MCP, provider work, visual redesign, and production
+  deployment were not started.
+- One lifecycle now lives in `GovernedToolExecutor`: registry/capability/input/port/handler
+  preflight → durable audit intent → durable governance check → dangerous-tool approval →
+  one handler dispatch → output validation → one audit outcome attempt. Results normalize
+  success, blocked, and error codes. Invalid, unavailable, missing-port, missing-handler,
+  and failed-intent calls reach no handler and emit no orphan outcome.
+- The task 5.1.1 runtime ports are injected into one context-owned MCP executor. Local
+  stdio registers and advertises exactly its seven permitted tools; direct calls outside
+  that set fail before action. Mutating tools block under durable STASIS, while status,
+  diagnostics, and audit reads validate durable state and remain available for recovery
+  observability. MCP success responses expose only schema-validated structured content.
+- Voice/co-user definitions are filtered to their five registered console capabilities.
+  Browser-local handlers deliberately fail closed without shared AuditSink, ApprovalGate,
+  and BudgetGovernor ports rather than presenting local state as shared authority. CLI
+  demo mutations consume the same normalized executor result and retain six audit events.
+- ADR 0040's contract-registry split gate is complete: the 543-line file became a stable
+  three-line barrel plus cohesive `toolSchemas.ts` (229 lines), `toolRegistry.ts` (180),
+  and `toolProjections.ts` (145). The machine-readable large-file exemption was removed;
+  ADR 0027 and RUNBOOK now record the unified lifecycle, capability filters, and STASIS
+  observability behavior.
+- Focused contracts/core/MCP/CLI suites passed 119 tests. Dedicated adversarial coverage
+  proves lifecycle order, one dispatch/audit pair, no orphan outcome, input/output
+  validation, missing-port/handler denial, STASIS and approval blocking, capability
+  filtering, direct/stdio parity, generated schemas, and validated structured output.
+- Required gates passed on the final implementation: root Biome checked 181 files;
+  uncached affected lint/typecheck/test/build completed 40/40 tasks with
+  `GEV_SEED_MODE=1`; ADG checked 48 documents, 385 paths, and 19 module-qualified symbols;
+  architecture drift and `git diff --check` passed. Canonical `pnpm gev test` passed 277
+  unit tests plus server load p95 17.69 ms under 300 ms and Cesium ingestion p95 6.81 ms
+  under 16.6 ms. Bundle validation passed at 1,214.28 KB total JavaScript gzip.
+  Canonical `pnpm gev qa` passed 1/1 in 36.5 seconds; its real-render screenshot was
+  inspected with populated telemetry, filtered rows, the entity inspector, and OSM
+  attribution visible.
+- Branch: `codex/governed-tool-pipeline-5.1.2`; implementation commit `339201d`.
+  GitHub CLI remains unavailable, so open PR inspection and PR creation were not possible.
+  The worktree was otherwise clean before the synchronized plan handoff edits.
+- Remaining boundaries are explicit: the common executor performs a zero-cost durable
+  STASIS check but makes no M3 reservation/settlement claim; browser mutations remain
+  unavailable without server-authoritative ports; the SQLite audit WAL remains unhashed.
+- Next task: **5.1.3 Implement real M2 approval verification**. It is blocked on OQ-2;
+  no implementation may be authorized until the human supplies the signed-approval format,
+  signer identity, key custody/rotation, nonce, and expiry decision. Its exact decision-
+  blocked 4-Pillar brief is in §10.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.1.3. Resolve OQ-2, then authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
