@@ -44,10 +44,13 @@ The following temporary ADR exemptions are exact, not directory-wide waivers:
 | `apps/web/src/components/EntityInfoCard.svelte` | 502 | Web UI owner; extract entity-kind presenters before its next feature edit |
 | `apps/web/src/components/LayerControlPanel.svelte` | 690 | Web UI owner; extract per-channel controls before its next feature edit |
 | `apps/web/src/components/VirtualizedTelemetryTable.svelte` | 525 | Web UI owner; resolve TanStack-versus-manual windowing and split controls/rows before task 7.3 or its next feature edit |
-| `packages/contracts/src/tools.ts` | 543 | Contracts/MCP owners; task 5.1.1 added the required governance-authority field; split schemas, metadata, and projections in task 5.1.2 before registry expansion |
 
 The checker fails when any count changes, a listed file disappears without inventory
 reconciliation, or another source file crosses 500 lines.
+
+Task 5.1.2 resolved `DRIFT-LARGE-TOOL-CONTRACTS` by splitting the stable `tools.ts`
+barrel into cohesive schema, registry/metadata, and transport-projection modules. Each
+resulting source file is below 500 lines, so the exemption was removed from the inventory.
 
 ### Design colors
 

@@ -13,7 +13,7 @@ import {
   MAX_SCENE_BYTES,
   type OperatorContext,
   createOperatorContext,
-  executeOperatorTool,
+  executeOperatorTool as executeOperatorToolResult,
   handleRunDiagnostics,
 } from '../src/index.js';
 
@@ -47,6 +47,18 @@ function makeScene() {
     ],
     selected_entity: { kind: 'aircraft', id: 'verified-aircraft' },
   });
+}
+
+async function executeOperatorTool(
+  context: OperatorContext,
+  name: string,
+  args: Record<string, unknown>
+): Promise<unknown> {
+  const execution = await executeOperatorToolResult(context, name, args);
+  if (!execution.success) {
+    throw new Error(execution.error ?? `Tool ${name} failed`);
+  }
+  return execution.result;
 }
 
 beforeEach(() => {
@@ -119,8 +131,8 @@ describe('local MCP scene confinement and truth', () => {
       GevEvents.AuditIntent,
       GevEvents.AuditOutcome,
     ]);
-    expect(entries[0]).toMatchObject({ action: 'ops.load_scene' });
-    expect(entries[2]).toMatchObject({ action: 'ops.save_scene' });
+    expect(entries[0]).toMatchObject({ action: 'tool.load_scene' });
+    expect(entries[2]).toMatchObject({ action: 'tool.save_scene' });
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 

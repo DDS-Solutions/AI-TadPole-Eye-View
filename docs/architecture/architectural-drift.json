@@ -64,15 +64,6 @@
       "followUp": "DRIFT-LARGE-TELEMETRY-TABLE",
       "owner": "apps/web UI owner",
       "gate": "Resolve the installed TanStack-versus-manual windowing boundary and split controls/rows before task 7.3 or the next direct feature edit."
-    },
-    {
-      "path": "packages/contracts/src/tools.ts",
-      "lines": 543,
-      "classification": "adr-exempt",
-      "adr": "0040",
-      "followUp": "DRIFT-LARGE-TOOL-CONTRACTS",
-      "owner": "packages/contracts and packages/ops-mcp owners",
-      "gate": "Split schemas, metadata, and transport projections as part of task 5.1.2 before expanding the tool registry."
     }
   ],
   "colors": [

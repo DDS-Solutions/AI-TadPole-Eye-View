@@ -18,6 +18,8 @@ The local governance database path resolves in this order: explicit process opti
 `GEV_GOVERNANCE_DB`, legacy `GEV_AUDIT_DB`, then `GEV_DATA_DIR/audit.sqlite`
 (default `.gev/audit.sqlite`). All server, CLI, and local MCP processes must resolve
 the same path. Never copy, delete, or replace this database to clear STASIS.
+Governed status, diagnostics, and audit reads remain available only after their shared
+durable-state check succeeds; mutating tools remain blocked until a human resume.
 
 ### Trip Code Reference:
 | Trip Code | Root Cause | Immediate Operator Remediation |

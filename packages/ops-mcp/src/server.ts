@@ -1,14 +1,8 @@
 import readline from 'node:readline';
 import type { Readable, Writable } from 'node:stream';
-import { OPERATOR_TOOLS } from '@gev/contracts';
-import {
-  MCP_OPERATOR_TOOL_NAMES,
-  type McpOperatorToolName,
-  type OperatorContext,
-  createOperatorContext,
-  executeOperatorTool,
-  isMcpOperatorToolName,
-} from './tools.js';
+import { getMcpToolDefinitions, isOperatorToolName } from '@gev/contracts';
+import { type OperatorContext, createOperatorContext } from './context.js';
+import { MCP_OPERATOR_TOOL_NAMES, executeOperatorTool, isMcpOperatorToolName } from './tools.js';
 
 export interface McpServerOptions {
   context?: OperatorContext;
@@ -33,65 +27,6 @@ export interface JsonRpcResponse {
     data?: unknown;
   };
 }
-
-/** JSON Schema input descriptors for MCP client tool discovery. */
-const TOOL_INPUT_SCHEMAS: Record<McpOperatorToolName, Record<string, unknown>> = {
-  get_feed_health: {
-    type: 'object',
-    properties: {
-      provider: { type: 'string', description: 'Filter by provider name (e.g. opensky)' },
-    },
-  },
-  get_budget: {
-    type: 'object',
-    properties: {},
-  },
-  run_diagnostics: {
-    type: 'object',
-    properties: {
-      scope: {
-        type: 'string',
-        enum: ['all', 'feeds', 'governance', 'memory'],
-        description: 'Diagnostic scope to inspect (default: all)',
-      },
-    },
-  },
-  load_scene: {
-    type: 'object',
-    properties: {
-      scene_json: { type: 'string', description: 'Raw JSON string of SceneState' },
-      scene_path: {
-        type: 'string',
-        description: 'Root-level .json filename under the configured MCP scene root',
-      },
-    },
-  },
-  save_scene: {
-    type: 'object',
-    properties: {
-      save_path: {
-        type: 'string',
-        description: 'Root-level .json filename under the configured MCP scene root',
-      },
-    },
-    required: ['save_path'],
-  },
-  tail_logs: {
-    type: 'object',
-    properties: {
-      limit: { type: 'number', description: 'Max audit records (1-1000, default: 50)' },
-      task_ref: { type: 'string', description: 'Filter by taskRef' },
-    },
-  },
-  set_flag: {
-    type: 'object',
-    properties: {
-      flag: { type: 'string', description: 'Kill switch flag identifier (e.g. opensky.enabled)' },
-      enabled: { type: 'boolean', description: 'Enable/disable flag state' },
-    },
-    required: ['flag', 'enabled'],
-  },
-};
 
 /**
  * Robust Model Context Protocol (MCP) Server for GEV v2 Operations.
@@ -187,29 +122,18 @@ export class GevMcpServer {
         };
 
       case 'tools/list': {
-        const tools = MCP_OPERATOR_TOOL_NAMES.map((name) => OPERATOR_TOOLS[name]).map((tool) => ({
-          name: tool.name,
-          description: tool.description,
-          inputSchema: TOOL_INPUT_SCHEMAS[tool.name as McpOperatorToolName],
-          _metadata: {
-            is_mutating: tool.is_mutating,
-            is_dangerous: tool.is_dangerous,
-            is_cacheable: tool.is_cacheable,
-          },
-        }));
-
         return {
           jsonrpc: '2.0',
           id,
-          result: { tools },
+          result: { tools: getMcpToolDefinitions(MCP_OPERATOR_TOOL_NAMES) },
         };
       }
 
       case 'tools/call': {
         const requestedToolName = req.params?.name;
-        const toolArgs = (req.params?.arguments as Record<string, unknown>) ?? {};
+        const toolArgs = req.params?.arguments ?? {};
 
-        if (typeof requestedToolName !== 'string' || !(requestedToolName in OPERATOR_TOOLS)) {
+        if (typeof requestedToolName !== 'string' || !isOperatorToolName(requestedToolName)) {
           return {
             jsonrpc: '2.0',
             id,
@@ -231,36 +155,51 @@ export class GevMcpServer {
           };
         }
 
-        try {
-          const result = await executeOperatorTool(this.ctx, requestedToolName, toolArgs);
-          return {
-            jsonrpc: '2.0',
-            id,
-            result: {
-              content: [
-                {
-                  type: 'text',
-                  text: JSON.stringify(result, null, 2),
-                },
-              ],
-            },
-          };
-        } catch (err: unknown) {
-          const errorMsg = err instanceof Error ? err.message : 'Execution error';
+        const execution = await executeOperatorTool(this.ctx, requestedToolName, toolArgs);
+        if (!execution.success) {
           return {
             jsonrpc: '2.0',
             id,
             result: {
               isError: true,
+              _meta: {
+                execution: {
+                  status: execution.status,
+                  code: execution.code,
+                  intent_id: execution.intent_id,
+                  duration_ms: execution.duration_ms,
+                },
+              },
               content: [
                 {
                   type: 'text',
-                  text: `Tool execution failed: ${errorMsg}`,
+                  text: `Tool execution failed: ${execution.error ?? 'Unknown execution error'}`,
                 },
               ],
             },
           };
         }
+
+        return {
+          jsonrpc: '2.0',
+          id,
+          result: {
+            structuredContent: execution.result,
+            _meta: {
+              execution: {
+                status: execution.status,
+                intent_id: execution.intent_id,
+                duration_ms: execution.duration_ms,
+              },
+            },
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(execution.result, null, 2),
+              },
+            ],
+          },
+        };
       }
 
       default:

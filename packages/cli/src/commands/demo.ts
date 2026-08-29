@@ -70,13 +70,19 @@ export async function runDemo(): Promise<DemoResult> {
     flag: 'opensky.enabled',
     enabled: false,
   });
-  console.log(`   Disable Result:   ${JSON.stringify(disableResult)}`);
+  if (!disableResult.success) {
+    throw new Error(`Disable tool failed: ${disableResult.error}`);
+  }
+  console.log(`   Disable Result:   ${JSON.stringify(disableResult.result)}`);
 
   const enableResult = await executeOperatorTool(ctx, 'set_flag', {
     flag: 'opensky.enabled',
     enabled: true,
   });
-  console.log(`   Enable Result:    ${JSON.stringify(enableResult)}\n`);
+  if (!enableResult.success) {
+    throw new Error(`Enable tool failed: ${enableResult.error}`);
+  }
+  console.log(`   Enable Result:    ${JSON.stringify(enableResult.result)}\n`);
 
   // ─── STEP 3: M3 Governor STASIS Tripwire ──────────────────────────────
   console.log(pc.bold(pc.white('▶ [STEP 3] Triggering Budget Governor STASIS Tripwire...')));

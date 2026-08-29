@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { ApprovalGate, ProviderRegistry, SceneState } from '@gev/contracts';
-import { type SimClock, SystemClock, getDefaultSceneState } from '@gev/core';
+import { GovernedToolExecutor, type SimClock, SystemClock, getDefaultSceneState } from '@gev/core';
 import {
   type CapBudgetGovernor,
   type GovernanceRuntimeContext,
@@ -8,6 +8,7 @@ import {
   createGovernanceRuntimeContext,
 } from '@gev/governance';
 import { OpenSkyAdapter, createConfiguredProviderRegistry } from '@gev/providers';
+import { MCP_OPERATOR_TOOL_NAMES, registerOperatorToolHandlers } from './tools.js';
 
 export const DEFAULT_SCENE_ROOT = path.join('.gev', 'scenes');
 
@@ -17,6 +18,7 @@ export interface OperatorContext {
   auditSink: SqliteAuditSink;
   budgetGovernor: CapBudgetGovernor;
   approvalGate: ApprovalGate;
+  toolExecutor: GovernedToolExecutor;
   openSkyAdapter: OpenSkyAdapter;
   providerRegistry: ProviderRegistry;
   flags: Map<string, boolean>;
@@ -42,12 +44,20 @@ export function createOperatorContext(customContext?: Partial<OperatorContext>):
       budgetGovernor: customContext?.budgetGovernor,
       approvalGate: customContext?.approvalGate,
     });
-  return {
+  const toolExecutor = new GovernedToolExecutor({
+    clock,
+    auditSink: governanceContext.auditSink,
+    budgetGovernor: governanceContext.budgetGovernor,
+    approvalGate: governanceContext.approvalGate,
+    allowedTools: MCP_OPERATOR_TOOL_NAMES,
+  });
+  const context: OperatorContext = {
     governanceContext,
     clock,
     auditSink: governanceContext.auditSink,
     budgetGovernor: governanceContext.budgetGovernor,
     approvalGate: governanceContext.approvalGate,
+    toolExecutor,
     openSkyAdapter: customContext?.openSkyAdapter ?? new OpenSkyAdapter({ clock }),
     providerRegistry: customContext?.providerRegistry ?? createConfiguredProviderRegistry(),
     flags: customContext?.flags ?? new Map<string, boolean>([['opensky.enabled', true]]),
@@ -56,4 +66,6 @@ export function createOperatorContext(customContext?: Partial<OperatorContext>):
     ),
     sceneState: customContext?.sceneState ?? getDefaultSceneState(clock),
   };
+  registerOperatorToolHandlers(context);
+  return context;
 }
