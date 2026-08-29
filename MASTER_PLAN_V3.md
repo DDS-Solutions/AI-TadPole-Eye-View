@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=5.1
-NEXT_TASK=5.1.3
+NEXT_TASK=5.1.4
 NEXT_TASK_STATUS=BLOCKED
 LAST_VERIFIED_UTC=2026-08-28
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
@@ -274,7 +274,7 @@ Economic results are decision-support signals, not guarantees, appraisals, legal
 | ID | Decision | Must be answered before |
 |---|---|---|
 | OQ-1 | Tadpole MCP client capabilities, deployment origin, auth issuer/audience, and supported protocol version | Phase 6 implementation |
-| OQ-2 | M2 signed-approval format, signer identity, key custody/rotation, nonce and expiry rules | Task 5.1.3 |
+| OQ-2 | **RESOLVED by ADR 0042:** M2 signed-approval format, signer/key trust and lifecycle, durable nonce replay protection, and time profile | Task 5.1.3 |
 | OQ-3 | M3 ledger reservation/settlement/refund/idempotency contract and outage policy | Task 5.1.4 |
 | OQ-4 | Production identity provider, tenant model, roles, retention, export, and deletion requirements | Phase 7 |
 | OQ-5 | Approved OSM use/output classification and attribution/share-alike obligations | Phase 9 |
@@ -573,7 +573,7 @@ LOGIC_BLOCKER with exact paths, measurements, and bounded alternatives.
 
 - [x] 5.1.1 Compose one shared runtime context for server, CLI connection mode, MCP transports, and tools; persist budget/STASIS state transactionally.
 - [x] 5.1.2 Consolidate the duplicate tool executors into one validated governance pipeline.
-- [ ] 5.1.3 Implement real M2 approval verification after OQ-2; production defaults deny when the gate is unavailable.
+- [x] 5.1.3 Implement real M2 approval verification after OQ-2; production defaults deny when the gate is unavailable.
 - [ ] 5.1.4 Implement M3 ledger reservation/settlement after OQ-3; retries are idempotent and outage behavior is fail closed for billable/mutating work.
 - [ ] 5.1.5 Add a versioned hash-chain migration to the SQLite audit WAL, integrity verification, redaction, retention, and corruption tests.
 - [ ] 5.1 exit: two-process tests prove shared STASIS; only a human resume clears it; approvals resist replay; audit tampering is detected.
@@ -639,7 +639,7 @@ success/failure. After three failed parity approaches, record LOGIC_BLOCKER with
 consumer/lifecycle mismatch and bounded alternatives.
 ```
 
-#### Decision-blocked brief for NEXT_TASK 5.1.3
+#### Authorized brief for completed task 5.1.3
 
 ```text
 [SCOPE_CONTRACT] The accepted OQ-2 decision and its ADR; packages/contracts approval
@@ -666,12 +666,48 @@ context, shared executor, and SimClock. Verification occurs at the ApprovalGate 
 private signing material never enters contracts, logs, browser bundles, fixtures, or error
 messages. No contract/default/policy deviation without ADR.
 
-[FAILURE_MODES] OQ-2 is unresolved: do not authorize implementation or invent a signature
-format, signer, key custody/rotation, nonce store, or expiry rule. After OQ-2, do not retain
+[FAILURE_MODES] OQ-2 is resolved by ADR 0042. Do not retain
 production auto-approval, accept unsigned/self-signed approvals, trust caller-supplied
 identity, reuse nonces, fail open on key/gate/storage errors, or mix M3 settlement into the
 gate. After three failed verification/replay approaches, record LOGIC_BLOCKER with exact
 cryptographic/state evidence and bounded alternatives.
+```
+
+#### Decision-blocked brief for NEXT_TASK 5.1.4
+
+```text
+[SCOPE_CONTRACT] The accepted OQ-3 decision and its ADR; packages/contracts ledger
+reservation, settlement, refund, and idempotency fields only where the approved contract
+requires them; packages/governance versioned SQLite ledger migration/repository and M3
+adapter; shared runtime and task 5.1.2 executor wiring only where required to reserve
+before action and settle/refund afterward; focused server, MCP, CLI, core, and governance
+tests. Out of scope: audit hash chains (5.1.5), HTTP MCP (Phase 6), identity/tenancy
+(Phase 7), new tools/features, provider work, visual redesign, live services not
+explicitly approved by OQ-3, and production deployment.
+
+[PERFORMANCE_THRESHOLD] Deterministic restart, concurrency, and two-process tests prove
+one reservation and at most one terminal settlement/refund per idempotency key; retries
+return the original result without double spend; insufficient funds trip durable STASIS;
+timeouts, ambiguous outcomes, refunds, and outage behavior follow OQ-3 and fail closed for
+billable/mutating work. The shared executor retains one intent/outcome pair, never
+dispatches without a durable reservation when one is required, and reports identical
+blocked/error/success semantics across consumers. Root lint, affected uncached typecheck/
+test/build, ADG, architecture drift, canonical seed-mode, load, and Playwright gates pass
+with zero unauthorized live calls.
+
+[ARCHITECTURE_MODE] PLAN.md §2 rules 1–3, 7–11, and 13; §3 boundaries/data flow; ADRs
+0027, 0039, 0040, 0041, and 0042 plus the accepted OQ-3 ADR. Reuse the shared runtime,
+SimClock, integer micro-dollar storage, versioned SQLite migrations, and one executor.
+Ledger transitions are transactional and transport-independent. No contract/default/
+outage-policy deviation without ADR.
+
+[FAILURE_MODES] OQ-3 is unresolved: do not authorize implementation or invent reservation,
+settlement, refund, idempotency, retry, timeout, or outage semantics. After OQ-3, do not
+use check-then-write accounting, double-settle retries, reuse an idempotency key across
+different intents/amounts, release funds after an ambiguous terminal failure, fail open
+when the ledger is locked/corrupt/unavailable, or fold audit hash-chain work into M3.
+After three failed concurrency/recovery approaches, record LOGIC_BLOCKER with exact
+ledger rows/transitions and bounded alternatives.
 ```
 ### Phase 5.2 — Provenance and missing geospatial layers
 
@@ -1345,5 +1381,48 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   signer identity, key custody/rotation, nonce, and expiry decision. Its exact decision-
   blocked 4-Pillar brief is in §10.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.1.3. Resolve OQ-2, then authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 5.1.3 completion checkpoint — 2026-08-28
+
+- The developer authorized the assistant to resolve OQ-2 with a conservative provisional
+  profile, leave explicit revision notes, and resume task 5.1.3 from its embedded brief.
+  Work remained local and in seed mode with zero live-service calls; M3 ledger work, audit
+  hash chains, HTTP MCP, identity/tenancy, UI work, and production deployment were not started.
+- ADR 0042 records the provisional integration profile: Ed25519 signs the strict
+  `gev.m2.approval.v1` payload after RFC 8785 JSON canonicalization. The signature binds the
+  request and intent IDs, exact sorted scopes, signer and key IDs, verifier-issued nonce,
+  issue/decision/expiry times, approving human identity, and approved decision.
+- Production trust is an operator-supplied server-side public-key allowlist. Production
+  private keys remain outside GEV. Rotation supports overlapping active keys; retired keys
+  require a bounded `validUntil`; revoked keys never verify. The ADR identifies the signer
+  identity, managed key service, distribution, transport, and lifetime values as revision
+  hooks once the Tadpole production integration is known.
+- Replay protection is durable and fail closed: a verifier-issued UUID nonce and unique
+  request ID are consumed transactionally in the shared SQLite database after all signature,
+  binding, trust, and time checks pass. Consumption is permanent even if handler execution
+  later fails. The provisional approval lifetime is at most 60 seconds, future issue/decision
+  skew is at most 5 seconds, and expiry has no grace period.
+- Contracts are version 0.2.0 and strictly validate the untrusted provider response. The
+  shared runtime composes `SignedApprovalGate`; production defaults to an unavailable denial
+  when no verifier is configured, while auto/prompt and the explicitly named local signing
+  demo remain seed/test-only. Verification failures dispatch no handler and retain exactly
+  one audit intent/outcome pair with sanitized errors across server and MCP consumers.
+- Focused contracts/core/governance/MCP/server/CLI suites passed 225 tests. Adversarial
+  coverage proves exact intent/scope/nonce/expiry binding, tamper and wrong-key rejection,
+  revoked/retired key rules, stale/future/overlong time rejection, unavailable-provider
+  denial, production local-signer rejection, direct/stdio parity, and concurrent replay
+  rejection through two runtime contexts sharing SQLite.
+- Required gates passed on the final implementation: root Biome checked 184 files; uncached
+  affected lint/typecheck/test/build completed 40/40 tasks with `GEV_SEED_MODE=1`; ADG checked
+  49 documents, 387 paths, and 19 module-qualified symbols; architecture drift and
+  `git diff --check` passed. Canonical `pnpm gev test` passed 293 unit tests plus server load
+  p95 20.61 ms under 300 ms and Cesium ingestion p95 8.48 ms under 16.6 ms. Canonical
+  `pnpm gev qa` passed 1/1 in 34.8 seconds. No UI/HUD product file changed.
+- Branch: `codex/m2-approval-verification-5.1.3`; implementation commit `00930fd`. GitHub
+  CLI remains unavailable, so open PR inspection and PR creation were not possible.
+- Next task: **5.1.4 Implement M3 ledger reservation/settlement**. It is blocked on OQ-3;
+  do not invent reservation, settlement, refund, idempotency, retry, timeout, or outage
+  semantics. Its exact decision-blocked 4-Pillar brief is in §10.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.1.4. Resolve OQ-3, then authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
