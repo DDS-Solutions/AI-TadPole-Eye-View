@@ -108,6 +108,8 @@ afterEach(() => {
 describe('M3 durable budget ledger', () => {
   it('serializes two process reservations to one durable operation and one audit intent', async () => {
     const dbPath = tempDatabase();
+    const init = createGovernanceRuntimeContext({ dbPath, capUsd: 1 });
+    init.close();
     const operationId = crypto.randomUUID();
     const results = await Promise.all([
       reserveInChild(dbPath, operationId),
