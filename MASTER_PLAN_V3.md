@@ -20,9 +20,9 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=5.1
-NEXT_TASK=5.1.4
+NEXT_TASK=5.1.5
 NEXT_TASK_STATUS=BLOCKED
-LAST_VERIFIED_UTC=2026-08-28
+LAST_VERIFIED_UTC=2026-08-29
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
 IMPLEMENTATION_STARTED=YES
 ```
@@ -275,7 +275,7 @@ Economic results are decision-support signals, not guarantees, appraisals, legal
 |---|---|---|
 | OQ-1 | Tadpole MCP client capabilities, deployment origin, auth issuer/audience, and supported protocol version | Phase 6 implementation |
 | OQ-2 | **RESOLVED by ADR 0042:** M2 signed-approval format, signer/key trust and lifecycle, durable nonce replay protection, and time profile | Task 5.1.3 |
-| OQ-3 | M3 ledger reservation/settlement/refund/idempotency contract and outage policy | Task 5.1.4 |
+| OQ-3 | **RESOLVED by ADR 0043:** M3 ledger reservation, settlement, refund, idempotency, ambiguity, reconciliation, and outage policy | Task 5.1.4 |
 | OQ-4 | Production identity provider, tenant model, roles, retention, export, and deletion requirements | Phase 7 |
 | OQ-5 | Approved OSM use/output classification and attribution/share-alike obligations | Phase 9 |
 | OQ-6 | Economic provider budgets, cache freshness, permitted live environments, and kill-switch owners | Phase 8 |
@@ -574,7 +574,7 @@ LOGIC_BLOCKER with exact paths, measurements, and bounded alternatives.
 - [x] 5.1.1 Compose one shared runtime context for server, CLI connection mode, MCP transports, and tools; persist budget/STASIS state transactionally.
 - [x] 5.1.2 Consolidate the duplicate tool executors into one validated governance pipeline.
 - [x] 5.1.3 Implement real M2 approval verification after OQ-2; production defaults deny when the gate is unavailable.
-- [ ] 5.1.4 Implement M3 ledger reservation/settlement after OQ-3; retries are idempotent and outage behavior is fail closed for billable/mutating work.
+- [x] 5.1.4 Implement M3 ledger reservation/settlement after OQ-3; retries are idempotent and outage behavior is fail closed for billable/mutating work.
 - [ ] 5.1.5 Add a versioned hash-chain migration to the SQLite audit WAL, integrity verification, redaction, retention, and corruption tests.
 - [ ] 5.1 exit: two-process tests prove shared STASIS; only a human resume clears it; approvals resist replay; audit tampering is detected.
 
@@ -672,41 +672,91 @@ identity, reuse nonces, fail open on key/gate/storage errors, or mix M3 settleme
 gate. After three failed verification/replay approaches, record LOGIC_BLOCKER with exact
 cryptographic/state evidence and bounded alternatives.
 ```
-#### Decision-blocked brief for NEXT_TASK 5.1.4
+#### Authorized brief for completed task 5.1.4
 
 ```text
-[SCOPE_CONTRACT] The accepted OQ-3 decision and its ADR; packages/contracts ledger
-reservation, settlement, refund, and idempotency fields only where the approved contract
-requires them; packages/governance versioned SQLite ledger migration/repository and M3
-adapter; shared runtime and task 5.1.2 executor wiring only where required to reserve
-before action and settle/refund afterward; focused server, MCP, CLI, core, and governance
-tests. Out of scope: audit hash chains (5.1.5), HTTP MCP (Phase 6), identity/tenancy
-(Phase 7), new tools/features, provider work, visual redesign, live services not
-explicitly approved by OQ-3, and production deployment.
+[SCOPE_CONTRACT] The accepted OQ-3 decision, review amendments, and ADR; packages/contracts
+versioned reservation, settlement, refund, idempotency, ambiguity, recovery, and human
+reconciliation contracts; packages/governance versioned SQLite migration/repository and M3
+adapter; shared runtime and task 5.1.2 executor wiring required to reserve before action and
+settle/refund afterward; billable server reads and seed reload; protected human server and
+local/connected CLI reconciliation surfaces; focused server, MCP, CLI, core, contract, and
+governance tests. Out of scope: audit hash chains (5.1.5), HTTP MCP (Phase 6), identity/
+tenancy (Phase 7), compensating credits for settled charges, budget-period rollover,
+background sweepers, AI/MCP reconciliation tools, new provider/tool features, visual
+redesign, unauthorized live services, and production deployment.
 
-[PERFORMANCE_THRESHOLD] Deterministic restart, concurrency, and two-process tests prove
-one reservation and at most one terminal settlement/refund per idempotency key; retries
-return the original result without double spend; insufficient funds trip durable STASIS;
-timeouts, ambiguous outcomes, refunds, and outage behavior follow OQ-3 and fail closed for
-billable/mutating work. The shared executor retains one intent/outcome pair, never
-dispatches without a durable reservation when one is required, and reports identical
-blocked/error/success semantics across consumers. Root lint, affected uncached typecheck/
-test/build, ADG, architecture drift, canonical seed-mode, load, and Playwright gates pass
-with zero unauthorized live calls.
+[PERFORMANCE_THRESHOLD] Deterministic restart, crash/fault-injection, concurrency,
+two-process, bind-time-version restart, and property tests prove one reservation and at
+most one terminal settlement/refund per operation ID; retries replay without redispatch or
+double spend; changed fingerprints conflict; consumers retain the original operation ID.
+Tests prove conditional expiry, M2 denial/unavailability refunds, zero-cost mutation
+reservations, full overrun accounting with BUDGET_BREACH precedence, database-enforced
+terminal immutability/transitions, post-canonical 256 KiB result bounds without a reference
+bypass, available-funds invariants, typed lock/outage failure, separate evidence-bearing
+human reconciliation, and resume refusal while any operation is IN_DOUBT. Root lint,
+affected typecheck/test/build, ADG, architecture drift, canonical seed-mode unit/load/
+performance, and Playwright gates pass with zero live-service calls.
 
 [ARCHITECTURE_MODE] PLAN.md §2 rules 1–3, 7–11, and 13; §3 boundaries/data flow; ADRs
-0027, 0039, 0040, 0041, and 0042 plus the accepted OQ-3 ADR. Reuse the shared runtime,
-SimClock, integer micro-dollar storage, versioned SQLite migrations, and one executor.
-Ledger transitions are transactional and transport-independent. No contract/default/
-outage-policy deviation without ADR.
+0027, 0039, 0040, 0041, and 0042 plus accepted ADR 0043. Reuse the shared runtime,
+SimClock, integer micro-USD storage, versioned SQLite migrations, one executor, and one
+transport-independent ledger authority. Fingerprints store their versioned bind-time
+components; absent tenant is null and absent executor actor normalizes to ai. The current
+persisted period is pinned with no rollover. Database checks/triggers enforce state
+transitions; post-commit subscriber notification is best effort and durable rows are
+authoritative. No contract/default/outage-policy deviation without ADR.
 
-[FAILURE_MODES] OQ-3 is unresolved: do not authorize implementation or invent reservation,
-settlement, refund, idempotency, retry, timeout, or outage semantics. After OQ-3, do not
-use check-then-write accounting, double-settle retries, reuse an idempotency key across
-different intents/amounts, release funds after an ambiguous terminal failure, fail open
-when the ledger is locked/corrupt/unavailable, or fold audit hash-chain work into M3.
-After three failed concurrency/recovery approaches, record LOGIC_BLOCKER with exact
-ledger rows/transitions and bounded alternatives.
+[FAILURE_MODES] OQ-3 is resolved by ADR 0043. Do not use check-then-write accounting,
+underdeclare the maximum to fit budget, mint a fresh operation ID after a non-success,
+double-settle retries, reuse an operation ID across different bound components, release
+funds after an ambiguous executed outcome, refund EXECUTING without proof of no effect and
+no charge, fail open or expose raw SQLite errors when the ledger is locked/corrupt/
+unavailable, auto-resume after reconciliation, add an unattended sweeper/reconciliation
+tool, or fold audit hash-chain work into M3. After three failed concurrency/recovery
+approaches, record LOGIC_BLOCKER with exact ledger rows, transitions, crash point, and
+bounded alternatives.
+```
+
+#### Ready-to-authorize brief for NEXT_TASK 5.1.5
+
+```text
+[SCOPE_CONTRACT] packages/governance versioned SQLite audit-chain migration, append and
+integrity-verification repository, redaction/retention policy enforcement, and corruption
+handling; shared runtime wiring; packages/contracts audit integrity/status contracts only
+where required; local/connected CLI and protected server inspection surfaces; focused
+governance, server, CLI, MCP, migration, two-process, and fault-injection tests. Out of
+scope: changing ADR 0043 M3 accounting semantics, HTTP MCP (Phase 6), production identity/
+tenancy (Phase 7), provider/economic work, new tools/features, UI redesign, live services,
+production deployment, and rewriting or deleting historical evidence without an approved
+retention transition.
+
+[PERFORMANCE_THRESHOLD] Deterministic migration tests preserve every existing audit and
+M3 row while establishing a versioned genesis/checkpoint; two-process tests prove one
+ordered append chain across shared writers. Verification detects changed payloads, hashes,
+links, deletion, insertion, reordering, truncation, and malformed/corrupt storage without
+silently repairing it. Redaction tests prove secrets, credentials, raw private tenant data,
+and unbounded provider/tool content never enter durable audit fields. Retention tests prove
+approved pruning preserves a verifiable signed/versioned boundary and cannot erase active
+incident or IN_DOUBT evidence. Root lint, affected uncached typecheck/test/build, ADG,
+architecture drift, canonical seed-mode unit/load/performance, and Playwright gates pass
+with zero live-service calls.
+
+[ARCHITECTURE_MODE] PLAN.md §2 rules 1–3, 7–12; §3 boundaries/data flow; ADRs 0027,
+0039–0043. Reuse the shared SQLite authority, BEGIN IMMEDIATE transaction boundary,
+SimClock, and audit-before-action lifecycle. Hash inputs use a documented canonical byte
+encoding and explicit chain/schema version; verification is transport-independent and
+fail closed. Redaction happens before persistence, retention is auditable, and no consumer
+may claim integrity from an in-memory or process-local chain. No algorithm, canonicalization,
+retention, repair, or outage-policy deviation without ADR.
+
+[FAILURE_MODES] Do not label the existing in-memory demo helper as durable integrity,
+rewrite history during migration, hash non-canonical serialization, permit parallel writers
+to fork the chain, omit audit rows on failed actions, persist secrets/private tenant data,
+silently repair or auto-delete corruption, treat a truncated tail as valid, or let retention
+remove active incident/reconciliation evidence. If the migration cannot preserve existing
+rows byte-for-byte or three tested concurrency/corruption approaches fail, record
+DOC_BLOCKER or LOGIC_BLOCKER with exact row/hash/migration evidence and bounded alternatives.
 ```
 ### Phase 5.2 — Provenance and missing geospatial layers
 
@@ -1423,5 +1473,52 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   do not invent reservation, settlement, refund, idempotency, retry, timeout, or outage
   semantics. Its exact decision-blocked 4-Pillar brief is in §10.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.1.4. Resolve OQ-3, then authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 5.1.4 completion checkpoint — 2026-08-29
+
+- The developer approved OQ-3 as `gev.m3.ledger.v1` with the accepted review amendments
+  and authorized exactly the revised task 5.1.4 brief. Work remained local/seed with zero
+  live-service calls; audit hash-chain task 5.1.5, HTTP MCP, production identity/tenancy,
+  compensating credits, period rollover, background sweeping, UI work, and production
+  deployment were not started.
+- ADR 0043 records the binding contract: integer micro-USD reservations; bind-time versioned
+  canonical fingerprints; explicit null tenant and normalized AI actor; durable
+  RESERVED/EXECUTING/SETTLED/REFUNDED/IN_DOUBT/DENIED transitions; full actual overrun
+  accounting; fail-closed typed outages; post-canonical 256 KiB result bounds; startup-only
+  expiry recovery; and evidence-bearing human reconciliation separate from STASIS resume.
+- Governance schema migration 3 adds database-enforced operation/entry invariants and shares
+  one SQLite transaction authority with budget/STASIS and audit. The common executor now
+  reserves before M2 approval, refunds denial/unavailability before dispatch, marks executed
+  exceptions/timeouts ambiguous, settles atomically with `audit.outcome`, and replays the
+  durable result without redispatch. Billable server reads and seed reload use the same M3
+  lifecycle; MCP propagates retained operation IDs but exposes no reconciliation tool.
+- Human recovery is available only through the protected server operation or
+  `gev budget reconcile`; it persists bounded evidence, leaves STASIS active, and resume
+  refuses while any operation remains IN_DOUBT. RUNBOOK documents the two-step operator
+  procedure. Server and CLI Vitest configurations now force in-memory governance by default
+  so tests cannot mutate the workspace authority.
+- Focused evidence passed: contracts 29/29, core 51/51, governance 35/35 (including
+  two-process writers, restart/expiry recovery, settlement fault injection, SQLite
+  immutability, bind-time restart, typed lock failure, and 30 seeded property runs), MCP
+  36/36, server 85/85, and CLI 14/14. The affected lint/typecheck/test/build matrix completed
+  40/40 after serializing the pre-existing CLI latency benchmark; OpenSky seed replay measured
+  4.74 ms p95 under the bounded matrix and 2.19 ms p95 in isolation.
+- Final gates passed: root Biome checked 202 files; ADG checked 50 documents, 388 paths, and
+  19 module-qualified symbols; architecture drift and `git diff --check` passed. Canonical
+  `pnpm gev test` passed 318 unit tests, server load p95 12.07 ms under 300 ms, and Cesium
+  ingestion p95 6.29 ms under 16.6 ms. Canonical QA built 10/10 tasks; its clean-server launch
+  correctly refused to stop an existing GEV seed server on port 3000, so the identical
+  Playwright smoke reused that verified seed server through a temporary untracked config and
+  passed 1/1 in 31.6 seconds; the temporary config was removed.
+- Operational observation: before test database isolation landed, an early billable feed test
+  wrote one terminal seed operation (`00000000-0000-4000-8000-000000000321`) for $0.0001 to
+  the local workspace governance database. STASIS is inactive and no live call occurred. The
+  row/spend were not deleted or rewritten because settled ledger history is immutable; future
+  server/CLI tests are isolated from that authority.
+- Branch: `codex/m3-ledger-5.1.4`; implementation commit `2c6ece2`. GitHub CLI remains
+  unavailable, so open PR inspection and PR creation were not possible in this environment.
+- Next task: **5.1.5 Add a versioned hash-chain migration to the SQLite audit WAL**. Its exact
+  ready-to-authorize 4-Pillar brief is in §10; task 5.1.5 has not been authorized or started.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.1.5. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
