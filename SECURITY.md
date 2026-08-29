@@ -46,7 +46,10 @@ GEV v2 is an agent-native geospatial OSINT telemetry console tracking public dat
 
 ### Current hardening limitations
 
-- The SQLite audit sink is a durable WAL but is not hash chained; tamper verification is task 5.1.5.
+- The SQLite audit WAL uses the versioned `gev.audit.chain.v1` sidecar, startup verification,
+  pre-persistence redaction/bounds, and signed retention receipts. A local database administrator
+  can still replace both rows and local checkpoints; independent Tadpole/head anchoring remains a
+  later integration boundary.
 - Signed M2 verification is implemented, but the production approval provider, managed public-key distribution, and authenticated signer-to-principal mapping remain integration decisions. The local demo signer is forbidden in production.
 - Local stdio MCP exposes only verified local-state tools and confines scene files to a configured root. A future network MCP transport must reuse those capability and confinement checks rather than introduce a transport-specific bypass.
 - Collaboration still requires exact Origin enforcement, staged CRDT validation, remote-update origin tagging, and request/concurrency limits.

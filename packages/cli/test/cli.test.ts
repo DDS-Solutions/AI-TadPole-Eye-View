@@ -1,7 +1,9 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { createGovernanceRuntimeContext } from '@gev/governance';
 import { describe, expect, it, vi } from 'vitest';
-import { runAuditTail } from '../src/commands/audit.js';
+import { runAuditTail, runAuditVerify } from '../src/commands/audit.js';
 import { runFeedsHealth } from '../src/commands/feeds.js';
 import { runResume } from '../src/commands/resume.js';
 import { runSceneLoad, runSceneSave } from '../src/commands/scene.js';
@@ -79,6 +81,37 @@ describe('GEV v2 CLI Surface (@gev/cli)', () => {
     spy.mockRestore();
 
     expect(logs.some((l) => l.includes('Audit Trail'))).toBe(true);
+  });
+
+  it('runAuditVerify() performs a read-only local integrity inspection when offline', async () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'gev-cli-audit-'));
+    const dbPath = path.join(directory, 'governance.sqlite');
+    const runtime = createGovernanceRuntimeContext({ dbPath });
+    runtime.close();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('server offline'));
+    const logs: string[] = [];
+    const logSpy = vi.spyOn(console, 'log').mockImplementation((message) => logs.push(message));
+    try {
+      const integrity = await runAuditVerify({ dbPath });
+      expect(integrity).toMatchObject({ status: 'valid', chain_version: 'gev.audit.chain.v1' });
+      expect(logs.some((line) => line.includes('Audit Integrity'))).toBe(true);
+      expect(logs.some((line) => line.includes('local read-only snapshot'))).toBe(true);
+    } finally {
+      logSpy.mockRestore();
+      fetchSpy.mockRestore();
+      fs.rmSync(directory, { recursive: true, force: true, maxRetries: 3, retryDelay: 25 });
+    }
+  });
+
+  it('runAuditVerify() does not bypass a connected authentication rejection', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response('{}', { status: 401 }));
+    try {
+      await expect(runAuditVerify()).rejects.toThrow(/requires operator authentication/);
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 
   it('runSceneSave() and runSceneLoad() round-trip reproducible scene state', async () => {

@@ -1,4 +1,4 @@
-import { openGovernanceDatabase, withImmediateTransaction } from '../../src/governanceDb.ts';
+import { DatabaseSync } from 'node:sqlite';
 
 const operation = process.argv[2];
 const dbPath = process.argv[3];
@@ -7,7 +7,25 @@ if (!operation || !dbPath) {
   throw new Error('Usage: governanceProcess.ts <operation> <dbPath> [arguments]');
 }
 
-const { db } = openGovernanceDatabase({ dbPath });
+const db = new DatabaseSync(dbPath);
+db.exec('PRAGMA busy_timeout = 5000;');
+db.exec('PRAGMA foreign_keys = ON;');
+
+function withImmediateTransaction<T>(operationFn: () => T): T {
+  db.exec('BEGIN IMMEDIATE;');
+  try {
+    const result = operationFn();
+    db.exec('COMMIT;');
+    return result;
+  } catch (error) {
+    try {
+      db.exec('ROLLBACK;');
+    } catch {
+      // Preserve the original child-process failure.
+    }
+    throw error;
+  }
+}
 
 if (operation === 'spend') {
   const amountMicrousd = Number.parseInt(process.argv[4] ?? '', 10);
@@ -20,7 +38,7 @@ if (operation === 'spend') {
   }
 
   for (let index = 0; index < iterations; index += 1) {
-    withImmediateTransaction(db, () => {
+    withImmediateTransaction(() => {
       db.prepare(`
         UPDATE governance_budget_state
         SET spent_microusd = spent_microusd + ?, revision = revision + 1
@@ -30,7 +48,7 @@ if (operation === 'spend') {
   }
 } else if (operation === 'trip-and-exit') {
   const tripAt = new Date(1_700_000_001_000).toISOString();
-  withImmediateTransaction(db, () => {
+  withImmediateTransaction(() => {
     db.prepare(`
       UPDATE governance_budget_state
       SET stasis_active = 1,

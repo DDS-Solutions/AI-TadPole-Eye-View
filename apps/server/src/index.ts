@@ -30,6 +30,7 @@ import { WebSocketServer } from 'ws';
 import { CostGovernor, DEFAULT_PROVIDER_TIERS } from './middleware/costGovernor.js';
 import { InMemoryRateLimiter, type OpsAuthOptions, createOpsAuth } from './middleware/opsAuth.js';
 import { PRODUCT_VERSION } from './productVersion.js';
+import { createAuditIntegrityRouter } from './routes/auditIntegrity.js';
 import { createAuditStreamRouter } from './routes/auditStream.js';
 import { createBudgetReconciliationRouter } from './routes/budgetReconciliation.js';
 import { createCctvRouter } from './routes/cctv.js';
@@ -217,6 +218,7 @@ export function createApp(options: CreateAppOptions = {}) {
   );
 
   // M1 Observer Real-Time Audit SSE Stream
+  app.route('/ops/audit', createAuditIntegrityRouter(auditSink));
   app.route('/ops/audit', createAuditStreamRouter(auditSink, clock));
   app.route('/ops/budget', createBudgetReconciliationRouter({ clock, budgetLedger }));
 

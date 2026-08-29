@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
 import { Command } from 'commander';
-import { runAuditTail } from './commands/audit.js';
+import { runAuditTail, runAuditVerify } from './commands/audit.js';
 import { runBudgetReconcile } from './commands/budget.js';
 import { runDemo } from './commands/demo.js';
 import { runFeedsHealth } from './commands/feeds.js';
@@ -57,6 +57,14 @@ audit
   .option('-t, --task-ref <string>', 'Filter by Task Reference')
   .action(async (options) => {
     await runAuditTail({ limit: options.limit, taskRef: options.taskRef });
+  });
+audit
+  .command('verify')
+  .description('Verify the durable versioned audit chain without repairing it')
+  .option('--server-url <url>', 'Override GEV server URL', 'http://localhost:3000')
+  .option('--db-path <path>', 'Inspect an explicit local governance database when offline')
+  .action(async (options) => {
+    await runAuditVerify({ serverUrl: options.serverUrl, dbPath: options.dbPath });
   });
 
 // 4. gev scene <load|save>

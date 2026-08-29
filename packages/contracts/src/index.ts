@@ -17,3 +17,4 @@ export * from './capabilities.js';
 export * from './providerRegistry.js';
 export * from './governance.js';
 export * from './ledger.js';
+export * from './auditIntegrity.js';

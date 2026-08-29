@@ -21,7 +21,8 @@ PLAN.md §10 Phase 4 establishes final repository hygiene, full geospatial layer
 
 4. **Tadpole M2 Cryptographic Governance & Merkle WAL:**
    - Implemented `packages/governance/src/tadpoleBridge.ts` providing Ed25519 cryptographic key generation, digital signature creation/verification for `ApprovalResult` and `CapToken`, and `TadpoleM2Gatekeeper`.
-   - Implemented `MerkleAuditChain` producing tamper-evident SHA-256 hash chains across SQLite WAL audit entries.
+   - Implemented `MerkleAuditChain` as a disconnected in-memory demo subscriber. It did not
+     make SQLite rows tamper-evident; durable WAL chaining was added later by ADR 0044.
 
 5. **Governed Agent Team Live Showcase:**
    - Implemented `packages/cli/src/commands/demo.ts` and `scripts/demo-scenario.ts` executing a live scripted demonstration of M1 Observer SSE streaming, governed tool executions, M3 Governor STASIS tripwire upon budget breach, and human operator recovery.

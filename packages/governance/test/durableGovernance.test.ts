@@ -66,7 +66,12 @@ describe('durable shared budget and STASIS state', () => {
 
     const db = new DatabaseSync(dbPath, { readOnly: true });
     const rows = db.prepare('SELECT version FROM governance_schema_migrations').all();
-    expect(rows).toEqual([{ version: 1 }, { version: 2 }, { version: GOVERNANCE_SCHEMA_VERSION }]);
+    expect(rows).toEqual([
+      { version: 1 },
+      { version: 2 },
+      { version: 3 },
+      { version: GOVERNANCE_SCHEMA_VERSION },
+    ]);
     db.close();
   });
 

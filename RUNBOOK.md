@@ -62,15 +62,25 @@ is offline; it refuses a local fallback for a remote server.
 # Step 1: Inspect current system status and trip cause (< 100ms)
 pnpm gev status
 
-# Step 2: Tail recent audit entries to understand the exact trip context
+# Step 2: Verify the durable audit chain before trusting its entries
+pnpm gev audit verify
+
+# Step 3: Tail recent audit entries to understand the exact trip context
 pnpm gev audit tail --limit 20
 
-# Step 3: Once the root cause is resolved, human operator executes resume override
+# Step 4: Once the root cause is resolved, human operator executes resume override
 pnpm gev resume "Budget cap increased after review"
 
-# Step 4: Confirm STASIS state has returned to STASIS_INACTIVE
+# Step 5: Confirm STASIS state has returned to STASIS_INACTIVE
 pnpm gev status
 ```
+
+`gev audit verify` prefers the connected protected server and otherwise performs a
+read-only local inspection. `INVALID` or `UNAVAILABLE` is a stop condition: preserve
+the database and WAL files, record the failure code/sequence, and escalate. Never
+rehash, truncate, delete, or copy in replacement state to make verification pass.
+Approved retention requires a human, an active trusted Ed25519 key, and a signed
+versioned boundary; it is blocked during STASIS or while any operation is `IN_DOUBT`.
 
 An offline status is labeled `NON-AUTHORITATIVE OFFLINE SNAPSHOT`: it can inspect the
 configured durable file but cannot prove which state an absent server or MCP process
@@ -202,7 +212,7 @@ pnpm gev dev
 ## 7. Governed Agent Team Showcase & Telemetry Load Testing
 
 ```bash
-# Run Governed Agent Team showcase scenario (M1 Observer, M2 Gatekeeper, M3 STASIS, Merkle WAL)
+# Run local governance showcase (durable audit verification plus a shadow-hash illustration)
 pnpm gev demo
 
 # Run high-concurrency proxy load verification benchmark

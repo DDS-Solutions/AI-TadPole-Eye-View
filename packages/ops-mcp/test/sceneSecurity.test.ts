@@ -280,7 +280,7 @@ describe('local MCP scene confinement and truth', () => {
   it('marks the audit diagnostic failed when the verified query operation fails', async () => {
     const sceneRoot = await makeSceneRoot();
     const context = makeContext(sceneRoot);
-    vi.spyOn(context.auditSink, 'tail').mockImplementation(() => {
+    vi.spyOn(context.auditSink, 'verifyIntegrity').mockImplementation(() => {
       throw new Error('simulated audit query failure');
     });
 

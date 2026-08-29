@@ -1,12 +1,81 @@
-import { GevEvents } from '@gev/contracts';
+import { type AuditIntegrityStatus, AuditIntegrityStatusSchema, GevEvents } from '@gev/contracts';
 import { SystemClock } from '@gev/core';
-import { SqliteAuditSink } from '@gev/governance';
+import { SqliteAuditSink, inspectAuditIntegrity } from '@gev/governance';
 import pc from 'picocolors';
 
 export interface AuditTailOptions {
   limit?: number;
   taskRef?: string;
   serverUrl?: string;
+}
+
+export interface AuditVerifyOptions {
+  serverUrl?: string;
+  dbPath?: string;
+}
+
+function opsHeaders(): HeadersInit | undefined {
+  const token = process.env.GEV_OPS_TOKEN;
+  return token ? { Authorization: `Bearer ${token}` } : undefined;
+}
+
+export async function runAuditVerify(
+  options: AuditVerifyOptions = {}
+): Promise<AuditIntegrityStatus> {
+  const serverUrl = options.serverUrl ?? 'http://localhost:3000';
+  let integrity: AuditIntegrityStatus | undefined;
+  let source = 'local read-only snapshot';
+  let receivedResponse = false;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 800);
+  try {
+    const response = await fetch(`${serverUrl}/ops/audit/integrity`, {
+      signal: controller.signal,
+      headers: opsHeaders(),
+    });
+    receivedResponse = true;
+    if (response.status === 401 || response.status === 403) {
+      throw new Error('Connected audit integrity inspection requires operator authentication');
+    }
+    if (![200, 409, 503].includes(response.status)) {
+      throw new Error('Connected audit integrity inspection failed closed');
+    }
+    const body = await response.json();
+    integrity = AuditIntegrityStatusSchema.parse(body);
+    source = 'connected server authority';
+  } catch (error) {
+    if (receivedResponse) throw error;
+    integrity = inspectAuditIntegrity({ dbPath: options.dbPath });
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  const headline =
+    integrity.status === 'valid'
+      ? pc.green('VALID')
+      : integrity.status === 'invalid'
+        ? pc.red('INVALID')
+        : pc.yellow('UNAVAILABLE');
+  console.log(pc.bold(pc.cyan('\n🔐 GEV v2 Audit Integrity')));
+  console.log(
+    pc.dim('─────────────────────────────────────────────────────────────────────────────')
+  );
+  console.log(` Status:       ${headline}`);
+  console.log(` Source:       ${source}`);
+  console.log(` Chain:        ${integrity.chain_version ?? 'not available'}`);
+  console.log(
+    ` Boundary:     ${integrity.anchor_sequence ?? '—'} → ${integrity.head_sequence ?? '—'}`
+  );
+  console.log(` Verified:     ${integrity.verified_entries} retained entries`);
+  if (integrity.failure_code) {
+    console.log(
+      ` Failure:      ${pc.red(integrity.failure_code)}${integrity.failure_sequence ? ` at sequence ${integrity.failure_sequence}` : ''}`
+    );
+  }
+  console.log(
+    pc.dim('─────────────────────────────────────────────────────────────────────────────\n')
+  );
+  return integrity;
 }
 
 export async function runAuditTail(options: AuditTailOptions = {}): Promise<void> {
