@@ -672,7 +672,6 @@ identity, reuse nonces, fail open on key/gate/storage errors, or mix M3 settleme
 gate. After three failed verification/replay approaches, record LOGIC_BLOCKER with exact
 cryptographic/state evidence and bounded alternatives.
 ```
-
 #### Decision-blocked brief for NEXT_TASK 5.1.4
 
 ```text
