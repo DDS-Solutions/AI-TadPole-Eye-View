@@ -12,7 +12,9 @@ import {
   GevEvents,
   GovernanceAuthoritySchema,
   OPERATOR_TOOLS,
+  PORTS_VERSION,
   SceneState,
+  SignedApprovalEnvelopeSchema,
   Verdict,
 } from '../src/index.js';
 
@@ -64,6 +66,43 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
           state_revision: 0,
         })
       ).toThrow(/must set authoritative=false/);
+    });
+  });
+
+  describe('M2 signed approval contracts', () => {
+    it('requires the verifier nonce and the complete versioned signed payload', () => {
+      expect(PORTS_VERSION).toBe('0.2.0');
+      const request = ApprovalRequest.parse({
+        id: '00000000-0000-4000-8000-000000000001',
+        ts: '2026-08-28T12:00:00.000Z',
+        intent_id: '00000000-0000-4000-8000-000000000002',
+        scopes: ['flags.write'],
+        nonce: '00000000-0000-4000-8000-000000000003',
+        rationale: 'Approve a governed feature flag update',
+        expires_at: '2026-08-28T12:01:00.000Z',
+      });
+      expect(request.nonce).toBe('00000000-0000-4000-8000-000000000003');
+
+      expect(() =>
+        SignedApprovalEnvelopeSchema.parse({
+          algorithm: 'Ed25519',
+          payload: {
+            format: 'gev.m2.approval.v1',
+            request_id: request.id,
+            intent_id: request.intent_id,
+            decision: 'approved',
+            scopes: request.scopes,
+            signer_id: 'human:test-operator',
+            key_id: 'test-key-2026-01',
+            nonce: request.nonce,
+            issued_at: request.ts,
+            decided_by: 'human',
+            decided_at: request.ts,
+            expires_at: request.expires_at,
+          },
+          signature: 'not-an-ed25519-signature',
+        })
+      ).toThrow(/86 character/);
     });
   });
 

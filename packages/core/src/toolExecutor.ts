@@ -294,6 +294,7 @@ export class GovernedToolExecutor {
             ts: this.clock.iso(),
             intent_id: intentId,
             scopes: ['flags.write'],
+            nonce: this.idFactory(),
             rationale: `Execution of dangerous tool '${name}' requires approval`,
             expires_at: new Date(this.clock.now() + 60_000).toISOString(),
           })

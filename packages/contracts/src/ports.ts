@@ -11,7 +11,7 @@
 import { z } from 'zod';
 
 /** Wire-format version. Adapters negotiate on this value. */
-export const PORTS_VERSION = '0.1.0';
+export const PORTS_VERSION = '0.2.0';
 
 /**
  * Canonical event names — shared vocabulary with AI-TadPole-OS.
@@ -107,12 +107,101 @@ export const ApprovalRequest = z.object({
   id: z.string().uuid(),
   ts: z.string().datetime(),
   intent_id: z.string().uuid(),
-  scopes: z.array(ApprovalScope).min(1),
+  scopes: z
+    .array(ApprovalScope)
+    .min(1)
+    .refine((scopes) => new Set(scopes).size === scopes.length, {
+      message: 'approval request scopes must be unique',
+    }),
+  /** Verifier-issued, single-use challenge echoed by a signed M2 approval. */
+  nonce: z.string().uuid(),
   rationale: z.string().min(8).max(2000),
   /** Gates must not linger unanswered. */
   expires_at: z.string().datetime(),
 });
 export type ApprovalRequest = z.infer<typeof ApprovalRequest>;
+
+const ApprovalSignerId = z
+  .string()
+  .min(3)
+  .max(128)
+  .regex(/^[a-z0-9][a-z0-9:_-]*$/, 'signer IDs must use lowercase ASCII identifiers');
+
+const ApprovalKeyId = z
+  .string()
+  .min(3)
+  .max(128)
+  .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/, 'key IDs must use portable ASCII identifiers');
+
+const CanonicalApprovalScopes = z
+  .array(ApprovalScope)
+  .min(1)
+  .superRefine((scopes, context) => {
+    if (new Set(scopes).size !== scopes.length) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: 'approval scopes must be unique' });
+    }
+    const sorted = [...scopes].sort();
+    if (scopes.some((scope, index) => scope !== sorted[index])) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'signed approval scopes must be lexicographically sorted',
+      });
+    }
+  });
+
+/**
+ * Versioned payload covered byte-for-byte by an Ed25519 M2 signature.
+ * Serialization is RFC 8785 JSON Canonicalization Scheme (JCS).
+ */
+export const SignedApprovalPayloadSchema = z
+  .object({
+    format: z.literal('gev.m2.approval.v1'),
+    request_id: z.string().uuid(),
+    intent_id: z.string().uuid(),
+    decision: z.literal('approved'),
+    scopes: CanonicalApprovalScopes,
+    signer_id: ApprovalSignerId,
+    key_id: ApprovalKeyId,
+    nonce: z.string().uuid(),
+    issued_at: z.string().datetime(),
+    decided_by: z.literal('human'),
+    decided_at: z.string().datetime(),
+    expires_at: z.string().datetime(),
+  })
+  .strict();
+export type SignedApprovalPayload = z.infer<typeof SignedApprovalPayloadSchema>;
+
+export const SignedApprovalEnvelopeSchema = z
+  .object({
+    algorithm: z.literal('Ed25519'),
+    payload: SignedApprovalPayloadSchema,
+    /** Unpadded RFC 4648 base64url-encoded 64-byte Ed25519 signature. */
+    signature: z
+      .string()
+      .length(86)
+      .regex(/^[A-Za-z0-9_-]+$/, 'signature must be unpadded base64url'),
+  })
+  .strict();
+export type SignedApprovalEnvelope = z.infer<typeof SignedApprovalEnvelopeSchema>;
+
+/** Untrusted response returned by an external/local approval decision provider. */
+export const ApprovalProviderResponseSchema = z.discriminatedUnion('decision', [
+  z
+    .object({
+      decision: z.literal('approved'),
+      signed_approval: SignedApprovalEnvelopeSchema,
+    })
+    .strict(),
+  z
+    .object({
+      request_id: z.string().uuid(),
+      decision: z.enum(['denied', 'expired']),
+      decided_by: Actor,
+      decided_at: z.string().datetime(),
+    })
+    .strict(),
+]);
+export type ApprovalProviderResponse = z.infer<typeof ApprovalProviderResponseSchema>;
 
 export const ApprovalResult = z
   .object({

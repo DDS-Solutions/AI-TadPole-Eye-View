@@ -42,11 +42,12 @@ GEV v2 is an agent-native geospatial OSINT telemetry console tracking public dat
 | **Repudiation** | Unaccounted mutating actions or rogue AI tool calls | **Rule 1 (Audit-Before-Action):** Every mutating operation logs `audit.intent` to SQLite WAL *before* execution and `audit.outcome` *after* completion. |
 | **Information Disclosure** | Exposure of API keys, credentials, or internal server infrastructure | All upstream credentials (`OPENAI_API_KEY`, `AISSTREAM_API_KEY`, etc.) remain strictly server-side. Pinned-fetch blocks SSRF against internal cloud metadata endpoints. |
 | **Denial of Service** | Unbounded external feed polling or runaway LLM token spend | Per-feed caching with TTL tiers; byte-capped streams with mandatory timeouts; `CapBudgetGovernor` trips **STASIS** lockdown when spend exceeds caps. |
-| **Elevation of Privilege** | AI agent attempting self-resumption or modifying safety governors | Human-only STASIS resume and shared approval verification are required controls. The current local seed API and MCP stubs do not yet provide the final enforcement proof; remediation is tracked before task 5.0.4 and in PLAN.md Phase 5.1. |
+| **Elevation of Privilege** | AI agent attempting self-resumption or modifying safety governors | Human-only STASIS resume is enforced in durable shared state. M2 signed approvals bind intent/scopes/signer/key/nonce/time and reject replay in shared SQLite; production denies until a trusted external approval provider and key allowlist are configured. |
 
 ### Current hardening limitations
 
 - The SQLite audit sink is a durable WAL but is not hash chained; tamper verification is task 5.1.5.
+- Signed M2 verification is implemented, but the production approval provider, managed public-key distribution, and authenticated signer-to-principal mapping remain integration decisions. The local demo signer is forbidden in production.
 - Local stdio MCP exposes only verified local-state tools and confines scene files to a configured root. A future network MCP transport must reuse those capability and confinement checks rather than introduce a transport-specific bypass.
 - Collaboration still requires exact Origin enforcement, staged CRDT validation, remote-update origin tagging, and request/concurrency limits.
 - Local tokenless seed mode is development-only and does not prove authenticated human resume or shared cross-process STASIS.

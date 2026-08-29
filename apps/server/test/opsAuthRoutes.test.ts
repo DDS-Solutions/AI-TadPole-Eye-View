@@ -1,3 +1,4 @@
+import { createGovernanceRuntimeContext } from '@gev/governance';
 import { describe, expect, it, vi } from 'vitest';
 import { createApp } from '../src/index.js';
 
@@ -145,6 +146,35 @@ describe('operations route authentication coverage', () => {
     } finally {
       auditSink.close();
       fetchSpy.mockRestore();
+    }
+  });
+
+  it('records one error outcome and never reloads when approval verification is unavailable', async () => {
+    const runtime = createGovernanceRuntimeContext({
+      approvalGate: {
+        request: async () => {
+          throw new Error('invalid signed approval');
+        },
+      },
+    });
+    const context = createApp({
+      governanceContext: runtime,
+      opsAuth: { opsToken: OPS_TOKEN, requireAuth: true },
+    });
+    const taskRef = 'task-approval-verification-failure';
+
+    try {
+      const response = await context.app.request('/ops/seed/reload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${OPS_TOKEN}`, 'X-Task-Ref': taskRef },
+      });
+      expect(response.status).toBe(503);
+      await expect(response.json()).resolves.toMatchObject({ code: 'APPROVAL_UNAVAILABLE' });
+      const entries = runtime.auditSink.tailByTaskRef(taskRef);
+      expect(entries.map((entry) => entry.kind)).toEqual(['audit.intent', 'audit.outcome']);
+      expect(entries[1]).toMatchObject({ status: 'error' });
+    } finally {
+      runtime.close();
     }
   });
 
