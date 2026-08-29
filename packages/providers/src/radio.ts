@@ -1,9 +1,17 @@
 import fs from 'node:fs';
-import type { BoundingBox, RadioCatalog, RadioCategory, RadioStation } from '@gev/contracts';
-import { RadioCatalog as RadioCatalogSchema } from '@gev/contracts';
+import {
+  type BoundingBox,
+  type RadioCatalog,
+  type RadioCatalogPayload,
+  RadioCatalogPayload as RadioCatalogPayloadSchema,
+  RadioCatalog as RadioCatalogSchema,
+  type RadioCategory,
+  type RadioStation,
+} from '@gev/contracts';
 import { type SimClock, SystemClock } from '@gev/core';
 import { pinnedFetch } from '@gev/security';
 import { resolveFixturePath } from './opensky.js';
+import { createDataProvenance, observationPeriodFromUnixSeconds } from './provenance.js';
 
 export interface RadioAdapterOptions {
   clock?: SimClock;
@@ -19,7 +27,7 @@ export class RadioAdapter {
   private readonly clock: SimClock;
   private readonly seedFixturePath: string;
   private readonly isSeedMode: boolean;
-  private cachedCatalog?: RadioCatalog;
+  private cachedCatalog?: RadioCatalogPayload;
 
   constructor(options: RadioAdapterOptions = {}) {
     this.clock = options.clock ?? new SystemClock();
@@ -54,11 +62,19 @@ export class RadioAdapter {
       });
     }
 
-    return {
-      time: Math.floor(this.clock.now() / 1000),
+    return RadioCatalogSchema.parse({
+      time: rawCatalog.time,
       count: filtered.length,
       stations: filtered,
-    };
+      provenance: createDataProvenance({
+        providerId: 'radio-browser',
+        feedId: 'radio',
+        clock: this.clock,
+        sourceMode: 'seed',
+        observationPeriod: observationPeriodFromUnixSeconds(rawCatalog.time),
+        fixtureId: 'radio-catalog-v1',
+      }),
+    });
   }
 
   /**
@@ -96,7 +112,7 @@ export class RadioAdapter {
     }
   }
 
-  private async loadCatalog(): Promise<RadioCatalog> {
+  private async loadCatalog(): Promise<RadioCatalogPayload> {
     if (this.cachedCatalog && this.isSeedMode) {
       return this.cachedCatalog;
     }
@@ -107,7 +123,7 @@ export class RadioAdapter {
 
     const content = await fs.promises.readFile(this.seedFixturePath, 'utf-8');
     const parsed = JSON.parse(content);
-    const validated = RadioCatalogSchema.parse(parsed);
+    const validated = RadioCatalogPayloadSchema.parse(parsed);
 
     this.cachedCatalog = validated;
     return validated;

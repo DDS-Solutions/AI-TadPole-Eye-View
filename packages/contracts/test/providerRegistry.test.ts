@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ProviderRegistrySchema, SystemHealthResponseSchema } from '../src/index.js';
 
 const validRegistry = {
-  version: 1,
+  version: 2,
   requested_mode: 'seed',
   providers: [
     {
@@ -11,6 +11,7 @@ const validRegistry = {
       source: {
         name: 'Example Source',
         url: 'https://example.com/',
+        license_id: 'example-terms',
         license: 'Example terms',
         attribution: 'Example Source',
       },
@@ -18,7 +19,14 @@ const validRegistry = {
       supported_modes: ['seed'],
       mode: 'seed',
       health: 'healthy',
-      feeds: [{ id: 'example-feed', name: 'Example Feed', implementation: 'implemented' }],
+      feeds: [
+        {
+          id: 'example-feed',
+          name: 'Example Feed',
+          implementation: 'implemented',
+          freshness: { status: 'defined', fresh_for_seconds: 60 },
+        },
+      ],
       layers: [
         {
           id: 'example-layer',

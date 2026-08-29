@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DataProvenanceSchema } from './provenance.js';
 
 /**
  * Geographic bounding box for spatial queries.
@@ -75,10 +76,15 @@ export type FlightState = z.infer<typeof FlightState>;
 /**
  * Batch response container for flight feed ingestion.
  */
-export const FlightBatch = z.object({
+export const FlightBatchPayload = z.object({
   /** Server timestamp of snapshot ingestion in unix seconds. */
   time: z.number().int().nonnegative(),
   /** Collection of aircraft state vectors. */
   states: z.array(FlightState),
+});
+export type FlightBatchPayload = z.infer<typeof FlightBatchPayload>;
+
+export const FlightBatch = FlightBatchPayload.extend({
+  provenance: DataProvenanceSchema,
 });
 export type FlightBatch = z.infer<typeof FlightBatch>;

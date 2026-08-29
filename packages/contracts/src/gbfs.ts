@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DataProvenanceSchema } from './provenance.js';
 
 /**
  * Normalized GBFS (General Bikeshare Feed Specification) station contract.
@@ -30,9 +31,14 @@ export type BikeStation = z.infer<typeof BikeStation>;
 /**
  * Batch container for GBFS station feed.
  */
-export const BikeStationBatch = z.object({
+export const BikeStationBatchPayload = z.object({
   time: z.number().int().nonnegative(),
   system_id: z.string().default('gbfs'),
   stations: z.array(BikeStation),
+});
+export type BikeStationBatchPayload = z.infer<typeof BikeStationBatchPayload>;
+
+export const BikeStationBatch = BikeStationBatchPayload.extend({
+  provenance: DataProvenanceSchema,
 });
 export type BikeStationBatch = z.infer<typeof BikeStationBatch>;

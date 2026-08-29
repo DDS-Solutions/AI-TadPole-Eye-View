@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "task": "5.0.6",
+  "task": "5.2.1",
   "adr": "0040",
   "wallClock": [
     {
@@ -30,15 +30,6 @@
   ],
   "largeFiles": [
     {
-      "path": "apps/web/src/App.svelte",
-      "lines": 566,
-      "classification": "adr-exempt",
-      "adr": "0040",
-      "followUp": "DRIFT-LARGE-APP",
-      "owner": "apps/web and packages/cesium-kit owners",
-      "gate": "Extract feed orchestration before the next direct App.svelte feature edit or task 5.2.2/5.2.3 wiring, whichever comes first."
-    },
-    {
       "path": "apps/web/src/components/EntityInfoCard.svelte",
       "lines": 502,
       "classification": "adr-exempt",
@@ -46,15 +37,6 @@
       "followUp": "DRIFT-LARGE-ENTITY-INFO",
       "owner": "apps/web UI owner",
       "gate": "Extract entity-kind presenters before the next direct feature edit to this component."
-    },
-    {
-      "path": "apps/web/src/components/LayerControlPanel.svelte",
-      "lines": 690,
-      "classification": "adr-exempt",
-      "adr": "0040",
-      "followUp": "DRIFT-LARGE-LAYER-CONTROL",
-      "owner": "apps/web UI owner",
-      "gate": "Extract per-channel controls before the next direct feature edit to this component."
     },
     {
       "path": "apps/web/src/components/VirtualizedTelemetryTable.svelte",
@@ -104,13 +86,11 @@
       "gate": "Migrate the exact fingerprint to semantic CSS custom properties before task 7.3 or the next visual edit to this file."
     },
     {
-      "path": "apps/web/src/components/LayerControlPanel.svelte",
-      "occurrences": 49,
-      "fingerprint": "7d52144e148517ca9a4d68ebde7082e2627da16ffb0570972556c76ac85f68fc",
-      "classification": "follow-up",
-      "followUp": "DRIFT-COLOR-WEB-HUD",
-      "owner": "apps/web UI owner",
-      "gate": "Migrate the exact fingerprint to semantic CSS custom properties before task 7.3 or the next visual edit to this file."
+      "path": "apps/web/src/hudTokens.css",
+      "occurrences": 29,
+      "fingerprint": "944165dec69e5777685eb5bbed04443d4ae585965a84983bf46d7f4897ee3bc0",
+      "classification": "fixed",
+      "reason": "Task 5.2.1 moved the layer-control palette to semantic HUD and telemetry-channel CSS custom properties before adding provenance badges."
     },
     {
       "path": "apps/web/src/components/TelemetryTimelineChart.svelte",

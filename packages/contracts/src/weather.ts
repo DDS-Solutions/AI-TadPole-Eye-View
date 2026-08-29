@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DataProvenanceSchema } from './provenance.js';
 
 export const RadarFrame = z.object({
   path: z.string().min(1),
@@ -19,7 +20,7 @@ export const WeatherStation = z.object({
 });
 export type WeatherStation = z.infer<typeof WeatherStation>;
 
-export const WeatherCollection = z.object({
+export const WeatherCollectionPayload = z.object({
   time: z.number().int().nonnegative(),
   count: z.number().int().nonnegative(),
   radar_frames: z.array(RadarFrame).default([]),
@@ -27,5 +28,10 @@ export const WeatherCollection = z.object({
     .string()
     .default('https://tilecache.rainviewer.com{path}/256/{z}/{x}/{y}/2/1_1.png'),
   stations: z.array(WeatherStation).default([]),
+});
+export type WeatherCollectionPayload = z.infer<typeof WeatherCollectionPayload>;
+
+export const WeatherCollection = WeatherCollectionPayload.extend({
+  provenance: DataProvenanceSchema,
 });
 export type WeatherCollection = z.infer<typeof WeatherCollection>;

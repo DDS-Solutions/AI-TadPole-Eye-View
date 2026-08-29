@@ -1,8 +1,12 @@
 import fs from 'node:fs';
-import type { LaunchCatalog } from '@gev/contracts';
-import { LaunchCatalog as LaunchCatalogSchema } from '@gev/contracts';
+import {
+  type LaunchCatalog,
+  LaunchCatalogPayload as LaunchCatalogPayloadSchema,
+  LaunchCatalog as LaunchCatalogSchema,
+} from '@gev/contracts';
 import { type SimClock, SystemClock } from '@gev/core';
 import { resolveFixturePath } from './opensky.js';
+import { createDataProvenance, observationPeriodFromUnixSeconds } from './provenance.js';
 
 export interface LaunchAdapterOptions {
   clock?: SimClock;
@@ -32,12 +36,20 @@ export class LaunchAdapter {
 
     const content = await fs.promises.readFile(this.seedFixturePath, 'utf-8');
     const parsed = JSON.parse(content);
-    const validated = LaunchCatalogSchema.parse(parsed);
+    const validated = LaunchCatalogPayloadSchema.parse(parsed);
 
-    return {
-      time: Math.floor(this.clock.now() / 1000),
+    return LaunchCatalogSchema.parse({
+      time: validated.time,
       count: validated.missions.length,
       missions: validated.missions,
-    };
+      provenance: createDataProvenance({
+        providerId: 'launch-replays',
+        feedId: 'launches',
+        clock: this.clock,
+        sourceMode: 'seed',
+        observationPeriod: observationPeriodFromUnixSeconds(validated.time),
+        fixtureId: 'launches-catalog-v1',
+      }),
+    });
   }
 }

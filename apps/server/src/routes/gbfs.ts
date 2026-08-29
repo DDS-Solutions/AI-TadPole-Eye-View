@@ -1,4 +1,8 @@
-import { type BoundingBox, BoundingBox as BoundingBoxSchema } from '@gev/contracts';
+import {
+  BikeStationBatch,
+  type BoundingBox,
+  BoundingBox as BoundingBoxSchema,
+} from '@gev/contracts';
 import type { GbfsAdapter } from '@gev/providers';
 import { Hono } from 'hono';
 
@@ -26,7 +30,7 @@ export function createGbfsRouter(adapter: GbfsAdapter) {
     }
 
     try {
-      const batch = await adapter.getStations(bbox);
+      const batch = BikeStationBatch.parse(await adapter.getStations(bbox));
       return c.json(batch);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown GBFS error';

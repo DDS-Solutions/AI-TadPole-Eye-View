@@ -771,38 +771,54 @@ DOC_BLOCKER or LOGIC_BLOCKER with exact row/hash/migration evidence and bounded 
 #### Ready-to-authorize brief for NEXT_TASK 5.2.1
 
 ```text
-[SCOPE_CONTRACT] packages/contracts required DataProvenance and provider-registry
-contracts; packages/providers registry and existing implemented adapters; apps/server
-response boundaries and stores only where needed to carry validated provenance;
-apps/web existing source/mode/freshness badges and focused tests; DATA_SOURCES.md and
-an ADR for the versioned provenance contract. Out of scope: cable completion (5.2.2),
-satellite work (5.2.3), generated documentation counts (5.2.4), new providers/layers,
-provider-to-store-to-Cesium rewrites, live calls, production deployment, identity/
-tenancy, economic contracts, and visual redesign.
+[SCOPE_CONTRACT] packages/contracts required versioned DataProvenance, explicit
+observation-period/vintage availability, registry-owned freshness-policy, and provider-
+registry projection contracts; packages/providers executable registry and existing
+implemented adapters; apps/server response boundaries and stores only where needed to
+carry validated provenance; apps/web existing badge surfaces and focused tests, replacing
+hardcoded mode text and adding source/mode/freshness presentation derived from validated
+provenance and registry state; DATA_SOURCES.md provenance references while preserving its
+registry-generated artifact; reserved ADR 0035 for the versioned provenance contract; and
+root .gitattributes only as needed for deterministic LF checkout/lint behavior without an
+unrelated mass-formatting diff. Out of scope: cable completion (5.2.2), satellite work
+(5.2.3), generated documentation counts (5.2.4), new providers/layers, provider-to-store-
+to-Cesium rewrites, live calls, production deployment, identity/tenancy, economic
+contracts, and visual redesign.
 
 [PERFORMANCE_THRESHOLD] Every implemented provider response validates required source,
-canonical URL, SimClock retrieval time, observation period/vintage, mode, license/terms,
-attribution, schema version, and fixture/cache identity where applicable. Registry
-projections and existing UI badges consume that contract without optional-provenance or
-hardcoded-summary fallbacks. Frozen-clock tests prove deterministic timestamps and
-fresh/stale labels; malicious/missing provenance fails at the provider/server boundary.
-Root lint, affected uncached typecheck/test/build, ADG, architecture drift, bundle budgets,
-canonical seed-mode unit/load/performance, and Playwright gates pass with zero live calls.
+canonical URL, SimClock retrieval time, explicit observation period/vintage availability,
+mode, license/terms, attribution, schema version, and fixture/cache identity where
+applicable. ADR 0035 defines the contract version and registry-owned per-feed freshness
+thresholds from measured or existing policy; cache TTL/retry fallback and provenance
+freshness remain distinct unless that ADR maps them to one source of truth. FlightBatch.time
+and equivalent provider-native fields retain observation/snapshot semantics, while
+provenance retrieval time records the SimClock boundary event; no ambiguous second time
+truth is introduced. Registry projections and UI badge surfaces consume the contract
+without optional-provenance or hardcoded-summary/mode fallbacks. Frozen- and steppable-
+clock tests prove deterministic timestamps and fresh/stale boundary transitions; malicious
+or missing provenance fails at provider and server boundaries. Root lint passes in the
+Windows task checkout and CI with no unrelated line-ending churn; affected uncached
+typecheck/test/build, ADG, architecture drift, bundle budgets, canonical seed-mode unit/
+load/performance, and Playwright gates pass with zero live calls.
 
 [ARCHITECTURE_MODE] PLAN.md §2 rules 1, 4–7, 9, and 12–15; §3 provider → store →
 UI/Cesium data flow; §4.1–§4.2; docs/DESIGN.md; ADRs 0015, 0020, 0023–0025, 0029,
-0039, and 0040. Reuse the typed executable registry and SimClock. Validate once at
-provider/server trust boundaries, keep provenance required through stores and UI reads,
-and preserve cesium-kit ownership and the rAF queue. No source/license/mode/default or
-contract-version deviation without ADR evidence.
+0039, and 0040; create and accept reserved ADR 0035 for this contract. Reuse the typed
+executable registry and SimClock. Validate once at provider/server trust boundaries, keep
+provenance required through stores and UI reads, and preserve cesium-kit ownership and the
+rAF queue. Registry projections remain the only UI/server/docs source for provider identity,
+mode, health, freshness policy, and generated documentation state. No source/license/mode/
+default, freshness-policy, or contract-version deviation without ADR evidence.
 
 [FAILURE_MODES] Do not make provenance optional, synthesize retrieval time from wall clock,
-label seed/cache/download-pack data live, infer license or attribution, duplicate registry
-truth in UI/server/docs, make a live call in tests, or fold cables/satellites into this
-retrofit. Provider records with absent vintage must use an explicit contract-approved
-unavailable representation, not an invented date. If one contract cannot truthfully model
-an existing source after three attempts, record LOGIC_BLOCKER with the provider payload,
-license evidence, and bounded union/version alternatives.
+conflate upstream observation time with retrieval/cache time, silently reuse cache TTL as a
+freshness threshold, label seed/cache/download-pack data live, infer license or attribution,
+duplicate registry truth in UI/server/docs, hand-edit generated counts, make a live call in
+tests, create broad line-ending-only churn, or fold cables/satellites into this retrofit.
+Provider records with absent vintage must use an explicit contract-approved unavailable
+representation, not an invented date. If one contract cannot truthfully model an existing
+source after three attempts, record LOGIC_BLOCKER with the provider payload, license
+evidence, and bounded union/version alternatives.
 ```
 
 ### Phase 6 — Standards-compliant MCP HTTP

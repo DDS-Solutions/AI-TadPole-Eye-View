@@ -18,3 +18,4 @@ export * from './providerRegistry.js';
 export * from './governance.js';
 export * from './ledger.js';
 export * from './auditIntegrity.js';
+export * from './provenance.js';

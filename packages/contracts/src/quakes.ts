@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DataProvenanceSchema } from './provenance.js';
 
 /**
  * Normalized USGS Earthquake telemetry feature contract.
@@ -35,9 +36,14 @@ export type EarthquakeFeature = z.infer<typeof EarthquakeFeature>;
 /**
  * Collection container for earthquake feed.
  */
-export const EarthquakeCollection = z.object({
+export const EarthquakeCollectionPayload = z.object({
   time: z.number().int().nonnegative(),
   count: z.number().int().nonnegative(),
   features: z.array(EarthquakeFeature),
+});
+export type EarthquakeCollectionPayload = z.infer<typeof EarthquakeCollectionPayload>;
+
+export const EarthquakeCollection = EarthquakeCollectionPayload.extend({
+  provenance: DataProvenanceSchema,
 });
 export type EarthquakeCollection = z.infer<typeof EarthquakeCollection>;

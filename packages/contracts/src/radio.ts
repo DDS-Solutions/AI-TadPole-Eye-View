@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DataProvenanceSchema } from './provenance.js';
 
 export const RadioCategory = z.enum(['atc', 'marine', 'emergency', 'broadcast']);
 export type RadioCategory = z.infer<typeof RadioCategory>;
@@ -43,9 +44,14 @@ export type RadioStation = z.infer<typeof RadioStation>;
 /**
  * Collection container for radio catalog.
  */
-export const RadioCatalog = z.object({
+export const RadioCatalogPayload = z.object({
   time: z.number().int().nonnegative(),
   count: z.number().int().nonnegative(),
   stations: z.array(RadioStation),
+});
+export type RadioCatalogPayload = z.infer<typeof RadioCatalogPayload>;
+
+export const RadioCatalog = RadioCatalogPayload.extend({
+  provenance: DataProvenanceSchema,
 });
 export type RadioCatalog = z.infer<typeof RadioCatalog>;

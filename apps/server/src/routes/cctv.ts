@@ -1,4 +1,4 @@
-import { type BoundingBox, BoundingBox as BoundingBoxSchema } from '@gev/contracts';
+import { type BoundingBox, BoundingBox as BoundingBoxSchema, CctvCatalog } from '@gev/contracts';
 import type { CctvAdapter } from '@gev/providers';
 import { pinnedFetch } from '@gev/security';
 import { Hono } from 'hono';
@@ -32,7 +32,7 @@ export function createCctvRouter(adapter: CctvAdapter) {
     }
 
     try {
-      const catalog = await adapter.getCatalog(agency, bbox);
+      const catalog = CctvCatalog.parse(await adapter.getCatalog(agency, bbox));
       return c.json(catalog);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown CCTV catalog error';

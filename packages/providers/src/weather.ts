@@ -1,8 +1,12 @@
 import fs from 'node:fs';
-import type { WeatherCollection } from '@gev/contracts';
-import { WeatherCollection as WeatherCollectionSchema } from '@gev/contracts';
+import {
+  type WeatherCollection,
+  WeatherCollectionPayload as WeatherCollectionPayloadSchema,
+  WeatherCollection as WeatherCollectionSchema,
+} from '@gev/contracts';
 import { type SimClock, SystemClock } from '@gev/core';
 import { resolveFixturePath } from './opensky.js';
+import { createDataProvenance, observationPeriodFromUnixSeconds } from './provenance.js';
 
 export interface WeatherAdapterOptions {
   clock?: SimClock;
@@ -32,14 +36,22 @@ export class WeatherAdapter {
 
     const content = await fs.promises.readFile(this.seedFixturePath, 'utf-8');
     const parsed = JSON.parse(content);
-    const validated = WeatherCollectionSchema.parse(parsed);
+    const validated = WeatherCollectionPayloadSchema.parse(parsed);
 
-    return {
-      time: Math.floor(this.clock.now() / 1000),
+    return WeatherCollectionSchema.parse({
+      time: validated.time,
       count: validated.stations.length,
       radar_frames: validated.radar_frames,
       radar_tile_template: validated.radar_tile_template,
       stations: validated.stations,
-    };
+      provenance: createDataProvenance({
+        providerId: 'rainviewer',
+        feedId: 'weather',
+        clock: this.clock,
+        sourceMode: 'seed',
+        observationPeriod: observationPeriodFromUnixSeconds(validated.time),
+        fixtureId: 'weather-radar-v1',
+      }),
+    });
   }
 }

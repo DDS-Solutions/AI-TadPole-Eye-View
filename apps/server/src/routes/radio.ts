@@ -1,6 +1,7 @@
 import {
   type BoundingBox,
   BoundingBox as BoundingBoxSchema,
+  RadioCatalog,
   type RadioCategory,
   RadioCategory as RadioCategorySchema,
 } from '@gev/contracts';
@@ -44,7 +45,7 @@ export function createRadioRouter(adapter: RadioAdapter) {
     }
 
     try {
-      const catalog = await adapter.getCatalog(category, bbox);
+      const catalog = RadioCatalog.parse(await adapter.getCatalog(category, bbox));
       return c.json(catalog);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown radio catalog error';

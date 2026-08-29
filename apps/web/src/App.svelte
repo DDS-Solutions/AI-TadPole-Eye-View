@@ -15,18 +15,8 @@
     FrameBudgetMonitor,
     attachDebugBus,
   } from '@gev/cesium-kit';
-  import type {
-    FlightBatch,
-    ShipBatch,
-    EarthquakeCollection,
-    ThermalHotspotBatch,
-    BikeStationBatch,
-    CctvCatalog,
-    RadioCatalog,
-    LaunchCatalog,
-    WeatherCollection,
-  } from '@gev/contracts';
   import { parseSceneFromUrl } from '@gev/core';
+  import { pollVisibleFeeds } from './feedPolling.js';
   import { layerStore } from './stores/layers.svelte.js';
   import { voiceStore } from './stores/voice.svelte.js';
   import { collabStore } from './stores/collab.svelte.js';
@@ -60,173 +50,17 @@
   async function pollAllFeeds() {
     abortController?.abort();
     abortController = new AbortController();
-    const signal = abortController.signal;
-
-    try {
-      // 1. Flights
-      if (layerStore.visibility.flights) {
-        fetch('/api/flights', { signal })
-          .then((res) => (res.ok ? res.json() : null))
-          .then((data: FlightBatch | null) => {
-            if (data && flightLayer) {
-              flightLayer.enqueueBatch(data);
-              layerStore.counts.flights = flightLayer.getEntityCount();
-              layerStore.rawEntities.flights = data.states;
-            }
-          })
-          .catch((err) => {
-            if (err.name !== 'AbortError') {
-              layerStore.activeErrors.flights = String(err);
-            }
-          });
-      }
-
-      // 2. Ships (AIS)
-      if (layerStore.visibility.marine) {
-        fetch('/api/ships', { signal })
-          .then((res) => (res.ok ? res.json() : null))
-          .then((data: ShipBatch | null) => {
-            if (data && marineLayer) {
-              marineLayer.enqueueBatch(data);
-              layerStore.counts.marine = marineLayer.getEntityCount();
-              layerStore.rawEntities.marine = data.ships;
-            }
-          })
-          .catch((err) => {
-            if (err.name !== 'AbortError') {
-              layerStore.activeErrors.marine = String(err);
-            }
-          });
-      }
-
-      // 3. Earthquakes (USGS)
-      if (layerStore.visibility.quakes) {
-        fetch('/api/quakes', { signal })
-          .then((res) => (res.ok ? res.json() : null))
-          .then((data: EarthquakeCollection | null) => {
-            if (data && quakeLayer) {
-              quakeLayer.enqueueCollection(data);
-              layerStore.counts.quakes = quakeLayer.getEntityCount();
-              layerStore.rawEntities.quakes = data.features;
-            }
-          })
-          .catch((err) => {
-            if (err.name !== 'AbortError') {
-              layerStore.activeErrors.quakes = String(err);
-            }
-          });
-      }
-
-      // 4. Thermal Hotspots (NASA FIRMS)
-      if (layerStore.visibility.firms) {
-        fetch('/api/firms', { signal })
-          .then((res) => (res.ok ? res.json() : null))
-          .then((data: ThermalHotspotBatch | null) => {
-            if (data && firmsLayer) {
-              firmsLayer.enqueueBatch(data);
-              layerStore.counts.firms = firmsLayer.getEntityCount();
-              layerStore.rawEntities.firms = data.hotspots;
-            }
-          })
-          .catch((err) => {
-            if (err.name !== 'AbortError') {
-              layerStore.activeErrors.firms = String(err);
-            }
-          });
-      }
-
-      // 5. Shared Transit (GBFS)
-      if (layerStore.visibility.gbfs) {
-        fetch('/api/gbfs', { signal })
-          .then((res) => (res.ok ? res.json() : null))
-          .then((data: BikeStationBatch | null) => {
-            if (data && gbfsLayer) {
-              gbfsLayer.enqueueBatch(data);
-              layerStore.counts.gbfs = gbfsLayer.getEntityCount();
-              layerStore.rawEntities.gbfs = data.stations;
-            }
-          })
-          .catch((err) => {
-            if (err.name !== 'AbortError') {
-              layerStore.activeErrors.gbfs = String(err);
-            }
-          });
-      }
-
-      // 6. Public CCTV Media
-      if (layerStore.visibility.cctv) {
-        fetch('/api/cctv/catalog', { signal })
-          .then((res) => (res.ok ? res.json() : null))
-          .then((data: CctvCatalog | null) => {
-            if (data && cctvLayer) {
-              cctvLayer.enqueueCatalog(data);
-              layerStore.counts.cctv = cctvLayer.getEntityCount();
-              layerStore.rawEntities.cctv = data.cameras;
-            }
-          })
-          .catch((err) => {
-            if (err.name !== 'AbortError') {
-              layerStore.activeErrors.cctv = String(err);
-            }
-          });
-      }
-
-      // 7. Global Radio Broadcasts
-      if (layerStore.visibility.radio) {
-        fetch('/api/radio/catalog', { signal })
-          .then((res) => (res.ok ? res.json() : null))
-          .then((data: RadioCatalog | null) => {
-            if (data && radioLayer) {
-              radioLayer.enqueueCatalog(data);
-              layerStore.counts.radio = radioLayer.getEntityCount();
-              layerStore.rawEntities.radio = data.stations;
-            }
-          })
-          .catch((err) => {
-            if (err.name !== 'AbortError') {
-              layerStore.activeErrors.radio = String(err);
-            }
-          });
-      }
-
-      // 8. Orbital Launches
-      if (layerStore.visibility.launches) {
-        fetch('/api/launches', { signal })
-          .then((res) => (res.ok ? res.json() : null))
-          .then((data: LaunchCatalog | null) => {
-            if (data && launchLayer) {
-              launchLayer.enqueueCatalog(data);
-              layerStore.counts.launches = launchLayer.getEntityCount();
-              layerStore.rawEntities.launches = data.missions;
-            }
-          })
-          .catch((err) => {
-            if (err.name !== 'AbortError') {
-              layerStore.activeErrors.launches = String(err);
-            }
-          });
-      }
-
-      // 9. Weather Radar & Precipitation
-      if (layerStore.visibility.weather) {
-        fetch('/api/weather/radar', { signal })
-          .then((res) => (res.ok ? res.json() : null))
-          .then((data: WeatherCollection | null) => {
-            if (data && weatherLayer) {
-              weatherLayer.enqueueCollection(data);
-              layerStore.counts.weather = weatherLayer.getEntityCount();
-              layerStore.rawEntities.weather = data.stations;
-            }
-          })
-          .catch((err) => {
-            if (err.name !== 'AbortError') {
-              layerStore.activeErrors.weather = String(err);
-            }
-          });
-      }
-    } catch {
-      // Catch network or parsing errors
-    }
+    await pollVisibleFeeds({
+      flights: flightLayer,
+      marine: marineLayer,
+      quakes: quakeLayer,
+      firms: firmsLayer,
+      gbfs: gbfsLayer,
+      cctv: cctvLayer,
+      radio: radioLayer,
+      launches: launchLayer,
+      weather: weatherLayer,
+    }, abortController.signal);
   }
 
   function handleEntitySelected(entity: Entity | null) {

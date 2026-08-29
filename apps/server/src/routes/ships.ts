@@ -1,4 +1,4 @@
-import { type BoundingBox, BoundingBox as BoundingBoxSchema } from '@gev/contracts';
+import { type BoundingBox, BoundingBox as BoundingBoxSchema, ShipBatch } from '@gev/contracts';
 import type { AisAdapter } from '@gev/providers';
 import { Hono } from 'hono';
 
@@ -26,7 +26,7 @@ export function createShipsRouter(adapter: AisAdapter) {
     }
 
     try {
-      const batch = await adapter.getShips(bbox);
+      const batch = ShipBatch.parse(await adapter.getShips(bbox));
       return c.json(batch);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown AIS provider error';
