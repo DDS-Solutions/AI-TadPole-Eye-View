@@ -2,8 +2,8 @@
 
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
-**Verified against repository:** 2026-08-28
-**Status:** IN PROGRESS — Phase 5.0 exit verified; Phase 5.1 ready
+**Verified against repository:** 2026-08-29
+**Status:** IN PROGRESS — Phase 5.1 exit verified; Phase 5.2 ready
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -19,8 +19,8 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 
 ```text
 PLAN_VERSION=3.0
-CURRENT_PHASE=5.1
-NEXT_TASK=5.1.5
+CURRENT_PHASE=5.2
+NEXT_TASK=5.2.1
 NEXT_TASK_STATUS=BLOCKED
 LAST_VERIFIED_UTC=2026-08-29
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
@@ -575,8 +575,8 @@ LOGIC_BLOCKER with exact paths, measurements, and bounded alternatives.
 - [x] 5.1.2 Consolidate the duplicate tool executors into one validated governance pipeline.
 - [x] 5.1.3 Implement real M2 approval verification after OQ-2; production defaults deny when the gate is unavailable.
 - [x] 5.1.4 Implement M3 ledger reservation/settlement after OQ-3; retries are idempotent and outage behavior is fail closed for billable/mutating work.
-- [ ] 5.1.5 Add a versioned hash-chain migration to the SQLite audit WAL, integrity verification, redaction, retention, and corruption tests.
-- [ ] 5.1 exit: two-process tests prove shared STASIS; only a human resume clears it; approvals resist replay; audit tampering is detected.
+- [x] 5.1.5 Add a versioned hash-chain migration to the SQLite audit WAL, integrity verification, redaction, retention, and corruption tests.
+- [x] 5.1 exit: two-process tests prove shared STASIS; only a human resume clears it; approvals resist replay; audit tampering is detected.
 
 #### Ready-to-authorize brief for NEXT_TASK 5.1.1
 
@@ -668,7 +668,12 @@ messages. No contract/default/policy deviation without ADR.
 
 [FAILURE_MODES] OQ-2 is resolved by ADR 0042. Do not retain
 production auto-approval, accept unsigned/self-signed approvals, trust caller-supplied
-identity, reuse nonces, fail open on key/gate/storage errors, or mi#### Authorized brief for completed task 5.1.4
+identity, reuse nonces, fail open on key/gate/storage errors, or mix M3 settlement into the
+gate. After three failed verification/replay approaches, record LOGIC_BLOCKER with exact
+cryptographic/state evidence and bounded alternatives.
+```
+
+#### Authorized brief for completed task 5.1.4
 
 ```text
 [SCOPE_CONTRACT] The accepted OQ-3 decision, review amendments, and ADR; packages/contracts
@@ -762,6 +767,43 @@ DOC_BLOCKER or LOGIC_BLOCKER with exact row/hash/migration evidence and bounded 
 - [ ] 5.2.3 Complete satellites after OQ-7: GP/OMM adapter, deterministic fixture, propagation/frame conversion, server/store/layer/UI, kill switch, health, tests, and source ADR.
 - [ ] 5.2.4 Generate DATA_SOURCES entries/counts from the registry and label implementation/mode accurately.
 - [ ] 5.2 exit: every implemented provider validates and carries provenance; seed mode makes zero network calls; satellite/cable smoke and performance budgets pass.
+
+#### Ready-to-authorize brief for NEXT_TASK 5.2.1
+
+```text
+[SCOPE_CONTRACT] packages/contracts required DataProvenance and provider-registry
+contracts; packages/providers registry and existing implemented adapters; apps/server
+response boundaries and stores only where needed to carry validated provenance;
+apps/web existing source/mode/freshness badges and focused tests; DATA_SOURCES.md and
+an ADR for the versioned provenance contract. Out of scope: cable completion (5.2.2),
+satellite work (5.2.3), generated documentation counts (5.2.4), new providers/layers,
+provider-to-store-to-Cesium rewrites, live calls, production deployment, identity/
+tenancy, economic contracts, and visual redesign.
+
+[PERFORMANCE_THRESHOLD] Every implemented provider response validates required source,
+canonical URL, SimClock retrieval time, observation period/vintage, mode, license/terms,
+attribution, schema version, and fixture/cache identity where applicable. Registry
+projections and existing UI badges consume that contract without optional-provenance or
+hardcoded-summary fallbacks. Frozen-clock tests prove deterministic timestamps and
+fresh/stale labels; malicious/missing provenance fails at the provider/server boundary.
+Root lint, affected uncached typecheck/test/build, ADG, architecture drift, bundle budgets,
+canonical seed-mode unit/load/performance, and Playwright gates pass with zero live calls.
+
+[ARCHITECTURE_MODE] PLAN.md §2 rules 1, 4–7, 9, and 12–15; §3 provider → store →
+UI/Cesium data flow; §4.1–§4.2; docs/DESIGN.md; ADRs 0015, 0020, 0023–0025, 0029,
+0039, and 0040. Reuse the typed executable registry and SimClock. Validate once at
+provider/server trust boundaries, keep provenance required through stores and UI reads,
+and preserve cesium-kit ownership and the rAF queue. No source/license/mode/default or
+contract-version deviation without ADR evidence.
+
+[FAILURE_MODES] Do not make provenance optional, synthesize retrieval time from wall clock,
+label seed/cache/download-pack data live, infer license or attribution, duplicate registry
+truth in UI/server/docs, make a live call in tests, or fold cables/satellites into this
+retrofit. Provider records with absent vintage must use an explicit contract-approved
+unavailable representation, not an invented date. If one contract cannot truthfully model
+an existing source after three attempts, record LOGIC_BLOCKER with the provider payload,
+license evidence, and bounded union/version alternatives.
+```
 
 ### Phase 6 — Standards-compliant MCP HTTP
 
@@ -1517,5 +1559,46 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
 - Next task: **5.1.5 Add a versioned hash-chain migration to the SQLite audit WAL**. Its exact
   ready-to-authorize 4-Pillar brief is in §10; task 5.1.5 has not been authorized or started.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.1.5. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 5.1.5 and Phase 5.1 exit checkpoint — 2026-08-29
+
+- The developer authorized the embedded task 5.1.5 4-Pillar brief exactly. Work stayed on
+  the local/seed authority with zero live-service or production calls; HTTP MCP, identity/
+  tenancy, provider/economic work, UI redesign, and all later tasks remained out of scope.
+- ADR 0044 defines governance schema 4: a versioned `gev.audit.chain.v1` sidecar built over
+  existing audit rows without changing legacy audit or M3 values, RFC 8785-compatible
+  canonical event/link bytes, SHA-256 checkpoints, pre-persistence redaction/bounds, and
+  Ed25519-signed human retention receipts. Retention is bounded and blocked by STASIS or any
+  `IN_DOUBT` operation; local database-administrator replacement still requires future
+  independent Tadpole/head anchoring to detect.
+- Every current SQLite audit writer, including atomic M3 lifecycle writes, now appends its
+  sanitized event, chain link, and durable head in one `BEGIN IMMEDIATE` transaction. Runtime
+  startup and M3 composition fail closed on invalid/unavailable integrity. A protected
+  `/ops/audit/integrity` route, `gev audit verify`, and MCP diagnostics expose typed bounded
+  inspection without returning suspect payloads or repairing state.
+- Deterministic evidence covers byte-preserving migration, shared two-process append ordering,
+  restart with trusted retention keys, redaction of credentials/private tenant content and
+  bounded cyclic/oversized values, signed retention boundaries, STASIS/IN_DOUBT retention
+  refusal, corrupt storage, and detection of changed payload/hash/link, deletion, insertion,
+  reordering, truncation, and malformed rows. Final focused counts were contracts 31/31,
+  governance 49/49, MCP 36/36, server 90/90, and CLI 16/16.
+- Final gates passed: uncached affected lint/typecheck/test/build completed 23/23 tasks; root
+  Biome checked 214 files; ADG checked 51 documents, 390 paths, and 19 module-qualified
+  symbols; architecture drift, bundle budgets, and `git diff --check` passed. Canonical
+  `pnpm gev test` passed 341 unit/property tests with OpenSky 10k replay p95 21.18 ms under
+  50 ms, server load p95 12.33 ms under 300 ms, and Cesium ingestion p95 9.03 ms under
+  16.6 ms. Canonical Playwright QA built 10/10 tasks and passed 1/1 in 34.2 seconds; visual
+  inspection confirmed populated telemetry, filtering, selection controls, and attribution.
+- Post-build local inspection reported `STASIS_INACTIVE` as a non-authoritative offline
+  snapshot and `gev audit verify` reported `VALID`, chain `gev.audit.chain.v1`, boundary
+  0 → 20, with 20 retained entries. No state was repaired, deleted, or rewritten.
+- Branch: `codex/audit-hash-chain-5.1.5`; implementation commit `6841f2d`. GitHub CLI remains
+  unavailable, so open PR inspection and PR creation were not possible. The worktree was
+  otherwise clean before these synchronized plan-state/handoff edits.
+- Phase 5.1 exit is evidenced by the retained two-process shared-STASIS/human-resume tests,
+  signed M2 tamper/replay tests, M3 recovery tests, and task 5.1.5 audit tamper suite.
+- Next task: **5.2.1 Add required provenance and registry contracts**. Its exact review-only
+  4-Pillar brief is in §10; task 5.2.1 is blocked and has not been authorized or started.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.2.1. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
