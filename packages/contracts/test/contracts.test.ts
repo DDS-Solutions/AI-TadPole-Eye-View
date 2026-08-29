@@ -11,6 +11,8 @@ import {
   FlightState,
   GevEvents,
   GovernanceAuthoritySchema,
+  LedgerEvidenceSchema,
+  LedgerReconciliationInputSchema,
   OPERATOR_TOOLS,
   PORTS_VERSION,
   SceneState,
@@ -71,7 +73,7 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
 
   describe('M2 signed approval contracts', () => {
     it('requires the verifier nonce and the complete versioned signed payload', () => {
-      expect(PORTS_VERSION).toBe('0.2.0');
+      expect(PORTS_VERSION).toBe('0.3.0');
       const request = ApprovalRequest.parse({
         id: '00000000-0000-4000-8000-000000000001',
         ts: '2026-08-28T12:00:00.000Z',
@@ -143,6 +145,42 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
           last_trip: null,
         });
       }).toThrow(/Number must be finite/);
+    });
+  });
+
+  describe('M3 ledger contracts', () => {
+    it('marks every mutating tool for reservation, including zero-cost mutations', () => {
+      for (const definition of Object.values(OPERATOR_TOOLS)) {
+        expect(definition.requires_reservation).toBe(definition.is_mutating);
+        expect(definition.cost_estimate.currency).toBe('usd');
+        expect(definition.timeout_ms).toBeGreaterThan(0);
+      }
+      expect(OPERATOR_TOOLS.set_flag).toMatchObject({
+        requires_reservation: true,
+        cost_estimate: { min: 0, max: 0 },
+      });
+    });
+
+    it('requires bounded non-path evidence and consistent reconciliation amounts', () => {
+      expect(() =>
+        LedgerEvidenceSchema.parse({
+          kind: 'local_log',
+          reference: '../private.log',
+          summary: 'Unsafe arbitrary path',
+        })
+      ).toThrow();
+      expect(() =>
+        LedgerReconciliationInputSchema.parse({
+          operation_id: '00000000-0000-4000-8000-000000000001',
+          resolution: 'refunded',
+          actual_usd: 0.01,
+          evidence: {
+            kind: 'operator_attestation',
+            reference: null,
+            summary: 'Refund must not carry an amount.',
+          },
+        })
+      ).toThrow(/actual_usd=null/);
     });
   });
 

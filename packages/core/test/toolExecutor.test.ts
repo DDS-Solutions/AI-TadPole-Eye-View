@@ -1,6 +1,14 @@
-import type { ApprovalGate, AuditEntry, AuditSink, BudgetGovernor, Verdict } from '@gev/contracts';
+import type {
+  ApprovalGate,
+  AuditEntry,
+  AuditSink,
+  BudgetGovernor,
+  BudgetLedger,
+  Verdict,
+} from '@gev/contracts';
 import { describe, expect, it, vi } from 'vitest';
 import { FrozenClock, GovernedToolExecutor } from '../src/index.js';
+import { TestBudgetLedger } from './budgetLedgerFixture.js';
 
 function createIdFactory(): () => string {
   let sequence = 0;
@@ -69,13 +77,18 @@ function createExecutor(
     auditSink?: AuditSink;
     approvalGate?: ApprovalGate;
     budgetGovernor?: BudgetGovernor;
+    budgetLedger?: BudgetLedger;
     allowedTools?: readonly ['set_flag'];
+    events?: string[];
   } = {}
 ): GovernedToolExecutor {
+  const auditSink = options.auditSink ?? createAuditSink();
+  const entries = 'entries' in auditSink ? auditSink.entries : undefined;
   return new GovernedToolExecutor({
-    auditSink: options.auditSink ?? createAuditSink(),
+    auditSink,
     approvalGate: options.approvalGate ?? createApprovalGate(),
     budgetGovernor: options.budgetGovernor ?? createBudgetGovernor(),
+    budgetLedger: options.budgetLedger ?? new TestBudgetLedger({ entries, events: options.events }),
     allowedTools: options.allowedTools,
     clock: new FrozenClock(1_700_000_000_000),
     idFactory: createIdFactory(),
@@ -95,6 +108,7 @@ describe('GovernedToolExecutor unified lifecycle', () => {
       auditSink,
       approvalGate: createApprovalGate(events),
       budgetGovernor,
+      events,
     });
     const handler = vi.fn((input: { flag: string; enabled: boolean }) => {
       events.push('handler');
@@ -114,7 +128,7 @@ describe('GovernedToolExecutor unified lifecycle', () => {
       tool: 'set_flag',
       result: { flag: 'opensky.enabled', enabled: false, updated: true },
     });
-    expect(events).toEqual(['intent', 'budget', 'approval', 'handler', 'outcome']);
+    expect(events).toEqual(['intent', 'approval', 'budget', 'handler', 'outcome']);
     expect(handler).toHaveBeenCalledTimes(1);
     expect(auditSink.entries).toHaveLength(2);
     expect(auditSink.entries[0]).toMatchObject({
@@ -163,7 +177,7 @@ describe('GovernedToolExecutor unified lifecycle', () => {
     expect(auditSink.entries).toEqual([]);
   });
 
-  it('does not emit an outcome when audit intent storage fails', async () => {
+  it('does not emit an outcome when audit intent storage fails for an unreserved read', async () => {
     const outcome = vi.fn();
     const executor = createExecutor({
       auditSink: {
@@ -174,13 +188,21 @@ describe('GovernedToolExecutor unified lifecycle', () => {
         tail: () => [],
       },
     });
-    const handler = vi.fn((input: { layer: string; enabled: boolean }) => ({
-      ...input,
-      updated: true,
+    const handler = vi.fn(() => ({
+      cap_usd: 10,
+      spent_usd: 0,
+      remaining_usd: 10,
+      stasis_active: false,
+      governance_authority: {
+        kind: 'process_local' as const,
+        authoritative: false,
+        schema_version: 3,
+        state_revision: 0,
+      },
     }));
-    executor.register('toggle_layer', handler);
+    executor.register('get_budget', handler);
 
-    const result = await executor.execute('toggle_layer', { layer: 'flights', enabled: true });
+    const result = await executor.execute('get_budget', {});
 
     expect(result).toMatchObject({ success: false, code: 'AUDIT_INTENT_FAILED' });
     expect(handler).not.toHaveBeenCalled();
@@ -195,11 +217,7 @@ describe('GovernedToolExecutor unified lifecycle', () => {
     }));
     const executor = createExecutor({
       auditSink,
-      budgetGovernor: createBudgetGovernor({
-        allowed: false,
-        reason: 'BUDGET_BREACH',
-        message: 'STASIS active',
-      }),
+      budgetLedger: new TestBudgetLedger({ entries: auditSink.entries, deny: true }),
     });
     executor.register('set_flag', handler);
 
@@ -221,6 +239,7 @@ describe('GovernedToolExecutor unified lifecycle', () => {
 
   it('normalizes approval verification failure before dispatch with one error outcome', async () => {
     const auditSink = createAuditSink();
+    const ledger = new TestBudgetLedger({ entries: auditSink.entries });
     const handler = vi.fn((input: { flag: string; enabled: boolean }) => ({
       ...input,
       updated: true,
@@ -232,6 +251,7 @@ describe('GovernedToolExecutor unified lifecycle', () => {
           throw new Error('signed approval replay detected');
         },
       },
+      budgetLedger: ledger,
     });
     executor.register('set_flag', handler);
 
@@ -246,14 +266,78 @@ describe('GovernedToolExecutor unified lifecycle', () => {
       code: 'APPROVAL_UNAVAILABLE',
     });
     expect(handler).not.toHaveBeenCalled();
+    expect(ledger.lookup(result.intent_id)?.state).toBe('REFUNDED');
     expect(auditSink.entries.map((entry) => entry.kind)).toEqual(['audit.intent', 'audit.outcome']);
     expect(auditSink.entries[1]).toMatchObject({ status: 'error' });
+  });
+
+  it('reuses one operation ID for terminal replay without redispatch or double settlement', async () => {
+    const auditSink = createAuditSink();
+    const ledger = new TestBudgetLedger({ entries: auditSink.entries });
+    const executor = createExecutor({ auditSink, budgetLedger: ledger });
+    const handler = vi.fn((input: { layer: string; enabled: boolean }) => ({
+      ...input,
+      updated: true,
+    }));
+    executor.register('toggle_layer', handler);
+    const operationId = '00000000-0000-4000-8000-000000000099';
+
+    const first = await executor.execute(
+      'toggle_layer',
+      { layer: 'flights', enabled: true },
+      { operation_id: operationId }
+    );
+    const replay = await executor.execute(
+      'toggle_layer',
+      { layer: 'flights', enabled: true },
+      { operation_id: operationId }
+    );
+    const conflict = await executor.execute(
+      'toggle_layer',
+      { layer: 'ships', enabled: true },
+      { operation_id: operationId }
+    );
+
+    expect(first.success).toBe(true);
+    expect(replay).toMatchObject({ success: true, replayed: true, intent_id: operationId });
+    expect(conflict).toMatchObject({ success: false, code: 'IDEMPOTENCY_CONFLICT' });
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(ledger.lookup(operationId)).toMatchObject({
+      state: 'SETTLED',
+      reserved_microusd: 0,
+      settled_microusd: 0,
+    });
+    expect(auditSink.entries).toHaveLength(2);
+  });
+
+  it('marks a post-dispatch handler timeout IN_DOUBT and never retries the handler', async () => {
+    vi.useFakeTimers();
+    try {
+      const ledger = new TestBudgetLedger();
+      const executor = createExecutor({ budgetLedger: ledger });
+      const handler = vi.fn(() => new Promise(() => {}));
+      executor.register('toggle_layer', handler);
+      const operationId = '00000000-0000-4000-8000-000000000098';
+      const pending = executor.execute(
+        'toggle_layer',
+        { layer: 'flights', enabled: true },
+        { operation_id: operationId }
+      );
+      await vi.advanceTimersByTimeAsync(30_001);
+      const result = await pending;
+
+      expect(result).toMatchObject({ code: 'OPERATION_IN_DOUBT', retryable: false });
+      expect(ledger.lookup(operationId)?.state).toBe('IN_DOUBT');
+      expect(handler).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it.each([
     {
       label: 'handler exception',
-      expectedCode: 'HANDLER_ERROR',
+      expectedCode: 'OPERATION_IN_DOUBT',
       handler: () => {
         throw new Error('handler exploded');
       },

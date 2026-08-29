@@ -73,7 +73,7 @@ afterEach(async () => {
   vi.unstubAllGlobals();
   while (contexts.length > 0) {
     try {
-      contexts.pop()?.auditSink.close();
+      contexts.pop()?.governanceContext.close();
     } catch {
       // A diagnostics test intentionally closes its sink first.
     }
@@ -191,8 +191,9 @@ describe('local MCP scene confinement and truth', () => {
     await expect(
       executeOperatorTool(context, 'save_scene', { save_path: scenePath })
     ).rejects.toThrow(/Scene path/);
+    const loadContext = makeContext(sceneRoot);
     await expect(
-      executeOperatorTool(context, 'load_scene', { scene_path: scenePath })
+      executeOperatorTool(loadContext, 'load_scene', { scene_path: scenePath })
     ).rejects.toThrow(/Scene path/);
     expect(await fs.promises.readdir(sceneRoot)).toEqual([]);
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -232,8 +233,9 @@ describe('local MCP scene confinement and truth', () => {
     await expect(
       executeOperatorTool(context, 'load_scene', { scene_path: 'escape.json' })
     ).rejects.toThrow('symbolic links are not allowed');
+    const saveContext = makeContext(sceneRoot);
     await expect(
-      executeOperatorTool(context, 'save_scene', { save_path: 'escape.json' })
+      executeOperatorTool(saveContext, 'save_scene', { save_path: 'escape.json' })
     ).rejects.toThrow('symbolic links are not allowed');
     expect(await fs.promises.readFile(outsidePath, 'utf-8')).toBe(JSON.stringify(makeScene()));
   });
@@ -249,8 +251,9 @@ describe('local MCP scene confinement and truth', () => {
     await expect(
       executeOperatorTool(context, 'load_scene', { scene_path: 'oversized.json' })
     ).rejects.toThrow(`${MAX_SCENE_BYTES} byte limit`);
+    const inlineContext = makeContext(sceneRoot);
     await expect(
-      executeOperatorTool(context, 'load_scene', {
+      executeOperatorTool(inlineContext, 'load_scene', {
         scene_json: JSON.stringify('é'.repeat(MAX_SCENE_BYTES / 2)),
       })
     ).rejects.toThrow(`${MAX_SCENE_BYTES} byte limit`);
@@ -277,7 +280,9 @@ describe('local MCP scene confinement and truth', () => {
   it('marks the audit diagnostic failed when the verified query operation fails', async () => {
     const sceneRoot = await makeSceneRoot();
     const context = makeContext(sceneRoot);
-    context.auditSink.close();
+    vi.spyOn(context.auditSink, 'tail').mockImplementation(() => {
+      throw new Error('simulated audit query failure');
+    });
 
     const diagnostics = await handleRunDiagnostics(context, { scope: 'governance' });
     expect(diagnostics.status).toBe('fail');

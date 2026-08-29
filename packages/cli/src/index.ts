@@ -2,6 +2,7 @@
 import { spawn } from 'node:child_process';
 import { Command } from 'commander';
 import { runAuditTail } from './commands/audit.js';
+import { runBudgetReconcile } from './commands/budget.js';
 import { runDemo } from './commands/demo.js';
 import { runFeedsHealth } from './commands/feeds.js';
 import { runResume } from './commands/resume.js';
@@ -81,7 +82,26 @@ program
     await runResume(reason);
   });
 
-// 6. gev dev
+// 6. gev budget reconcile
+const budget = program.command('budget').description('Durable M3 budget-ledger operations');
+budget
+  .command('reconcile <operation-id>')
+  .description('Human-only reconciliation of an ambiguous operation; does not resume STASIS')
+  .option('--settled-usd <amount>', 'Settle with the verified actual USD amount', Number)
+  .option('--refunded', 'Refund after verifying no effect and no charge')
+  .requiredOption('--summary <text>', 'Bounded human reconciliation evidence')
+  .option(
+    '--evidence-kind <kind>',
+    'operator_attestation, provider_receipt, or local_log',
+    'operator_attestation'
+  )
+  .option('--reference <id>', 'Bounded receipt/log identifier (not a filesystem path)')
+  .option('--server-url <url>', 'Override GEV server URL', 'http://localhost:3000')
+  .action(async (operationId, options) => {
+    await runBudgetReconcile(operationId, options);
+  });
+
+// 7. gev dev
 program
   .command('dev')
   .description('Start local development servers (Vite web + Hono server)')
@@ -92,7 +112,7 @@ program
     });
   });
 
-// 7. gev test
+// 8. gev test
 program
   .command('test')
   .description('Run unit and property test suites across all monorepo packages')
@@ -103,7 +123,7 @@ program
     });
   });
 
-// 8. gev qa
+// 9. gev qa
 program
   .command('qa')
   .description('Run Playwright E2E smoke tests')

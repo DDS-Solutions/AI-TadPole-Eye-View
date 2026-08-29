@@ -15,6 +15,7 @@ import {
   SignedApprovalPayloadSchema,
 } from '@gev/contracts';
 import { type SimClock, SystemClock } from '@gev/core';
+import { type CanonicalJsonObject, canonicalizeJson } from './canonicalJson.js';
 import { openGovernanceDatabase, withImmediateTransaction } from './governanceDb.js';
 
 export const DEFAULT_APPROVAL_LIFETIME_MS = 60_000;
@@ -31,30 +32,6 @@ export function generateEd25519KeyPair(): TadpoleKeyPair {
     privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
   });
   return { publicKeyPem: publicKey, privateKeyPem: privateKey };
-}
-
-type CanonicalJson = null | boolean | number | string | CanonicalJson[] | CanonicalJsonObject;
-interface CanonicalJsonObject {
-  [key: string]: CanonicalJson;
-}
-
-function canonicalizeJson(value: CanonicalJson): string {
-  if (value === null || typeof value === 'boolean' || typeof value === 'string') {
-    return JSON.stringify(value);
-  }
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value)) {
-      throw new Error('JCS canonicalization rejects non-finite numbers');
-    }
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map((item) => canonicalizeJson(item)).join(',')}]`;
-  }
-  return `{${Object.keys(value)
-    .sort()
-    .map((key) => `${JSON.stringify(key)}:${canonicalizeJson(value[key] as CanonicalJson)}`)
-    .join(',')}}`;
 }
 
 /** RFC 8785 JCS serialization for the constrained I-JSON approval payload. */

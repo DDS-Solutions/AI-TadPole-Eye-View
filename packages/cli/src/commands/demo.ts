@@ -2,10 +2,9 @@ import crypto from 'node:crypto';
 import { type AuditIntent, type AuditOutcome, GevEvents } from '@gev/contracts';
 import { FrozenClock } from '@gev/core';
 import {
-  CapBudgetGovernor,
   LocalM2ApprovalDemoGate,
   MerkleAuditChain,
-  SqliteAuditSink,
+  createGovernanceRuntimeContext,
 } from '@gev/governance';
 import { createOperatorContext, executeOperatorTool } from '@gev/ops-mcp';
 import pc from 'picocolors';
@@ -32,9 +31,15 @@ export async function runDemo(): Promise<DemoResult> {
   );
 
   const clock = new FrozenClock(1700000000000);
-  const auditSink = new SqliteAuditSink({ clock, dbPath: ':memory:' });
-  const budgetGovernor = new CapBudgetGovernor({ capUsd: 1.0, spentUsd: 0, clock });
   const gatekeeper = new LocalM2ApprovalDemoGate({ clock });
+  const governanceContext = createGovernanceRuntimeContext({
+    clock,
+    dbPath: ':memory:',
+    capUsd: 1,
+    spentUsd: 0,
+    approvalGate: gatekeeper,
+  });
+  const { auditSink, budgetGovernor } = governanceContext;
   const merkleChain = new MerkleAuditChain();
 
   const auditEventsList: Array<Record<string, unknown>> = [];
@@ -51,10 +56,7 @@ export async function runDemo(): Promise<DemoResult> {
   });
 
   const ctx = createOperatorContext({
-    clock,
-    auditSink,
-    budgetGovernor,
-    approvalGate: gatekeeper,
+    governanceContext,
   });
 
   // ─── STEP 1: Local observer-shaped simulation initialization ──────────
@@ -158,13 +160,13 @@ export async function runDemo(): Promise<DemoResult> {
     pc.bold(pc.cyan('═══════════════════════════════════════════════════════════════════════\n'))
   );
 
-  auditSink.close();
-
-  return {
+  const result = {
     success: true,
-    simulation: 'local-seed',
+    simulation: 'local-seed' as const,
     eventsRecorded: auditEventsList.length,
     merkleHead: headHash,
     stasisTripRecovered: !budgetGovernor.state().stasis_active,
   };
+  governanceContext.close();
+  return result;
 }

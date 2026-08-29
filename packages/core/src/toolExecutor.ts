@@ -1,18 +1,38 @@
 import {
   type ApprovalGate,
-  type ApprovalResult,
-  ApprovalResult as ApprovalResultSchema,
   type AuditSink,
   type BudgetGovernor,
+  type BudgetLedger,
   BudgetState as BudgetStateSchema,
   GevEvents,
   OPERATOR_TOOLS,
   type OperatorToolName,
-  Verdict as VerdictSchema,
   isOperatorToolName,
 } from '@gev/contracts';
 import type { SimClock } from './clock.js';
 import { SystemClock } from './clock.js';
+import { executeReservedTool } from './reservedToolExecution.js';
+import {
+  type ToolExecutionContext,
+  type ToolExecutionFailureCode,
+  type ToolExecutionResult,
+  type ToolHandler,
+  isHandlerTimeout,
+  makeFailure,
+  makeSuccess,
+  normalizeError,
+  runWithTimeout,
+  toAuditOutcome,
+} from './toolExecutionTypes.js';
+
+export type {
+  ToolExecutionContext,
+  ToolExecutionFailureCode,
+  ToolExecutionResult,
+  ToolHandler,
+} from './toolExecutionTypes.js';
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function generateUuid(): string {
   if (
@@ -29,62 +49,23 @@ function generateUuid(): string {
   });
 }
 
-export interface ToolExecutionContext {
-  actor?: 'ai' | 'human' | 'system';
-  task_ref?: string;
-}
-
-export type ToolHandler<TInput = unknown, TOutput = unknown> = (
-  input: TInput,
-  context: ToolExecutionContext
-) => Promise<TOutput> | TOutput;
-
 export interface GovernedToolExecutorOptions {
   auditSink?: AuditSink;
   approvalGate?: ApprovalGate;
   budgetGovernor?: BudgetGovernor;
+  budgetLedger?: BudgetLedger;
   clock?: SimClock;
   allowedTools?: readonly OperatorToolName[];
   idFactory?: () => string;
 }
 
-export type ToolExecutionFailureCode =
-  | 'UNKNOWN_TOOL'
-  | 'TOOL_UNAVAILABLE'
-  | 'INPUT_VALIDATION_FAILED'
-  | 'MISSING_GOVERNANCE_PORT'
-  | 'MISSING_HANDLER'
-  | 'AUDIT_INTENT_FAILED'
-  | 'GOVERNANCE_UNAVAILABLE'
-  | 'BUDGET_DENIED'
-  | 'APPROVAL_UNAVAILABLE'
-  | 'APPROVAL_DENIED'
-  | 'HANDLER_ERROR'
-  | 'OUTPUT_VALIDATION_FAILED'
-  | 'AUDIT_OUTCOME_FAILED';
-
-export interface ToolExecutionResult<T = unknown> {
-  success: boolean;
-  status: 'ok' | 'error' | 'blocked';
-  tool: string;
-  intent_id: string;
-  result?: T;
-  error?: string;
-  code?: ToolExecutionFailureCode;
-  duration_ms: number;
-  blocked?: boolean;
-}
-
-/**
- * The single governed operator-tool lifecycle shared by UI, CLI, and MCP consumers.
- * Invalid/unavailable calls fail before an audit intent. Once intent storage succeeds,
- * exactly one outcome is attempted after every blocked, failed, or successful lifecycle.
- */
+/** Shared, governed lifecycle used by every operator-tool transport. */
 export class GovernedToolExecutor {
   private readonly handlers = new Map<OperatorToolName, ToolHandler>();
   private readonly auditSink?: AuditSink;
   private readonly approvalGate?: ApprovalGate;
   private readonly budgetGovernor?: BudgetGovernor;
+  private readonly budgetLedger?: BudgetLedger;
   private readonly clock: SimClock;
   private readonly allowedTools?: ReadonlySet<OperatorToolName>;
   private readonly idFactory: () => string;
@@ -93,6 +74,7 @@ export class GovernedToolExecutor {
     this.auditSink = options.auditSink;
     this.approvalGate = options.approvalGate;
     this.budgetGovernor = options.budgetGovernor;
+    this.budgetLedger = options.budgetLedger;
     this.clock = options.clock ?? new SystemClock();
     this.allowedTools = options.allowedTools ? new Set(options.allowedTools) : undefined;
     this.idFactory = options.idFactory ?? generateUuid;
@@ -122,8 +104,16 @@ export class GovernedToolExecutor {
     context: ToolExecutionContext = {}
   ): Promise<ToolExecutionResult<T>> {
     const startTime = this.clock.now();
-    const intentId = this.idFactory();
-
+    const intentId = context.operation_id ?? this.idFactory();
+    if (!UUID_PATTERN.test(intentId)) {
+      return this.preflightFailure(
+        name,
+        intentId,
+        startTime,
+        'INPUT_VALIDATION_FAILED',
+        'operation_id must be a UUID and must be reused after every non-success response'
+      );
+    }
     if (!isOperatorToolName(name)) {
       return this.preflightFailure(
         name,
@@ -154,25 +144,6 @@ export class GovernedToolExecutor {
         `Validation error for tool '${name}': ${input.error.message}`
       );
     }
-
-    const auditSink = this.auditSink;
-    const approvalGate = this.approvalGate;
-    const budgetGovernor = this.budgetGovernor;
-    if (!auditSink || !approvalGate || !budgetGovernor) {
-      const missing = [
-        !auditSink ? 'AuditSink' : undefined,
-        !approvalGate ? 'ApprovalGate' : undefined,
-        !budgetGovernor ? 'BudgetGovernor' : undefined,
-      ].filter((port): port is string => port !== undefined);
-      return this.preflightFailure(
-        name,
-        intentId,
-        startTime,
-        'MISSING_GOVERNANCE_PORT',
-        `Execution refused: missing governance ports (${missing.join(', ')})`
-      );
-    }
-
     const handler = this.handlers.get(name);
     if (!handler) {
       return this.preflightFailure(
@@ -184,20 +155,86 @@ export class GovernedToolExecutor {
       );
     }
 
-    const actor = context.actor ?? 'ai';
-    const taskRef = context.task_ref ?? 'tool-execution';
+    const missing = this.missingPorts(definition.requires_reservation, definition.is_dangerous);
+    if (missing.length > 0) {
+      return this.preflightFailure(
+        name,
+        intentId,
+        startTime,
+        'MISSING_GOVERNANCE_PORT',
+        `Execution refused: missing governance ports (${missing.join(', ')})`
+      );
+    }
+
+    if (definition.requires_reservation) {
+      const ledger = this.budgetLedger;
+      if (!ledger) {
+        return this.preflightFailure(
+          name,
+          intentId,
+          startTime,
+          'MISSING_GOVERNANCE_PORT',
+          'Execution refused: missing governance ports (BudgetLedger)'
+        );
+      }
+      return executeReservedTool<T>(
+        {
+          clock: this.clock,
+          ledger,
+          approvalGate: this.approvalGate,
+          idFactory: this.idFactory,
+        },
+        name,
+        input.data,
+        handler,
+        context,
+        intentId,
+        startTime
+      );
+    }
+    return this.executeUnreserved<T>(name, input.data, handler, context, intentId, startTime);
+  }
+
+  private missingPorts(requiresReservation: boolean, isDangerous: boolean): string[] {
+    return [
+      !this.auditSink ? 'AuditSink' : undefined,
+      !this.budgetGovernor ? 'BudgetGovernor' : undefined,
+      requiresReservation && !this.budgetLedger ? 'BudgetLedger' : undefined,
+      isDangerous && !this.approvalGate ? 'ApprovalGate' : undefined,
+    ].filter((port): port is string => port !== undefined);
+  }
+
+  private async executeUnreserved<T>(
+    name: OperatorToolName,
+    input: unknown,
+    handler: ToolHandler,
+    context: ToolExecutionContext,
+    intentId: string,
+    startTime: number
+  ): Promise<ToolExecutionResult<T>> {
+    const auditSink = this.auditSink;
+    const budgetGovernor = this.budgetGovernor;
+    if (!auditSink || !budgetGovernor) {
+      return this.preflightFailure(
+        name,
+        intentId,
+        startTime,
+        'MISSING_GOVERNANCE_PORT',
+        'Execution refused: missing governance ports (AuditSink, BudgetGovernor)'
+      );
+    }
     try {
       auditSink.intent({
         kind: GevEvents.AuditIntent,
         id: intentId,
         ts: this.clock.iso(),
-        actor,
+        actor: context.actor ?? 'ai',
         action: `tool.${name}`,
         target: name,
-        params: input.data,
-        task_ref: taskRef,
+        params: input,
+        task_ref: context.task_ref ?? 'tool-execution',
       });
-    } catch (error: unknown) {
+    } catch (error) {
       return this.preflightFailure(
         name,
         intentId,
@@ -207,131 +244,80 @@ export class GovernedToolExecutor {
       );
     }
 
-    const finish = (
-      status: 'ok' | 'error' | 'blocked',
-      options: { result?: unknown; error?: string; code?: ToolExecutionFailureCode } = {}
-    ): ToolExecutionResult<T> => {
-      const durationMs = this.durationSince(startTime);
-      try {
-        auditSink.outcome({
-          kind: GevEvents.AuditOutcome,
-          intent_id: intentId,
-          ts: this.clock.iso(),
-          status,
-          result: options.result,
-          error: options.error,
-          duration_ms: durationMs,
-        });
-      } catch (error: unknown) {
-        return {
-          success: false,
-          status: 'error',
-          tool: name,
-          intent_id: intentId,
-          error: `Audit outcome failed for tool '${name}': ${normalizeError(error)}`,
-          code: 'AUDIT_OUTCOME_FAILED',
-          duration_ms: this.durationSince(startTime),
-          ...(status === 'blocked' ? { blocked: true } : {}),
-        };
-      }
-
-      if (status === 'ok') {
-        return {
-          success: true,
-          status,
-          tool: name,
-          intent_id: intentId,
-          result: options.result as T,
-          duration_ms: durationMs,
-        };
-      }
-      return {
-        success: false,
-        status,
-        tool: name,
-        intent_id: intentId,
-        error: options.error,
-        code: options.code,
-        duration_ms: durationMs,
-        ...(status === 'blocked' ? { blocked: true } : {}),
-      };
-    };
-
     try {
-      if (definition.is_mutating) {
-        const verdict = VerdictSchema.parse(
-          budgetGovernor.check({
-            action: `tool.${name}`,
-            // Reservation and settlement belong to Task 5.1.4. A zero estimate still
-            // performs the authoritative durable STASIS check without claiming M3.
-            estimate: { currency: 'usd', min: 0, max: 0 },
-          })
-        );
-        if (!verdict.allowed) {
-          return finish('blocked', {
-            code: 'BUDGET_DENIED',
-            error: `Execution blocked by BudgetGovernor: ${verdict.message} (${verdict.reason})`,
-          });
-        }
-      } else {
-        // Status, diagnostics, and audit reads remain available during STASIS, but the
-        // durable state read must still succeed and validate before their handlers run.
-        BudgetStateSchema.parse(budgetGovernor.state());
-      }
-    } catch (error: unknown) {
-      return finish('error', {
-        code: 'GOVERNANCE_UNAVAILABLE',
-        error: `Budget governance failed for tool '${name}': ${normalizeError(error)}`,
-      });
-    }
-
-    if (definition.is_dangerous) {
-      let approval: ApprovalResult;
-      try {
-        approval = ApprovalResultSchema.parse(
-          await approvalGate.request({
-            id: this.idFactory(),
-            ts: this.clock.iso(),
-            intent_id: intentId,
-            scopes: ['flags.write'],
-            nonce: this.idFactory(),
-            rationale: `Execution of dangerous tool '${name}' requires approval`,
-            expires_at: new Date(this.clock.now() + 60_000).toISOString(),
-          })
-        );
-      } catch (error: unknown) {
-        return finish('error', {
-          code: 'APPROVAL_UNAVAILABLE',
-          error: `Approval governance failed for tool '${name}': ${normalizeError(error)}`,
-        });
-      }
-      if (approval.decision !== 'approved') {
-        return finish('blocked', {
-          code: 'APPROVAL_DENIED',
-          error: `Tool execution rejected by ApprovalGate: decision was '${approval.decision}'`,
-        });
-      }
+      BudgetStateSchema.parse(budgetGovernor.state());
+    } catch (error) {
+      return this.finishUnreserved(
+        auditSink,
+        makeFailure(
+          this.clock,
+          name,
+          intentId,
+          startTime,
+          'GOVERNANCE_UNAVAILABLE',
+          `Budget governance failed for tool '${name}': ${normalizeError(error)}`,
+          'error'
+        )
+      );
     }
 
     let rawOutput: unknown;
     try {
-      rawOutput = await handler(input.data, context);
-    } catch (error: unknown) {
-      return finish('error', {
-        code: 'HANDLER_ERROR',
-        error: `Handler failed for tool '${name}': ${normalizeError(error)}`,
-      });
+      rawOutput = await runWithTimeout(
+        Promise.resolve(handler(input, { ...context, operation_id: intentId })),
+        OPERATOR_TOOLS[name].timeout_ms
+      );
+    } catch (error) {
+      return this.finishUnreserved(
+        auditSink,
+        makeFailure(
+          this.clock,
+          name,
+          intentId,
+          startTime,
+          isHandlerTimeout(error) ? 'HANDLER_TIMEOUT' : 'HANDLER_ERROR',
+          `Handler failed for tool '${name}': ${normalizeError(error)}`,
+          'error'
+        )
+      );
     }
 
-    const output = definition.outputSchema.safeParse(rawOutput);
-    if (!output.success) {
-      return finish('error', {
-        code: 'OUTPUT_VALIDATION_FAILED',
-        error: `Output validation error for tool '${name}': ${output.error.message}`,
-      });
-    }
+    const output = OPERATOR_TOOLS[name].outputSchema.safeParse(rawOutput);
+    const result = output.success
+      ? makeSuccess<T>(this.clock, name, intentId, startTime, output.data as T)
+      : makeFailure(
+          this.clock,
+          name,
+          intentId,
+          startTime,
+          'OUTPUT_VALIDATION_FAILED',
+          `Output validation error for tool '${name}': ${output.error.message}`,
+          'error'
+        );
+    return this.finishUnreserved(auditSink, result);
+  }
 
-    return finish('ok', { result: output.data });
+  private finishUnreserved<T>(
+    auditSink: AuditSink,
+    result: ToolExecutionResult<T>
+  ): ToolExecutionResult<T> {
+    try {
+      auditSink.outcome(toAuditOutcome(this.clock, result));
+      return result;
+    } catch (error) {
+      return {
+        ...makeFailure(
+          this.clock,
+          result.tool,
+          result.intent_id,
+          this.clock.now() - result.duration_ms,
+          'AUDIT_OUTCOME_FAILED',
+          `Audit outcome failed for tool '${result.tool}': ${normalizeError(error)}`,
+          'error'
+        ),
+        ...(result.status === 'blocked' ? { blocked: true } : {}),
+      };
+    }
   }
 
   private preflightFailure(
@@ -341,22 +327,6 @@ export class GovernedToolExecutor {
     code: ToolExecutionFailureCode,
     error: string
   ): ToolExecutionResult<never> {
-    return {
-      success: false,
-      status: 'error',
-      tool,
-      intent_id: intentId,
-      error,
-      code,
-      duration_ms: this.durationSince(startTime),
-    };
+    return makeFailure(this.clock, tool, intentId, startTime, code, error, 'error');
   }
-
-  private durationSince(startTime: number): number {
-    return Math.max(0, Math.floor(this.clock.now() - startTime));
-  }
-}
-
-function normalizeError(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

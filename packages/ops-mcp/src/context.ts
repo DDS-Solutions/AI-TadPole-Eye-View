@@ -5,6 +5,7 @@ import {
   type CapBudgetGovernor,
   type GovernanceRuntimeContext,
   type SqliteAuditSink,
+  type SqliteBudgetLedger,
   createGovernanceRuntimeContext,
 } from '@gev/governance';
 import { OpenSkyAdapter, createConfiguredProviderRegistry } from '@gev/providers';
@@ -17,6 +18,7 @@ export interface OperatorContext {
   clock: SimClock;
   auditSink: SqliteAuditSink;
   budgetGovernor: CapBudgetGovernor;
+  budgetLedger: SqliteBudgetLedger;
   approvalGate: ApprovalGate;
   toolExecutor: GovernedToolExecutor;
   openSkyAdapter: OpenSkyAdapter;
@@ -42,12 +44,14 @@ export function createOperatorContext(customContext?: Partial<OperatorContext>):
       clock,
       auditSink: customContext?.auditSink,
       budgetGovernor: customContext?.budgetGovernor,
+      budgetLedger: customContext?.budgetLedger,
       approvalGate: customContext?.approvalGate,
     });
   const toolExecutor = new GovernedToolExecutor({
     clock,
     auditSink: governanceContext.auditSink,
     budgetGovernor: governanceContext.budgetGovernor,
+    budgetLedger: governanceContext.budgetLedger,
     approvalGate: governanceContext.approvalGate,
     allowedTools: MCP_OPERATOR_TOOL_NAMES,
   });
@@ -56,6 +60,7 @@ export function createOperatorContext(customContext?: Partial<OperatorContext>):
     clock,
     auditSink: governanceContext.auditSink,
     budgetGovernor: governanceContext.budgetGovernor,
+    budgetLedger: governanceContext.budgetLedger,
     approvalGate: governanceContext.approvalGate,
     toolExecutor,
     openSkyAdapter: customContext?.openSkyAdapter ?? new OpenSkyAdapter({ clock }),

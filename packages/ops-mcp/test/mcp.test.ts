@@ -46,7 +46,7 @@ describe('GEV v2 Operator MCP Server (@gev/ops-mcp)', () => {
 
     expect(res?.id).toBe(2);
     const result = res?.result as {
-      tools: Array<{ name: string; _metadata: Record<string, boolean> }>;
+      tools: Array<{ name: string; _metadata: Record<string, unknown> }>;
     };
     const names = result.tools.map((tool) => tool.name);
     expect(names).toEqual(MCP_OPERATOR_TOOL_NAMES);
@@ -61,10 +61,11 @@ describe('GEV v2 Operator MCP Server (@gev/ops-mcp)', () => {
     const setFlagTool = result.tools.find((t) => t.name === 'set_flag') as {
       name: string;
       inputSchema: { properties: Record<string, unknown>; required?: string[] };
-      _metadata: Record<string, boolean>;
+      _metadata: Record<string, unknown>;
     };
     expect(setFlagTool?._metadata.is_mutating).toBe(true);
     expect(setFlagTool?._metadata.is_dangerous).toBe(true);
+    expect(setFlagTool?._metadata.requires_reservation).toBe(true);
     expect(setFlagTool?.inputSchema.properties.flag).toBeDefined();
     expect(setFlagTool?.inputSchema.required).toContain('flag');
   });
@@ -205,6 +206,34 @@ describe('GEV v2 Operator MCP Server (@gev/ops-mcp)', () => {
       _meta: { execution: { status: 'error', code: 'INPUT_VALIDATION_FAILED' } },
     });
     expect(ctx.auditSink.tail({ limit: 10 })).toEqual([]);
+  });
+
+  it('accepts a retained MCP operation ID and replays without a second mutation or audit pair', async () => {
+    const ctx = createOperatorContext();
+    const server = new GevMcpServer({ context: ctx });
+    const operationId = '00000000-0000-4000-8000-000000000123';
+    const call = () =>
+      server.handleRequest({
+        jsonrpc: '2.0',
+        id: 8,
+        method: 'tools/call',
+        params: {
+          name: 'set_flag',
+          arguments: { flag: 'opensky.enabled', enabled: false },
+          _meta: { operation_id: operationId },
+        },
+      });
+
+    const first = await call();
+    const replay = await call();
+    expect(first?.result).toMatchObject({
+      _meta: { execution: { intent_id: operationId, replayed: false } },
+    });
+    expect(replay?.result).toMatchObject({
+      _meta: { execution: { intent_id: operationId, replayed: true } },
+    });
+    expect(ctx.auditSink.tail({ limit: 10 })).toHaveLength(2);
+    expect(ctx.budgetLedger.lookup(operationId)?.state).toBe('SETTLED');
   });
 
   it('runs diagnostics check across governance, feeds, and memory', async () => {

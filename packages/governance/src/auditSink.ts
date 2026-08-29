@@ -17,6 +17,7 @@ import { openGovernanceDatabase } from './governanceDb.js';
 export interface SqliteAuditSinkOptions {
   dbPath?: string;
   clock?: SimClock;
+  db?: DatabaseSync;
 }
 
 export interface SqliteAuditRow {
@@ -45,11 +46,14 @@ export class SqliteAuditSink implements AuditSink {
   private readonly listeners: Set<(entry: AuditEntry) => void> = new Set();
   private readonly insertIntentStmt: ReturnType<DatabaseSync['prepare']>;
   private readonly insertOutcomeStmt: ReturnType<DatabaseSync['prepare']>;
+  private readonly ownsDb: boolean;
   private closed = false;
 
   constructor(options: SqliteAuditSinkOptions = {}) {
     this.clock = options.clock ?? new SystemClock();
-    this.db = openGovernanceDatabase({ dbPath: options.dbPath, clock: this.clock }).db;
+    this.ownsDb = options.db === undefined;
+    this.db =
+      options.db ?? openGovernanceDatabase({ dbPath: options.dbPath, clock: this.clock }).db;
 
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS audit_events (
@@ -96,6 +100,17 @@ export class SqliteAuditSink implements AuditSink {
     };
   }
 
+  /** Best-effort notification for an audit row committed by the local ledger unit-of-work. */
+  publishCommitted(entry: AuditEntry): void {
+    for (const listener of this.listeners) {
+      try {
+        listener(entry);
+      } catch {
+        // The durable SQLite row is authoritative; notification is best effort.
+      }
+    }
+  }
+
   /**
    * MUST be called before executing the described action.
    */
@@ -113,13 +128,7 @@ export class SqliteAuditSink implements AuditSink {
       intent.task_ref
     );
 
-    for (const listener of this.listeners) {
-      try {
-        listener(intent);
-      } catch {
-        // Prevent listener failures from blocking audit writes
-      }
-    }
+    this.publishCommitted(intent);
   }
 
   /**
@@ -140,13 +149,7 @@ export class SqliteAuditSink implements AuditSink {
       outcome.duration_ms ?? null
     );
 
-    for (const listener of this.listeners) {
-      try {
-        listener(outcome);
-      } catch {
-        // Prevent listener failures from blocking audit writes
-      }
-    }
+    this.publishCommitted(outcome);
   }
 
   /**
@@ -255,6 +258,8 @@ export class SqliteAuditSink implements AuditSink {
       return;
     }
     this.closed = true;
-    this.db.close();
+    if (this.ownsDb) {
+      this.db.close();
+    }
   }
 }

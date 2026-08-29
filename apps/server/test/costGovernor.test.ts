@@ -1,4 +1,5 @@
 import { FrozenClock } from '@gev/core';
+import { createGovernanceRuntimeContext } from '@gev/governance';
 import { Hono } from 'hono';
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../src/index.js';
@@ -6,7 +7,7 @@ import { CostGovernor } from '../src/middleware/costGovernor.js';
 
 describe('Cost Governor Middleware & Data Proxies (PLAN.md §10 Phase 1)', () => {
   it('serves telemetry feeds with Cost Governor headers (flights, ships, quakes, firms, gbfs)', async () => {
-    const { app } = createApp();
+    const { app, budgetGovernor } = createApp();
 
     // Flights
     const flightsRes = await app.request('/api/flights');
@@ -41,6 +42,7 @@ describe('Cost Governor Middleware & Data Proxies (PLAN.md §10 Phase 1)', () =>
     const gbfsData = await gbfsRes.json();
     expect(Array.isArray(gbfsData.stations)).toBe(true);
     expect(gbfsData.stations.length).toBeGreaterThan(0);
+    expect(budgetGovernor.state().spent_usd).toBe(0);
   });
 
   it('enforces TTL cache hits on repeated calls', async () => {
@@ -80,7 +82,12 @@ describe('Cost Governor Middleware & Data Proxies (PLAN.md §10 Phase 1)', () =>
 
   it('evaluates HTTP-date Retry-After headers against the injected clock', async () => {
     const clock = new FrozenClock(Date.parse('2026-08-28T12:00:00.000Z'));
-    const governor = new CostGovernor({ clock });
+    const governor = new CostGovernor({
+      clock,
+      tiers: {
+        ships: { ttlSeconds: 15, costPerFetchUsd: 0, maxStaleSeconds: 300 },
+      },
+    });
     const app = new Hono();
     app.use('/feed/*', governor.middleware('ships'));
     app.get('/feed/data', (c) => {
@@ -93,5 +100,55 @@ describe('Cost Governor Middleware & Data Proxies (PLAN.md §10 Phase 1)', () =>
 
     expect(cooldownResponse.status).toBe(429);
     expect(cooldownResponse.headers.get('Retry-After')).toBe('120');
+  });
+
+  it('replays a retained billable operation ID after TTL expiry without double spend', async () => {
+    const clock = new FrozenClock(Date.parse('2026-08-28T12:00:00.000Z'));
+    const runtime = createGovernanceRuntimeContext({ clock, dbPath: ':memory:', capUsd: 1 });
+    const governor = new CostGovernor({
+      clock,
+      budgetLedger: runtime.budgetLedger,
+      tiers: {
+        test: { ttlSeconds: 5, costPerFetchUsd: 0.0001, maxStaleSeconds: 60 },
+      },
+    });
+    const app = new Hono();
+    app.use('/feed/*', governor.middleware('test'));
+    app.get('/feed/data', (c) => c.json({ stable: true }));
+    const operationId = '00000000-0000-4000-8000-000000000321';
+    try {
+      const first = await app.request('/feed/data', {
+        headers: { 'Idempotency-Key': operationId },
+      });
+      expect(first.status).toBe(200);
+      expect(runtime.budgetGovernor.state().spent_usd).toBe(0.0001);
+
+      clock.setTime(clock.now() + 6_000);
+      const replay = await app.request('/feed/data', {
+        headers: { 'Idempotency-Key': operationId },
+      });
+      expect(replay.status).toBe(200);
+      expect(replay.headers.get('X-GEV-Idempotent-Replay')).toBe('true');
+      expect(runtime.budgetGovernor.state().spent_usd).toBe(0.0001);
+
+      const conflict = await app.request('/feed/data?different=true', {
+        headers: { 'Idempotency-Key': operationId },
+      });
+      expect(conflict.status).toBe(409);
+      await expect(conflict.json()).resolves.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+    } finally {
+      runtime.close();
+    }
+  });
+
+  it('fails closed before a billable route when no durable ledger is composed', async () => {
+    const governor = new CostGovernor();
+    const app = new Hono();
+    app.use('/feed/*', governor.middleware('ships'));
+    app.get('/feed/data', (c) => c.json({ should_not_execute: true }));
+
+    const response = await app.request('/feed/data');
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({ code: 'LEDGER_UNAVAILABLE' });
   });
 });

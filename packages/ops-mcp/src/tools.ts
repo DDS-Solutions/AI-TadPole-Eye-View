@@ -20,7 +20,7 @@ import type {
   TailLogsInput,
   TailLogsOutput,
 } from '@gev/contracts';
-import { type ToolExecutionResult, deserializeScene } from '@gev/core';
+import { type ToolExecutionContext, type ToolExecutionResult, deserializeScene } from '@gev/core';
 import {
   listProviderRegistryFeeds,
   resolveFixturePath,
@@ -363,10 +363,12 @@ export function registerOperatorToolHandlers(ctx: OperatorContext): void {
 export async function executeOperatorTool(
   ctx: OperatorContext,
   name: string,
-  args: unknown = {}
+  args: unknown = {},
+  context: Pick<ToolExecutionContext, 'operation_id'> = {}
 ): Promise<ToolExecutionResult> {
   return ctx.toolExecutor.execute(name, args, {
     actor: 'ai',
     task_ref: 'mcp-tool-call',
+    ...context,
   });
 }
