@@ -1,4 +1,4 @@
-import type { ApprovalGate, AuditSink, BudgetGovernor } from '@gev/contracts';
+import type { ApprovalGate, AuditEntry, AuditSink, BudgetGovernor } from '@gev/contracts';
 import { describe, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
 import {
@@ -9,6 +9,7 @@ import {
   createVoiceSessionMachine,
   voiceSessionMachine,
 } from '../src/index.js';
+import { TestBudgetLedger } from './budgetLedgerFixture.js';
 
 function createAllowingBudgetGovernor(): BudgetGovernor {
   return {
@@ -44,12 +45,11 @@ function createAuditSink(): AuditSink {
 describe('Phase 3 Core Framework (@gev/core)', () => {
   describe('GovernedToolExecutor', () => {
     it('executes tool, validates schemas, and logs AuditIntent and AuditOutcome', async () => {
-      const intentSpy = vi.fn();
-      const outcomeSpy = vi.fn();
+      const entries: AuditEntry[] = [];
 
       const mockAuditSink: AuditSink = {
-        intent: intentSpy,
-        outcome: outcomeSpy,
+        intent: () => {},
+        outcome: () => {},
         tail: () => [],
       };
 
@@ -58,6 +58,7 @@ describe('Phase 3 Core Framework (@gev/core)', () => {
         auditSink: mockAuditSink,
         approvalGate: createApprovingGate(),
         budgetGovernor: createAllowingBudgetGovernor(),
+        budgetLedger: new TestBudgetLedger({ entries }),
         clock,
       });
 
@@ -85,8 +86,7 @@ describe('Phase 3 Core Framework (@gev/core)', () => {
       });
 
       // Verify Pre-execution AuditIntent
-      expect(intentSpy).toHaveBeenCalledTimes(1);
-      expect(intentSpy).toHaveBeenCalledWith(
+      expect(entries[0]).toEqual(
         expect.objectContaining({
           action: 'tool.fly_to_location',
           params: expect.objectContaining({ lat: 48.8566, lon: 2.3522 }),
@@ -95,8 +95,7 @@ describe('Phase 3 Core Framework (@gev/core)', () => {
       );
 
       // Verify Post-execution AuditOutcome
-      expect(outcomeSpy).toHaveBeenCalledTimes(1);
-      expect(outcomeSpy).toHaveBeenCalledWith(
+      expect(entries[1]).toEqual(
         expect.objectContaining({
           status: 'ok',
           result: expect.objectContaining({ moved: true }),
@@ -124,6 +123,7 @@ describe('Phase 3 Core Framework (@gev/core)', () => {
         auditSink: createAuditSink(),
         approvalGate: createApprovingGate(),
         budgetGovernor: mockGovernor,
+        budgetLedger: new TestBudgetLedger({ deny: true }),
       });
       executor.register('toggle_layer', (input) => ({ ...input, updated: true }));
       const res = await executor.execute('toggle_layer', { layer: 'flights', enabled: true });
@@ -131,7 +131,7 @@ describe('Phase 3 Core Framework (@gev/core)', () => {
       expect(res.success).toBe(false);
       expect(res.blocked).toBe(true);
       expect(res.code).toBe('BUDGET_DENIED');
-      expect(res.error).toContain('Hard cap exceeded');
+      expect(res.error).toContain('STASIS active');
     });
 
     it('queries ApprovalGate for dangerous tools', async () => {
@@ -150,6 +150,7 @@ describe('Phase 3 Core Framework (@gev/core)', () => {
         auditSink: createAuditSink(),
         approvalGate: mockApprovalGate,
         budgetGovernor: createAllowingBudgetGovernor(),
+        budgetLedger: new TestBudgetLedger(),
       });
       executor.register('load_scene', () => {
         throw new Error('handler must not execute after approval denial');

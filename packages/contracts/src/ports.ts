@@ -11,7 +11,7 @@
 import { z } from 'zod';
 
 /** Wire-format version. Adapters negotiate on this value. */
-export const PORTS_VERSION = '0.2.0';
+export const PORTS_VERSION = '0.3.0';
 
 /**
  * Canonical event names — shared vocabulary with AI-TadPole-OS.

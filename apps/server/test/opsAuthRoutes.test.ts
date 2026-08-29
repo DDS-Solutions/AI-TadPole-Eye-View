@@ -6,6 +6,7 @@ const OPS_TOKEN = 'route-coverage-ops-token';
 
 const PROTECTED_OPS_ROUTES = [
   { method: 'GET', path: '/ops/audit/stream' },
+  { method: 'POST', path: '/ops/budget/reconcile' },
   { method: 'POST', path: '/ops/seed/reload' },
   { method: 'GET', path: '/ops/audit' },
   { method: 'GET', path: '/ops/status' },
@@ -82,7 +83,7 @@ describe('operations route authentication coverage', () => {
           headers: { Authorization: `Bearer ${OPS_TOKEN}` },
         });
 
-        expect(response.status).toBe(200);
+        expect(response.status).toBe(path === '/ops/budget/reconcile' ? 400 : 200);
         if (path === '/ops/audit/stream') {
           expect(response.headers.get('content-type')).toContain('text/event-stream');
           await response.body?.cancel();
@@ -169,12 +170,39 @@ describe('operations route authentication coverage', () => {
         headers: { Authorization: `Bearer ${OPS_TOKEN}`, 'X-Task-Ref': taskRef },
       });
       expect(response.status).toBe(503);
-      await expect(response.json()).resolves.toMatchObject({ code: 'APPROVAL_UNAVAILABLE' });
+      const result = (await response.json()) as { code: string; intent_id: string };
+      expect(result).toMatchObject({ code: 'APPROVAL_UNAVAILABLE' });
+      expect(runtime.budgetLedger.lookup(result.intent_id)?.state).toBe('REFUNDED');
+      expect(runtime.budgetGovernor.state().spent_usd).toBe(0);
       const entries = runtime.auditSink.tailByTaskRef(taskRef);
       expect(entries.map((entry) => entry.kind)).toEqual(['audit.intent', 'audit.outcome']);
       expect(entries[1]).toMatchObject({ status: 'error' });
     } finally {
       runtime.close();
+    }
+  });
+
+  it('replays one seed reload operation without a second approval, action, or settlement', async () => {
+    const context = createProtectedApp();
+    const operationId = '00000000-0000-4000-8000-000000000456';
+    const request = () =>
+      context.app.request('/ops/seed/reload', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${OPS_TOKEN}`,
+          'Idempotency-Key': operationId,
+        },
+      });
+    try {
+      const first = await request();
+      const replay = await request();
+      expect(first.status).toBe(200);
+      expect(replay.status).toBe(200);
+      await expect(replay.json()).resolves.toMatchObject({ intent_id: operationId, status: 'ok' });
+      expect(context.budgetGovernor.state().spent_usd).toBe(0.05);
+      expect(context.auditSink.tailByTaskRef(`seed-reload:${operationId}`)).toHaveLength(2);
+    } finally {
+      context.governanceContext.close();
     }
   });
 

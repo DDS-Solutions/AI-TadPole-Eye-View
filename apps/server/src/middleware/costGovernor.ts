@@ -1,28 +1,28 @@
+import crypto from 'node:crypto';
+import {
+  GevEvents,
+  type LedgerOperation,
+  type LedgerReservationResult,
+  M3_FINGERPRINT_VERSION,
+  M3_LEDGER_CONTRACT_VERSION,
+} from '@gev/contracts';
 import type { SimClock } from '@gev/core';
 import { SystemClock } from '@gev/core';
-import type { CapBudgetGovernor } from '@gev/governance';
+import { LedgerOperationError, type SqliteBudgetLedger } from '@gev/governance';
 import type { Context, Next } from 'hono';
+import {
+  feedFailureResult,
+  isFeedTerminal,
+  readFeedTerminalResponse,
+  withRequestTimeout,
+} from './billableFeedResult.js';
+import { DEFAULT_PROVIDER_TIERS, type ProviderTierConfig } from './costGovernorConfig.js';
 
-export interface ProviderTierConfig {
-  ttlSeconds: number;
-  costPerFetchUsd: number;
-  maxStaleSeconds: number;
-}
-
-export const DEFAULT_PROVIDER_TIERS: Record<string, ProviderTierConfig> = {
-  flights: { ttlSeconds: 5, costPerFetchUsd: 0.0001, maxStaleSeconds: 60 },
-  ships: { ttlSeconds: 15, costPerFetchUsd: 0.0005, maxStaleSeconds: 300 },
-  quakes: { ttlSeconds: 60, costPerFetchUsd: 0.0, maxStaleSeconds: 3600 },
-  firms: { ttlSeconds: 300, costPerFetchUsd: 0.001, maxStaleSeconds: 7200 },
-  gbfs: { ttlSeconds: 30, costPerFetchUsd: 0.0, maxStaleSeconds: 600 },
-  weather: { ttlSeconds: 300, costPerFetchUsd: 0.0, maxStaleSeconds: 3600 },
-  launches: { ttlSeconds: 600, costPerFetchUsd: 0.0, maxStaleSeconds: 7200 },
-  radio: { ttlSeconds: 60, costPerFetchUsd: 0.0, maxStaleSeconds: 600 },
-  cctv: { ttlSeconds: 10, costPerFetchUsd: 0.001, maxStaleSeconds: 120 },
-  overpass: { ttlSeconds: 30, costPerFetchUsd: 0.0, maxStaleSeconds: 600 },
-};
+export { DEFAULT_PROVIDER_TIERS, type ProviderTierConfig } from './costGovernorConfig.js';
 
 const MAX_CACHE_ENTRIES = 200;
+const BILLABLE_REQUEST_TIMEOUT_MS = 30_000;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 interface CacheEntry {
   body: unknown;
@@ -36,9 +36,16 @@ interface ProviderState {
   cache: Map<string, CacheEntry>;
 }
 
+interface ActiveReservation {
+  operationId: string;
+  requestFingerprint: string;
+  startedAt: number;
+  actualMicrousd: number;
+}
+
 export interface CostGovernorOptions {
   clock?: SimClock;
-  budgetGovernor?: CapBudgetGovernor;
+  budgetLedger?: SqliteBudgetLedger;
   tiers?: Record<string, ProviderTierConfig>;
 }
 
@@ -48,13 +55,13 @@ export interface CostGovernorOptions {
  */
 export class CostGovernor {
   private readonly clock: SimClock;
-  private readonly budgetGovernor?: CapBudgetGovernor;
+  private readonly budgetLedger?: SqliteBudgetLedger;
   private readonly tiers: Record<string, ProviderTierConfig>;
   private readonly providerStates: Map<string, ProviderState> = new Map();
 
   constructor(options: CostGovernorOptions = {}) {
     this.clock = options.clock ?? new SystemClock();
-    this.budgetGovernor = options.budgetGovernor;
+    this.budgetLedger = options.budgetLedger;
     this.tiers = options.tiers ?? DEFAULT_PROVIDER_TIERS;
   }
 
@@ -104,37 +111,31 @@ export class CostGovernor {
         return c.json(cached.body, cached.status as 200);
       }
 
-      // If budget governor is attached, verify spend budget is allowed
-      if (this.budgetGovernor && tier.costPerFetchUsd > 0) {
-        const verdict = this.budgetGovernor.check({
-          action: `feed.fetch.${providerName}`,
-          estimate: {
-            currency: 'usd',
-            min: tier.costPerFetchUsd,
-            max: tier.costPerFetchUsd,
-          },
-        });
-
-        if (!verdict.allowed) {
-          c.header('X-GEV-Budget-Exceeded', 'true');
-          if (cached) {
-            c.header('X-GEV-Stale', 'true');
-            c.header('X-GEV-Cache-Source', 'budget-fallback');
-            return c.json(cached.body, cached.status as 200);
-          }
-          return c.json(
-            {
-              error: 'STASIS: Budget exceeded for feed',
-              reason: verdict.reason,
-              message: verdict.message,
-            },
-            429
-          );
-        }
+      let activeReservation: ActiveReservation | undefined;
+      if (tier.costPerFetchUsd > 0) {
+        const reservation = this.reserveBillable(c, providerName, cacheKey, tier, cached);
+        if (reservation instanceof Response) return reservation;
+        activeReservation = reservation;
       }
 
       // Proceed with upstream fetch
-      await next();
+      try {
+        await withRequestTimeout(next(), BILLABLE_REQUEST_TIMEOUT_MS);
+      } catch (error) {
+        if (activeReservation) {
+          this.markAmbiguous(activeReservation, providerName, error);
+          c.res = c.json(
+            {
+              error: 'Billable provider outcome is ambiguous and requires human reconciliation',
+              code: 'OPERATION_IN_DOUBT',
+              operation_id: activeReservation.operationId,
+            },
+            503
+          );
+          return;
+        }
+        throw error;
+      }
 
       // Inspect response status and headers
       const status = c.res.status;
@@ -172,11 +173,6 @@ export class CostGovernor {
           });
           c.header('X-GEV-Cache', 'MISS');
           c.header('X-GEV-TTL-Sec', tier.ttlSeconds.toString());
-
-          // Record spend after successful upstream fetch (H1 fix)
-          if (this.budgetGovernor && tier.costPerFetchUsd > 0) {
-            this.budgetGovernor.recordSpend(tier.costPerFetchUsd);
-          }
         } catch {
           // Ignore non-JSON bodies (e.g. audio streams)
         }
@@ -190,6 +186,14 @@ export class CostGovernor {
             'X-GEV-Cache-Source': 'error-fallback',
           },
         });
+      }
+
+      if (activeReservation) {
+        const settlementFailure = await this.settleBillable(c, activeReservation, providerName);
+        if (settlementFailure) {
+          c.res = settlementFailure;
+          return;
+        }
       }
 
       return;
@@ -220,5 +224,263 @@ export class CostGovernor {
       this.providerStates.set(providerName, state);
     }
     return state;
+  }
+
+  private reserveBillable(
+    c: Context,
+    providerName: string,
+    cacheKey: string,
+    tier: ProviderTierConfig,
+    cached: CacheEntry | undefined
+  ): ActiveReservation | Response {
+    const ledger = this.budgetLedger;
+    if (!ledger) {
+      return c.json(
+        { error: 'Durable budget ledger is unavailable', code: 'LEDGER_UNAVAILABLE' },
+        503
+      );
+    }
+    const suppliedId = c.req.header('Idempotency-Key');
+    const operationId = suppliedId ?? crypto.randomUUID();
+    c.header('X-GEV-Operation-Id', operationId);
+    if (!UUID_PATTERN.test(operationId)) {
+      return c.json({ error: 'Idempotency-Key must be a UUID', code: 'INVALID_OPERATION_ID' }, 400);
+    }
+    const startedAt = this.clock.now();
+    const requestDigest = crypto.createHash('sha256').update(cacheKey, 'utf8').digest('hex');
+    let result: LedgerReservationResult;
+    try {
+      result = ledger.reserve({
+        operation_id: operationId,
+        fingerprint_components: {
+          contract_version: M3_LEDGER_CONTRACT_VERSION,
+          fingerprint_version: M3_FINGERPRINT_VERSION,
+          actor: 'system',
+          tenant_id: null,
+          action: `feed.fetch.${providerName}`,
+          input: { provider: providerName, request_digest: requestDigest },
+          task_ref: `provider-fetch:${providerName}`,
+          is_mutating: false,
+          estimate: {
+            currency: 'usd',
+            min: tier.costPerFetchUsd,
+            max: tier.costPerFetchUsd,
+          },
+        },
+        deadline_at: new Date(startedAt + BILLABLE_REQUEST_TIMEOUT_MS).toISOString(),
+        audit_intent: {
+          kind: GevEvents.AuditIntent,
+          id: operationId,
+          ts: this.clock.iso(),
+          actor: 'system',
+          action: `feed.fetch.${providerName}`,
+          target: providerName,
+          params: { request_digest: requestDigest },
+          task_ref: `provider-fetch:${providerName}`,
+        },
+      });
+    } catch {
+      return c.json(
+        { error: 'Durable budget ledger is unavailable', code: 'LEDGER_UNAVAILABLE' },
+        503
+      );
+    }
+
+    if (result.kind === 'denied') {
+      c.header('X-GEV-Budget-Exceeded', 'true');
+      if (cached) {
+        c.header('X-GEV-Stale', 'true');
+        c.header('X-GEV-Cache-Source', 'budget-fallback');
+        return c.json(cached.body, cached.status as 200);
+      }
+      return c.json(
+        {
+          error: 'STASIS: Budget reservation denied for feed',
+          code: 'BUDGET_DENIED',
+          operation_id: operationId,
+        },
+        429
+      );
+    }
+    if (result.kind === 'conflict') {
+      return c.json(
+        { error: result.message, code: 'IDEMPOTENCY_CONFLICT', operation_id: operationId },
+        409
+      );
+    }
+    if (result.kind === 'in_progress') {
+      c.header('Retry-After', '1');
+      return c.json(
+        {
+          error: 'Original operation is still active',
+          code: 'OPERATION_IN_PROGRESS',
+          operation_id: operationId,
+        },
+        409
+      );
+    }
+    if (result.kind === 'in_doubt') {
+      return c.json(
+        {
+          error: 'Original operation requires human reconciliation',
+          code: 'OPERATION_IN_DOUBT',
+          operation_id: operationId,
+        },
+        409
+      );
+    }
+    if (result.kind === 'replay') {
+      return this.replay(c, result.operation);
+    }
+
+    try {
+      const executing = ledger.startExecution(operationId, result.operation.request_fingerprint);
+      return {
+        operationId,
+        requestFingerprint: executing.request_fingerprint,
+        startedAt,
+        actualMicrousd: Math.ceil(tier.costPerFetchUsd * 1_000_000),
+      };
+    } catch (error) {
+      if (error instanceof LedgerOperationError && error.code === 'RESERVATION_EXPIRED') {
+        this.refundExpired(result.operation, providerName);
+        return c.json(
+          {
+            error: 'Reservation expired before dispatch',
+            code: 'RESERVATION_EXPIRED',
+            operation_id: operationId,
+          },
+          409
+        );
+      }
+      return c.json(
+        { error: 'Durable budget ledger is unavailable', code: 'LEDGER_UNAVAILABLE' },
+        503
+      );
+    }
+  }
+
+  private refundExpired(operation: LedgerOperation, providerName: string): void {
+    const terminal = feedFailureResult(
+      operation.operation_id,
+      'RESERVATION_EXPIRED',
+      'Reservation expired before dispatch'
+    );
+    this.budgetLedger?.refund({
+      operation_id: operation.operation_id,
+      request_fingerprint: operation.request_fingerprint,
+      actual_microusd: 0,
+      terminal_result: terminal,
+      audit_outcome: {
+        kind: GevEvents.AuditOutcome,
+        intent_id: operation.operation_id,
+        ts: this.clock.iso(),
+        status: 'blocked',
+        result: terminal,
+        error: `Reservation expired before ${providerName} dispatch`,
+        duration_ms: 0,
+      },
+      evidence: null,
+    });
+  }
+
+  private async settleBillable(
+    c: Context,
+    reservation: ActiveReservation,
+    providerName: string
+  ): Promise<Response | null> {
+    const terminal = await readFeedTerminalResponse(c.res);
+    const ledger = this.budgetLedger;
+    if (!ledger) {
+      return c.json(
+        { error: 'Durable budget ledger is unavailable', code: 'LEDGER_UNAVAILABLE' },
+        503
+      );
+    }
+    try {
+      const operation = ledger.settle({
+        operation_id: reservation.operationId,
+        request_fingerprint: reservation.requestFingerprint,
+        actual_microusd: reservation.actualMicrousd,
+        terminal_result: terminal,
+        audit_outcome: {
+          kind: GevEvents.AuditOutcome,
+          intent_id: reservation.operationId,
+          ts: this.clock.iso(),
+          status: terminal.status < 400 ? 'ok' : 'error',
+          result: terminal,
+          duration_ms: Math.max(0, this.clock.now() - reservation.startedAt),
+        },
+      });
+      if (!isFeedTerminal(operation.terminal_result)) {
+        return c.json(
+          { error: 'Provider response exceeded durable replay bounds', code: 'OUTPUT_TOO_LARGE' },
+          500
+        );
+      }
+      return null;
+    } catch (error) {
+      this.markAmbiguous(reservation, providerName, error);
+      return c.json(
+        {
+          error: 'Provider action may have completed; settlement is ambiguous',
+          code: 'OPERATION_IN_DOUBT',
+          operation_id: reservation.operationId,
+        },
+        503
+      );
+    }
+  }
+
+  private markAmbiguous(
+    reservation: ActiveReservation,
+    providerName: string,
+    error: unknown
+  ): void {
+    const message = error instanceof Error ? error.message : String(error);
+    const terminal = feedFailureResult(
+      reservation.operationId,
+      'OPERATION_IN_DOUBT',
+      `${providerName} outcome is ambiguous`
+    );
+    try {
+      this.budgetLedger?.markInDoubt({
+        operation_id: reservation.operationId,
+        request_fingerprint: reservation.requestFingerprint,
+        reason: message,
+        audit_outcome: {
+          kind: GevEvents.AuditOutcome,
+          intent_id: reservation.operationId,
+          ts: this.clock.iso(),
+          status: 'error',
+          result: terminal,
+          error: terminal.error,
+          duration_ms: Math.max(0, this.clock.now() - reservation.startedAt),
+        },
+      });
+    } catch {
+      // The public result remains typed and fail closed even if storage is unavailable.
+    }
+  }
+
+  private replay(c: Context, operation: LedgerOperation): Response {
+    if (!isFeedTerminal(operation.terminal_result)) {
+      return c.json(
+        {
+          error: 'Stored terminal result cannot be replayed as a provider response',
+          code: operation.state === 'DENIED' ? 'BUDGET_DENIED' : 'OUTPUT_TOO_LARGE',
+          operation_id: operation.operation_id,
+        },
+        operation.state === 'DENIED' ? 429 : 409
+      );
+    }
+    c.header('X-GEV-Idempotent-Replay', 'true');
+    c.header('Content-Type', operation.terminal_result.contentType);
+    return c.body(
+      typeof operation.terminal_result.body === 'string'
+        ? operation.terminal_result.body
+        : JSON.stringify(operation.terminal_result.body),
+      operation.terminal_result.status as 200
+    );
   }
 }

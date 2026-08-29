@@ -11,8 +11,7 @@ import {
 } from '@gev/contracts';
 import { type SimClock, SystemClock } from '@gev/core';
 import { openGovernanceDatabase, withImmediateTransaction } from './governanceDb.js';
-
-const MICRO_USD_PER_USD = 1_000_000;
+import { fromMicrousd, toMicrousd } from './money.js';
 
 interface BudgetStateRow {
   period_start: string;
@@ -33,27 +32,8 @@ export interface CapBudgetGovernorOptions {
   warnThresholdPct?: number;
   clock?: SimClock;
   dbPath?: string;
-}
-
-function toMicrousd(
-  value: number,
-  field: string,
-  allowZero: boolean,
-  rounding: 'up' | 'down'
-): number {
-  if (!Number.isFinite(value) || value < 0 || (!allowZero && value === 0)) {
-    throw new Error(`${field} must be a finite ${allowZero ? 'non-negative' : 'positive'} number`);
-  }
-  const scaled = value * MICRO_USD_PER_USD;
-  const microusd = rounding === 'up' ? Math.ceil(scaled) : Math.floor(scaled);
-  if (!Number.isSafeInteger(microusd) || (!allowZero && microusd === 0)) {
-    throw new Error(`${field} is outside the supported micro-USD range`);
-  }
-  return microusd;
-}
-
-function fromMicrousd(value: number): number {
-  return value / MICRO_USD_PER_USD;
+  db?: DatabaseSync;
+  resolvedDbPath?: string;
 }
 
 function parseWarnThreshold(value: number): number {
@@ -72,13 +52,17 @@ export class CapBudgetGovernor implements BudgetGovernor {
   private readonly clock: SimClock;
   private readonly db: DatabaseSync;
   private readonly dbPath: string;
+  private readonly ownsDb: boolean;
   private closed = false;
 
   constructor(options: CapBudgetGovernorOptions = {}) {
     this.clock = options.clock ?? new SystemClock();
-    const opened = openGovernanceDatabase({ dbPath: options.dbPath, clock: this.clock });
+    const opened = options.db
+      ? { db: options.db, dbPath: options.resolvedDbPath ?? options.dbPath ?? ':memory:' }
+      : openGovernanceDatabase({ dbPath: options.dbPath, clock: this.clock });
     this.db = opened.db;
     this.dbPath = opened.dbPath;
+    this.ownsDb = options.db === undefined;
 
     const envCapRaw = process.env.GEV_BUDGET_CAP_USD;
     const envCap = envCapRaw ? Number.parseFloat(envCapRaw) : undefined;
@@ -135,7 +119,9 @@ export class CapBudgetGovernor implements BudgetGovernor {
           );
       });
     } catch (error) {
-      this.db.close();
+      if (this.ownsDb) {
+        this.db.close();
+      }
       throw error;
     }
   }
@@ -233,6 +219,14 @@ export class CapBudgetGovernor implements BudgetGovernor {
     }
 
     withImmediateTransaction(this.db, () => {
+      const unresolved = this.db
+        .prepare(
+          `SELECT COUNT(*) AS count FROM governance_budget_operations WHERE state = 'IN_DOUBT'`
+        )
+        .get() as { count: number };
+      if (unresolved.count > 0) {
+        throw new Error('STASIS resume requires human reconciliation of every IN_DOUBT operation');
+      }
       this.db
         .prepare(`
           UPDATE governance_budget_state
@@ -251,7 +245,9 @@ export class CapBudgetGovernor implements BudgetGovernor {
       return;
     }
     this.closed = true;
-    this.db.close();
+    if (this.ownsDb) {
+      this.db.close();
+    }
   }
 
   private readRowOrNull(): BudgetStateRow | null {

@@ -15,7 +15,15 @@ export interface McpToolDefinition {
   description: string;
   inputSchema: Record<string, unknown>;
   outputSchema: Record<string, unknown>;
-  _metadata: Pick<ToolMetadata, 'is_mutating' | 'is_dangerous' | 'is_cacheable'>;
+  _metadata: Pick<
+    ToolMetadata,
+    | 'is_mutating'
+    | 'is_dangerous'
+    | 'is_cacheable'
+    | 'requires_reservation'
+    | 'cost_estimate'
+    | 'timeout_ms'
+  >;
 }
 
 export function getOpenAIToolDefinitions(
@@ -48,6 +56,9 @@ export function getMcpToolDefinitions(
         is_mutating: definition.is_mutating,
         is_dangerous: definition.is_dangerous,
         is_cacheable: definition.is_cacheable,
+        requires_reservation: definition.requires_reservation,
+        cost_estimate: definition.cost_estimate,
+        timeout_ms: definition.timeout_ms,
       },
     };
   });

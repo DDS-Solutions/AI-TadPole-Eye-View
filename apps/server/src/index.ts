@@ -27,10 +27,11 @@ import { getConnInfo } from '@hono/node-server/conninfo';
 import { type Context, Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { WebSocketServer } from 'ws';
-import { CostGovernor } from './middleware/costGovernor.js';
+import { CostGovernor, DEFAULT_PROVIDER_TIERS } from './middleware/costGovernor.js';
 import { InMemoryRateLimiter, type OpsAuthOptions, createOpsAuth } from './middleware/opsAuth.js';
 import { PRODUCT_VERSION } from './productVersion.js';
 import { createAuditStreamRouter } from './routes/auditStream.js';
+import { createBudgetReconciliationRouter } from './routes/budgetReconciliation.js';
 import { createCctvRouter } from './routes/cctv.js';
 import {
   CollabRoomManager,
@@ -103,8 +104,21 @@ export function createApp(options: CreateAppOptions = {}) {
   const weatherAdapter = new WeatherAdapter({ clock });
 
   // One shared governance runtime is used by every server route and middleware.
-  const { auditSink, budgetGovernor, approvalGate } = governanceContext;
-  const costGovernor = new CostGovernor({ clock, budgetGovernor });
+  const { auditSink, budgetGovernor, budgetLedger, approvalGate } = governanceContext;
+  const costGovernor = new CostGovernor({
+    clock,
+    budgetLedger,
+    ...(providerRegistry.requested_mode === 'seed'
+      ? {
+          tiers: Object.fromEntries(
+            Object.entries(DEFAULT_PROVIDER_TIERS).map(([name, tier]) => [
+              name,
+              { ...tier, costPerFetchUsd: 0 },
+            ])
+          ),
+        }
+      : {}),
+  });
   const collabRoomManager = new CollabRoomManager(clock);
 
   // Global Middleware
@@ -204,10 +218,11 @@ export function createApp(options: CreateAppOptions = {}) {
 
   // M1 Observer Real-Time Audit SSE Stream
   app.route('/ops/audit', createAuditStreamRouter(auditSink, clock));
+  app.route('/ops/budget', createBudgetReconciliationRouter({ clock, budgetLedger }));
 
   app.route(
     '/ops/seed',
-    createSeedReloadRouter({ clock, auditSink, budgetGovernor, approvalGate, openSkyAdapter })
+    createSeedReloadRouter({ clock, budgetLedger, approvalGate, openSkyAdapter })
   );
 
   // Ops Audit Log Query
@@ -264,7 +279,31 @@ export function createApp(options: CreateAppOptions = {}) {
       task_ref: 'ops-resume',
     });
 
-    budgetGovernor.resume(actor);
+    try {
+      budgetGovernor.resume(actor);
+    } catch (error) {
+      const reconciliationRequired =
+        error instanceof Error && error.message.includes('reconciliation');
+      auditSink.outcome({
+        kind: GevEvents.AuditOutcome,
+        intent_id: intentId,
+        ts: new Date(clock.now()).toISOString(),
+        status: 'blocked',
+        error: reconciliationRequired
+          ? 'Human reconciliation is required before STASIS resume'
+          : 'STASIS resume failed closed',
+        duration_ms: clock.now() - startTime,
+      });
+      return c.json(
+        {
+          error: reconciliationRequired
+            ? 'Reconcile every ambiguous operation before resuming STASIS'
+            : 'STASIS resume failed closed',
+          code: reconciliationRequired ? 'RECONCILIATION_REQUIRED' : 'GOVERNANCE_UNAVAILABLE',
+        },
+        reconciliationRequired ? 409 : 503
+      );
+    }
 
     // Rule 1: Audit outcome AFTER mutation
     auditSink.outcome({
@@ -284,6 +323,7 @@ export function createApp(options: CreateAppOptions = {}) {
     auth,
     auditSink,
     budgetGovernor,
+    budgetLedger,
     approvalGate,
     costGovernor,
     rateLimiter,

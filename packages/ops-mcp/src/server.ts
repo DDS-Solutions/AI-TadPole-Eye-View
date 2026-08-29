@@ -132,6 +132,11 @@ export class GevMcpServer {
       case 'tools/call': {
         const requestedToolName = req.params?.name;
         const toolArgs = req.params?.arguments ?? {};
+        const requestMeta = req.params?._meta;
+        const operationId =
+          requestMeta && typeof requestMeta === 'object' && 'operation_id' in requestMeta
+            ? (requestMeta as { operation_id?: unknown }).operation_id
+            : undefined;
 
         if (typeof requestedToolName !== 'string' || !isOperatorToolName(requestedToolName)) {
           return {
@@ -155,7 +160,9 @@ export class GevMcpServer {
           };
         }
 
-        const execution = await executeOperatorTool(this.ctx, requestedToolName, toolArgs);
+        const execution = await executeOperatorTool(this.ctx, requestedToolName, toolArgs, {
+          ...(typeof operationId === 'string' ? { operation_id: operationId } : {}),
+        });
         if (!execution.success) {
           return {
             jsonrpc: '2.0',
@@ -168,6 +175,11 @@ export class GevMcpServer {
                   code: execution.code,
                   intent_id: execution.intent_id,
                   duration_ms: execution.duration_ms,
+                  replayed: execution.replayed ?? false,
+                  retryable: execution.retryable ?? false,
+                  ...(execution.retry_after_ms === undefined
+                    ? {}
+                    : { retry_after_ms: execution.retry_after_ms }),
                 },
               },
               content: [
@@ -190,6 +202,7 @@ export class GevMcpServer {
                 status: execution.status,
                 intent_id: execution.intent_id,
                 duration_ms: execution.duration_ms,
+                replayed: execution.replayed ?? false,
               },
             },
             content: [

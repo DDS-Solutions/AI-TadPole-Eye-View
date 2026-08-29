@@ -37,6 +37,27 @@ operations route. A refusal is final and must not fall back to direct database a
 When the server is offline, the local CLI is the explicit human-operated recovery path
 and writes the same durable state plus its audit intent/outcome pair.
 
+If an operation is `IN_DOUBT`, resume must refuse until a human reconciles that operation.
+Verify provider receipts or local evidence first, then record exactly one resolution with
+the original operation ID:
+
+```bash
+# Verified no effect and no charge
+pnpm gev budget reconcile <operation-id> --refunded \
+  --summary "Provider receipt confirms no effect and no charge" \
+  --evidence-kind provider_receipt --reference receipt-123
+
+# Verified effect/charge; record the full actual amount
+pnpm gev budget reconcile <operation-id> --settled-usd 0.125 \
+  --summary "Provider receipt confirms the completed charge" \
+  --evidence-kind provider_receipt --reference receipt-124
+```
+
+Reconciliation is audited and does not clear STASIS. Never mint a replacement operation ID,
+guess a settlement amount, or use reconciliation as a compensating credit. The CLI prefers the
+authenticated loopback server and permits local durable-database recovery only when that server
+is offline; it refuses a local fallback for a remote server.
+
 ```bash
 # Step 1: Inspect current system status and trip cause (< 100ms)
 pnpm gev status
@@ -56,7 +77,26 @@ configured durable file but cannot prove which state an absent server or MCP pro
 would use. Start the server and re-run status for authoritative confirmation. Changing
 `GEV_BUDGET_CAP_USD` does not overwrite an existing persisted cap; a mismatch fails
 closed. Budget-period reset and governed cap changes are intentionally deferred to the
-M3 ledger task.
+post-v1 ledger roadmap.
+
+### Signed M2 approval verification
+
+Production runtimes deny dangerous mutations unless an explicit `SignedApprovalGate`
+is composed with a trusted external decision provider and server-side Ed25519 public-key
+allowlist. Never place approval private keys in GEV environment variables, fixtures,
+logs, browser bundles, or error messages. `LocalM2ApprovalDemoGate` is permitted only
+for deterministic non-production seed/test/demo flows.
+
+Approval payloads expire after at most 60 seconds, allow at most 5 seconds of future
+clock skew, and use verifier-issued one-time nonces. A nonce or request replay, unknown
+signer/key, revoked key, scope/intent mismatch, invalid signature, clock failure, or
+SQLite failure must stop before handler dispatch. Do not delete nonce rows to retry a
+mutation; task 5.1.4 defines retry and settlement idempotency.
+
+Key rotation uses overlapping active public keys. Mark an outgoing key `retired` with
+an exact validity end only after the replacement is distributed; mark a compromised
+key `revoked` immediately. The provisional profile and future revision points are in
+[ADR 0042](./docs/adr/0042-signed-m2-approval-verification.md).
 
 ### Signed M2 approval verification
 

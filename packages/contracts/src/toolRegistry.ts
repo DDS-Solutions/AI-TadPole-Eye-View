@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CostEstimate } from './ports.js';
 import {
   FlyToLocationInputSchema,
   FlyToLocationOutputSchema,
@@ -34,6 +35,9 @@ export const ToolMetadataSchema = z.object({
   is_mutating: z.boolean(),
   is_dangerous: z.boolean(),
   is_cacheable: z.boolean(),
+  requires_reservation: z.boolean(),
+  cost_estimate: CostEstimate,
+  timeout_ms: z.number().int().min(1_000).max(60_000),
 });
 export type ToolMetadata = z.infer<typeof ToolMetadataSchema>;
 
@@ -47,9 +51,22 @@ export type OperatorToolDefinition<
   outputSchema: TOut;
 };
 
+const NONBILLABLE_READ_POLICY = {
+  requires_reservation: false,
+  cost_estimate: { currency: 'usd', min: 0, max: 0 },
+  timeout_ms: 30_000,
+} as const;
+
+const MUTATION_RESERVATION_POLICY = {
+  requires_reservation: true,
+  cost_estimate: { currency: 'usd', min: 0, max: 0 },
+  timeout_ms: 30_000,
+} as const;
+
 /** Shared source of truth for every operator-tool consumer and transport projection. */
 export const OPERATOR_TOOLS = {
   get_feed_health: {
+    ...NONBILLABLE_READ_POLICY,
     name: 'get_feed_health',
     description: 'Query provider registry health and observed quota data where available',
     is_mutating: false,
@@ -59,6 +76,7 @@ export const OPERATOR_TOOLS = {
     outputSchema: GetFeedHealthOutputSchema,
   },
   get_budget: {
+    ...NONBILLABLE_READ_POLICY,
     name: 'get_budget',
     description: 'Check cost governor budget consumption, limits, and STASIS lock state',
     is_mutating: false,
@@ -68,6 +86,7 @@ export const OPERATOR_TOOLS = {
     outputSchema: GetBudgetOutputSchema,
   },
   run_diagnostics: {
+    ...NONBILLABLE_READ_POLICY,
     name: 'run_diagnostics',
     description: 'Execute verified local fixture, memory, audit, and governance self-checks',
     is_mutating: false,
@@ -77,6 +96,7 @@ export const OPERATOR_TOOLS = {
     outputSchema: RunDiagnosticsOutputSchema,
   },
   load_scene: {
+    ...MUTATION_RESERVATION_POLICY,
     name: 'load_scene',
     description: 'Load a serialized globe scene state (destructive state overwrite)',
     is_mutating: true,
@@ -86,6 +106,7 @@ export const OPERATOR_TOOLS = {
     outputSchema: LoadSceneOutputSchema,
   },
   save_scene: {
+    ...MUTATION_RESERVATION_POLICY,
     name: 'save_scene',
     description: 'Snapshot current globe state into a reproducible scene file',
     is_mutating: true,
@@ -95,6 +116,7 @@ export const OPERATOR_TOOLS = {
     outputSchema: SaveSceneOutputSchema,
   },
   tail_logs: {
+    ...NONBILLABLE_READ_POLICY,
     name: 'tail_logs',
     description: 'Query recent audit log intent/outcome entries from SQLite WAL',
     is_mutating: false,
@@ -104,6 +126,7 @@ export const OPERATOR_TOOLS = {
     outputSchema: TailLogsOutputSchema,
   },
   set_flag: {
+    ...MUTATION_RESERVATION_POLICY,
     name: 'set_flag',
     description: 'Toggle feature kill-switch flags dynamically',
     is_mutating: true,
@@ -113,6 +136,7 @@ export const OPERATOR_TOOLS = {
     outputSchema: SetFlagOutputSchema,
   },
   fly_to_location: {
+    ...MUTATION_RESERVATION_POLICY,
     name: 'fly_to_location',
     description:
       'Navigate camera to specific geographic latitude, longitude, and altitude on the globe',
@@ -123,6 +147,7 @@ export const OPERATOR_TOOLS = {
     outputSchema: FlyToLocationOutputSchema,
   },
   toggle_layer: {
+    ...MUTATION_RESERVATION_POLICY,
     name: 'toggle_layer',
     description:
       'Enable or disable a specific telemetry layer (e.g. flights, marine, quakes, firms, cctv, radio, launches)',
@@ -133,6 +158,7 @@ export const OPERATOR_TOOLS = {
     outputSchema: ToggleLayerOutputSchema,
   },
   select_entity: {
+    ...MUTATION_RESERVATION_POLICY,
     name: 'select_entity',
     description: 'Select and track a specific telemetry entity on the 3D globe by ID and layer',
     is_mutating: true,
@@ -142,6 +168,7 @@ export const OPERATOR_TOOLS = {
     outputSchema: SelectEntityOutputSchema,
   },
   inspect_telemetry: {
+    ...NONBILLABLE_READ_POLICY,
     name: 'inspect_telemetry',
     description:
       'Fetch detailed telemetry and metadata attributes for a specific entity in an active layer',
@@ -152,6 +179,7 @@ export const OPERATOR_TOOLS = {
     outputSchema: InspectTelemetryOutputSchema,
   },
   query_aoi: {
+    ...NONBILLABLE_READ_POLICY,
     name: 'query_aoi',
     description: 'Query entity density and counts within an Area of Interest (AOI) bounding box',
     is_mutating: false,
@@ -161,6 +189,7 @@ export const OPERATOR_TOOLS = {
     outputSchema: QueryAoiOutputSchema,
   },
   set_sim_time: {
+    ...MUTATION_RESERVATION_POLICY,
     name: 'set_sim_time',
     description: 'Adjust global simulation clock offset and replay rate',
     is_mutating: true,

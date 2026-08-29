@@ -3,7 +3,12 @@ import { type SimClock, SystemClock } from '@gev/core';
 import { PromptApprovalGate, UnavailableApprovalGate } from './approvalGate.js';
 import { SqliteAuditSink } from './auditSink.js';
 import { CapBudgetGovernor } from './budgetGovernor.js';
-import { GOVERNANCE_SCHEMA_VERSION, resolveGovernanceDbPath } from './governanceDb.js';
+import { SqliteBudgetLedger } from './budgetLedger.js';
+import {
+  GOVERNANCE_SCHEMA_VERSION,
+  openGovernanceDatabase,
+  resolveGovernanceDbPath,
+} from './governanceDb.js';
 import {
   SignedApprovalGate,
   type SignedApprovalProvider,
@@ -15,6 +20,7 @@ export interface GovernanceRuntimeContext {
   clock: SimClock;
   auditSink: SqliteAuditSink;
   budgetGovernor: CapBudgetGovernor;
+  budgetLedger: SqliteBudgetLedger;
   approvalGate: ApprovalGate;
   authority(): GovernanceAuthority;
   close(): void;
@@ -28,6 +34,7 @@ export interface GovernanceRuntimeContextOptions {
   warnThresholdPct?: number;
   auditSink?: SqliteAuditSink;
   budgetGovernor?: CapBudgetGovernor;
+  budgetLedger?: SqliteBudgetLedger;
   approvalGate?: ApprovalGate;
   signedApproval?: {
     provider: SignedApprovalProvider;
@@ -43,26 +50,52 @@ export function createGovernanceRuntimeContext(
   if (options.approvalGate && options.signedApproval) {
     throw new Error('Configure either approvalGate or signedApproval, not both');
   }
+  const customLocalPorts = [options.auditSink, options.budgetGovernor, options.budgetLedger];
+  if (customLocalPorts.some(Boolean) && !customLocalPorts.every(Boolean)) {
+    throw new Error(
+      'Custom local governance composition requires auditSink, budgetGovernor, and budgetLedger together'
+    );
+  }
   const clock = options.clock ?? new SystemClock();
   const dbPath = resolveGovernanceDbPath(options.dbPath);
+  const opened = customLocalPorts.every(Boolean)
+    ? undefined
+    : openGovernanceDatabase({ dbPath, clock });
   const ownsAuditSink = options.auditSink === undefined;
   const ownsBudgetGovernor = options.budgetGovernor === undefined;
-  const auditSink = options.auditSink ?? new SqliteAuditSink({ clock, dbPath });
+  const ownsBudgetLedger = options.budgetLedger === undefined;
+  const auditSink = options.auditSink ?? new SqliteAuditSink({ clock, db: opened?.db, dbPath });
   let budgetGovernor: CapBudgetGovernor;
+  let budgetLedger!: SqliteBudgetLedger;
   try {
     budgetGovernor =
       options.budgetGovernor ??
       new CapBudgetGovernor({
         clock,
         dbPath,
+        db: opened?.db,
+        resolvedDbPath: opened?.dbPath,
         capUsd: options.capUsd,
         spentUsd: options.spentUsd,
         warnThresholdPct: options.warnThresholdPct,
       });
+    budgetLedger =
+      options.budgetLedger ??
+      new SqliteBudgetLedger({
+        clock,
+        dbPath,
+        db: opened?.db,
+        publishCommittedAudit: (entry) => auditSink.publishCommitted(entry),
+      });
+    budgetLedger.recoverExpired();
   } catch (error) {
+    if (ownsBudgetLedger) {
+      budgetLedger?.close();
+    }
     if (ownsAuditSink) {
       auditSink.close();
     }
+    opened?.db.close();
     throw error;
   }
   const ownsApprovalGate = options.approvalGate === undefined;
@@ -90,6 +123,7 @@ export function createGovernanceRuntimeContext(
     clock,
     auditSink,
     budgetGovernor,
+    budgetLedger,
     approvalGate,
     authority: () => ({
       kind: budgetGovernor.isSharedAuthority() ? 'shared_sqlite' : 'process_local',
@@ -107,6 +141,8 @@ export function createGovernanceRuntimeContext(
       }
       auditSink.close();
       budgetGovernor.close();
+      budgetLedger.close();
+      opened?.db.close();
     },
   };
 }

@@ -10,6 +10,7 @@ import { PROJECT_PHASE, runStatus } from '../src/commands/status.js';
 describe('GEV v2 CLI Surface (@gev/cli)', () => {
   it('runStatus() completes in < 100ms in offline fallback mode', async () => {
     const logs: string[] = [];
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('server offline'));
     const spy = vi.spyOn(console, 'log').mockImplementation((msg) => {
       logs.push(msg);
     });
@@ -19,6 +20,7 @@ describe('GEV v2 CLI Surface (@gev/cli)', () => {
     const duration = performance.now() - start;
 
     spy.mockRestore();
+    fetchSpy.mockRestore();
 
     expect(duration).toBeLessThan(150); // fast local execution
     expect(logs.some((l) => l.includes('GEV v2 Console Status'))).toBe(true);
@@ -28,12 +30,14 @@ describe('GEV v2 CLI Surface (@gev/cli)', () => {
 
   it('runStatus({ json: true }) outputs valid structured status JSON', async () => {
     const logs: string[] = [];
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('server offline'));
     const spy = vi.spyOn(console, 'log').mockImplementation((msg) => {
       logs.push(msg);
     });
 
     await runStatus({ json: true });
     spy.mockRestore();
+    fetchSpy.mockRestore();
 
     expect(logs.length).toBe(1);
     const parsed = JSON.parse(logs[0] || '{}');

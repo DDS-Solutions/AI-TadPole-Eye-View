@@ -27,4 +27,5 @@ This directory records all significant architectural and structural decisions ma
 | [0040](./0040-architectural-drift-inventory-and-follow-up-gates.md) | Architectural drift inventory and follow-up gates | Accepted | 2026-08-28 |
 | [0041](./0041-durable-shared-governance-runtime.md) | Durable shared governance runtime | Accepted | 2026-08-28 |
 | [0042](./0042-signed-m2-approval-verification.md) | Signed M2 approval verification | Accepted (provisional integration profile) | 2026-08-28 |
+| [0043](./0043-m3-ledger-reservation-settlement-and-reconciliation.md) | M3 ledger reservation, settlement, refund, and reconciliation | Accepted | 2026-08-28 |
 
