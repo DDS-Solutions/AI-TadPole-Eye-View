@@ -2,10 +2,10 @@
 
 > Watch the world live — then watch governed AI agents build and run the thing doing the watching.
 
-[![Status](https://img.shields.io/badge/status-Early%20Stage%20WIP-orange)](./PLAN.md) [![Phase](https://img.shields.io/badge/phase-5.1%20(Durable%20Governance)-blue)](./PLAN.md) [![Governance](https://img.shields.io/badge/governed%20by-AI--TadPole--OS-purple)](https://github.com/DDS-Solutions/AI-TadPole-OS) [![License](https://img.shields.io/badge/code-MIT-blue)](#license)
+[![Status](https://img.shields.io/badge/status-Early%20Stage%20WIP-orange)](./PLAN.md) [![Phase](https://img.shields.io/badge/phase-5.2%20(Provenance%20%26%20Layers)-blue)](./PLAN.md) [![Governance](https://img.shields.io/badge/governed%20by-AI--TadPole--OS-purple)](https://github.com/DDS-Solutions/AI-TadPole-OS) [![License](https://img.shields.io/badge/code-MIT-blue)](#license)
 
 > ⚠️ **Project Status: Early Stage WIP (Work in Progress)**  
-> This repository is an active, ground-up rewrite of [bilawalsidhu/gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view) into an agent-native architecture designed for [AI-TadPole-OS](https://github.com/DDS-Solutions/AI-TadPole-OS) governance. Core telemetry layers, security perimeters, typed provider registries, and local governance stubs work in seed mode. Verified shared M2/M3 governance, a hash-chained audit store, M4 orchestration, and remaining telemetry layers are still in development.
+> This repository is an active, ground-up rewrite of [bilawalsidhu/gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view) into an agent-native architecture designed for [AI-TadPole-OS](https://github.com/DDS-Solutions/AI-TadPole-OS) governance. Core telemetry layers, security perimeters, typed provider registries, and local governance work in seed mode. Shared M2 verification, M3 accounting, and a versioned SQLite audit chain are implemented locally; external production identity, Tadpole M4 orchestration, and remaining telemetry layers are still in development.
 
 A live 3D OSINT console tracking **flights, ships, earthquakes, wildfires, bike transit, weather radar, public CCTV, radio, and submarine cables** on a photorealistic globe — designed from commit one so AI agents can develop, deploy, monitor, and debug it *alongside humans*, under enforceable governance (audit trails, approval gates, spend caps).
 
@@ -18,7 +18,7 @@ A live 3D OSINT console tracking **flights, ships, earthquakes, wildfires, bike 
 Two experiments in one project:
 
 1. **A serious OSINT console.** Multi-layer live feeds, honest data labeling, keyless boot by default, privacy-first architecture.
-2. **A governed AI dev team.** The repository is being built so humans and AI agents can share audited, approval-gated workflows under [AI-TadPole-OS](https://github.com/DDS-Solutions/AI-TadPole-OS). The current SQLite WAL records intent and outcome but is not yet tamper-evident; hash-chain verification is planned in `PLAN.md` task 5.1.5.
+2. **A governed AI dev team.** The repository is being built so humans and AI agents can share audited, approval-gated workflows under [AI-TadPole-OS](https://github.com/DDS-Solutions/AI-TadPole-OS). The SQLite WAL now redacts and bounds new audit content, links every retained row through the versioned `gev.audit.chain.v1` sidecar, and exposes fail-closed integrity inspection.
 
 Most agent demos show swarm diagrams. This one shows a working product and the receipts for how it got there.
 
@@ -69,12 +69,12 @@ The repository defines five governance ports. Durable local governance and signe
 
 | Rung | Capability | Status | Honest Notes |
 |---|---|---|---|
-| **M1 Observer** | Authenticated audit stream (`/ops/audit`) + feed health | PARTIAL | Server routes and `SqliteAuditSink` WAL exist; external authenticated/resumable observer proof is incomplete. |
+| **M1 Observer** | Authenticated audit stream (`/ops/audit`) + feed health | PARTIAL | `SqliteAuditSink` has durable hash-chain verification and protected integrity inspection; external authenticated/resumable observer proof is incomplete. |
 | **M2 Gatekeeper** | Signed approval controls mutations | VERIFIER IMPLEMENTED; PROVIDER UNCONFIGURED | `SignedApprovalGate` verifies exact intent/scopes/signer/key/nonce/time bindings and consumes replay state in shared SQLite. Production denies without an injected trusted provider/key allowlist; `LocalM2ApprovalDemoGate` is non-production only. |
-| **M3 Governor** | Shared budget ledger + durable STASIS | DURABLE STATE; LEDGER PENDING | Budget/STASIS state is transactionally shared through SQLite and human-only resume is enforced. Reservation/settlement/refund idempotency remains task 5.1.4. |
+| **M3 Governor** | Shared budget ledger + durable STASIS | LOCAL M3 IMPLEMENTED | Reservation, settlement, refund, retry, ambiguity, reconciliation, and human-only resume are transactionally shared through SQLite. External Tadpole/production integration remains unfinished. |
 | **M4 Runtime** | Real AI agent team operates the live console end-to-end under governance | NOT YET REACHED (WIP) | `gev demo` simulates M1–M3 in-process (CLI only). M4 = an actual agent process driving a running server via ops-mcp under live governance — in progress. |
 
-> **Truth note on the demo:** `gev demo` exercises local M1–M3-shaped mechanics (audit WAL, a demo-only local M2 signer/verifier, STASIS trip, and an in-memory hash-chain helper). It does not prove an external production approval provider, M3 settlement ledger, hash-chained SQLite WAL, or a live agent team controlling the globe.
+> **Truth note on the demo:** `gev demo` exercises local M1–M3-shaped mechanics, verifies the durable SQLite audit chain, and also displays a disconnected shadow-hash helper for illustration. It does not prove an external production approval provider, external M3 authority, independently anchored audit heads, or a live agent team controlling the globe.
 
 The current governor persists **STASIS** across local processes. An offline CLI result remains a non-authoritative snapshot, and production signer identity/transport must not be inferred from the local demo.
 
@@ -92,6 +92,7 @@ Run tests, showcase demonstration, and health diagnostics:
 
 ```bash
 pnpm gev status       # inspect phase, STASIS, budget, and feeds
+pnpm gev audit verify # verify the connected or read-only local audit chain; never repair
 pnpm gev demo         # run M1-M3 governance showcase (CLI simulation, not live agent)
 pnpm gev test         # run complete unit and property test suites
 node scripts/adg.mjs  # run Active Documentation Guard
@@ -105,7 +106,7 @@ node scripts/adg.mjs  # run Active Documentation Guard
 - **`packages/contracts`:** Zod schemas for feeds, ports, voice, collaboration, scenes, tools, capabilities, and the provider registry.
 - **`packages/security`:** pinned-fetch, SSRF defense, TLS socket pinning, the Overpass QL sanitizer, redirect rejection, and byte caps.
 - **`packages/core`:** pure math/domain modules, sim-clock, scene serialization, voice state machine, agent adapters, tool executor, and collaborative intent document.
-- **`packages/governance`:** local `SqliteAuditSink`, `CapBudgetGovernor`, approval stubs, Ed25519 helpers, and the disconnected in-memory hash-chain demo helper.
+- **`packages/governance`:** shared SQLite audit chain, redaction and signed retention boundaries, M2 verifier/replay state, durable M3 ledger/STASIS, local approval stubs, and Ed25519 helpers.
 - **`packages/providers`:** typed provider registry plus OpenSky, AIS, USGS, FIRMS, GBFS, Radio, CCTV, Launch, Weather, Cables, and Overpass adapters.
 - **`packages/cesium-kit`:** imperative globe and layer controllers, debug bus, and frame-budget monitor.
 - **`packages/ops-mcp`:** hand-written stdio MCP server exposing seven verified local tools. Browser-console-only tools are not advertised or executable over stdio; scene I/O is filename-only, size-bounded, and atomic beneath `.gev/scenes` (override with `GEV_MCP_SCENE_ROOT`).
@@ -114,7 +115,7 @@ node scripts/adg.mjs  # run Active Documentation Guard
 - **`apps/web`:** Svelte 5 SPA and tactical HUD backed by Cesium layer controllers.
 - **`e2e/smoke.spec.ts`:** condition-wait Playwright smoke coverage exists; its current teardown timeout is tracked by task 5.0.5.
 - **`fixtures/` (9 datasets):** Recorded fixtures for implemented providers (including 1.25 MB OpenSky replay).
-- **Architecture Decisions & Documentation:** ADRs 0014–0030, 0039 (18 decision records), DESIGN.md, SECURITY.md, RUNBOOK.md, DATA_SOURCES.md, AGENTS.md, PLAN.md.
+- **Architecture Decisions & Documentation:** ADRs 0014–0030 and 0039–0044 (23 decision records), DESIGN.md, SECURITY.md, RUNBOOK.md, DATA_SOURCES.md, AGENTS.md, PLAN.md.
 
 ### Partially built
 

@@ -224,11 +224,14 @@ export async function handleRunDiagnostics(
         : 'Governor operational',
     });
     try {
-      const entries = ctx.auditSink.tail({ limit: 1 });
+      const integrity = ctx.auditSink.verifyIntegrity();
       checks.push({
         name: 'audit_wal',
-        status: 'pass',
-        message: `SQLite audit query succeeded (${entries.length} entries returned)`,
+        status: integrity.status === 'valid' ? 'pass' : 'fail',
+        message:
+          integrity.status === 'valid'
+            ? `SQLite audit chain verified (${integrity.verified_entries} retained entries)`
+            : `SQLite audit chain verification failed: ${integrity.failure_code ?? 'UNKNOWN'}`,
       });
     } catch {
       checks.push({

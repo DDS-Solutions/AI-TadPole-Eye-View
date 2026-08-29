@@ -14,12 +14,13 @@ export interface DemoResult {
   simulation: 'local-seed';
   eventsRecorded: number;
   merkleHead: string;
+  durableAuditValid: boolean;
   stasisTripRecovered: boolean;
 }
 
 /**
  * Local seed simulation of M1–M3-shaped governance mechanics.
- * This does not prove external approval, shared STASIS, or a hash-chained WAL.
+ * This does not prove external approval, external M3 authority, or independent head anchoring.
  */
 export async function runDemo(): Promise<DemoResult> {
   console.log(
@@ -139,13 +140,17 @@ export async function runDemo(): Promise<DemoResult> {
   console.log(`   STASIS Resumed:   ${pc.green('STASIS_INACTIVE')}`);
   console.log(`   Resumed By:       ${budgetGovernor.state().last_trip?.resumed_by}\n`);
 
-  // ─── STEP 5: Disconnected in-memory chain helper verification ─────────
-  console.log(pc.bold(pc.white('▶ [STEP 5] Verifying In-Memory Hash-Chain Demo Helper...')));
+  // ─── STEP 5: Independent helper and authoritative local chain checks ──
+  console.log(pc.bold(pc.white('▶ [STEP 5] Verifying Local Audit Integrity...')));
   const headHash = merkleChain.getHeadHash();
   const isChainValid = MerkleAuditChain.verifyChain(auditEventsList, headHash);
+  const durableIntegrity = auditSink.verifyIntegrity();
   console.log(`   Merkle Head Hash: ${pc.cyan(headHash)}`);
   console.log(
-    `   Helper Integrity: ${isChainValid ? pc.green('✔ VALID (WAL remains unhashed)') : pc.red('✖ INVALID')}\n`
+    `   Shadow Helper:    ${isChainValid ? pc.green('✔ VALID (independent demo only)') : pc.red('✖ INVALID')}`
+  );
+  console.log(
+    `   SQLite Chain:     ${durableIntegrity.status === 'valid' ? pc.green(`✔ VALID (${durableIntegrity.verified_entries} entries)`) : pc.red(`✖ ${durableIntegrity.failure_code ?? 'INVALID'}`)}\n`
   );
 
   console.log(
@@ -165,6 +170,7 @@ export async function runDemo(): Promise<DemoResult> {
     simulation: 'local-seed' as const,
     eventsRecorded: auditEventsList.length,
     merkleHead: headHash,
+    durableAuditValid: durableIntegrity.status === 'valid',
     stasisTripRecovered: !budgetGovernor.state().stasis_active,
   };
   governanceContext.close();

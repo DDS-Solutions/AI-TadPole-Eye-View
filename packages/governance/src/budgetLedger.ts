@@ -20,6 +20,8 @@ import {
   LedgerTerminalRequestSchema,
 } from '@gev/contracts';
 import { type SimClock, SystemClock } from '@gev/core';
+import { AuditChainStore } from './auditChainStore.js';
+import type { TrustedAuditRetentionKey } from './auditRetention.js';
 import { BudgetLedgerStore, type LedgerRow } from './budgetLedgerStore.js';
 import { openGovernanceDatabase, withImmediateTransaction } from './governanceDb.js';
 import { LedgerOperationError, transitionRace, unavailableLedger } from './ledgerErrors.js';
@@ -40,6 +42,7 @@ export interface SqliteBudgetLedgerOptions {
   clock?: SimClock;
   publishCommittedAudit?: CommittedAuditPublisher;
   db?: DatabaseSync;
+  trustedRetentionKeys?: readonly TrustedAuditRetentionKey[];
 }
 
 export class SqliteBudgetLedger implements BudgetLedger {
@@ -56,6 +59,15 @@ export class SqliteBudgetLedger implements BudgetLedger {
     this.ownsDb = options.db === undefined;
     this.db =
       options.db ?? openGovernanceDatabase({ dbPath: options.dbPath, clock: this.clock }).db;
+    const integrity = new AuditChainStore(
+      this.db,
+      this.clock,
+      options.trustedRetentionKeys
+    ).verifyIntegrity();
+    if (integrity.status !== 'valid') {
+      if (this.ownsDb) this.db.close();
+      throw new Error('Budget ledger unavailable because audit integrity verification failed');
+    }
     this.store = new BudgetLedgerStore(this.db, this.clock);
   }
 
@@ -74,8 +86,7 @@ export class SqliteBudgetLedger implements BudgetLedger {
       const held = this.store.activeHeldMicrousd();
       const available = Math.max(0, budget.cap_microusd - budget.spent_microusd - held);
       const now = this.store.isoNow();
-      this.store.insertAuditIntent(request.audit_intent);
-      committed.push(request.audit_intent);
+      committed.push(this.store.insertAuditIntent(request.audit_intent));
 
       if (budget.stasis_active === 1 || reserved > available) {
         const reason =
@@ -100,8 +111,7 @@ export class SqliteBudgetLedger implements BudgetLedger {
         );
         this.store.insertOperation(request, fingerprint, reserved, now, 'DENIED', terminalResult);
         this.store.insertLedgerEntry(request.operation_id, 'denied', reserved, { reason, message });
-        this.store.insertAuditOutcome(outcome);
-        committed.push(outcome);
+        committed.push(this.store.insertAuditOutcome(outcome));
         return LedgerReservationResultSchema.parse({
           kind: 'denied',
           operation: this.store.readRequiredOperation(request.operation_id),
@@ -189,8 +199,7 @@ export class SqliteBudgetLedger implements BudgetLedger {
         reason: request.reason,
       });
       this.store.writeTrip('COMPLIANCE_DRIFT', 'An executed operation has an ambiguous outcome.');
-      this.store.insertAuditOutcome(request.audit_outcome);
-      committed.push(request.audit_outcome);
+      committed.push(this.store.insertAuditOutcome(request.audit_outcome));
       return this.store.readRequiredOperation(request.operation_id);
     });
     this.publish(committed);
@@ -226,8 +235,7 @@ export class SqliteBudgetLedger implements BudgetLedger {
           `Cannot reconcile ${current.state}`
         );
       }
-      this.store.insertAuditIntent(request.audit_intent);
-      committed.push(request.audit_intent);
+      committed.push(this.store.insertAuditIntent(request.audit_intent));
       const result = reconciliationLedgerResult(current, request.resolution, actual);
       const outcome = createLedgerAuditOutcome(
         request.audit_intent.id,
@@ -236,8 +244,7 @@ export class SqliteBudgetLedger implements BudgetLedger {
         result
       );
       this.store.applyTerminal(current, desiredState, actual, result, request.evidence);
-      this.store.insertAuditOutcome(outcome);
-      committed.push(outcome);
+      committed.push(this.store.insertAuditOutcome(outcome));
       return this.store.readRequiredOperation(request.operation_id);
     });
     this.publish(committed);
@@ -283,8 +290,7 @@ export class SqliteBudgetLedger implements BudgetLedger {
             'Reservation expired before dispatch'
           );
           this.store.applyTerminal(current, 'REFUNDED', 0, result, null);
-          this.store.insertAuditOutcome(outcome);
-          committed.push(outcome);
+          committed.push(this.store.insertAuditOutcome(outcome));
           refunded.push(current.operation_id);
         } else {
           const result = blockedLedgerResult(
@@ -317,8 +323,7 @@ export class SqliteBudgetLedger implements BudgetLedger {
             'COMPLIANCE_DRIFT',
             'An executed operation expired with an ambiguous outcome.'
           );
-          this.store.insertAuditOutcome(outcome);
-          committed.push(outcome);
+          committed.push(this.store.insertAuditOutcome(outcome));
           inDoubt.push(current.operation_id);
         }
       }
@@ -388,8 +393,7 @@ export class SqliteBudgetLedger implements BudgetLedger {
         ...request.audit_outcome,
         result: stored.terminal_result,
       };
-      this.store.insertAuditOutcome(boundedOutcome);
-      committed.push(boundedOutcome);
+      committed.push(this.store.insertAuditOutcome(boundedOutcome));
       return stored;
     });
     this.publish(committed);

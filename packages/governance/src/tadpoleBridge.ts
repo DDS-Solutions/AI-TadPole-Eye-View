@@ -86,7 +86,8 @@ export function verifySignedCapToken(
 }
 
 /**
- * Merkle-Chained Hash Link Generator for Tamper-Evident Audit WAL (PLAN.md §6 M2 & §7.3)
+ * Disconnected in-memory shadow-hash helper used only by the local CLI demonstration.
+ * Durable SQLite integrity is implemented by AuditChainStore (ADR 0044).
  */
 export class MerkleAuditChain {
   private currentHash: string;

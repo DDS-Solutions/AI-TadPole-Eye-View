@@ -9,6 +9,7 @@ describe('Local governance seed simulation', () => {
     expect(result.simulation).toBe('local-seed');
     expect(result.eventsRecorded).toBeGreaterThanOrEqual(4);
     expect(result.merkleHead).toHaveLength(64);
+    expect(result.durableAuditValid).toBe(true);
     expect(result.stasisTripRecovered).toBe(true);
   });
 });

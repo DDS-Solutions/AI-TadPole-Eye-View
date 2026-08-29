@@ -2,8 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { type SimClock, SystemClock } from '@gev/core';
+import { migrateAuditChain } from './auditChainMigration.js';
 
-export const GOVERNANCE_SCHEMA_VERSION = 3;
+export const GOVERNANCE_SCHEMA_VERSION = 4;
 export const GOVERNANCE_BUSY_TIMEOUT_MS = 5_000;
 
 export interface GovernanceDatabaseOptions {
@@ -216,6 +217,10 @@ function migrateGovernanceDatabase(db: DatabaseSync, clock: SimClock): void {
         INSERT INTO governance_schema_migrations (version, applied_at)
         VALUES (3, '${new Date(clock.now()).toISOString()}');
       `);
+    }
+
+    if (versionRow.version < 4) {
+      migrateAuditChain(db, new Date(clock.now()).toISOString());
     }
 
     db.exec('COMMIT;');

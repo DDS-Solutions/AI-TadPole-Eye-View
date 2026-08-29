@@ -14,7 +14,7 @@ export interface StatusOptions {
   governanceDbPath?: string;
 }
 
-export const PROJECT_PHASE = 'Phase 5.1 — Durable Shared Governance';
+export const PROJECT_PHASE = 'Phase 5.2 — Provenance and Missing Geospatial Layers';
 
 export async function runStatus(options: StatusOptions = {}): Promise<void> {
   const clock = new SystemClock();

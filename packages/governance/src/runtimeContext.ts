@@ -1,6 +1,7 @@
 import type { ApprovalGate, GovernanceAuthority } from '@gev/contracts';
 import { type SimClock, SystemClock } from '@gev/core';
 import { PromptApprovalGate, UnavailableApprovalGate } from './approvalGate.js';
+import type { AuditRetentionPolicy, TrustedAuditRetentionKey } from './auditRetention.js';
 import { SqliteAuditSink } from './auditSink.js';
 import { CapBudgetGovernor } from './budgetGovernor.js';
 import { SqliteBudgetLedger } from './budgetLedger.js';
@@ -42,6 +43,10 @@ export interface GovernanceRuntimeContextOptions {
     maxLifetimeMs?: number;
     clockSkewMs?: number;
   };
+  auditIntegrity?: {
+    trustedRetentionKeys?: readonly TrustedAuditRetentionKey[];
+    retentionPolicy?: AuditRetentionPolicy;
+  };
 }
 
 export function createGovernanceRuntimeContext(
@@ -64,7 +69,15 @@ export function createGovernanceRuntimeContext(
   const ownsAuditSink = options.auditSink === undefined;
   const ownsBudgetGovernor = options.budgetGovernor === undefined;
   const ownsBudgetLedger = options.budgetLedger === undefined;
-  const auditSink = options.auditSink ?? new SqliteAuditSink({ clock, db: opened?.db, dbPath });
+  const auditSink =
+    options.auditSink ??
+    new SqliteAuditSink({
+      clock,
+      db: opened?.db,
+      dbPath,
+      trustedRetentionKeys: options.auditIntegrity?.trustedRetentionKeys,
+      retentionPolicy: options.auditIntegrity?.retentionPolicy,
+    });
   let budgetGovernor: CapBudgetGovernor;
   let budgetLedger!: SqliteBudgetLedger;
   try {
@@ -85,6 +98,7 @@ export function createGovernanceRuntimeContext(
         clock,
         dbPath,
         db: opened?.db,
+        trustedRetentionKeys: options.auditIntegrity?.trustedRetentionKeys,
         publishCommittedAudit: (entry) => auditSink.publishCommitted(entry),
       });
     budgetLedger.recoverExpired();

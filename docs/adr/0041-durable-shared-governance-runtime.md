@@ -61,5 +61,5 @@ tasks.
 - SQLite schema version 1 is durable runtime state, but it is not the M3 reservation
   ledger and does not make spend check/settlement idempotent. Those guarantees remain
   task 5.1.4.
-- Audit records remain unhashed until task 5.1.5. This decision does not claim
-  tamper-evident audit storage.
+- At this ADR's acceptance, audit records remained unhashed pending task 5.1.5.
+  ADR 0044 now defines the durable versioned chain and supersedes that limitation.

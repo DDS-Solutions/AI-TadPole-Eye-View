@@ -11,6 +11,7 @@ import {
   M3_LEDGER_CONTRACT_VERSION,
 } from '@gev/contracts';
 import type { SimClock } from '@gev/core';
+import { AuditChainStore } from './auditChainStore.js';
 import { LedgerOperationError, transitionRace } from './ledgerErrors.js';
 import { canonicalizeLedgerComponents, normalizeTerminalResult } from './ledgerSerialization.js';
 
@@ -44,10 +45,14 @@ export interface BudgetRow {
 }
 
 export class BudgetLedgerStore {
+  private readonly auditChain: AuditChainStore;
+
   constructor(
     private readonly db: DatabaseSync,
     private readonly clock: SimClock
-  ) {}
+  ) {
+    this.auditChain = new AuditChainStore(db, clock);
+  }
 
   insertOperation(
     request: LedgerReservationRequest,
@@ -165,36 +170,12 @@ export class BudgetLedgerStore {
       );
   }
 
-  insertAuditIntent(intent: AtomicLedgerAuditIntent): void {
-    this.db
-      .prepare(`INSERT INTO audit_events (id, kind, ts, actor, action, target, params, task_ref)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(
-        intent.id,
-        intent.kind,
-        intent.ts,
-        intent.actor,
-        intent.action,
-        intent.target,
-        intent.params === undefined ? null : JSON.stringify(intent.params),
-        intent.task_ref
-      );
+  insertAuditIntent(intent: AtomicLedgerAuditIntent): AtomicLedgerAuditIntent {
+    return this.auditChain.appendIntent(intent);
   }
 
-  insertAuditOutcome(outcome: AtomicLedgerAuditOutcome): void {
-    this.db
-      .prepare(`INSERT INTO audit_events (id, kind, intent_id, ts, status, result, error, duration_ms)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(
-        crypto.randomUUID(),
-        outcome.kind,
-        outcome.intent_id,
-        outcome.ts,
-        outcome.status,
-        outcome.result === undefined ? null : JSON.stringify(outcome.result),
-        outcome.error ?? null,
-        outcome.duration_ms ?? null
-      );
+  insertAuditOutcome(outcome: AtomicLedgerAuditOutcome): AtomicLedgerAuditOutcome {
+    return this.auditChain.appendOutcome(outcome);
   }
 
   writeTrip(reason: 'BUDGET_BREACH' | 'COMPLIANCE_DRIFT', message: string): void {

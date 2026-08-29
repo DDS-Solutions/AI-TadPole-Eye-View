@@ -1,6 +1,6 @@
 # Security & Threat Model
 
-**Project:** GEV v2 (`AI-TadPole-Eye-View`) · **Status:** Phase 5.1 durable shared governance · **Companion docs:** [PLAN.md](./PLAN.md), [AGENTS.md](./AGENTS.md), [RUNBOOK.md](./RUNBOOK.md)
+**Project:** GEV v2 (`AI-TadPole-Eye-View`) · **Status:** Phase 5.2 provenance and missing geospatial layers · **Companion docs:** [PLAN.md](./PLAN.md), [AGENTS.md](./AGENTS.md), [RUNBOOK.md](./RUNBOOK.md)
 
 GEV v2 is an agent-native geospatial OSINT telemetry console tracking public data on a 3D globe. This document details the threat model, trust boundaries, STRIDE analysis across the system topology, and incident response procedures.
 
@@ -46,7 +46,10 @@ GEV v2 is an agent-native geospatial OSINT telemetry console tracking public dat
 
 ### Current hardening limitations
 
-- The SQLite audit sink is a durable WAL but is not hash chained; tamper verification is task 5.1.5.
+- The SQLite audit WAL uses the versioned `gev.audit.chain.v1` sidecar, startup verification,
+  pre-persistence redaction/bounds, and signed retention receipts. A local database administrator
+  can still replace both rows and local checkpoints; independent Tadpole/head anchoring remains a
+  later integration boundary.
 - Signed M2 verification is implemented, but the production approval provider, managed public-key distribution, and authenticated signer-to-principal mapping remain integration decisions. The local demo signer is forbidden in production.
 - Local stdio MCP exposes only verified local-state tools and confines scene files to a configured root. A future network MCP transport must reuse those capability and confinement checks rather than introduce a transport-specific bypass.
 - Collaboration still requires exact Origin enforcement, staged CRDT validation, remote-update origin tagging, and request/concurrency limits.
