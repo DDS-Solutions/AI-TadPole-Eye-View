@@ -673,7 +673,6 @@ identity, reuse nonces, fail open on key/gate/storage errors, or mix M3 settleme
 gate. After three failed verification/replay approaches, record LOGIC_BLOCKER with exact
 cryptographic/state evidence and bounded alternatives.
 ```
-
 ### Phase 5.2 — Provenance and missing geospatial layers
 
 - [ ] 5.2.1 Add required provenance and registry contracts; retrofit existing adapters and UI badges using `SimClock`.
