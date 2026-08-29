@@ -58,6 +58,25 @@ would use. Start the server and re-run status for authoritative confirmation. Ch
 closed. Budget-period reset and governed cap changes are intentionally deferred to the
 M3 ledger task.
 
+### Signed M2 approval verification
+
+Production runtimes deny dangerous mutations unless an explicit `SignedApprovalGate`
+is composed with a trusted external decision provider and server-side Ed25519 public-key
+allowlist. Never place approval private keys in GEV environment variables, fixtures,
+logs, browser bundles, or error messages. `LocalM2ApprovalDemoGate` is permitted only
+for deterministic non-production seed/test/demo flows.
+
+Approval payloads expire after at most 60 seconds, allow at most 5 seconds of future
+clock skew, and use verifier-issued one-time nonces. A nonce or request replay, unknown
+signer/key, revoked key, scope/intent mismatch, invalid signature, clock failure, or
+SQLite failure must stop before handler dispatch. Do not delete nonce rows to retry a
+mutation; task 5.1.4 defines retry and settlement idempotency.
+
+Key rotation uses overlapping active public keys. Mark an outgoing key `retired` with
+an exact validity end only after the replacement is distributed; mark a compromised
+key `revoked` immediately. The provisional profile and future revision points are in
+[ADR 0042](./docs/adr/0042-signed-m2-approval-verification.md).
+
 ---
 
 ## 2. Telemetry Feeds & Seed Mode Management

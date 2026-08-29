@@ -3,9 +3,9 @@ import { type AuditIntent, type AuditOutcome, GevEvents } from '@gev/contracts';
 import { FrozenClock } from '@gev/core';
 import {
   CapBudgetGovernor,
+  LocalM2ApprovalDemoGate,
   MerkleAuditChain,
   SqliteAuditSink,
-  TadpoleM2Gatekeeper,
 } from '@gev/governance';
 import { createOperatorContext, executeOperatorTool } from '@gev/ops-mcp';
 import pc from 'picocolors';
@@ -34,7 +34,7 @@ export async function runDemo(): Promise<DemoResult> {
   const clock = new FrozenClock(1700000000000);
   const auditSink = new SqliteAuditSink({ clock, dbPath: ':memory:' });
   const budgetGovernor = new CapBudgetGovernor({ capUsd: 1.0, spentUsd: 0, clock });
-  const gatekeeper = new TadpoleM2Gatekeeper({ clock });
+  const gatekeeper = new LocalM2ApprovalDemoGate({ clock });
   const merkleChain = new MerkleAuditChain();
 
   const auditEventsList: Array<Record<string, unknown>> = [];

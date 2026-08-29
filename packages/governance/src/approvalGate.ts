@@ -33,11 +33,24 @@ export class PromptApprovalGate implements ApprovalGate {
     this.promptHandler = options.promptHandler;
 
     const envPolicy = process.env.GEV_APPROVAL_POLICY;
-    if (envPolicy === 'auto' || envPolicy === 'deny' || envPolicy === 'prompt') {
-      this.policy = options.policy ?? envPolicy;
-    } else {
-      this.policy = options.policy ?? 'auto';
+    const isSeedOrTest =
+      process.env.GEV_SEED_MODE === '1' ||
+      process.env.NODE_ENV === 'test' ||
+      process.env.VITEST === 'true';
+    const requestedPolicy =
+      options.policy ??
+      (envPolicy === 'auto' || envPolicy === 'deny' || envPolicy === 'prompt'
+        ? envPolicy
+        : isSeedOrTest
+          ? 'auto'
+          : 'deny');
+    if (process.env.NODE_ENV === 'production' && requestedPolicy !== 'deny') {
+      throw new Error('Prompt/auto approval policies are forbidden in production');
     }
+    if (requestedPolicy !== 'deny' && !isSeedOrTest) {
+      throw new Error('Prompt/auto approval policies require explicit seed or test mode');
+    }
+    this.policy = requestedPolicy;
   }
 
   /**
@@ -84,6 +97,25 @@ export class PromptApprovalGate implements ApprovalGate {
       signature: `sig-stub-${r.id.slice(0, 8)}`,
       decided_by: this.decidedBy,
       decided_at: decidedAt,
+    });
+  }
+}
+
+/** Production-safe default when no verified M2 provider is configured. */
+export class UnavailableApprovalGate implements ApprovalGate {
+  private readonly clock: SimClock;
+
+  constructor(clock: SimClock = new SystemClock()) {
+    this.clock = clock;
+  }
+
+  async request(requestInput: ApprovalRequest): Promise<ApprovalResult> {
+    const request = ApprovalRequestSchema.parse(requestInput);
+    return ApprovalResultSchema.parse({
+      request_id: request.id,
+      decision: 'denied',
+      decided_by: 'system',
+      decided_at: new Date(this.clock.now()).toISOString(),
     });
   }
 }

@@ -219,6 +219,37 @@ describe('GovernedToolExecutor unified lifecycle', () => {
     expect(auditSink.entries[1]).toMatchObject({ status: 'blocked' });
   });
 
+  it('normalizes approval verification failure before dispatch with one error outcome', async () => {
+    const auditSink = createAuditSink();
+    const handler = vi.fn((input: { flag: string; enabled: boolean }) => ({
+      ...input,
+      updated: true,
+    }));
+    const executor = createExecutor({
+      auditSink,
+      approvalGate: {
+        request: async () => {
+          throw new Error('signed approval replay detected');
+        },
+      },
+    });
+    executor.register('set_flag', handler);
+
+    const result = await executor.execute('set_flag', {
+      flag: 'opensky.enabled',
+      enabled: false,
+    });
+
+    expect(result).toMatchObject({
+      success: false,
+      status: 'error',
+      code: 'APPROVAL_UNAVAILABLE',
+    });
+    expect(handler).not.toHaveBeenCalled();
+    expect(auditSink.entries.map((entry) => entry.kind)).toEqual(['audit.intent', 'audit.outcome']);
+    expect(auditSink.entries[1]).toMatchObject({ status: 'error' });
+  });
+
   it.each([
     {
       label: 'handler exception',

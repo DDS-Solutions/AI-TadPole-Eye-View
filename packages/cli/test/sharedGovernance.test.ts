@@ -46,7 +46,7 @@ describe('CLI connected and local governance state', () => {
           governance_authority: {
             kind: 'shared_sqlite',
             authoritative: true,
-            schema_version: 1,
+            schema_version: 2,
             state_revision: 8,
           },
           provider_registry: createConfiguredProviderRegistry(),

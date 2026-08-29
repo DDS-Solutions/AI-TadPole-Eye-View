@@ -170,6 +170,7 @@ describe('Governance Port Stubs (@gev/governance)', () => {
         ts: new Date(clock.now()).toISOString(),
         intent_id: intentId,
         scopes: ['repo.write'],
+        nonce: crypto.randomUUID(),
         rationale: 'Update configuration file for tests',
         expires_at: new Date(clock.now() + 60000).toISOString(),
       });
@@ -189,6 +190,7 @@ describe('Governance Port Stubs (@gev/governance)', () => {
         ts: new Date(clock.now()).toISOString(),
         intent_id: intentId,
         scopes: ['flags.write'],
+        nonce: crypto.randomUUID(),
         rationale: 'Purge feature flag overrides',
         expires_at: new Date(clock.now() + 60000).toISOString(),
       });

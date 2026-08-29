@@ -45,6 +45,7 @@ import { createLaunchRouter } from './routes/launches.js';
 import { createOverpassRouter } from './routes/overpass.js';
 import { createQuakesRouter } from './routes/quakes.js';
 import { createRadioRouter } from './routes/radio.js';
+import { createSeedReloadRouter } from './routes/seedReload.js';
 import { createShipsRouter } from './routes/ships.js';
 import { createVoiceRouter } from './routes/voice.js';
 import { createWeatherRouter } from './routes/weather.js';
@@ -204,130 +205,10 @@ export function createApp(options: CreateAppOptions = {}) {
   // M1 Observer Real-Time Audit SSE Stream
   app.route('/ops/audit', createAuditStreamRouter(auditSink, clock));
 
-  // Governed Mutating Endpoint (Rule 1, Rule 2 & PLAN.md §6):
-  // Strict order: intent → budget.check → approval → execute → outcome
-  app.post('/ops/seed/reload', async (c) => {
-    const startTime = clock.now();
-    const taskRef = c.req.header('X-Task-Ref') || `task-${crypto.randomUUID().slice(0, 8)}`;
-    const actor = (c.var as unknown as { opsActor: Actor }).opsActor;
-    const intentId = crypto.randomUUID();
-    const intentTs = new Date(startTime).toISOString();
-
-    // 1. Audit Intent FIRST (Rule 1)
-    auditSink.intent({
-      kind: GevEvents.AuditIntent,
-      id: intentId,
-      ts: intentTs,
-      actor,
-      action: 'seed.reload',
-      target: 'fixtures/flights-opensky.json',
-      params: { timestamp: startTime },
-      task_ref: taskRef,
-    });
-
-    // 2. Budget Governor Check (Rule 2)
-    const spendVerdict = budgetGovernor.check({
-      action: 'seed.reload',
-      estimate: { currency: 'usd', min: 0.05, max: 0.05 },
-    });
-
-    if (!spendVerdict.allowed) {
-      const durationMs = clock.now() - startTime;
-      auditSink.outcome({
-        kind: GevEvents.AuditOutcome,
-        intent_id: intentId,
-        ts: new Date(clock.now()).toISOString(),
-        status: 'blocked',
-        error: `STASIS active or budget exceeded: ${spendVerdict.message} (${spendVerdict.reason})`,
-        duration_ms: durationMs,
-      });
-
-      return c.json(
-        {
-          status: 'blocked',
-          intent_id: intentId,
-          stasis_active: budgetGovernor.state().stasis_active,
-          reason: spendVerdict.reason,
-          message: spendVerdict.message,
-        },
-        429
-      );
-    }
-
-    // 3. Approval Gate Request for Mutating Action
-    const approvalDecision = await approvalGate.request({
-      id: crypto.randomUUID(),
-      ts: intentTs,
-      intent_id: intentId,
-      scopes: ['flags.write'],
-      rationale: 'Reloading seed fixtures mutates in-memory telemetry state for active session',
-      expires_at: new Date(startTime + 30000).toISOString(),
-    });
-
-    if (approvalDecision.decision !== 'approved') {
-      const durationMs = clock.now() - startTime;
-      auditSink.outcome({
-        kind: GevEvents.AuditOutcome,
-        intent_id: intentId,
-        ts: new Date(clock.now()).toISOString(),
-        status: 'blocked',
-        error: `Action denied by approval gate (decision: ${approvalDecision.decision})`,
-        duration_ms: durationMs,
-      });
-
-      return c.json(
-        {
-          status: 'denied',
-          intent_id: intentId,
-          decision: approvalDecision.decision,
-        },
-        403
-      );
-    }
-
-    // 4. Deterministic Execution
-    try {
-      const batch = await openSkyAdapter.getFlights();
-      const durationMs = clock.now() - startTime;
-
-      // 5. Audit Outcome AFTER (Rule 1)
-      auditSink.outcome({
-        kind: GevEvents.AuditOutcome,
-        intent_id: intentId,
-        ts: new Date(clock.now()).toISOString(),
-        status: 'ok',
-        result: {
-          reloaded: true,
-          aircraft_count: batch.states.length,
-          time: batch.time,
-        },
-        duration_ms: durationMs,
-      });
-
-      return c.json({
-        status: 'ok',
-        intent_id: intentId,
-        result: {
-          reloaded: true,
-          aircraft_count: batch.states.length,
-        },
-      });
-    } catch (err: unknown) {
-      const durationMs = clock.now() - startTime;
-      const errorMsg = err instanceof Error ? err.message : 'Unknown reload failure';
-
-      auditSink.outcome({
-        kind: GevEvents.AuditOutcome,
-        intent_id: intentId,
-        ts: new Date(clock.now()).toISOString(),
-        status: 'error',
-        error: errorMsg,
-        duration_ms: durationMs,
-      });
-
-      return c.json({ status: 'error', intent_id: intentId, error: errorMsg }, 500);
-    }
-  });
+  app.route(
+    '/ops/seed',
+    createSeedReloadRouter({ clock, auditSink, budgetGovernor, approvalGate, openSkyAdapter })
+  );
 
   // Ops Audit Log Query
   app.get('/ops/audit', async (c) => {

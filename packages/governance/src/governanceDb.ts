@@ -3,7 +3,7 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { type SimClock, SystemClock } from '@gev/core';
 
-export const GOVERNANCE_SCHEMA_VERSION = 1;
+export const GOVERNANCE_SCHEMA_VERSION = 2;
 export const GOVERNANCE_BUSY_TIMEOUT_MS = 5_000;
 
 export interface GovernanceDatabaseOptions {
@@ -91,6 +91,24 @@ function migrateGovernanceDatabase(db: DatabaseSync, clock: SimClock): void {
         );
         INSERT INTO governance_schema_migrations (version, applied_at)
         VALUES (1, '${new Date(clock.now()).toISOString()}');
+      `);
+    }
+
+    if (versionRow.version < 2) {
+      db.exec(`
+        CREATE TABLE governance_approval_nonces (
+          nonce TEXT PRIMARY KEY,
+          request_id TEXT NOT NULL UNIQUE,
+          intent_id TEXT NOT NULL,
+          signer_id TEXT NOT NULL,
+          key_id TEXT NOT NULL,
+          consumed_at TEXT NOT NULL,
+          expires_at TEXT NOT NULL
+        );
+        CREATE INDEX governance_approval_nonces_expiry_idx
+          ON governance_approval_nonces (expires_at);
+        INSERT INTO governance_schema_migrations (version, applied_at)
+        VALUES (2, '${new Date(clock.now()).toISOString()}');
       `);
     }
 

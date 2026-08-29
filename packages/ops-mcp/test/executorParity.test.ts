@@ -132,4 +132,47 @@ describe('operator consumer parity through the shared executor', () => {
       expect.objectContaining({ status: 'blocked' }),
     ]);
   });
+
+  it('preserves approval-verification error semantics across direct and stdio calls', async () => {
+    const unavailableGate: ApprovalGate = {
+      request: async () => {
+        throw new Error('signed approval verification failed');
+      },
+    };
+    const context = createContext(unavailableGate);
+    const server = new GevMcpServer({ context });
+
+    const direct = await executeOperatorTool(context, 'set_flag', {
+      flag: 'opensky.enabled',
+      enabled: false,
+    });
+    expect(direct).toMatchObject({
+      success: false,
+      status: 'error',
+      code: 'APPROVAL_UNAVAILABLE',
+    });
+
+    const response = await server.handleRequest({
+      jsonrpc: '2.0',
+      id: 3,
+      method: 'tools/call',
+      params: {
+        name: 'set_flag',
+        arguments: { flag: 'opensky.enabled', enabled: false },
+      },
+    });
+    expect(response?.result).toMatchObject({
+      isError: true,
+      _meta: { execution: { status: direct.status, code: direct.code } },
+    });
+    expect(context.flags.get('opensky.enabled')).toBe(true);
+
+    const outcomes = context.auditSink
+      .tail({ limit: 10 })
+      .filter((entry) => entry.kind === 'audit.outcome');
+    expect(outcomes).toEqual([
+      expect.objectContaining({ status: 'error' }),
+      expect.objectContaining({ status: 'error' }),
+    ]);
+  });
 });

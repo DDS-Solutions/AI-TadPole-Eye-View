@@ -65,18 +65,18 @@ Most agent demos show swarm diagrams. This one shows a working product and the r
 
 ## Governance (the AI-Tadpole-OS seam)
 
-The repository defines five governance ports. Current implementations are local seed/demo stubs; durable shared enforcement remains Phase 5.1 work:
+The repository defines five governance ports. Durable local governance and signed-approval verification exist, while external production integrations remain unfinished:
 
 | Rung | Capability | Status | Honest Notes |
 |---|---|---|---|
 | **M1 Observer** | Authenticated audit stream (`/ops/audit`) + feed health | PARTIAL | Server routes and `SqliteAuditSink` WAL exist; external authenticated/resumable observer proof is incomplete. |
-| **M2 Gatekeeper** | Signed approval controls mutations | SEED/DEMO STUB | Ed25519 helpers and a local `TadpoleM2Gatekeeper` demo exist, but the server/MCP path still uses local prompt/auto policy and lacks signer identity, nonce, expiry-linkage, and replay proof. |
-| **M3 Governor** | Shared budget ledger + durable STASIS | LOCAL STUB | `CapBudgetGovernor` works in-process; state is not durable or shared and authenticated human-only resume is not yet proven across processes. |
+| **M2 Gatekeeper** | Signed approval controls mutations | VERIFIER IMPLEMENTED; PROVIDER UNCONFIGURED | `SignedApprovalGate` verifies exact intent/scopes/signer/key/nonce/time bindings and consumes replay state in shared SQLite. Production denies without an injected trusted provider/key allowlist; `LocalM2ApprovalDemoGate` is non-production only. |
+| **M3 Governor** | Shared budget ledger + durable STASIS | DURABLE STATE; LEDGER PENDING | Budget/STASIS state is transactionally shared through SQLite and human-only resume is enforced. Reservation/settlement/refund idempotency remains task 5.1.4. |
 | **M4 Runtime** | Real AI agent team operates the live console end-to-end under governance | NOT YET REACHED (WIP) | `gev demo` simulates M1–M3 in-process (CLI only). M4 = an actual agent process driving a running server via ops-mcp under live governance — in progress. |
 
-> **Truth note on the demo:** `gev demo` exercises local M1–M3-shaped mechanics (audit WAL, STASIS trip, and an in-memory hash-chain helper). It does not prove a hash-chained SQLite WAL, external M2 approval, shared M3 state, or a live agent team controlling the globe.
+> **Truth note on the demo:** `gev demo` exercises local M1–M3-shaped mechanics (audit WAL, a demo-only local M2 signer/verifier, STASIS trip, and an in-memory hash-chain helper). It does not prove an external production approval provider, M3 settlement ledger, hash-chained SQLite WAL, or a live agent team controlling the globe.
 
-The current governor trips in-process **STASIS**. Durable cross-process suspension and authenticated human-only resume are required by Phase 5.1 and must not be inferred from the local demo.
+The current governor persists **STASIS** across local processes. An offline CLI result remains a non-authoritative snapshot, and production signer identity/transport must not be inferred from the local demo.
 
 ## Quick start
 
