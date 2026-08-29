@@ -1,9 +1,14 @@
 import fs from 'node:fs';
-import type { BoundingBox, ShipBatch } from '@gev/contracts';
-import { ShipBatch as ShipBatchSchema } from '@gev/contracts';
+import {
+  type BoundingBox,
+  type ShipBatch,
+  ShipBatchPayload as ShipBatchPayloadSchema,
+  ShipBatch as ShipBatchSchema,
+} from '@gev/contracts';
 import { type SimClock, SystemClock } from '@gev/core';
 import { pinnedFetch } from '@gev/security';
 import { resolveFixturePath } from './opensky.js';
+import { createDataProvenance, observationPeriodFromUnixSeconds } from './provenance.js';
 
 export interface AisAdapterOptions {
   clock?: SimClock;
@@ -54,13 +59,9 @@ export class AisAdapter {
 
     const content = await fs.promises.readFile(this.seedFixturePath, 'utf-8');
     const parsed = JSON.parse(content);
-    const validated = ShipBatchSchema.parse(parsed);
-
-    if (!bbox) {
-      return validated;
-    }
-
+    const validated = ShipBatchPayloadSchema.parse(parsed);
     const filtered = validated.ships.filter((ship) => {
+      if (!bbox) return true;
       return (
         ship.latitude >= bbox.min_lat &&
         ship.latitude <= bbox.max_lat &&
@@ -69,10 +70,18 @@ export class AisAdapter {
       );
     });
 
-    return {
-      time: Math.floor(this.clock.now() / 1000),
+    return ShipBatchSchema.parse({
+      time: validated.time,
       ships: filtered,
-    };
+      provenance: createDataProvenance({
+        providerId: 'aisstream',
+        feedId: 'ships',
+        clock: this.clock,
+        sourceMode: 'seed',
+        observationPeriod: observationPeriodFromUnixSeconds(validated.time),
+        fixtureId: 'ships-ais-v1',
+      }),
+    });
   }
 
   /**
@@ -103,6 +112,16 @@ export class AisAdapter {
     }
 
     const rawJson = await response.json();
-    return ShipBatchSchema.parse(rawJson);
+    const payload = ShipBatchPayloadSchema.parse(rawJson);
+    return ShipBatchSchema.parse({
+      ...payload,
+      provenance: createDataProvenance({
+        providerId: 'aisstream',
+        feedId: 'ships',
+        clock: this.clock,
+        sourceMode: 'live',
+        observationPeriod: observationPeriodFromUnixSeconds(payload.time),
+      }),
+    });
   }
 }

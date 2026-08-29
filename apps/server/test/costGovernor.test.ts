@@ -1,3 +1,4 @@
+import { ShipBatch } from '@gev/contracts';
 import { FrozenClock } from '@gev/core';
 import { createGovernanceRuntimeContext } from '@gev/governance';
 import { Hono } from 'hono';
@@ -46,17 +47,31 @@ describe('Cost Governor Middleware & Data Proxies (PLAN.md §10 Phase 1)', () =>
   });
 
   it('enforces TTL cache hits on repeated calls', async () => {
-    const { app } = createApp();
+    const clock = new FrozenClock(1724580000000);
+    const { app } = createApp({ clock });
 
     // First call: MISS
     const res1 = await app.request('/api/ships');
     expect(res1.status).toBe(200);
+    const first = ShipBatch.parse(await res1.json());
+    expect(first.provenance.mode).toBe('seed');
 
     // Second call within 15s TTL: HIT
     const res2 = await app.request('/api/ships');
     expect(res2.status).toBe(200);
     expect(res2.headers.get('X-GEV-Cache')).toBe('HIT');
     expect(res2.headers.get('X-GEV-TTL-Sec')).toBe('15');
+    const second = ShipBatch.parse(await res2.json());
+    expect(second.provenance).toMatchObject({
+      mode: 'cached',
+      source_mode: 'seed',
+      retrieved_at: clock.iso(),
+    });
+    expect(second.provenance.cache).toMatchObject({
+      stored_at: clock.iso(),
+      origin_retrieved_at: first.provenance.retrieved_at,
+    });
+    expect(second.provenance.cache?.cache_id).toMatch(/^cache-[0-9a-f]{32}$/);
   });
 
   it('filters results by bounding box query parameters across all feeds', async () => {

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DataProvenanceSchema } from './provenance.js';
 
 export const CctvStreamType = z.enum(['hls', 'mjpeg', 'image', 'mp4']);
 export type CctvStreamType = z.infer<typeof CctvStreamType>;
@@ -40,9 +41,14 @@ export type CctvCamera = z.infer<typeof CctvCamera>;
 /**
  * Collection container for CCTV camera catalog.
  */
-export const CctvCatalog = z.object({
+export const CctvCatalogPayload = z.object({
   time: z.number().int().nonnegative(),
   count: z.number().int().nonnegative(),
   cameras: z.array(CctvCamera),
+});
+export type CctvCatalogPayload = z.infer<typeof CctvCatalogPayload>;
+
+export const CctvCatalog = CctvCatalogPayload.extend({
+  provenance: DataProvenanceSchema,
 });
 export type CctvCatalog = z.infer<typeof CctvCatalog>;

@@ -1,4 +1,8 @@
-import { type BoundingBox, BoundingBox as BoundingBoxSchema } from '@gev/contracts';
+import {
+  type BoundingBox,
+  BoundingBox as BoundingBoxSchema,
+  ThermalHotspotBatch,
+} from '@gev/contracts';
 import type { FirmsAdapter } from '@gev/providers';
 import { Hono } from 'hono';
 
@@ -26,7 +30,7 @@ export function createFirmsRouter(adapter: FirmsAdapter) {
     }
 
     try {
-      const batch = await adapter.getHotspots(bbox);
+      const batch = ThermalHotspotBatch.parse(await adapter.getHotspots(bbox));
       return c.json(batch);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown NASA FIRMS error';

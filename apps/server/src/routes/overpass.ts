@@ -1,6 +1,15 @@
-import { OverpassQueryRequest } from '@gev/contracts';
+import {
+  OverpassQueryRequest,
+  OverpassResponsePayloadSchema,
+  OverpassResponseSchema,
+} from '@gev/contracts';
 import type { SimClock } from '@gev/core';
 import { SystemClock } from '@gev/core';
+import {
+  createDataProvenance,
+  observationPeriodFromIso,
+  unavailableObservationPeriod,
+} from '@gev/providers';
 import { pinnedFetch, sanitizeOverpassQuery } from '@gev/security';
 import { Hono } from 'hono';
 
@@ -42,7 +51,7 @@ export function createOverpassRouter(options: OverpassRouterOptions = {}) {
       });
 
       if (isSeedMode) {
-        return c.json({
+        const payload = OverpassResponsePayloadSchema.parse({
           version: 0.6,
           generator: 'GEV-Overpass-Seed/1.0',
           osm3s: {
@@ -66,6 +75,21 @@ export function createOverpassRouter(options: OverpassRouterOptions = {}) {
             timeout_sec: sanitized.timeout_sec,
           },
         });
+        return c.json(
+          OverpassResponseSchema.parse({
+            ...payload,
+            provenance: createDataProvenance({
+              providerId: 'overpass-api',
+              feedId: 'overpass',
+              clock,
+              sourceMode: 'seed',
+              fixtureId: 'overpass-synthetic-v1',
+              observationPeriod: unavailableObservationPeriod(
+                'Synthetic seed query results do not publish an upstream observation period'
+              ),
+            }),
+          })
+        );
       }
 
       // Live mode via pinnedFetch
@@ -87,8 +111,30 @@ export function createOverpassRouter(options: OverpassRouterOptions = {}) {
         throw new Error(`Overpass API returned HTTP ${upstreamRes.status}`);
       }
 
-      const json = await upstreamRes.json();
-      return c.json(json);
+      const raw = await upstreamRes.json();
+      const rawRecord = typeof raw === 'object' && raw !== null ? raw : {};
+      const payload = OverpassResponsePayloadSchema.parse({
+        ...rawRecord,
+        sanitization: {
+          complexity_score: sanitized.complexity_score,
+          timeout_sec: sanitized.timeout_sec,
+        },
+      });
+      const timestamp = payload.osm3s.timestamp_osm_base;
+      return c.json(
+        OverpassResponseSchema.parse({
+          ...payload,
+          provenance: createDataProvenance({
+            providerId: 'overpass-api',
+            feedId: 'overpass',
+            clock,
+            sourceMode: 'live',
+            observationPeriod: timestamp
+              ? observationPeriodFromIso(timestamp)
+              : unavailableObservationPeriod('Overpass response omitted timestamp_osm_base'),
+          }),
+        })
+      );
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown Overpass error';
       return c.json({ error: message, code: 'OVERPASS_FAILED' }, 400);

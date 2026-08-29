@@ -13,11 +13,16 @@ test.describe('GEV v2 Multi-Layer Telemetry, Virtualized Table & Frame Monitor S
   test('renders keyless Cesium 3D globe, virtualized telemetry stream, and uPlot charts', async ({
     page,
   }) => {
+    test.setTimeout(60_000);
     page.on('console', (msg) => console.log('PAGE LOG:', msg.text()));
     page.on('pageerror', (err) => console.error('PAGE ERROR:', err));
 
     // 1. Navigate to web application
     await page.goto('/');
+    const resultsDir = path.resolve('test-results');
+    if (!fs.existsSync(resultsDir)) {
+      fs.mkdirSync(resultsDir, { recursive: true });
+    }
 
     // 2. Assert basic shell elements and attribution
     const titleLocator = page.locator('#app-title');
@@ -84,6 +89,18 @@ test.describe('GEV v2 Multi-Layer Telemetry, Virtualized Table & Frame Monitor S
       })
       .toBe(9);
 
+    // Provenance badges are derived from validated response envelopes, not hardcoded counts.
+    await expect(page.locator('#provenance-source-badge')).toHaveText('9 SOURCES');
+    await expect(page.locator('#provenance-mode-badge')).toContainText(/SEED|CACHED/);
+    await expect(page.locator('#provenance-freshness-badge')).not.toHaveText('AWAITING');
+    const provenanceBadges = page.locator('#provenance-badges');
+    await provenanceBadges.evaluate((element) => element.scrollIntoView({ block: 'nearest' }));
+    await expect(provenanceBadges).toBeVisible();
+    await provenanceBadges.screenshot({
+      path: path.join(resultsDir, 'provenance-badges.png'),
+    });
+    await page.locator('.panel-header').evaluate((element) => element.scrollIntoView());
+
     // 6. Test Frame Budget Monitor integration on window.__gev
     const frameReport = await page.evaluate(() => window.__gev?.getFrameReport?.());
     expect(frameReport).not.toBeNull();
@@ -139,11 +156,6 @@ test.describe('GEV v2 Multi-Layer Telemetry, Virtualized Table & Frame Monitor S
     await expect(m45FilterBtn).toHaveClass(/active/);
 
     // 10. Capture screenshot artifact (Rule 2: visual verification)
-    const resultsDir = path.resolve('test-results');
-    if (!fs.existsSync(resultsDir)) {
-      fs.mkdirSync(resultsDir, { recursive: true });
-    }
-
     const screenshotPath = path.join(resultsDir, 'globe-phase2-virtual-telemetry.png');
     await page.screenshot({ path: screenshotPath });
 

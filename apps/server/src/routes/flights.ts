@@ -1,4 +1,4 @@
-import { type BoundingBox, BoundingBox as BoundingBoxSchema } from '@gev/contracts';
+import { type BoundingBox, BoundingBox as BoundingBoxSchema, FlightBatch } from '@gev/contracts';
 import type { OpenSkyAdapter } from '@gev/providers';
 import { Hono } from 'hono';
 
@@ -26,7 +26,7 @@ export function createFlightsRouter(adapter: OpenSkyAdapter) {
     }
 
     try {
-      const batch = await adapter.getFlights(bbox);
+      const batch = FlightBatch.parse(await adapter.getFlights(bbox));
       return c.json(batch);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown provider error';

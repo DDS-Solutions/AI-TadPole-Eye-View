@@ -1,9 +1,28 @@
 import fs from 'node:fs';
-import type { BoundingBox, ThermalHotspot, ThermalHotspotBatch } from '@gev/contracts';
-import { ThermalHotspotBatch as ThermalHotspotBatchSchema } from '@gev/contracts';
+import {
+  type BoundingBox,
+  type ThermalHotspot,
+  type ThermalHotspotBatch,
+  ThermalHotspotBatchPayload as ThermalHotspotBatchPayloadSchema,
+  ThermalHotspotBatch as ThermalHotspotBatchSchema,
+} from '@gev/contracts';
 import { type SimClock, SystemClock } from '@gev/core';
 import { pinnedFetch } from '@gev/security';
 import { resolveFixturePath } from './opensky.js';
+import {
+  createDataProvenance,
+  observationPeriodFromUnixRange,
+  observationPeriodFromUnixSeconds,
+  unavailableObservationPeriod,
+} from './provenance.js';
+
+function firmsObservationSeconds(hotspot: ThermalHotspot): number | null {
+  const time = hotspot.acq_time.padStart(4, '0');
+  const timestamp = Date.parse(
+    `${hotspot.acq_date}T${time.slice(0, 2)}:${time.slice(2, 4)}:00.000Z`
+  );
+  return Number.isFinite(timestamp) ? Math.floor(timestamp / 1000) : null;
+}
 
 export interface FirmsAdapterOptions {
   clock?: SimClock;
@@ -48,13 +67,9 @@ export class FirmsAdapter {
 
     const content = await fs.promises.readFile(this.seedFixturePath, 'utf-8');
     const parsed = JSON.parse(content);
-    const validated = ThermalHotspotBatchSchema.parse(parsed);
-
-    if (!bbox) {
-      return validated;
-    }
-
+    const validated = ThermalHotspotBatchPayloadSchema.parse(parsed);
     const filtered = validated.hotspots.filter((h) => {
+      if (!bbox) return true;
       return (
         h.latitude >= bbox.min_lat &&
         h.latitude <= bbox.max_lat &&
@@ -63,11 +78,19 @@ export class FirmsAdapter {
       );
     });
 
-    return {
-      time: Math.floor(this.clock.now() / 1000),
+    return ThermalHotspotBatchSchema.parse({
+      time: validated.time,
       count: filtered.length,
       hotspots: filtered,
-    };
+      provenance: createDataProvenance({
+        providerId: 'nasa-firms',
+        feedId: 'firms',
+        clock: this.clock,
+        sourceMode: 'seed',
+        observationPeriod: observationPeriodFromUnixSeconds(validated.time),
+        fixtureId: 'firms-hotspots-v1',
+      }),
+    });
   }
 
   private async fetchLiveHotspots(bbox?: BoundingBox): Promise<ThermalHotspotBatch> {
@@ -92,12 +115,29 @@ export class FirmsAdapter {
 
     const csvText = await response.text();
     const hotspots = this.parseCsv(csvText);
+    const observationTimes = hotspots
+      .map(firmsObservationSeconds)
+      .filter((timestamp): timestamp is number => timestamp !== null)
+      .sort((left, right) => left - right);
+    const firstObservation = observationTimes[0];
+    const lastObservation = observationTimes[observationTimes.length - 1];
+    const observationPeriod =
+      firstObservation === undefined || lastObservation === undefined
+        ? unavailableObservationPeriod('FIRMS response contained no valid acquisition time')
+        : observationPeriodFromUnixRange(firstObservation, lastObservation);
 
-    return {
-      time: Math.floor(this.clock.now() / 1000),
+    return ThermalHotspotBatchSchema.parse({
+      time: lastObservation ?? 0,
       count: hotspots.length,
       hotspots,
-    };
+      provenance: createDataProvenance({
+        providerId: 'nasa-firms',
+        feedId: 'firms',
+        clock: this.clock,
+        sourceMode: 'live',
+        observationPeriod,
+      }),
+    });
   }
 
   private parseCsv(csv: string): ThermalHotspot[] {

@@ -1,0 +1,31 @@
+:root {
+  --hud-panel-bg-strong: rgba(15, 23, 42, 0.88);
+  --hud-border: rgba(148, 163, 184, 0.18);
+  --hud-border-muted: rgba(148, 163, 184, 0.12);
+  --hud-border-faint: rgba(148, 163, 184, 0.08);
+  --hud-divider: rgba(148, 163, 184, 0.1);
+  --hud-shadow: rgba(0, 0, 0, 0.6);
+  --hud-row-bg: rgba(30, 41, 59, 0.4);
+  --hud-chip-bg: rgba(30, 41, 59, 0.6);
+  --hud-chip-border: rgba(148, 163, 184, 0.15);
+  --hud-switch-off: rgba(100, 116, 139, 0.4);
+  --hud-text-primary: #f8fafc;
+  --hud-text-panel: #f1f5f9;
+  --hud-text-secondary: #94a3b8;
+  --hud-text-dim: #64748b;
+  --hud-switch-knob: #fff;
+  --hud-accent: #38bdf8;
+  --hud-accent-soft: rgba(56, 189, 248, 0.15);
+  --hud-accent-selected: rgba(56, 189, 248, 0.2);
+  --hud-success: #10b981;
+  --hud-success-soft: rgba(16, 185, 129, 0.1);
+  --channel-flight: #38bdf8;
+  --channel-marine: #2dd4bf;
+  --channel-quake: #fb923c;
+  --channel-firms: #f43f5e;
+  --channel-gbfs: #818cf8;
+  --channel-cctv: #a855f7;
+  --channel-radio: #06b6d4;
+  --channel-launch: #facc15;
+  --channel-weather: #60a5fa;
+}

@@ -1,9 +1,51 @@
 import fs from 'node:fs';
-import type { BikeStation, BikeStationBatch, BoundingBox } from '@gev/contracts';
-import { BikeStationBatch as BikeStationBatchSchema } from '@gev/contracts';
+import {
+  type BikeStation,
+  type BikeStationBatch,
+  BikeStationBatchPayload as BikeStationBatchPayloadSchema,
+  BikeStationBatch as BikeStationBatchSchema,
+  type BoundingBox,
+} from '@gev/contracts';
 import { type SimClock, SystemClock } from '@gev/core';
 import { pinnedFetch } from '@gev/security';
+import { z } from 'zod';
 import { resolveFixturePath } from './opensky.js';
+import {
+  createDataProvenance,
+  observationPeriodFromUnixSeconds,
+  unavailableObservationPeriod,
+} from './provenance.js';
+
+const RawGbfsStationInfoSchema = z.object({
+  last_updated: z.number().int().nonnegative().optional(),
+  data: z.object({
+    stations: z.array(
+      z.object({
+        station_id: z.string().min(1),
+        name: z.string().min(1),
+        lat: z.number().finite().min(-90).max(90),
+        lon: z.number().finite().min(-180).max(180),
+        capacity: z.number().int().nonnegative().optional(),
+      })
+    ),
+  }),
+});
+
+const RawGbfsStationStatusSchema = z.object({
+  last_updated: z.number().int().nonnegative().optional(),
+  data: z.object({
+    stations: z.array(
+      z.object({
+        station_id: z.string().min(1),
+        num_bikes_available: z.number().int().nonnegative().optional(),
+        num_docks_available: z.number().int().nonnegative().optional(),
+        is_installed: z.number().int().min(0).max(1).optional(),
+        is_renting: z.number().int().min(0).max(1).optional(),
+        is_returning: z.number().int().min(0).max(1).optional(),
+      })
+    ),
+  }),
+});
 
 export interface GbfsAdapterOptions {
   clock?: SimClock;
@@ -53,13 +95,9 @@ export class GbfsAdapter {
 
     const content = await fs.promises.readFile(this.seedFixturePath, 'utf-8');
     const parsed = JSON.parse(content);
-    const validated = BikeStationBatchSchema.parse(parsed);
-
-    if (!bbox) {
-      return validated;
-    }
-
+    const validated = BikeStationBatchPayloadSchema.parse(parsed);
     const filtered = validated.stations.filter((s) => {
+      if (!bbox) return true;
       return (
         s.latitude >= bbox.min_lat &&
         s.latitude <= bbox.max_lat &&
@@ -68,11 +106,19 @@ export class GbfsAdapter {
       );
     });
 
-    return {
-      time: Math.floor(this.clock.now() / 1000),
+    return BikeStationBatchSchema.parse({
+      time: validated.time,
       system_id: validated.system_id,
       stations: filtered,
-    };
+      provenance: createDataProvenance({
+        providerId: 'gbfs',
+        feedId: 'gbfs',
+        clock: this.clock,
+        sourceMode: 'seed',
+        observationPeriod: observationPeriodFromUnixSeconds(validated.time),
+        fixtureId: 'gbfs-stations-v1',
+      }),
+    });
   }
 
   private async fetchLiveStations(bbox?: BoundingBox): Promise<BikeStationBatch> {
@@ -108,29 +154,8 @@ export class GbfsAdapter {
       throw new Error(`GBFS station status returned HTTP ${statusRes.status}`);
     }
 
-    const infoJson = (await infoRes.json()) as {
-      data: {
-        stations: Array<{
-          station_id: string;
-          name: string;
-          lat: number;
-          lon: number;
-          capacity?: number;
-        }>;
-      };
-    };
-    const statusJson = (await statusRes.json()) as {
-      data: {
-        stations: Array<{
-          station_id: string;
-          num_bikes_available?: number;
-          num_docks_available?: number;
-          is_installed?: number;
-          is_renting?: number;
-          is_returning?: number;
-        }>;
-      };
-    };
+    const infoJson = RawGbfsStationInfoSchema.parse(await infoRes.json());
+    const statusJson = RawGbfsStationStatusSchema.parse(await statusRes.json());
 
     const statusMap = new Map<
       string,
@@ -183,10 +208,21 @@ export class GbfsAdapter {
       });
     }
 
-    return {
-      time: Math.floor(this.clock.now() / 1000),
+    const observationTime = Math.max(infoJson.last_updated ?? 0, statusJson.last_updated ?? 0);
+    return BikeStationBatchSchema.parse({
+      time: observationTime,
       system_id: 'gbfs',
       stations,
-    };
+      provenance: createDataProvenance({
+        providerId: 'gbfs',
+        feedId: 'gbfs',
+        clock: this.clock,
+        sourceMode: 'live',
+        observationPeriod:
+          observationTime > 0
+            ? observationPeriodFromUnixSeconds(observationTime)
+            : unavailableObservationPeriod('GBFS feeds did not publish last_updated'),
+      }),
+    });
   }
 }

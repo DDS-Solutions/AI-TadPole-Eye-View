@@ -1,4 +1,8 @@
-import { type BoundingBox, BoundingBox as BoundingBoxSchema } from '@gev/contracts';
+import {
+  type BoundingBox,
+  BoundingBox as BoundingBoxSchema,
+  EarthquakeCollection,
+} from '@gev/contracts';
 import type { UsgsQuakeAdapter } from '@gev/providers';
 import { Hono } from 'hono';
 
@@ -29,7 +33,7 @@ export function createQuakesRouter(adapter: UsgsQuakeAdapter) {
     }
 
     try {
-      const collection = await adapter.getQuakes(minMag, bbox);
+      const collection = EarthquakeCollection.parse(await adapter.getQuakes(minMag, bbox));
       return c.json(collection);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown USGS provider error';

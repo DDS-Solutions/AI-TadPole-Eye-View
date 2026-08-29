@@ -1,3 +1,4 @@
+import { LaunchCatalog } from '@gev/contracts';
 import { LaunchAdapter } from '@gev/providers';
 import { Hono } from 'hono';
 
@@ -11,7 +12,7 @@ export function createLaunchRouter(options: LaunchRouteOptions = {}) {
 
   router.get('/', async (c) => {
     try {
-      const catalog = await adapter.getLaunches();
+      const catalog = LaunchCatalog.parse(await adapter.getLaunches());
       return c.json(catalog);
     } catch (err: unknown) {
       return c.json(

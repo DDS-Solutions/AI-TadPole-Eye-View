@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DataProvenanceSchema } from './provenance.js';
 
 export const LaunchStatus = z.enum(['success', 'in_flight', 'failed', 'simulated']);
 export type LaunchStatus = z.infer<typeof LaunchStatus>;
@@ -30,9 +31,14 @@ export const LaunchMission = z.object({
 });
 export type LaunchMission = z.infer<typeof LaunchMission>;
 
-export const LaunchCatalog = z.object({
+export const LaunchCatalogPayload = z.object({
   time: z.number().int().nonnegative(),
   count: z.number().int().nonnegative(),
   missions: z.array(LaunchMission),
+});
+export type LaunchCatalogPayload = z.infer<typeof LaunchCatalogPayload>;
+
+export const LaunchCatalog = LaunchCatalogPayload.extend({
+  provenance: DataProvenanceSchema,
 });
 export type LaunchCatalog = z.infer<typeof LaunchCatalog>;

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DataProvenanceSchema } from './provenance.js';
 
 /**
  * Normalized AIS Marine telemetry state vector contract.
@@ -39,8 +40,13 @@ export type ShipState = z.infer<typeof ShipState>;
 /**
  * Batch response container for marine AIS feed ingestion.
  */
-export const ShipBatch = z.object({
+export const ShipBatchPayload = z.object({
   time: z.number().int().nonnegative(),
   ships: z.array(ShipState),
+});
+export type ShipBatchPayload = z.infer<typeof ShipBatchPayload>;
+
+export const ShipBatch = ShipBatchPayload.extend({
+  provenance: DataProvenanceSchema,
 });
 export type ShipBatch = z.infer<typeof ShipBatch>;

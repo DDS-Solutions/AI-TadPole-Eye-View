@@ -9,6 +9,7 @@ import {
 import type { SimClock } from '@gev/core';
 import { SystemClock } from '@gev/core';
 import { LedgerOperationError, type SqliteBudgetLedger } from '@gev/governance';
+import { markResponseProvenanceCached } from '@gev/providers';
 import type { Context, Next } from 'hono';
 import {
   feedFailureResult,
@@ -29,6 +30,7 @@ interface CacheEntry {
   status: number;
   timestamp: number;
   etag: string;
+  cacheId: string;
 }
 
 interface ProviderState {
@@ -49,10 +51,7 @@ export interface CostGovernorOptions {
   tiers?: Record<string, ProviderTierConfig>;
 }
 
-/**
- * Cost Governor Middleware (PLAN.md §10 Phase 1 Item 2)
- * Enforces per-provider TTL tiers, Retry-After cooldowns, staleness fallback, and budget tracking.
- */
+/** Enforces provider TTLs, cooldowns, stale fallback, and budget tracking. */
 export class CostGovernor {
   private readonly clock: SimClock;
   private readonly budgetLedger?: SqliteBudgetLedger;
@@ -65,9 +64,7 @@ export class CostGovernor {
     this.tiers = options.tiers ?? DEFAULT_PROVIDER_TIERS;
   }
 
-  /**
-   * Returns a Hono middleware handler for a specific provider feed.
-   */
+  /** Returns Hono middleware for a provider feed. */
   middleware(providerName: string) {
     const tier = this.tiers[providerName] ?? {
       ttlSeconds: 10,
@@ -81,7 +78,6 @@ export class CostGovernor {
       const cacheKey = c.req.url;
       const cached = state.cache.get(cacheKey);
 
-      // Check if provider is currently in a Retry-After cooldown
       if (state.cooldownUntil > now) {
         const remainingCooldownSec = Math.ceil((state.cooldownUntil - now) / 1000);
         c.header('Retry-After', remainingCooldownSec.toString());
@@ -90,7 +86,7 @@ export class CostGovernor {
         if (cached) {
           c.header('X-GEV-Stale', 'true');
           c.header('X-GEV-Cache-Source', 'cooldown-fallback');
-          return c.json(cached.body, cached.status as 200);
+          return c.json(this.readCachedBody(cached), cached.status as 200);
         }
 
         return c.json(
@@ -102,13 +98,12 @@ export class CostGovernor {
         );
       }
 
-      // Check if cache is still fresh within TTL window
       if (cached && now - cached.timestamp < tier.ttlSeconds * 1000) {
         const ageSec = Math.floor((now - cached.timestamp) / 1000);
         c.header('X-GEV-Cache', 'HIT');
         c.header('X-GEV-Cache-Age-Sec', ageSec.toString());
         c.header('X-GEV-TTL-Sec', tier.ttlSeconds.toString());
-        return c.json(cached.body, cached.status as 200);
+        return c.json(this.readCachedBody(cached), cached.status as 200);
       }
 
       let activeReservation: ActiveReservation | undefined;
@@ -170,6 +165,7 @@ export class CostGovernor {
             status,
             timestamp: now,
             etag: `W/"${now}"`,
+            cacheId: this.createCacheId(providerName, cacheKey, now),
           });
           c.header('X-GEV-Cache', 'MISS');
           c.header('X-GEV-TTL-Sec', tier.ttlSeconds.toString());
@@ -178,7 +174,7 @@ export class CostGovernor {
         }
       } else if (cached && now - cached.timestamp < tier.maxStaleSeconds * 1000) {
         // Staleness fallback on 5xx or rate limits — replace c.res (H2 fix)
-        c.res = new Response(JSON.stringify(cached.body), {
+        c.res = new Response(JSON.stringify(this.readCachedBody(cached)), {
           status: 200,
           headers: {
             'Content-Type': 'application/json',
@@ -224,6 +220,22 @@ export class CostGovernor {
       this.providerStates.set(providerName, state);
     }
     return state;
+  }
+
+  private createCacheId(providerName: string, cacheKey: string, storedAtMs: number): string {
+    const digest = crypto
+      .createHash('sha256')
+      .update(`${providerName}\n${cacheKey}\n${storedAtMs}`, 'utf8')
+      .digest('hex');
+    return `cache-${digest.slice(0, 32)}`;
+  }
+
+  private readCachedBody(cached: CacheEntry): unknown {
+    return markResponseProvenanceCached(cached.body, {
+      clock: this.clock,
+      cacheId: cached.cacheId,
+      storedAtMs: cached.timestamp,
+    });
   }
 
   private reserveBillable(
@@ -291,7 +303,7 @@ export class CostGovernor {
       if (cached) {
         c.header('X-GEV-Stale', 'true');
         c.header('X-GEV-Cache-Source', 'budget-fallback');
-        return c.json(cached.body, cached.status as 200);
+        return c.json(this.readCachedBody(cached), cached.status as 200);
       }
       return c.json(
         {

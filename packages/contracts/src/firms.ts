@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DataProvenanceSchema } from './provenance.js';
 
 /**
  * Normalized NASA FIRMS Thermal Hotspot / Wildfire telemetry contract.
@@ -31,9 +32,14 @@ export type ThermalHotspot = z.infer<typeof ThermalHotspot>;
 /**
  * Batch container for FIRMS thermal anomaly feed.
  */
-export const ThermalHotspotBatch = z.object({
+export const ThermalHotspotBatchPayload = z.object({
   time: z.number().int().nonnegative(),
   count: z.number().int().nonnegative(),
   hotspots: z.array(ThermalHotspot),
+});
+export type ThermalHotspotBatchPayload = z.infer<typeof ThermalHotspotBatchPayload>;
+
+export const ThermalHotspotBatch = ThermalHotspotBatchPayload.extend({
+  provenance: DataProvenanceSchema,
 });
 export type ThermalHotspotBatch = z.infer<typeof ThermalHotspotBatch>;

@@ -21,15 +21,29 @@ export type ProviderHealth = z.infer<typeof ProviderHealthSchema>;
 export const ProviderSourceSchema = z.object({
   name: z.string().min(1),
   url: z.string().url(),
+  license_id: ProviderRegistryIdSchema,
   license: z.string().min(1),
   attribution: z.string().min(1),
 });
 export type ProviderSource = z.infer<typeof ProviderSourceSchema>;
 
+export const ProviderFreshnessPolicySchema = z.discriminatedUnion('status', [
+  z.object({
+    status: z.literal('defined'),
+    fresh_for_seconds: z.number().int().positive().max(86_400),
+  }),
+  z.object({
+    status: z.literal('unavailable'),
+    reason: z.string().min(1).max(500),
+  }),
+]);
+export type ProviderFreshnessPolicy = z.infer<typeof ProviderFreshnessPolicySchema>;
+
 export const ProviderRegistryFeedSchema = z.object({
   id: ProviderRegistryIdSchema,
   name: z.string().min(1),
   implementation: ProviderImplementationStateSchema,
+  freshness: ProviderFreshnessPolicySchema,
 });
 export type ProviderRegistryFeed = z.infer<typeof ProviderRegistryFeedSchema>;
 
@@ -98,12 +112,29 @@ export const ProviderRegistryProviderSchema = z
         }
       }
     }
+
+    for (const [feedIndex, feed] of provider.feeds.entries()) {
+      if (feed.implementation === 'implemented' && feed.freshness.status !== 'defined') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['feeds', feedIndex, 'freshness'],
+          message: 'implemented feeds require a defined freshness policy',
+        });
+      }
+      if (feed.implementation !== 'implemented' && feed.freshness.status !== 'unavailable') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['feeds', feedIndex, 'freshness'],
+          message: 'non-implemented feeds cannot claim a freshness policy',
+        });
+      }
+    }
   });
 export type ProviderRegistryProvider = z.infer<typeof ProviderRegistryProviderSchema>;
 
 export const ProviderRegistrySchema = z
   .object({
-    version: z.literal(1),
+    version: z.literal(2),
     requested_mode: ProviderRequestedModeSchema,
     providers: z.array(ProviderRegistryProviderSchema).min(1),
   })
@@ -164,7 +195,9 @@ export const ProviderRegistryFeedViewSchema = z.object({
   name: z.string().min(1),
   provider: ProviderRegistryIdSchema,
   provider_name: z.string().min(1),
+  source: ProviderSourceSchema,
   implementation: ProviderImplementationStateSchema,
+  freshness: ProviderFreshnessPolicySchema,
   mode: ProviderRuntimeModeSchema,
   status: ProviderHealthSchema,
   layer_ids: z.array(ProviderRegistryIdSchema),
@@ -177,7 +210,7 @@ export const ProviderFeedHealthResponseSchema = z.object({
   stasis_active: z.boolean(),
   budget_remaining_usd: z.number().finite().nonnegative(),
   trace_id: z.string().min(1),
-  registry_version: z.literal(1),
+  registry_version: z.literal(2),
   requested_mode: ProviderRequestedModeSchema,
   counts: ProviderRegistryCountsSchema,
   feeds: z.array(ProviderRegistryFeedViewSchema),

@@ -1,5 +1,7 @@
 <script lang="ts">
   import { layerStore } from '../stores/layers.svelte.js';
+  import LayerFilterControls from './LayerFilterControls.svelte';
+  import ProvenanceBadges from './ProvenanceBadges.svelte';
 
   let isCollapsed = $state(false);
   let activeTab = $state<'layers' | 'filters'>('layers');
@@ -222,180 +224,10 @@
           </div>
         </div>
       {:else}
-        <!-- Filter Controls -->
-        <div class="filters-container">
-          <!-- Quakes Filter -->
-          <div class="filter-group">
-            <div class="filter-group-header">
-              <span class="channel-dot quake-dot"></span>
-              <span class="filter-title">USGS Earthquake Magnitude</span>
-            </div>
-            <div class="filter-options-row">
-              <button
-                class="filter-chip"
-                class:active={layerStore.filters.quakes.minMagnitude === 0}
-                onclick={() => layerStore.setQuakeMinMagnitude(0)}
-              >
-                All (M0+)
-              </button>
-              <button
-                id="filter-quakes-m25"
-                class="filter-chip"
-                class:active={layerStore.filters.quakes.minMagnitude === 2.5}
-                onclick={() => layerStore.setQuakeMinMagnitude(2.5)}
-              >
-                M2.5+
-              </button>
-              <button
-                id="filter-quakes-m45"
-                class="filter-chip"
-                class:active={layerStore.filters.quakes.minMagnitude === 4.5}
-                onclick={() => layerStore.setQuakeMinMagnitude(4.5)}
-              >
-                M4.5+ (Major)
-              </button>
-            </div>
-          </div>
-
-          <!-- FIRMS Filter -->
-          <div class="filter-group">
-            <div class="filter-group-header">
-              <span class="channel-dot firms-dot"></span>
-              <span class="filter-title">NASA FIRMS Fire Power (FRP)</span>
-            </div>
-            <div class="filter-options-row">
-              <button
-                class="filter-chip"
-                class:active={layerStore.filters.firms.minFrp === 0}
-                onclick={() => layerStore.setFirmsMinFrp(0)}
-              >
-                All
-              </button>
-              <button
-                id="filter-firms-frp10"
-                class="filter-chip"
-                class:active={layerStore.filters.firms.minFrp === 10}
-                onclick={() => layerStore.setFirmsMinFrp(10)}
-              >
-                &gt;10 MW
-              </button>
-              <button
-                id="filter-firms-frp50"
-                class="filter-chip"
-                class:active={layerStore.filters.firms.minFrp === 50}
-                onclick={() => layerStore.setFirmsMinFrp(50)}
-              >
-                &gt;50 MW (Severe)
-              </button>
-            </div>
-          </div>
-
-          <!-- Marine AIS Filter -->
-          <div class="filter-group">
-            <div class="filter-group-header">
-              <span class="channel-dot marine-dot"></span>
-              <span class="filter-title">Marine Vessel Category</span>
-            </div>
-            <div class="filter-options-row">
-              <button
-                class="filter-chip"
-                class:active={layerStore.filters.marine.vesselType === 'all'}
-                onclick={() => layerStore.setMarineVesselType('all')}
-              >
-                All
-              </button>
-              <button
-                id="filter-marine-cargo"
-                class="filter-chip"
-                class:active={layerStore.filters.marine.vesselType === 'cargo'}
-                onclick={() => layerStore.setMarineVesselType('cargo')}
-              >
-                Cargo
-              </button>
-              <button
-                id="filter-marine-tanker"
-                class="filter-chip"
-                class:active={layerStore.filters.marine.vesselType === 'tanker'}
-                onclick={() => layerStore.setMarineVesselType('tanker')}
-              >
-                Tanker
-              </button>
-            </div>
-          </div>
-
-          <!-- CCTV Agency Filter -->
-          <div class="filter-group">
-            <div class="filter-group-header">
-              <span class="channel-dot cctv-dot"></span>
-              <span class="filter-title">CCTV Managing Agency</span>
-            </div>
-            <div class="filter-options-row">
-              <button
-                class="filter-chip"
-                class:active={layerStore.filters.cctv.agency === 'all'}
-                onclick={() => layerStore.setCctvAgency('all')}
-              >
-                All Agencies
-              </button>
-              <button
-                id="filter-cctv-caltrans"
-                class="filter-chip"
-                class:active={layerStore.filters.cctv.agency === 'caltrans'}
-                onclick={() => layerStore.setCctvAgency('caltrans')}
-              >
-                Caltrans
-              </button>
-              <button
-                id="filter-cctv-nycdot"
-                class="filter-chip"
-                class:active={layerStore.filters.cctv.agency === 'nycdot'}
-                onclick={() => layerStore.setCctvAgency('nycdot')}
-              >
-                NYCDOT
-              </button>
-            </div>
-          </div>
-
-          <!-- Radio Category Filter -->
-          <div class="filter-group">
-            <div class="filter-group-header">
-              <span class="channel-dot radio-dot"></span>
-              <span class="filter-title">Radio Stream Genre</span>
-            </div>
-            <div class="filter-options-row">
-              <button
-                class="filter-chip"
-                class:active={layerStore.filters.radio.category === 'all'}
-                onclick={() => layerStore.setRadioCategory('all')}
-              >
-                All
-              </button>
-              <button
-                id="filter-radio-atc"
-                class="filter-chip"
-                class:active={layerStore.filters.radio.category === 'atc'}
-                onclick={() => layerStore.setRadioCategory('atc')}
-              >
-                ATC Tower
-              </button>
-              <button
-                id="filter-radio-marine"
-                class="filter-chip"
-                class:active={layerStore.filters.radio.category === 'marine'}
-                onclick={() => layerStore.setRadioCategory('marine')}
-              >
-                Marine VHF
-              </button>
-            </div>
-          </div>
-        </div>
+        <LayerFilterControls />
       {/if}
 
-      <!-- Footer Policy / Mode Badge -->
-      <div class="panel-footer-meta">
-        <span class="meta-tag">SEED MODE ACTIVE</span>
-        <span class="meta-desc">Zero Live Quota Burn</span>
-      </div>
+      <ProvenanceBadges />
     </div>
   {/if}
 </aside>
@@ -408,14 +240,14 @@
     width: 320px;
     max-height: calc(100vh - 120px);
     overflow-y: auto;
-    background: rgba(15, 23, 42, 0.88);
+    background: var(--hud-panel-bg-strong);
     backdrop-filter: blur(14px);
-    border: 1px solid rgba(148, 163, 184, 0.18);
+    border: 1px solid var(--hud-border);
     border-radius: 10px;
     padding: 14px;
     pointer-events: auto;
     z-index: 20;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 8px 32px var(--hud-shadow);
     transition: width 0.2s ease, padding 0.2s ease;
   }
 
@@ -431,7 +263,7 @@
     align-items: center;
     gap: 8px;
     margin-bottom: 12px;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    border-bottom: 1px solid var(--hud-border-muted);
     padding-bottom: 8px;
   }
 
@@ -456,7 +288,7 @@
     font-size: 0.85rem;
     font-weight: 700;
     letter-spacing: -0.01em;
-    color: #f8fafc;
+    color: var(--hud-text-primary);
   }
 
   .header-actions {
@@ -470,7 +302,7 @@
     border: none;
     font-size: 0.72rem;
     font-weight: 600;
-    color: #94a3b8;
+    color: var(--hud-text-secondary);
     padding: 2px 6px;
     border-radius: 4px;
     cursor: pointer;
@@ -478,14 +310,14 @@
   }
 
   .tab-btn.active {
-    background: rgba(56, 189, 248, 0.15);
-    color: #38bdf8;
+    background: var(--hud-accent-soft);
+    color: var(--hud-accent);
   }
 
   .collapse-btn {
     background: transparent;
     border: none;
-    color: #94a3b8;
+    color: var(--hud-text-secondary);
     cursor: pointer;
     font-size: 0.75rem;
     padding: 2px 4px;
@@ -503,8 +335,8 @@
     align-items: center;
     padding: 5px 8px;
     border-radius: 6px;
-    background: rgba(30, 41, 59, 0.4);
-    border: 1px solid rgba(148, 163, 184, 0.08);
+    background: var(--hud-row-bg);
+    border: 1px solid var(--hud-border-faint);
   }
 
   .layer-info {
@@ -519,15 +351,15 @@
     border-radius: 50%;
   }
 
-  .flight-ind { background-color: #38bdf8; }
-  .marine-ind { background-color: #2dd4bf; }
-  .quake-ind { background-color: #fb923c; }
-  .firms-ind { background-color: #f43f5e; }
-  .gbfs-ind { background-color: #818cf8; }
-  .cctv-ind { background-color: #a855f7; }
-  .radio-ind { background-color: #06b6d4; }
-  .launch-ind { background-color: #facc15; }
-  .weather-ind { background-color: #60a5fa; }
+  .flight-ind { background-color: var(--channel-flight); }
+  .marine-ind { background-color: var(--channel-marine); }
+  .quake-ind { background-color: var(--channel-quake); }
+  .firms-ind { background-color: var(--channel-firms); }
+  .gbfs-ind { background-color: var(--channel-gbfs); }
+  .cctv-ind { background-color: var(--channel-cctv); }
+  .radio-ind { background-color: var(--channel-radio); }
+  .launch-ind { background-color: var(--channel-launch); }
+  .weather-ind { background-color: var(--channel-weather); }
 
   .layer-text {
     display: flex;
@@ -537,12 +369,12 @@
   .layer-name {
     font-size: 0.76rem;
     font-weight: 600;
-    color: #f1f5f9;
+    color: var(--hud-text-panel);
   }
 
   .layer-sub {
     font-size: 0.63rem;
-    color: #94a3b8;
+    color: var(--hud-text-secondary);
   }
 
   /* Switches */
@@ -572,7 +404,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(100, 116, 139, 0.4);
+    background-color: var(--hud-switch-off);
     border-radius: 18px;
     transition: 0.2s;
   }
@@ -584,107 +416,23 @@
     width: 12px;
     left: 3px;
     bottom: 3px;
-    background-color: #fff;
+    background-color: var(--hud-switch-knob);
     border-radius: 50%;
     transition: 0.2s;
   }
 
-  input:checked + .flight-slider { background-color: #38bdf8; }
-  input:checked + .marine-slider { background-color: #2dd4bf; }
-  input:checked + .quake-slider { background-color: #fb923c; }
-  input:checked + .firms-slider { background-color: #f43f5e; }
-  input:checked + .gbfs-slider { background-color: #818cf8; }
-  input:checked + .cctv-slider { background-color: #a855f7; }
-  input:checked + .radio-slider { background-color: #06b6d4; }
-  input:checked + .launch-slider { background-color: #facc15; }
-  input:checked + .weather-slider { background-color: #60a5fa; }
+  input:checked + .flight-slider { background-color: var(--channel-flight); }
+  input:checked + .marine-slider { background-color: var(--channel-marine); }
+  input:checked + .quake-slider { background-color: var(--channel-quake); }
+  input:checked + .firms-slider { background-color: var(--channel-firms); }
+  input:checked + .gbfs-slider { background-color: var(--channel-gbfs); }
+  input:checked + .cctv-slider { background-color: var(--channel-cctv); }
+  input:checked + .radio-slider { background-color: var(--channel-radio); }
+  input:checked + .launch-slider { background-color: var(--channel-launch); }
+  input:checked + .weather-slider { background-color: var(--channel-weather); }
 
   input:checked + .slider:before {
     transform: translateX(16px);
   }
 
-  /* Filters */
-  .filters-container {
-    display: flex;
-    flex-direction: column;
-    gap: 9px;
-  }
-
-  .filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-  }
-
-  .filter-group-header {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .channel-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-  }
-
-  .quake-dot { background-color: #fb923c; }
-  .firms-dot { background-color: #f43f5e; }
-  .marine-dot { background-color: #2dd4bf; }
-  .cctv-dot { background-color: #a855f7; }
-  .radio-dot { background-color: #06b6d4; }
-
-  .filter-title {
-    font-size: 0.68rem;
-    font-weight: 600;
-    color: #cbd5e1;
-  }
-
-  .filter-options-row {
-    display: flex;
-    gap: 4px;
-  }
-
-  .filter-chip {
-    flex: 1;
-    background: rgba(30, 41, 59, 0.6);
-    border: 1px solid rgba(148, 163, 184, 0.15);
-    border-radius: 4px;
-    color: #94a3b8;
-    font-size: 0.65rem;
-    padding: 3px 5px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .filter-chip.active {
-    background: rgba(56, 189, 248, 0.2);
-    border-color: #38bdf8;
-    color: #f8fafc;
-    font-weight: 600;
-  }
-
-  .panel-footer-meta {
-    margin-top: 10px;
-    padding-top: 6px;
-    border-top: 1px solid rgba(148, 163, 184, 0.1);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .meta-tag {
-    font-size: 0.60rem;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    color: #10b981;
-    background: rgba(16, 185, 129, 0.1);
-    padding: 2px 4px;
-    border-radius: 3px;
-  }
-
-  .meta-desc {
-    font-size: 0.60rem;
-    color: #64748b;
-  }
 </style>

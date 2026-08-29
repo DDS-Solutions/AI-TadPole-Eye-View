@@ -1,8 +1,15 @@
 import fs from 'node:fs';
-import type { BoundingBox, CctvCamera, CctvCatalog } from '@gev/contracts';
-import { CctvCatalog as CctvCatalogSchema } from '@gev/contracts';
+import {
+  type BoundingBox,
+  type CctvCamera,
+  type CctvCatalog,
+  type CctvCatalogPayload,
+  CctvCatalogPayload as CctvCatalogPayloadSchema,
+  CctvCatalog as CctvCatalogSchema,
+} from '@gev/contracts';
 import { type SimClock, SystemClock } from '@gev/core';
 import { resolveFixturePath } from './opensky.js';
+import { createDataProvenance, observationPeriodFromUnixSeconds } from './provenance.js';
 
 export interface CctvAdapterOptions {
   clock?: SimClock;
@@ -18,7 +25,7 @@ export class CctvAdapter {
   private readonly clock: SimClock;
   private readonly seedFixturePath: string;
   private readonly isSeedMode: boolean;
-  private cachedCatalog?: CctvCatalog;
+  private cachedCatalog?: CctvCatalogPayload;
 
   constructor(options: CctvAdapterOptions = {}) {
     this.clock = options.clock ?? new SystemClock();
@@ -53,11 +60,19 @@ export class CctvAdapter {
       });
     }
 
-    return {
-      time: Math.floor(this.clock.now() / 1000),
+    return CctvCatalogSchema.parse({
+      time: raw.time,
       count: filtered.length,
       cameras: filtered,
-    };
+      provenance: createDataProvenance({
+        providerId: 'dot-traffic',
+        feedId: 'cctv',
+        clock: this.clock,
+        sourceMode: 'seed',
+        observationPeriod: observationPeriodFromUnixSeconds(raw.time),
+        fixtureId: 'cctv-cameras-v1',
+      }),
+    });
   }
 
   /**
@@ -68,7 +83,7 @@ export class CctvAdapter {
     return catalog.cameras.find((c) => c.id === id) ?? null;
   }
 
-  private async loadCatalog(): Promise<CctvCatalog> {
+  private async loadCatalog(): Promise<CctvCatalogPayload> {
     if (this.cachedCatalog && this.isSeedMode) {
       return this.cachedCatalog;
     }
@@ -79,7 +94,7 @@ export class CctvAdapter {
 
     const content = await fs.promises.readFile(this.seedFixturePath, 'utf-8');
     const parsed = JSON.parse(content);
-    const validated = CctvCatalogSchema.parse(parsed);
+    const validated = CctvCatalogPayloadSchema.parse(parsed);
 
     this.cachedCatalog = validated;
     return validated;

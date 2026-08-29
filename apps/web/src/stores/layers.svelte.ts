@@ -1,6 +1,7 @@
 import type {
   BikeStation,
   CctvCamera,
+  DataProvenance,
   EarthquakeFeature,
   FlightState,
   LaunchMission,
@@ -20,6 +21,14 @@ export interface LayerVisibility {
   radio: boolean;
   launches: boolean;
   weather: boolean;
+}
+
+export interface ProvenanceSummary {
+  sourceCount: number;
+  sourceLabel: string;
+  modeLabel: string;
+  freshnessLabel: string;
+  details: string;
 }
 
 export interface LayerFilters {
@@ -87,6 +96,37 @@ class LayerStore {
     radio: 0,
     launches: 0,
     weather: 0,
+  });
+
+  // Last validated provenance envelope for each visible telemetry layer.
+  provenance = $state<Partial<Record<keyof LayerVisibility, DataProvenance>>>({});
+
+  provenanceSummary = $derived.by((): ProvenanceSummary => {
+    const layerKeys = Object.keys(this.visibility) as Array<keyof LayerVisibility>;
+    const visible = layerKeys
+      .filter((key) => this.visibility[key])
+      .map((key) => this.provenance[key])
+      .filter((value): value is DataProvenance => value !== undefined);
+    const sourceIds = new Set(visible.map((value) => value.source.provider_id));
+    const modes = [...new Set(visible.map((value) => value.mode))].sort();
+    const freshnessStates = new Set(visible.map((value) => value.freshness.status));
+    const freshnessLabel = freshnessStates.has('stale')
+      ? 'STALE'
+      : freshnessStates.has('unavailable')
+        ? 'PARTIAL'
+        : freshnessStates.has('fresh')
+          ? 'FRESH'
+          : 'AWAITING';
+    const sourceLabel = `${sourceIds.size} ${sourceIds.size === 1 ? 'SOURCE' : 'SOURCES'}`;
+    const modeLabel = modes.length === 0 ? 'AWAITING' : modes.join(' + ').toUpperCase();
+    const details = visible
+      .map(
+        (value) =>
+          `${value.source.name}: ${value.mode}, ${value.freshness.status}, retrieved ${value.retrieved_at}`
+      )
+      .join('\n');
+
+    return { sourceCount: sourceIds.size, sourceLabel, modeLabel, freshnessLabel, details };
   });
 
   // Raw entities cached for High-Density Telemetry Table
@@ -367,6 +407,10 @@ class LayerStore {
 
   toggleLayer(layer: keyof LayerVisibility): void {
     this.visibility[layer] = !this.visibility[layer];
+  }
+
+  setProvenance(layer: keyof LayerVisibility, provenance: DataProvenance): void {
+    this.provenance[layer] = provenance;
   }
 
   setQuakeMinMagnitude(minMag: number): void {

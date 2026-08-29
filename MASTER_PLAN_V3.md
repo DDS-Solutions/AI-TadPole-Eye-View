@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-08-29
-**Status:** IN PROGRESS — Phase 5.1 exit verified; Phase 5.2 ready
+**Status:** IN PROGRESS — Phase 5.2; task 5.2.1 verified; task 5.2.2 ready
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=5.2
-NEXT_TASK=5.2.1
+NEXT_TASK=5.2.2
 NEXT_TASK_STATUS=BLOCKED
 LAST_VERIFIED_UTC=2026-08-29
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
@@ -762,47 +762,116 @@ DOC_BLOCKER or LOGIC_BLOCKER with exact row/hash/migration evidence and bounded 
 
 ### Phase 5.2 — Provenance and missing geospatial layers
 
-- [ ] 5.2.1 Add required provenance and registry contracts; retrofit existing adapters and UI badges using `SimClock`.
+- [x] 5.2.1 Add required provenance and registry contracts; retrofit existing adapters and UI badges using `SimClock`.
 - [ ] 5.2.2 Complete cables: Zod contracts, fixture seed, validated optional pack, server/store/layer/UI, kill switch, health, tests, and license ADR.
 - [ ] 5.2.3 Complete satellites after OQ-7: GP/OMM adapter, deterministic fixture, propagation/frame conversion, server/store/layer/UI, kill switch, health, tests, and source ADR.
 - [ ] 5.2.4 Generate DATA_SOURCES entries/counts from the registry and label implementation/mode accurately.
 - [ ] 5.2 exit: every implemented provider validates and carries provenance; seed mode makes zero network calls; satellite/cable smoke and performance budgets pass.
 
-#### Ready-to-authorize brief for NEXT_TASK 5.2.1
+#### Authorized 4-Pillar brief for completed task 5.2.1
 
 ```text
-[SCOPE_CONTRACT] packages/contracts required DataProvenance and provider-registry
-contracts; packages/providers registry and existing implemented adapters; apps/server
-response boundaries and stores only where needed to carry validated provenance;
-apps/web existing source/mode/freshness badges and focused tests; DATA_SOURCES.md and
-an ADR for the versioned provenance contract. Out of scope: cable completion (5.2.2),
-satellite work (5.2.3), generated documentation counts (5.2.4), new providers/layers,
-provider-to-store-to-Cesium rewrites, live calls, production deployment, identity/
-tenancy, economic contracts, and visual redesign.
+[SCOPE_CONTRACT] packages/contracts required versioned DataProvenance, explicit
+observation-period/vintage availability, registry-owned freshness-policy, and provider-
+registry projection contracts; packages/providers executable registry and existing
+implemented adapters; apps/server response boundaries and stores only where needed to
+carry validated provenance; apps/web existing badge surfaces and focused tests, replacing
+hardcoded mode text and adding source/mode/freshness presentation derived from validated
+provenance and registry state; DATA_SOURCES.md provenance references while preserving its
+registry-generated artifact; reserved ADR 0035 for the versioned provenance contract; and
+root .gitattributes only as needed for deterministic LF checkout/lint behavior without an
+unrelated mass-formatting diff. Out of scope: cable completion (5.2.2), satellite work
+(5.2.3), generated documentation counts (5.2.4), new providers/layers, provider-to-store-
+to-Cesium rewrites, live calls, production deployment, identity/tenancy, economic
+contracts, and visual redesign.
 
 [PERFORMANCE_THRESHOLD] Every implemented provider response validates required source,
-canonical URL, SimClock retrieval time, observation period/vintage, mode, license/terms,
-attribution, schema version, and fixture/cache identity where applicable. Registry
-projections and existing UI badges consume that contract without optional-provenance or
-hardcoded-summary fallbacks. Frozen-clock tests prove deterministic timestamps and
-fresh/stale labels; malicious/missing provenance fails at the provider/server boundary.
-Root lint, affected uncached typecheck/test/build, ADG, architecture drift, bundle budgets,
-canonical seed-mode unit/load/performance, and Playwright gates pass with zero live calls.
+canonical URL, SimClock retrieval time, explicit observation period/vintage availability,
+mode, license/terms, attribution, schema version, and fixture/cache identity where
+applicable. ADR 0035 defines the contract version and registry-owned per-feed freshness
+thresholds from measured or existing policy; cache TTL/retry fallback and provenance
+freshness remain distinct unless that ADR maps them to one source of truth. FlightBatch.time
+and equivalent provider-native fields retain observation/snapshot semantics, while
+provenance retrieval time records the SimClock boundary event; no ambiguous second time
+truth is introduced. Registry projections and UI badge surfaces consume the contract
+without optional-provenance or hardcoded-summary/mode fallbacks. Frozen- and steppable-
+clock tests prove deterministic timestamps and fresh/stale boundary transitions; malicious
+or missing provenance fails at provider and server boundaries. Root lint passes in the
+Windows task checkout and CI with no unrelated line-ending churn; affected uncached
+typecheck/test/build, ADG, architecture drift, bundle budgets, canonical seed-mode unit/
+load/performance, and Playwright gates pass with zero live calls.
 
 [ARCHITECTURE_MODE] PLAN.md §2 rules 1, 4–7, 9, and 12–15; §3 provider → store →
 UI/Cesium data flow; §4.1–§4.2; docs/DESIGN.md; ADRs 0015, 0020, 0023–0025, 0029,
-0039, and 0040. Reuse the typed executable registry and SimClock. Validate once at
-provider/server trust boundaries, keep provenance required through stores and UI reads,
-and preserve cesium-kit ownership and the rAF queue. No source/license/mode/default or
-contract-version deviation without ADR evidence.
+0039, and 0040; create and accept reserved ADR 0035 for this contract. Reuse the typed
+executable registry and SimClock. Validate once at provider/server trust boundaries, keep
+provenance required through stores and UI reads, and preserve cesium-kit ownership and the
+rAF queue. Registry projections remain the only UI/server/docs source for provider identity,
+mode, health, freshness policy, and generated documentation state. No source/license/mode/
+default, freshness-policy, or contract-version deviation without ADR evidence.
 
 [FAILURE_MODES] Do not make provenance optional, synthesize retrieval time from wall clock,
-label seed/cache/download-pack data live, infer license or attribution, duplicate registry
-truth in UI/server/docs, make a live call in tests, or fold cables/satellites into this
-retrofit. Provider records with absent vintage must use an explicit contract-approved
-unavailable representation, not an invented date. If one contract cannot truthfully model
-an existing source after three attempts, record LOGIC_BLOCKER with the provider payload,
-license evidence, and bounded union/version alternatives.
+conflate upstream observation time with retrieval/cache time, silently reuse cache TTL as a
+freshness threshold, label seed/cache/download-pack data live, infer license or attribution,
+duplicate registry truth in UI/server/docs, hand-edit generated counts, make a live call in
+tests, create broad line-ending-only churn, or fold cables/satellites into this retrofit.
+Provider records with absent vintage must use an explicit contract-approved unavailable
+representation, not an invented date. If one contract cannot truthfully model an existing
+source after three attempts, record LOGIC_BLOCKER with the provider payload, license
+evidence, and bounded union/version alternatives.
+```
+
+#### Ready-to-authorize brief for NEXT_TASK 5.2.2
+
+```text
+[SCOPE_CONTRACT] packages/contracts cable landing-point, route, catalog, pack-manifest,
+and response contracts with required DataProvenance v1; packages/providers replacement of
+the current local cable interfaces and embedded synthetic topology with a contract-validated
+fixture adapter plus a separately validated optional download-pack loader; executable
+registry cable implementation/mode/freshness state; apps/server bounded seed catalog route,
+explicit cable kill switch, cache/governance composition, health, and only the local operator
+surface needed to activate a verified optional pack; packages/cesium-kit cable/landing-point
+controller through the rAF queue; apps/web polling/store/layer toggle, counts, filters only if
+supported by the contract, and provenance presentation; generated registry artifact and
+source-specific cable documentation; focused tests and reserved ADR 0036 for licensing,
+pack integrity, activation, and fallback policy. Out of scope: satellite work (5.2.3), broad
+DATA_SOURCES generation changes (5.2.4), arbitrary remote URLs/files, bundled TeleGeography
+or other non-commercial geometry, automatic downloads, production identity/tenancy, new
+provider families, economic features, and visual redesign.
+
+[PERFORMANCE_THRESHOLD] Seed mode reads one checked-in synthetic fixture, validates the
+complete catalog plus provenance, renders cable routes and landing points, and opens zero
+network sockets. Optional pack activation requires explicit local human authorization,
+allowlisted pinned-fetch, mandatory expected SHA-256, bounded size/timeout/feature count/
+coordinate depth, contract validation before activation, and an auditable intent/outcome;
+failure leaves the last valid seed state and truthful health without partial activation.
+The registry derives the cable mode, health, counts, freshness threshold, cache TTL, and UI
+labels with no duplicate summary. Kill-switch-off prevents seed and pack reads before
+dispatch. Deterministic FrozenClock tests preserve pack observation/vintage separately from
+retrieval time; malicious GeoJSON, traversal-like identifiers, invalid coordinates, hash
+mismatch, absent consent, disabled state, and missing provenance fail closed. A bounded
+1,000-segment fixture drains within the existing 16.6 ms Cesium p95 frame budget; root lint,
+affected uncached lint/typecheck/test/build, ADG, architecture drift, bundle budgets, canonical
+unit/load/performance, and Playwright cable-toggle/provenance smoke pass with zero live calls.
+
+[ARCHITECTURE_MODE] PLAN.md §2 rules 1, 4–7, 9, and 12–15; §3 provider → store →
+UI/Cesium flow; §4.1–§4.2; docs/DESIGN.md; ADRs 0015, 0020, 0023–0025, 0029, 0035,
+0039, and 0040; create and accept reserved ADR 0036. Contracts and executable registry are
+the only source for cable identity, mode, health, source/license/attribution, freshness, and
+provenance. Keep all imperative Cesium ownership in cesium-kit, frame writes in the rAF
+queue, domain/provider time behind SimClock, outbound transport behind pinned-fetch, and
+download-pack activation behind the shared audit/approval/budget/STASIS path. No license,
+pack-host, hash, fallback, activation, or cache-policy deviation without ADR evidence.
+
+[FAILURE_MODES] Do not preserve the current unvalidated local interfaces, embedded synthetic
+objects, random UUID fallback, JSON type assertions, caller-selected URLs/paths, optional
+hashes, or a public boolean that claims license consent. Do not bundle NC geometry, label
+synthetic data TeleGeography/live, invent landing points absent from the source, render
+unvalidated colors/coordinates, bypass the registry/provenance contract, hand-edit generated
+counts, make network calls in seed tests, or silently fall back from a rejected pack while
+claiming pack mode. If current official terms, distributable fields, or a stable allowlisted
+pack endpoint cannot be evidenced, keep download_pack unavailable and record DOC_BLOCKER;
+after three contract/parser approaches fail, record LOGIC_BLOCKER with bounded alternatives.
 ```
 
 ### Phase 6 — Standards-compliant MCP HTTP
@@ -1600,5 +1669,43 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
 - Next task: **5.2.1 Add required provenance and registry contracts**. Its exact review-only
   4-Pillar brief is in §10; task 5.2.1 is blocked and has not been authorized or started.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.2.1. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 5.2.1 completion checkpoint — 2026-08-29
+
+- The developer authorized the reviewed and amended task 5.2.1 4-Pillar brief against the
+  current `origin/main`. Work remained local and deterministic; no live provider call,
+  production mutation, cable completion, satellite work, or economic scope was started.
+- ADR 0035 defines `DataProvenance` schema version 1 and provider-registry version 2.
+  Required source/feed identity, canonical URL, license ID/terms, attribution, SimClock
+  retrieval, explicit observation-period/vintage availability, fixture/cache identity,
+  source mode, delivery mode, and registry-owned freshness now fail closed at contracts.
+- All nine rendered feeds and the server-owned Overpass boundary attach validated provenance.
+  Provider-native batch times remain observation times. Cache hits retain source mode and
+  observation/vintage, change delivery mode to `cached`, add deterministic cache evidence,
+  and recompute freshness; the Cost Governor derives fresh TTLs from the registry while
+  maximum stale retention remains a separate fallback policy.
+- Web feed orchestration validates complete schemas before store or Cesium updates. The HUD
+  derives source count, delivery mode, and aggregate freshness from received provenance.
+  The required App and layer-panel follow-ups from ADR 0040 were resolved: both files are
+  below 500 lines, filter controls are extracted, and the touched palette uses semantic CSS
+  custom properties. Playwright passed 1/1 and the inspected badge artifact rendered
+  `9 SOURCES`, `CACHED + SEED`, and `STALE` for the intentionally old seed observations.
+- Evidence passed: forced uncached affected lint/typecheck/test/build; root Biome on 220
+  files; 353 unit tests; ADG on 52 documents, 391 paths, and 19 module-qualified symbols;
+  11 ADG tests; architecture drift; generated provider-registry parity; bundle budgets;
+  `git diff --check`; provider seed network-denial coverage; and synchronized plan checks.
+  OpenSky 10k replay measured 0.13 ms p95 under the forced matrix (50 ms budget), server
+  load measured 17.41 ms p95 (300 ms budget), and Cesium ingestion measured 5.85 ms p95
+  (16.6 ms budget). Production build completed 10/10 tasks; app entry was 89.19 KiB gzip
+  and total bundle footprint was 1,225.63 KiB gzip within existing budgets.
+- Final offline status was `STASIS_INACTIVE` with the documented non-authoritative offline
+  snapshot caveat, seed mode, and registry truth of 10/12 active providers, 10/12 active
+  feeds, and 9/12 active layers. No governance state was resumed, deleted, or rewritten.
+- Branch: `codex/brief-5.2.1`; implementation commit `39b790e`. GitHub CLI remains
+  unavailable, so open PR inspection and PR creation were not possible. Only synchronized
+  plan-state/handoff edits remained after that implementation commit.
+- Next task: **5.2.2 Complete cables**. Its exact review-only 4-Pillar brief is in §10;
+  task 5.2.2 is blocked pending developer authorization and has not been started.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.2.2. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.

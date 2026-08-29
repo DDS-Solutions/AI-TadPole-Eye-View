@@ -1,9 +1,36 @@
 import fs from 'node:fs';
-import type { BoundingBox, EarthquakeCollection, EarthquakeFeature } from '@gev/contracts';
-import { EarthquakeCollection as EarthquakeCollectionSchema } from '@gev/contracts';
+import {
+  type BoundingBox,
+  type EarthquakeCollection,
+  EarthquakeCollectionPayload as EarthquakeCollectionPayloadSchema,
+  EarthquakeCollection as EarthquakeCollectionSchema,
+  type EarthquakeFeature,
+} from '@gev/contracts';
 import { type SimClock, SystemClock } from '@gev/core';
 import { pinnedFetch } from '@gev/security';
+import { z } from 'zod';
 import { resolveFixturePath } from './opensky.js';
+import { createDataProvenance, observationPeriodFromUnixSeconds } from './provenance.js';
+
+const RawUsgsFeatureSchema = z.object({
+  id: z.string().min(1),
+  properties: z.object({
+    mag: z.number().finite(),
+    place: z.string(),
+    time: z.number().int().nonnegative(),
+    updated: z.number().int().nonnegative().optional(),
+    sig: z.number().finite().nonnegative(),
+    alert: z.enum(['green', 'yellow', 'orange', 'red']).nullable().optional(),
+    tsunami: z.number().int().optional(),
+    status: z.string().optional(),
+  }),
+  geometry: z.object({ coordinates: z.tuple([z.number(), z.number(), z.number()]) }),
+});
+
+const RawUsgsResponseSchema = z.object({
+  metadata: z.object({ generated: z.number().int().nonnegative() }).passthrough(),
+  features: z.array(RawUsgsFeatureSchema),
+});
 
 export interface UsgsAdapterOptions {
   clock?: SimClock;
@@ -51,7 +78,7 @@ export class UsgsQuakeAdapter {
 
     const content = await fs.promises.readFile(this.seedFixturePath, 'utf-8');
     const parsed = JSON.parse(content);
-    const validated = EarthquakeCollectionSchema.parse(parsed);
+    const validated = EarthquakeCollectionPayloadSchema.parse(parsed);
 
     const filtered = validated.features.filter((f) => {
       if (f.mag < minMagnitude) return false;
@@ -66,11 +93,19 @@ export class UsgsQuakeAdapter {
       return true;
     });
 
-    return {
-      time: Math.floor(this.clock.now() / 1000),
+    return EarthquakeCollectionSchema.parse({
+      time: validated.time,
       count: filtered.length,
       features: filtered,
-    };
+      provenance: createDataProvenance({
+        providerId: 'usgs',
+        feedId: 'quakes',
+        clock: this.clock,
+        sourceMode: 'seed',
+        observationPeriod: observationPeriodFromUnixSeconds(validated.time),
+        fixtureId: 'quakes-usgs-v1',
+      }),
+    });
   }
 
   private async fetchLiveQuakes(
@@ -92,22 +127,7 @@ export class UsgsQuakeAdapter {
       throw new Error(`USGS API returned HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const rawJson = (await response.json()) as {
-      features: Array<{
-        id: string;
-        properties: {
-          mag: number;
-          place: string;
-          time: number;
-          updated?: number;
-          sig: number;
-          alert?: 'green' | 'yellow' | 'orange' | 'red' | null;
-          tsunami?: number;
-          status?: string;
-        };
-        geometry: { coordinates: [number, number, number] };
-      }>;
-    };
+    const rawJson = RawUsgsResponseSchema.parse(await response.json());
 
     const features: EarthquakeFeature[] = (rawJson.features || [])
       .filter((f) => {
@@ -138,10 +158,18 @@ export class UsgsQuakeAdapter {
         };
       });
 
-    return {
-      time: Math.floor(this.clock.now() / 1000),
+    const observationTime = Math.floor(rawJson.metadata.generated / 1000);
+    return EarthquakeCollectionSchema.parse({
+      time: observationTime,
       count: features.length,
       features,
-    };
+      provenance: createDataProvenance({
+        providerId: 'usgs',
+        feedId: 'quakes',
+        clock: this.clock,
+        sourceMode: 'live',
+        observationPeriod: observationPeriodFromUnixSeconds(observationTime),
+      }),
+    });
   }
 }

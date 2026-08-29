@@ -1,3 +1,4 @@
+import { WeatherCollection } from '@gev/contracts';
 import { WeatherAdapter } from '@gev/providers';
 import { Hono } from 'hono';
 
@@ -11,7 +12,7 @@ export function createWeatherRouter(options: WeatherRouteOptions = {}) {
 
   router.get('/radar', async (c) => {
     try {
-      const weather = await adapter.getWeather();
+      const weather = WeatherCollection.parse(await adapter.getWeather());
       return c.json(weather);
     } catch (err: unknown) {
       return c.json(

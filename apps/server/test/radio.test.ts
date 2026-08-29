@@ -1,3 +1,4 @@
+import { OverpassResponseSchema, RadioCatalog } from '@gev/contracts';
 import { FrozenClock } from '@gev/core';
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../src/index.js';
@@ -9,7 +10,7 @@ describe('Radio Proxy & Overpass Server Routes (PLAN.md §10 Phase 1 Items 3 & 4
     const res = await app.request('/api/radio/catalog');
     expect(res.status).toBe(200);
 
-    const data = await res.json();
+    const data = RadioCatalog.parse(await res.json());
     expect(data.count).toBeGreaterThanOrEqual(4);
     expect(data.stations.some((s: { id: string }) => s.id === 'ksfo-tower')).toBe(true);
     expect(data.stations.some((s: { category: string }) => s.category === 'marine')).toBe(true);
@@ -55,10 +56,15 @@ describe('Radio Proxy & Overpass Server Routes (PLAN.md §10 Phase 1 Items 3 & 4
     });
 
     expect(res.status).toBe(200);
-    const data = await res.json();
+    const data = OverpassResponseSchema.parse(await res.json());
     expect(data.elements.length).toBeGreaterThan(0);
     expect(data.sanitization.complexity_score).toBeGreaterThan(0);
     expect(data.osm3s.timestamp_osm_base).toBe(clock.iso());
+    expect(data.provenance).toMatchObject({
+      mode: 'seed',
+      source_mode: 'seed',
+      fixture_id: 'overpass-synthetic-v1',
+    });
   });
 
   it('POST /api/overpass rejects malicious unbounded query', async () => {

@@ -1,9 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { BoundingBox, FlightBatch, FlightState, PositionSource } from '@gev/contracts';
+import {
+  type BoundingBox,
+  type FlightBatch,
+  FlightBatch as FlightBatchSchema,
+  type FlightState,
+  type PositionSource,
+} from '@gev/contracts';
 import { type SimClock, SystemClock } from '@gev/core';
 import { pinnedFetch } from '@gev/security';
 import { z } from 'zod';
+import { createDataProvenance, observationPeriodFromUnixSeconds } from './provenance.js';
 
 export interface OpenSkyAdapterOptions {
   clock?: SimClock;
@@ -162,7 +169,8 @@ export function normalizeOpenSkyState(raw: RawOpenSkyVector, _clock: SimClock): 
 export function parseOpenSkyPayload(
   payload: RawOpenSkyResponse,
   clock: SimClock,
-  bbox?: BoundingBox
+  bbox: BoundingBox | undefined,
+  sourceMode: 'seed' | 'live'
 ): FlightBatch {
   const rawStates = payload.states || [];
   const states: FlightState[] = [];
@@ -200,10 +208,25 @@ export function parseOpenSkyPayload(
     }
   }
 
-  return {
-    time: Math.floor(clock.now() / 1000),
+  const normalized = {
+    time: payload.time,
     states,
   };
+  return FlightBatchSchema.parse({
+    ...normalized,
+    provenance: createFlightProvenance(clock, payload.time, sourceMode),
+  });
+}
+
+function createFlightProvenance(clock: SimClock, time: number, sourceMode: 'seed' | 'live') {
+  return createDataProvenance({
+    providerId: 'opensky',
+    feedId: 'flights',
+    clock,
+    sourceMode,
+    observationPeriod: observationPeriodFromUnixSeconds(time),
+    ...(sourceMode === 'seed' ? { fixtureId: 'flights-opensky-v1' } : {}),
+  });
 }
 
 /**
@@ -217,6 +240,7 @@ export class OpenSkyAdapter {
   private readonly isLiveMode: boolean;
   private readonly credentials?: { username?: string; password?: string };
   private cachedRawFixture: RawOpenSkyResponse | null = null;
+  private cachedSeedBatch: FlightBatch | null = null;
   private lastRateLimitRemaining?: number;
 
   constructor(options: OpenSkyAdapterOptions = {}) {
@@ -254,13 +278,35 @@ export class OpenSkyAdapter {
    * Reads recorded seed fixture from local filesystem with zero network calls.
    */
   private async loadSeedFixtures(bbox?: BoundingBox): Promise<FlightBatch> {
-    if (!this.cachedRawFixture) {
+    if (!this.cachedRawFixture || !this.cachedSeedBatch) {
       const rawContent = await fs.promises.readFile(this.seedFixturePath, 'utf-8');
       const parsedJson = JSON.parse(rawContent);
       this.cachedRawFixture = RawOpenSkyResponseSchema.parse(parsedJson);
+      this.cachedSeedBatch = parseOpenSkyPayload(
+        this.cachedRawFixture,
+        this.clock,
+        undefined,
+        'seed'
+      );
     }
 
-    return parseOpenSkyPayload(this.cachedRawFixture, this.clock, bbox);
+    const states = bbox
+      ? this.cachedSeedBatch.states.filter(
+          (state) =>
+            state.latitude !== null &&
+            state.longitude !== null &&
+            state.latitude >= bbox.min_lat &&
+            state.latitude <= bbox.max_lat &&
+            state.longitude >= bbox.min_lon &&
+            state.longitude <= bbox.max_lon
+        )
+      : this.cachedSeedBatch.states;
+
+    return {
+      time: this.cachedSeedBatch.time,
+      states,
+      provenance: createFlightProvenance(this.clock, this.cachedSeedBatch.time, 'seed'),
+    };
   }
 
   /**
@@ -311,6 +357,6 @@ export class OpenSkyAdapter {
     // Validate raw response payload at the boundary via Zod schema
     const rawJson = await response.json();
     const validated = RawOpenSkyResponseSchema.parse(rawJson);
-    return parseOpenSkyPayload(validated, this.clock, bbox);
+    return parseOpenSkyPayload(validated, this.clock, bbox, 'live');
   }
 }
