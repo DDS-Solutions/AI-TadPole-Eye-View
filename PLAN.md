@@ -668,11 +668,7 @@ messages. No contract/default/policy deviation without ADR.
 
 [FAILURE_MODES] OQ-2 is resolved by ADR 0042. Do not retain
 production auto-approval, accept unsigned/self-signed approvals, trust caller-supplied
-identity, reuse nonces, fail open on key/gate/storage errors, or mix M3 settlement into the
-gate. After three failed verification/replay approaches, record LOGIC_BLOCKER with exact
-cryptographic/state evidence and bounded alternatives.
-```
-#### Authorized brief for completed task 5.1.4
+identity, reuse nonces, fail open on key/gate/storage errors, or mi#### Authorized brief for completed task 5.1.4
 
 ```text
 [SCOPE_CONTRACT] The accepted OQ-3 decision, review amendments, and ADR; packages/contracts
@@ -758,6 +754,7 @@ remove active incident/reconciliation evidence. If the migration cannot preserve
 rows byte-for-byte or three tested concurrency/corruption approaches fail, record
 DOC_BLOCKER or LOGIC_BLOCKER with exact row/hash/migration evidence and bounded alternatives.
 ```
+
 ### Phase 5.2 — Provenance and missing geospatial layers
 
 - [ ] 5.2.1 Add required provenance and registry contracts; retrofit existing adapters and UI badges using `SimClock`.
