@@ -150,6 +150,22 @@ When an upstream provider (e.g. OpenSky Network) is rate-limited or degraded:
 1. The server automatically falls back to cached responses or deterministic seed fixtures.
 2. Feature flags (e.g. `opensky.enabled`) can be dynamically toggled via the MCP `set_flag` tool or CLI without redeploying code.
 
+### Submarine cable source controls
+
+- The submarine-cable layer starts from the checked-in synthetic seed fixture and
+  makes no network request by default.
+- Set `GEV_CABLES_ENABLED=0` before server startup to stop both seed catalog reads and
+  licensed-pack fetches before dispatch. Provider health then reports `degraded`.
+- Licensed cable data requires an operator-provided, server-owned pack manifest. The
+  activation caller supplies only the configured pack ID; it cannot supply a URL,
+  filesystem path, digest, or consent flag.
+- A pack becomes active only after authenticated human approval, shared budget/STASIS
+  governance, pinned HTTPS, mandatory SHA-256 verification, and complete contract
+  validation. Any failure preserves the last valid catalog and source mode.
+
+See [Submarine Cables — Source, Fixture, and Licensed-Pack Policy](./docs/data-sources/cables.md)
+and [ADR 0036](./docs/adr/0036-cable-fixture-and-licensed-pack-policy.md).
+
 ---
 
 ## 3. Keyless Cesium 3D Globe Baseline & Fallbacks

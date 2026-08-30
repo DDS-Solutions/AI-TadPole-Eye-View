@@ -64,7 +64,10 @@ export class CostGovernor {
     this.tiers = options.tiers ?? DEFAULT_PROVIDER_TIERS;
   }
 
-  /** Returns Hono middleware for a provider feed. */
+  invalidate(providerName: string): void {
+    this.providerStates.delete(providerName);
+  }
+
   middleware(providerName: string) {
     const tier = this.tiers[providerName] ?? {
       ttlSeconds: 10,
@@ -470,9 +473,7 @@ export class CostGovernor {
           duration_ms: Math.max(0, this.clock.now() - reservation.startedAt),
         },
       });
-    } catch {
-      // The public result remains typed and fail closed even if storage is unavailable.
-    }
+    } catch {}
   }
 
   private replay(c: Context, operation: LedgerOperation): Response {

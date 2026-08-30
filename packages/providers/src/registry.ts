@@ -10,26 +10,39 @@ import {
   type ProviderRequestedMode,
   type ProviderRuntimeMode,
 } from '@gev/contracts';
-import { PROVIDER_DEFINITIONS, type ProviderDefinition } from './registryDefinitions.js';
+import {
+  PROVIDER_DEFINITIONS,
+  type ProviderDefinition,
+  resolveProviderDefinitionSource,
+} from './registryDefinitions.js';
 
 export interface CreateProviderRegistryOptions {
   requestedMode?: ProviderRequestedMode;
   disabledProviderIds?: Iterable<string>;
+  activeDownloadPackProviderIds?: Iterable<string>;
 }
 
 function resolveProviderState(
   definition: ProviderDefinition,
   requestedMode: ProviderRequestedMode,
-  disabledProviderIds: ReadonlySet<string>
+  disabledProviderIds: ReadonlySet<string>,
+  activeDownloadPackProviderIds: ReadonlySet<string>
 ): { mode: ProviderRuntimeMode; health: ProviderHealth } {
   if (definition.implementation === 'planned') {
     return { mode: 'unavailable', health: 'unavailable' };
   }
 
   if (definition.implementation === 'incomplete') {
+    return { mode: 'unavailable', health: 'unavailable' };
+  }
+
+  if (activeDownloadPackProviderIds.has(definition.id)) {
+    if (!definition.supported_modes.includes('download_pack')) {
+      throw new Error(`Provider '${definition.id}' does not support download-pack mode`);
+    }
     return {
-      mode: definition.supported_modes.includes('download_pack') ? 'download_pack' : 'unavailable',
-      health: 'unavailable',
+      mode: 'download_pack',
+      health: disabledProviderIds.has(definition.id) ? 'degraded' : 'healthy',
     };
   }
 
@@ -54,14 +67,21 @@ export function createProviderRegistry(
 ): ProviderRegistry {
   const requestedMode = options.requestedMode ?? 'seed';
   const disabledProviderIds = new Set(options.disabledProviderIds ?? []);
+  const activeDownloadPackProviderIds = new Set(options.activeDownloadPackProviderIds ?? []);
 
   return ProviderRegistrySchema.parse({
     version: 2,
     requested_mode: requestedMode,
     providers: PROVIDER_DEFINITIONS.map((definition): ProviderRegistryProvider => {
-      const state = resolveProviderState(definition, requestedMode, disabledProviderIds);
+      const state = resolveProviderState(
+        definition,
+        requestedMode,
+        disabledProviderIds,
+        activeDownloadPackProviderIds
+      );
       return {
         ...definition,
+        source: resolveProviderDefinitionSource(definition, state.mode),
         ...state,
       };
     }),
@@ -71,7 +91,41 @@ export function createProviderRegistry(
 export function createConfiguredProviderRegistry(
   environment: Readonly<Record<string, string | undefined>> = process.env
 ): ProviderRegistry {
-  return createProviderRegistry({ requestedMode: resolveProviderRequestedMode(environment) });
+  return createProviderRegistry({
+    requestedMode: resolveProviderRequestedMode(environment),
+    disabledProviderIds: environment.GEV_CABLES_ENABLED === '0' ? ['submarine-cables'] : [],
+  });
+}
+
+export function activateProviderDownloadPack(
+  registry: ProviderRegistry,
+  providerId: string
+): ProviderRegistry {
+  const definition = PROVIDER_DEFINITIONS.find((candidate) => candidate.id === providerId);
+  const current = registry.providers.find((provider) => provider.id === providerId);
+  if (!definition || !current || definition.implementation !== 'implemented') {
+    throw new Error(`Provider '${providerId}' is not implemented`);
+  }
+  if (!definition.supported_modes.includes('download_pack')) {
+    throw new Error(`Provider '${providerId}' does not support download-pack mode`);
+  }
+  if (current.health !== 'healthy') {
+    throw new Error(`Provider '${providerId}' is not healthy enough to activate a pack`);
+  }
+
+  return ProviderRegistrySchema.parse({
+    ...registry,
+    providers: registry.providers.map((provider) =>
+      provider.id === providerId
+        ? {
+            ...provider,
+            source: resolveProviderDefinitionSource(definition, 'download_pack'),
+            mode: 'download_pack',
+            health: 'healthy',
+          }
+        : provider
+    ),
+  });
 }
 
 export function summarizeProviderRegistry(registry: ProviderRegistry): ProviderRegistryCounts {

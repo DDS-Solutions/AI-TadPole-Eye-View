@@ -25,15 +25,17 @@ This document outlines the software licenses, open data terms, and 3D asset attr
 | Weather Observations | RainViewer / NOAA NWS | Free API / Public Domain | Doppler reflectivity & station obs |
 | GBFS Bikeshare Feeds | Regional Municipalities | Open Government License | Public dock availability |
 | OpenStreetMap | OpenStreetMap Foundation | ODbL 1.0 | Requires attribution & share-alike |
-| Submarine Cables | TeleGeography | **CC BY-NC-SA 4.0** | **NOT BUNDLED** — Optional download pack |
+| Synthetic Submarine Cables | DDS-Solutions procedural fixture | MIT | Bundled test fixture; explicitly synthetic |
+| Licensed Submarine Cable Pack | TeleGeography | Operator-specific annual data license | **NOT BUNDLED** — no default manifest or public raw-data endpoint |
 
 ---
 
 ## 3. Non-Commercial Data Policy (PLAN.md §5)
 
 To maintain commercial friendliness of the MIT codebase:
-- **Zero NC Bundling:** No Non-Commercial (NC) datasets (e.g. TeleGeography cable geometries) are stored in the Git repository or distributed within NPM packages.
-- **Download Pack Loader:** Operators can download NC datasets at runtime via `packages/providers/src/cables.ts` by explicitly accepting the provider's license terms (`licenseAccepted: true`).
+- **Zero Third-Party Cable Bundling:** No TeleGeography route or landing-point geometry is stored in Git or distributed in NPM packages.
+- **Synthetic Default:** The checked-in cable fixture is procedurally authored and MIT-licensed.
+- **Licensed Pack Loader:** An operator with appropriate rights may configure a server-owned, digest-pinned manifest. Callers cannot supply URLs, paths, hashes, or a boolean that purports to accept a license. See ADR 0036.
 
 ---
 

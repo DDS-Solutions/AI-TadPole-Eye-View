@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "catalog_id": "cables-synthetic-v1",
+  "observed_at": "2026-08-29T00:00:00.000Z",
+  "vintage": "procedural-fixture-2026-08-29",
+  "landing_points": [
+    { "id": "north-atlantic-west", "name": "Synthetic North Atlantic West", "country": "Procedural fixture", "longitude": -72.87, "latitude": 40.8 },
+    { "id": "north-atlantic-east", "name": "Synthetic North Atlantic East", "country": "Procedural fixture", "longitude": -4.54, "latitude": 50.83 },
+    { "id": "north-pacific-west", "name": "Synthetic North Pacific West", "country": "Procedural fixture", "longitude": 140.1, "latitude": 35.6 },
+    { "id": "north-pacific-east", "name": "Synthetic North Pacific East", "country": "Procedural fixture", "longitude": -123.96, "latitude": 45.2 },
+    { "id": "mediterranean-west", "name": "Synthetic Mediterranean West", "country": "Procedural fixture", "longitude": 5.37, "latitude": 43.3 },
+    { "id": "red-sea-south", "name": "Synthetic Red Sea South", "country": "Procedural fixture", "longitude": 43.15, "latitude": 11.6 }
+  ],
+  "routes": [
+    {
+      "id": "synthetic-transatlantic",
+      "name": "Synthetic Transatlantic Route",
+      "status": "active",
+      "owners": ["DDS-Solutions procedural fixture"],
+      "rfs_year": 2026,
+      "length_km": 6600,
+      "landing_point_ids": ["north-atlantic-west", "north-atlantic-east"],
+      "segments": [[[-72.87, 40.8], [-60, 42], [-45, 45], [-30, 50], [-15, 52], [-4.54, 50.83]]]
+    },
+    {
+      "id": "synthetic-transpacific",
+      "name": "Synthetic Transpacific Route",
+      "status": "active",
+      "owners": ["DDS-Solutions procedural fixture"],
+      "rfs_year": 2026,
+      "length_km": 9800,
+      "landing_point_ids": ["north-pacific-west", "north-pacific-east"],
+      "segments": [[[140.1, 35.6], [160, 40], [179.5, 45]], [[-179.5, 45], [-160, 47], [-140, 46], [-123.96, 45.2]]]
+    },
+    {
+      "id": "synthetic-mediterranean-red-sea",
+      "name": "Synthetic Mediterranean and Red Sea Route",
+      "status": "active",
+      "owners": ["DDS-Solutions procedural fixture"],
+      "rfs_year": 2026,
+      "length_km": 4200,
+      "landing_point_ids": ["mediterranean-west", "red-sea-south"],
+      "segments": [[[5.37, 43.3], [15, 36], [25, 33], [29.8, 31.1]], [[32.5, 29.9], [35, 25], [40, 18], [43.15, 11.6]]]
+    }
+  ]
+}

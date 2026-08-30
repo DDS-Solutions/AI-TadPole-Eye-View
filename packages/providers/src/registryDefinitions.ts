@@ -12,10 +12,20 @@ export interface ProviderDefinition {
   id: string;
   name: string;
   source: ProviderSource;
+  mode_sources?: Partial<Record<SupportedProviderMode, ProviderSource>>;
   implementation: ProviderImplementationState;
   supported_modes: SupportedProviderMode[];
   feeds: ProviderRegistryFeed[];
   layers: ProviderRegistryLayer[];
+}
+
+export function resolveProviderDefinitionSource(
+  definition: ProviderDefinition,
+  mode: ProviderRuntimeMode
+): ProviderSource {
+  return mode === 'unavailable'
+    ? definition.source
+    : (definition.mode_sources?.[mode] ?? definition.source);
 }
 
 const unavailableFreshness = (reason: string) => ({ status: 'unavailable' as const, reason });
@@ -345,30 +355,39 @@ export const PROVIDER_DEFINITIONS: readonly ProviderDefinition[] = [
     ],
   },
   {
-    id: 'telegeography-cables',
-    name: 'TeleGeography submarine cables',
+    id: 'submarine-cables',
+    name: 'Submarine cable catalog',
     source: {
-      name: 'TeleGeography Submarine Cable Map',
-      url: 'https://www.submarinecablemap.com/',
-      license_id: 'cc-by-nc-sa-4-0',
-      license: 'CC BY-NC-SA 4.0 optional download pack; redistribution review required',
-      attribution: 'TeleGeography',
+      name: 'GEV procedural synthetic cable fixture',
+      url: 'https://github.com/DDS-Solutions/AI-TadPole-Eye-View/tree/main/fixtures',
+      license_id: 'gev-synthetic-fixture-mit',
+      license: 'MIT-licensed procedural synthetic fixture',
+      attribution: 'DDS-Solutions GEV synthetic fixture',
     },
-    implementation: 'incomplete',
-    supported_modes: ['download_pack'],
+    mode_sources: {
+      download_pack: {
+        name: 'TeleGeography licensed map data',
+        url: 'https://www2.telegeography.com/license-geocoded-map-data',
+        license_id: 'telegeography-commercial-data-license',
+        license: 'Operator-specific annual TeleGeography map-data license required',
+        attribution: 'TeleGeography',
+      },
+    },
+    implementation: 'implemented',
+    supported_modes: ['seed', 'download_pack'],
     feeds: [
       {
         id: 'cables',
         name: 'Submarine cable catalog',
-        implementation: 'incomplete',
-        freshness: unavailableFreshness('Freshness policy is deferred to task 5.2.2'),
+        implementation: 'implemented',
+        freshness: definedFreshness(86_400),
       },
     ],
     layers: [
       {
         id: 'cables',
         name: 'Submarine cables',
-        implementation: 'incomplete',
+        implementation: 'implemented',
         documentation_path: 'docs/data-sources/cables.md',
       },
     ],

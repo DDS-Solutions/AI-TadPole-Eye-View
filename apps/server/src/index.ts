@@ -3,15 +3,19 @@ import type { IncomingMessage } from 'node:http';
 import type { Duplex } from 'node:stream';
 import {
   type Actor,
+  type CablePackManifest,
   GevEvents,
   type ProviderRegistry,
   ProviderRegistrySchema,
   SystemHealthResponseSchema,
 } from '@gev/contracts';
-import { type SimClock, SystemClock } from '@gev/core';
+import { GovernedToolExecutor, type SimClock, SystemClock } from '@gev/core';
 import { type GovernanceRuntimeContext, createGovernanceRuntimeContext } from '@gev/governance';
 import {
   AisAdapter,
+  CableAdapter,
+  type CablePackFetcher,
+  CablePackLoader,
   CctvAdapter,
   FirmsAdapter,
   GbfsAdapter,
@@ -20,7 +24,9 @@ import {
   RadioAdapter,
   UsgsQuakeAdapter,
   WeatherAdapter,
+  activateProviderDownloadPack,
   createConfiguredProviderRegistry,
+  withDisabledProviders,
 } from '@gev/providers';
 import { serve } from '@hono/node-server';
 import { getConnInfo } from '@hono/node-server/conninfo';
@@ -33,6 +39,8 @@ import { PRODUCT_VERSION } from './productVersion.js';
 import { createAuditIntegrityRouter } from './routes/auditIntegrity.js';
 import { createAuditStreamRouter } from './routes/auditStream.js';
 import { createBudgetReconciliationRouter } from './routes/budgetReconciliation.js';
+import { createCablePackActivationRouter } from './routes/cablePackActivation.js';
+import { createCablesRouter } from './routes/cables.js';
 import { createCctvRouter } from './routes/cctv.js';
 import {
   CollabRoomManager,
@@ -61,6 +69,9 @@ export interface CreateAppOptions {
   governanceDbPath?: string;
   voiceApiKey?: string;
   resolveClientId?: (c: Context) => string;
+  cablesEnabled?: boolean;
+  cablePackManifests?: readonly CablePackManifest[];
+  cablePackFetcher?: CablePackFetcher;
 }
 
 export function createApp(options: CreateAppOptions = {}) {
@@ -89,9 +100,13 @@ export function createApp(options: CreateAppOptions = {}) {
         return 'unknown-client';
       }
     });
-  const providerRegistry = ProviderRegistrySchema.parse(
+  const cablesEnabled = options.cablesEnabled ?? process.env.GEV_CABLES_ENABLED !== '0';
+  const configuredProviderRegistry = ProviderRegistrySchema.parse(
     options.providerRegistry ?? createConfiguredProviderRegistry()
   );
+  let providerRegistry = cablesEnabled
+    ? configuredProviderRegistry
+    : withDisabledProviders(configuredProviderRegistry, ['submarine-cables']);
 
   // Adapters
   const openSkyAdapter = new OpenSkyAdapter({ clock });
@@ -103,6 +118,13 @@ export function createApp(options: CreateAppOptions = {}) {
   const cctvAdapter = new CctvAdapter({ clock });
   const launchAdapter = new LaunchAdapter({ clock });
   const weatherAdapter = new WeatherAdapter({ clock });
+  const cableAdapter = new CableAdapter({ clock, enabled: cablesEnabled });
+  const cablePackLoader = new CablePackLoader({
+    clock,
+    enabled: cablesEnabled,
+    manifests: options.cablePackManifests,
+    fetcher: options.cablePackFetcher,
+  });
 
   // One shared governance runtime is used by every server route and middleware.
   const { auditSink, budgetGovernor, budgetLedger, approvalGate } = governanceContext;
@@ -121,6 +143,37 @@ export function createApp(options: CreateAppOptions = {}) {
       : {}),
   });
   const collabRoomManager = new CollabRoomManager(clock);
+  const cableActivationErrors = new Map<string, string>();
+  const cablePackExecutor = new GovernedToolExecutor({
+    auditSink,
+    approvalGate,
+    budgetGovernor,
+    budgetLedger,
+    clock,
+    allowedTools: ['set_flag'],
+  });
+  cablePackExecutor.register('set_flag', async (input) => {
+    const prefix = 'cables.download-pack.';
+    if (!input.enabled || !input.flag.startsWith(prefix)) {
+      return { flag: input.flag, enabled: input.enabled, updated: false };
+    }
+    const packId = input.flag.slice(prefix.length);
+    try {
+      const response = await cablePackLoader.loadPack(packId);
+      const nextRegistry = activateProviderDownloadPack(providerRegistry, 'submarine-cables');
+      cableAdapter.activatePack(packId, response);
+      providerRegistry = nextRegistry;
+      costGovernor.invalidate('cables');
+      cableActivationErrors.delete(packId);
+      return { flag: input.flag, enabled: true, updated: true };
+    } catch {
+      cableActivationErrors.set(
+        packId,
+        'Configured cable pack is unavailable or failed integrity and contract validation'
+      );
+      return { flag: input.flag, enabled: true, updated: false };
+    }
+  });
 
   // Global Middleware
   app.use(
@@ -163,7 +216,15 @@ export function createApp(options: CreateAppOptions = {}) {
   });
 
   // Diagnostic Feed Health Endpoint
-  app.route('/api/feeds', createFeedHealthRouter({ clock, budgetGovernor, providerRegistry }));
+  app.route(
+    '/api/feeds',
+    createFeedHealthRouter({
+      clock,
+      budgetGovernor,
+      providerRegistry,
+      getProviderRegistry: () => providerRegistry,
+    })
+  );
 
   // Telemetry Feed Routes with Cost Governor Middleware
   app.use('/api/flights/*', costGovernor.middleware('flights'));
@@ -199,6 +260,9 @@ export function createApp(options: CreateAppOptions = {}) {
   app.use('/api/weather/*', costGovernor.middleware('weather'));
   app.route('/api/weather', createWeatherRouter({ adapter: weatherAdapter }));
 
+  app.use('/api/cables/*', costGovernor.middleware('cables'));
+  app.route('/api/cables', createCablesRouter(cableAdapter));
+
   // Voice Ephemeral Token Provisioning
   app.route(
     '/api/voice',
@@ -221,6 +285,14 @@ export function createApp(options: CreateAppOptions = {}) {
   app.route('/ops/audit', createAuditIntegrityRouter(auditSink));
   app.route('/ops/audit', createAuditStreamRouter(auditSink, clock));
   app.route('/ops/budget', createBudgetReconciliationRouter({ clock, budgetLedger }));
+  app.route(
+    '/ops/cables',
+    createCablePackActivationRouter({
+      executor: cablePackExecutor,
+      adapter: cableAdapter,
+      readActivationError: (packId) => cableActivationErrors.get(packId),
+    })
+  );
 
   app.route(
     '/ops/seed',
@@ -333,7 +405,9 @@ export function createApp(options: CreateAppOptions = {}) {
     collabRoomManager,
     telemetry,
     clock,
-    providerRegistry,
+    get providerRegistry() {
+      return providerRegistry;
+    },
     governanceContext,
     adapters: {
       openSky: openSkyAdapter,
@@ -343,6 +417,7 @@ export function createApp(options: CreateAppOptions = {}) {
       gbfs: gbfsAdapter,
       radio: radioAdapter,
       cctv: cctvAdapter,
+      cables: cableAdapter,
     },
   };
 }

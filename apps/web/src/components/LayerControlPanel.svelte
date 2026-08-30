@@ -222,6 +222,28 @@
               <span class="slider weather-slider"></span>
             </label>
           </div>
+
+          <!-- Submarine Cable Infrastructure -->
+          <div class="layer-toggle-row cable-row">
+            <div class="layer-info">
+              <span class="layer-indicator cable-ind"></span>
+              <div class="layer-text">
+                <span class="layer-name">Submarine Cables</span>
+                <span class="layer-sub">
+                  Synthetic / licensed pack · <span id="cable-count" class="mono">{layerStore.counts.cables}</span>
+                </span>
+              </div>
+            </div>
+            <label class="switch">
+              <input
+                id="toggle-cables"
+                type="checkbox"
+                checked={layerStore.visibility.cables}
+                onchange={() => layerStore.toggleLayer('cables')}
+              />
+              <span class="slider cable-slider"></span>
+            </label>
+          </div>
         </div>
       {:else}
         <LayerFilterControls />
@@ -360,6 +382,7 @@
   .radio-ind { background-color: var(--channel-radio); }
   .launch-ind { background-color: var(--channel-launch); }
   .weather-ind { background-color: var(--channel-weather); }
+  .cable-ind { background-color: var(--channel-cables); }
 
   .layer-text {
     display: flex;
@@ -430,6 +453,7 @@
   input:checked + .radio-slider { background-color: var(--channel-radio); }
   input:checked + .launch-slider { background-color: var(--channel-launch); }
   input:checked + .weather-slider { background-color: var(--channel-weather); }
+  input:checked + .cable-slider { background-color: var(--channel-cables); }
 
   input:checked + .slider:before {
     transform: translateX(16px);

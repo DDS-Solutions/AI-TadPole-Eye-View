@@ -9,5 +9,6 @@ export const WEB_CHANNEL_COLORS = {
   radio: '#06b6d4',
   launch: '#facc15',
   weather: '#60a5fa',
+  cable: '#f472b6',
   muted: '#94a3b8',
 } as const;

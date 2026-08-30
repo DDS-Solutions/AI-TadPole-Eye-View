@@ -1,5 +1,6 @@
 import type {
   BikeStation,
+  CableRoute,
   CctvCamera,
   DataProvenance,
   EarthquakeFeature,
@@ -21,6 +22,7 @@ export interface LayerVisibility {
   radio: boolean;
   launches: boolean;
   weather: boolean;
+  cables: boolean;
 }
 
 export interface ProvenanceSummary {
@@ -41,7 +43,17 @@ export interface LayerFilters {
 }
 
 export interface EntitySelection {
-  kind: 'flight' | 'marine' | 'quake' | 'firms' | 'gbfs' | 'cctv' | 'radio' | 'launch' | 'weather';
+  kind:
+    | 'flight'
+    | 'marine'
+    | 'quake'
+    | 'firms'
+    | 'gbfs'
+    | 'cctv'
+    | 'radio'
+    | 'launch'
+    | 'weather'
+    | 'cable';
   id: string;
   name: string;
   data: Record<string, unknown>;
@@ -62,7 +74,7 @@ export interface UnifiedTelemetryItem {
 }
 
 class LayerStore {
-  // Layer visibility flags for all 9 layers
+  // Layer visibility flags for implemented globe layers.
   visibility = $state<LayerVisibility>({
     flights: true,
     marine: true,
@@ -73,6 +85,7 @@ class LayerStore {
     radio: true,
     launches: true,
     weather: true,
+    cables: true,
   });
 
   // Layer filter settings
@@ -96,6 +109,7 @@ class LayerStore {
     radio: 0,
     launches: 0,
     weather: 0,
+    cables: 0,
   });
 
   // Last validated provenance envelope for each visible telemetry layer.
@@ -140,6 +154,7 @@ class LayerStore {
     radio: RadioStation[];
     launches: LaunchMission[];
     weather: WeatherStation[];
+    cables: CableRoute[];
   }>({
     flights: [],
     marine: [],
@@ -150,6 +165,7 @@ class LayerStore {
     radio: [],
     launches: [],
     weather: [],
+    cables: [],
   });
 
   // High-Density Telemetry Table UI state
@@ -178,7 +194,8 @@ class LayerStore {
       (this.visibility.cctv ? this.counts.cctv : 0) +
       (this.visibility.radio ? this.counts.radio : 0) +
       (this.visibility.launches ? this.counts.launches : 0) +
-      (this.visibility.weather ? this.counts.weather : 0)
+      (this.visibility.weather ? this.counts.weather : 0) +
+      (this.visibility.cables ? this.counts.cables : 0)
   );
 
   // Global console status
@@ -194,6 +211,7 @@ class LayerStore {
     radio: null,
     launches: null,
     weather: null,
+    cables: null,
   });
 
   // Active inspection selection

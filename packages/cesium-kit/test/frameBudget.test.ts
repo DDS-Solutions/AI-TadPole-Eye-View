@@ -1,5 +1,6 @@
 import type { CustomDataSource, Viewer } from 'cesium';
 import { describe, expect, it } from 'vitest';
+import { CableLayerController } from '../src/cableLayer.js';
 import { CctvLayerController } from '../src/cctvLayer.js';
 import { attachDebugBus } from '../src/debugBus.js';
 import { FirmsLayerController } from '../src/firmsLayer.js';
@@ -382,5 +383,48 @@ describe('Cesium Frame Budget Monitor & Ingestion Benchmark (PLAN.md §10 Phase 
     radio.destroy();
     launches.destroy();
     weather.destroy();
+  });
+
+  it(`BENCHMARK: drains a 1,000-segment cable fixture < ${INGESTION_P95_BUDGET_MS}ms p95`, () => {
+    const cables = new CableLayerController({ viewer: createMockViewer() });
+    const catalog = {
+      landing_points: [
+        { id: 'landing-a', name: 'Landing A', country: 'Fixture', longitude: -70, latitude: 40 },
+        { id: 'landing-b', name: 'Landing B', country: 'Fixture', longitude: 5, latitude: 50 },
+      ],
+      routes: Array.from({ length: 1_000 }, (_, index) => ({
+        id: `route-${index}`,
+        name: `Route ${index}`,
+        status: 'active' as const,
+        owners: ['Fixture operator'],
+        rfs_year: 2026,
+        length_km: 5_000,
+        landing_point_ids: ['landing-a', 'landing-b'],
+        segments: [
+          [
+            [-70 + (index % 10) * 0.01, 40],
+            [5, 50],
+          ],
+        ],
+      })),
+    } as Parameters<CableLayerController['enqueueCatalog']>[0];
+
+    for (let warmup = 0; warmup < 5; warmup++) cables.enqueueCatalog(catalog);
+    const latencies: number[] = [];
+    for (let iteration = 0; iteration < 50; iteration++) {
+      const startedAt = performance.now();
+      cables.enqueueCatalog(catalog);
+      latencies.push(performance.now() - startedAt);
+    }
+    latencies.sort((left, right) => left - right);
+    const p95 = latencies[Math.floor(latencies.length * 0.95)] ?? Number.POSITIVE_INFINITY;
+
+    console.log(
+      `[Benchmark Cable Ingestion] Segments=1000 | Budget=${INGESTION_P95_BUDGET_MS.toFixed(1)}ms p95 | p95: ${p95.toFixed(2)}ms`
+    );
+    expect(p95).toBeLessThan(INGESTION_P95_BUDGET_MS);
+    expect(cables.getRouteCount()).toBe(1_000);
+    expect(cables.getEntityCount()).toBe(1_002);
+    cables.destroy();
   });
 });

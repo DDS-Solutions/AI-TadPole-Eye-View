@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import {
     GlobeController,
+    CableLayerController,
     FlightLayerController,
     MarineLayerController,
     QuakeLayerController,
@@ -42,6 +43,7 @@
   let radioLayer: RadioLayerController | null = null;
   let launchLayer: LaunchLayerController | null = null;
   let weatherLayer: WeatherLayerController | null = null;
+  let cableLayer: CableLayerController | null = null;
   let collabLayer: CollabLayerController | null = null;
 
   let pollInterval: ReturnType<typeof setInterval> | null = null;
@@ -60,6 +62,7 @@
       radio: radioLayer,
       launches: launchLayer,
       weather: weatherLayer,
+      cables: cableLayer,
     }, abortController.signal);
   }
 
@@ -89,7 +92,8 @@
         | 'cctv'
         | 'radio'
         | 'launch'
-        | 'weather') || 'flight';
+        | 'weather'
+        | 'cable') || 'flight';
 
     layerStore.selectEntity({
       kind,
@@ -191,6 +195,7 @@
     radioLayer?.setVisible(layerStore.visibility.radio);
     launchLayer?.setVisible(layerStore.visibility.launches);
     weatherLayer?.setVisible(layerStore.visibility.weather);
+    cableLayer?.setVisible(layerStore.visibility.cables);
 
     quakeLayer?.setMinMagnitude(layerStore.filters.quakes.minMagnitude);
     firmsLayer?.setMinFrp(layerStore.filters.firms.minFrp);
@@ -247,6 +252,7 @@
       radioLayer = new RadioLayerController({ viewer: globe.viewer });
       launchLayer = new LaunchLayerController({ viewer: globe.viewer });
       weatherLayer = new WeatherLayerController({ viewer: globe.viewer });
+      cableLayer = new CableLayerController({ viewer: globe.viewer });
       collabLayer = new CollabLayerController({ viewer: globe.viewer });
 
       setupToolExecutors();
@@ -263,6 +269,7 @@
           radio: radioLayer,
           launches: launchLayer,
           weather: weatherLayer,
+          cables: cableLayer,
         },
         {
           frameMonitor,
@@ -317,6 +324,7 @@
     radioLayer?.destroy();
     launchLayer?.destroy();
     weatherLayer?.destroy();
+    cableLayer?.destroy();
     collabLayer?.destroy();
     globe?.destroy();
   });

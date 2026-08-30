@@ -40,6 +40,7 @@ Every telemetry domain is strictly mapped to a dedicated color channel across gl
 | **Seismic (USGS)** | `#fb923c` | `Amber Orange` | Earthquakes, magnitude rings, hypocentral depth |
 | **Thermal (FIRMS)** | `#f43f5e` | `Rose Red` | NASA thermal hotspots, wildfire FRP points |
 | **Urban Mobility (GBFS)** | `#818cf8` | `Indigo Violet` | Bikeshare docks, capacity gauges |
+| **Submarine Infrastructure** | `#f472b6` | `Magenta Pink` | Cable routes and landing points |
 | **Governance / STASIS** | `#eab308` / `#ef4444` | `Gold / Red` | Budget burn meter, approval prompts, STASIS lockdown |
 
 ---

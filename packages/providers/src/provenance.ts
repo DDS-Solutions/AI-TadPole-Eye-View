@@ -8,7 +8,7 @@ import {
   type ObservationPeriod,
 } from '@gev/contracts';
 import type { SimClock } from '@gev/core';
-import { PROVIDER_DEFINITIONS } from './registryDefinitions.js';
+import { PROVIDER_DEFINITIONS, resolveProviderDefinitionSource } from './registryDefinitions.js';
 
 const DEFAULT_VINTAGE: DataVintage = {
   status: 'unavailable',
@@ -31,7 +31,7 @@ export interface MarkCachedProvenanceOptions {
   storedAtMs: number;
 }
 
-function findFeed(providerId: string, feedId: string) {
+function findFeed(providerId: string, feedId: string, sourceMode: DataProvenanceSourceMode) {
   const provider = PROVIDER_DEFINITIONS.find((candidate) => candidate.id === providerId);
   if (!provider) {
     throw new Error(`Unknown provenance provider '${providerId}'`);
@@ -43,7 +43,12 @@ function findFeed(providerId: string, feedId: string) {
   if (feed.implementation !== 'implemented' || feed.freshness.status !== 'defined') {
     throw new Error(`Feed '${feedId}' does not have an implemented freshness policy`);
   }
-  return { provider, feed, freshForSeconds: feed.freshness.fresh_for_seconds };
+  return {
+    provider,
+    feed,
+    source: resolveProviderDefinitionSource(provider, sourceMode),
+    freshForSeconds: feed.freshness.fresh_for_seconds,
+  };
 }
 
 export function getFeedFreshnessSeconds(feedId: string): number {
@@ -122,7 +127,11 @@ export function classifyFreshness(
 }
 
 export function createDataProvenance(options: CreateDataProvenanceOptions): DataProvenance {
-  const { provider, feed, freshForSeconds } = findFeed(options.providerId, options.feedId);
+  const { provider, feed, source, freshForSeconds } = findFeed(
+    options.providerId,
+    options.feedId,
+    options.sourceMode
+  );
   const retrievedAtMs = options.clock.now();
 
   return DataProvenanceSchema.parse({
@@ -130,8 +139,8 @@ export function createDataProvenance(options: CreateDataProvenanceOptions): Data
     source: {
       provider_id: provider.id,
       feed_id: feed.id,
-      name: provider.source.name,
-      canonical_url: provider.source.url,
+      name: source.name,
+      canonical_url: source.url,
     },
     retrieved_at: options.clock.iso(),
     observation_period: options.observationPeriod,
@@ -139,10 +148,10 @@ export function createDataProvenance(options: CreateDataProvenanceOptions): Data
     mode: options.sourceMode,
     source_mode: options.sourceMode,
     license: {
-      id: provider.source.license_id,
-      name: provider.source.license,
+      id: source.license_id,
+      name: source.license,
     },
-    attribution: provider.source.attribution,
+    attribution: source.attribution,
     fixture_id: options.sourceMode === 'seed' ? (options.fixtureId ?? null) : null,
     cache: null,
     freshness: classifyFreshness(options.observationPeriod, retrievedAtMs, freshForSeconds),
