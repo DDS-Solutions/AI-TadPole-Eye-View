@@ -2,8 +2,8 @@
 
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
-**Verified against repository:** 2026-08-29
-**Status:** IN PROGRESS — Phase 5.2; task 5.2.1 verified; task 5.2.2 ready
+**Verified against repository:** 2026-08-30
+**Status:** IN PROGRESS — Phase 5.2; task 5.2.2 verified; task 5.2.3 blocked on OQ-7
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,9 +20,9 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=5.2
-NEXT_TASK=5.2.2
+NEXT_TASK=5.2.3
 NEXT_TASK_STATUS=BLOCKED
-LAST_VERIFIED_UTC=2026-08-29
+LAST_VERIFIED_UTC=2026-08-30
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
 IMPLEMENTATION_STARTED=YES
 ```
@@ -763,7 +763,7 @@ DOC_BLOCKER or LOGIC_BLOCKER with exact row/hash/migration evidence and bounded 
 ### Phase 5.2 — Provenance and missing geospatial layers
 
 - [x] 5.2.1 Add required provenance and registry contracts; retrofit existing adapters and UI badges using `SimClock`.
-- [ ] 5.2.2 Complete cables: Zod contracts, fixture seed, validated optional pack, server/store/layer/UI, kill switch, health, tests, and license ADR.
+- [x] 5.2.2 Complete cables: Zod contracts, fixture seed, validated optional pack, server/store/layer/UI, kill switch, health, tests, and license ADR.
 - [ ] 5.2.3 Complete satellites after OQ-7: GP/OMM adapter, deterministic fixture, propagation/frame conversion, server/store/layer/UI, kill switch, health, tests, and source ADR.
 - [ ] 5.2.4 Generate DATA_SOURCES entries/counts from the registry and label implementation/mode accurately.
 - [ ] 5.2 exit: every implemented provider validates and carries provenance; seed mode makes zero network calls; satellite/cable smoke and performance budgets pass.
@@ -821,7 +821,7 @@ source after three attempts, record LOGIC_BLOCKER with the provider payload, lic
 evidence, and bounded union/version alternatives.
 ```
 
-#### Ready-to-authorize brief for NEXT_TASK 5.2.2
+#### Authorized 4-Pillar brief for completed task 5.2.2
 
 ```text
 [SCOPE_CONTRACT] packages/contracts cable landing-point, route, catalog, pack-manifest,
@@ -872,6 +872,61 @@ counts, make network calls in seed tests, or silently fall back from a rejected 
 claiming pack mode. If current official terms, distributable fields, or a stable allowlisted
 pack endpoint cannot be evidenced, keep download_pack unavailable and record DOC_BLOCKER;
 after three contract/parser approaches fail, record LOGIC_BLOCKER with bounded alternatives.
+```
+
+#### Decision-blocked 4-Pillar brief for NEXT_TASK 5.2.3
+
+OQ-7 must be resolved and ADR 0034 accepted before this brief may be authorized. Source
+selection, redistribution, refresh, and production-use terms are human decisions; no
+candidate source is approved merely because it appears below.
+
+```text
+[SCOPE_CONTRACT] Resolve OQ-7 and accept reserved ADR 0034 before implementation;
+packages/contracts bounded GP/OMM satellite catalog, orbital element, propagated state,
+batch, and response contracts with required DataProvenance v1; packages/core deterministic
+SGP4 propagation and time/reference-frame conversion behind SimClock; packages/providers
+one adapter for the source approved by OQ-7, one redistribution-safe deterministic fixture,
+strict boundary validation, kill switch, and executable-registry mode/health/freshness;
+apps/server bounded governed/cache-aware catalog and propagation routes; packages/cesium-kit
+satellite controller through the rAF queue; apps/web polling/store/layer toggle, counts,
+selection, and provenance presentation; focused tests and source-specific documentation.
+Out of scope: unapproved CelesTrak or Space-Track downloads, credentials, caller-selected
+URLs or catalog groups, browser-to-provider calls, live calls in tests, cable changes,
+DATA_SOURCES generator redesign (5.2.4), production identity/tenancy, economic features,
+and visual redesign.
+
+[PERFORMANCE_THRESHOLD] OQ-7 and ADR 0034 identify the approved source, terms,
+redistribution/fixture allowance, attribution, refresh policy, live-environment policy,
+cache TTL, budget/rate limits, and kill-switch owner before code changes. Seed mode validates
+one checked-in lawful fixture plus provenance and opens zero network sockets. Propagation
+matches ADR-accepted SGP4 reference vectors at epoch and stepped SimClock times within the
+documented position/velocity tolerances; UTC/Julian/reference-frame conversions are tested
+across rollover and invalid-input boundaries without Date.now. Source responses fail closed
+on missing/malformed GP/OMM fields, provenance, epochs, identifiers, bounds, and oversized
+catalogs. A bounded 1,000-satellite update remains within the existing 16.6 ms Cesium p95
+frame budget. Root lint, affected uncached typecheck/test/build, ADG, architecture drift,
+bundle budgets, canonical unit/load/performance, and Playwright satellite-toggle/provenance
+smoke pass with zero live calls.
+
+[ARCHITECTURE_MODE] PLAN.md §2 rules 1, 4–7, 9, and 12–15; §3 provider → store →
+UI/Cesium flow; §4.1–§4.2; docs/DESIGN.md; ADRs 0015, 0020, 0023–0025, 0035,
+0039, and 0040; create and accept reserved ADR 0034. Contracts and the executable registry
+remain the only source for satellite identity, source/mode, health, licensing/attribution,
+freshness, and provenance. Keep pure propagation/frame math in core, provider I/O behind
+pinned-fetch, time behind SimClock, server reads behind shared auth/rate/cache/budget policy
+when billable, and all imperative Cesium ownership/rAF writes in cesium-kit. No source,
+license, fixture, propagation library/tolerance, reference-frame, refresh, or cache-policy
+deviation without ADR evidence.
+
+[FAILURE_MODES] Do not start implementation before OQ-7, infer public-domain or
+redistribution rights from public accessibility, bundle an unapproved orbital catalog,
+fall back from GP/OMM to a TLE-only domain contract, mix observation epoch with retrieval
+time, use wall-clock time in domain math, propagate malformed/stale elements, render
+unvalidated coordinates, duplicate registry truth, bypass pinned-fetch/governance, or make
+network calls in seed tests. If terms or fixture redistribution cannot be evidenced, keep
+the provider planned/unavailable and record DOC_BLOCKER. If three propagation/reference-
+frame approaches cannot meet accepted vectors and tolerances, record LOGIC_BLOCKER with
+the exact vectors, measured errors, and bounded library/boundary alternatives.
 ```
 
 ### Phase 6 — Standards-compliant MCP HTTP
@@ -1707,5 +1762,51 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
 - Next task: **5.2.2 Complete cables**. Its exact review-only 4-Pillar brief is in §10;
   task 5.2.2 is blocked pending developer authorization and has not been started.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.2.2. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 5.2.2 completion checkpoint — 2026-08-30
+
+- The developer authorized the exact task 5.2.2 4-Pillar brief. Work stayed on the
+  dedicated `codex/brief-5.2.2` branch and made no live provider call, production mutation,
+  satellite change, economic change, or broad DATA_SOURCES generator change.
+- Contracts now bound cable catalogs, landing points, routes, segments, coordinates, and
+  server-owned pack manifests, including required provenance, catalog-wide limits,
+  referential integrity, exact HTTPS host/path, byte/timeout limits, and mandatory SHA-256.
+  The checked-in MIT procedural fixture contains six explicitly synthetic landing points,
+  three routes, and five route segments; it is never labeled TeleGeography or live data.
+- ADR 0036 records the current licensing boundary: GEV bundles no TeleGeography geometry
+  and exposes no public download default. An operator-licensed pack can be configured only
+  through a server-owned manifest; callers provide a pack ID, not a URL, path, hash, or
+  consent boolean. Failed fetch, digest, provenance, or catalog validation leaves the last
+  valid seed catalog and registry mode active.
+- The server exposes a bounded cached cable read and an authenticated-human activation
+  route through the shared audit/approval/budget/STASIS executor. Activation uses
+  pinned-fetch, validates before atomic swap, invalidates the old cache, and updates dynamic
+  registry/health truth. `GEV_CABLES_ENABLED=0` stops both seed and pack reads before
+  dispatch and reports the provider degraded.
+- Cesium owns cable-route and landing-point entities through the rAF queue using the
+  DESIGN.md submarine-infrastructure tokens. The web store, poller, HUD toggle/count,
+  provenance badges, and debug bus consume validated responses. Playwright passed 1/1;
+  the final screenshot was visually inspected with the telemetry/chart layout intact, while
+  debug/HUD assertions proved all 10 implemented layers populated, including 11 cable entities.
+- Evidence passed: root lint on 227 files; full typecheck (17/17 tasks); 370 unit tests;
+  canonical server load and Cesium performance suites; production build (10/10 tasks);
+  ADG on 53 documents, 395 paths, and 18 module-qualified symbols; 11 ADG tests;
+  architectural drift inventory; generated provider-registry parity; bundle budgets;
+  `git diff --check`; deterministic cable seed/network-denial coverage; and synchronized
+  plan checks. Server load measured 17.68 ms p95 (300 ms budget), general 1,060-entity
+  Cesium ingestion measured 7.35 ms p95, and the dedicated 1,000-segment cable benchmark
+  measured 8.75 ms p95 (both under 16.6 ms). The app entry measured 88.57 KiB gzip and
+  total bundle footprint 1,227.13 KiB gzip within existing budgets.
+- Final local status reported `STASIS_INACTIVE` with the required non-authoritative offline
+  snapshot caveat, seed mode, 11/12 active providers, 11/12 active feeds, 10/12 active
+  layers, 11 healthy feeds, and one unavailable feed. No governance state was resumed,
+  deleted, or rewritten.
+- Branch: `codex/brief-5.2.2`; implementation commit `5ec9d46`. GitHub CLI remains
+  unavailable, so open PR inspection and PR creation were not possible. Only synchronized
+  plan-state/handoff edits remained after that implementation commit.
+- Next task: **5.2.3 Complete satellites** is blocked on human resolution of OQ-7. Its
+  exact decision-blocked 4-Pillar brief is in §10; no satellite implementation is
+  authorized or started.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.2.3. Resolve OQ-7, then authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
