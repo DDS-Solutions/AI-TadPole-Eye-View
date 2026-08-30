@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "task": "5.2.1",
-  "adr": "0040",
+  "task": "5.2.2",
+  "adr": "0036",
   "wallClock": [
     {
       "path": "packages/cesium-kit/src/frameBudget.ts",
@@ -87,10 +87,10 @@
     },
     {
       "path": "apps/web/src/hudTokens.css",
-      "occurrences": 29,
-      "fingerprint": "944165dec69e5777685eb5bbed04443d4ae585965a84983bf46d7f4897ee3bc0",
+      "occurrences": 30,
+      "fingerprint": "ac0fd99ac57a2bd1cbbb4f071767e4d612b18c5c67dda4022f0fbee86a71201f",
       "classification": "fixed",
-      "reason": "Task 5.2.1 moved the layer-control palette to semantic HUD and telemetry-channel CSS custom properties before adding provenance badges."
+      "reason": "Task 5.2.2 added the accepted submarine-infrastructure channel as a semantic HUD token defined by DESIGN.md and ADR 0036."
     },
     {
       "path": "apps/web/src/components/TelemetryTimelineChart.svelte",
@@ -121,17 +121,17 @@
     },
     {
       "path": "apps/web/src/designTokens.ts",
-      "occurrences": 10,
-      "fingerprint": "8f1236b60e51d78eb769a6b854581ffa7b3c22191d7888fb2b85b6a8d9d8c9e1",
+      "occurrences": 11,
+      "fingerprint": "ccc52387e9129285115928c2c59097294b130f6975fd75d72d5fb7b66aaf5829",
       "classification": "fixed",
-      "reason": "Task 5.0.6 centralized chart and dynamic table channel values and corrected CCTV, radio, and launch mismatches."
+      "reason": "Task 5.2.2 extended the centralized canvas/chart channel map with the accepted submarine-infrastructure token."
     },
     {
       "path": "packages/cesium-kit/src/designTokens.ts",
-      "occurrences": 19,
-      "fingerprint": "54cc9d7742787d1a6d5b1a82e9785e8f8e6bd0252bfbc8ff7a7734a2da2d4aaa",
+      "occurrences": 21,
+      "fingerprint": "15462d5f2fd9bf9cb850e5b073f70f711fe8c1fe493bc3d96dafe4b4e496f452",
       "classification": "fixed",
-      "reason": "Task 5.0.6 centralized Cesium channel, outline, and effect values used by every controller."
+      "reason": "Task 5.2.2 extended the centralized Cesium channel and outline map with the accepted submarine-infrastructure tokens."
     }
   ],
   "cesiumDirect": [
@@ -161,7 +161,7 @@
     }
   ],
   "cesiumImports": {
-    "cesium": 16,
+    "cesium": 18,
     "@cesium/engine": 0
   },
   "stackPackages": {

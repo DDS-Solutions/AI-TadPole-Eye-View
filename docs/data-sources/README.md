@@ -23,4 +23,4 @@ This directory documents the provenance, licensing terms, update cadence, and ra
 | Weather | RainViewer · NOAA | Free Tier / Public Domain | [weather.md](./weather.md) |
 | GBFS | NABSA GBFS Open Feeds | Open Data | [gbfs.md](./gbfs.md) |
 | Overpass | OpenStreetMap Foundation | ODbL 1.0 | [overpass.md](./overpass.md) |
-| Cables | TeleGeography | CC BY-NC-SA 4.0 (Download Pack) | [cables.md](./cables.md) |
+| Cables | GEV synthetic fixture / optional operator-licensed TeleGeography pack | MIT seed / operator-specific annual license | [cables.md](./cables.md) |

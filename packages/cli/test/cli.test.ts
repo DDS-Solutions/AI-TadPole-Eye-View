@@ -48,9 +48,9 @@ describe('GEV v2 CLI Surface (@gev/cli)', () => {
     expect(parsed.cap_usd).toBe(10);
     expect(parsed.remaining_usd).toBe(10);
     expect(parsed.registry_counts).toEqual({
-      providers: { total: 12, active: 10 },
-      feeds: { total: 12, active: 10 },
-      layers: { total: 12, active: 9 },
+      providers: { total: 12, active: 11 },
+      feeds: { total: 12, active: 11 },
+      layers: { total: 12, active: 10 },
     });
     expect(parsed.provider_registry.providers).toHaveLength(12);
   });

@@ -4,7 +4,7 @@
 
 Registry version 2; requested mode `seed`.
 
-Active/registered: 10/12 providers, 10/12 feeds, 9/12 layers.
+Active/registered: 11/12 providers, 11/12 feeds, 10/12 layers.
 
 | Provider | Feed | Layer | Source | License ID | License / terms | Attribution | Freshness | Provider state | Feed state | Layer state | Mode | Health | Documentation |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -19,7 +19,7 @@ Active/registered: 10/12 providers, 10/12 feeds, 9/12 layers.
 | `rainviewer` | `weather` | `weather` | [RainViewer](https://www.rainviewer.com/) | `rainviewer-api-source-agency-terms` | RainViewer API terms; NOAA observations retain source terms | RainViewer and source weather agencies | 300s | implemented | implemented | implemented | seed | healthy | [Weather and radar](../data-sources/weather.md) |
 | `gbfs` | `gbfs` | `gbfs` | [Regional GBFS operators](https://gbfs.org/) | `source-specific-open-data-terms` | Source-specific open-data terms | Originating GBFS system operator | 30s | implemented | implemented | implemented | seed | healthy | [Bikeshare stations](../data-sources/gbfs.md) |
 | `overpass-api` | `overpass` | `overpass` | [OpenStreetMap](https://www.openstreetmap.org/) | `odbl-1-0` | Open Database License 1.0; output obligations depend on use | OpenStreetMap contributors | 30s | implemented | implemented | incomplete | seed | healthy | [OpenStreetMap query results](../data-sources/overpass.md) |
-| `telegeography-cables` | `cables` | `cables` | [TeleGeography Submarine Cable Map](https://www.submarinecablemap.com/) | `cc-by-nc-sa-4-0` | CC BY-NC-SA 4.0 optional download pack; redistribution review required | TeleGeography | unavailable: Freshness policy is deferred to task 5.2.2 | incomplete | incomplete | incomplete | download_pack | unavailable | [Submarine cables](../data-sources/cables.md) |
+| `submarine-cables` | `cables` | `cables` | [GEV procedural synthetic cable fixture](https://github.com/DDS-Solutions/AI-TadPole-Eye-View/tree/main/fixtures) | `gev-synthetic-fixture-mit` | MIT-licensed procedural synthetic fixture | DDS-Solutions GEV synthetic fixture | 86400s | implemented | implemented | implemented | seed | healthy | [Submarine cables](../data-sources/cables.md) |
 
 Entries marked `planned`, `incomplete`, `download_pack`, or `unavailable` are registered for truthful discovery and are not counted as active.
 

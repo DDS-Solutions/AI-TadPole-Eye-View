@@ -1,288 +1,189 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import {
+  type CableCatalog,
+  CableCatalogResponseSchema,
+  CableCatalogSchema,
+  type CablePackManifest,
+  CablePackManifestSchema,
+} from '@gev/contracts';
 import { type SimClock, SystemClock } from '@gev/core';
-import { pinnedFetch } from '@gev/security';
+import { type PinnedFetchOptions, pinnedFetch } from '@gev/security';
+import { resolveFixturePath } from './opensky.js';
+import { createDataProvenance, observationPeriodFromIso } from './provenance.js';
 
-export interface CableLandingPoint {
-  id: string;
-  name: string;
-  latitude: number;
-  longitude: number;
-  country: string;
+const CABLE_PROVIDER_ID = 'submarine-cables';
+const CABLE_FEED_ID = 'cables';
+const CABLE_SEED_FIXTURE_ID = 'cables-synthetic-v1';
+
+export class CableProviderDisabledError extends Error {
+  constructor() {
+    super('Submarine cable provider is disabled by the GEV_CABLES_ENABLED kill switch');
+  }
 }
 
-export interface SubmarineCable {
-  id: string;
-  name: string;
-  owners?: string;
-  rfs_year?: number;
-  length_km?: number;
-  color?: string;
-  landing_points: CableLandingPoint[];
-  coordinates: [number, number][][]; // MultiLineString array of [lon, lat]
+interface CablePackFetchResponse {
+  ok: boolean;
+  status: number;
+  statusText: string;
+  arrayBuffer(): Promise<ArrayBuffer>;
 }
 
-export interface CableCatalog {
-  cables: SubmarineCable[];
-  source: 'download_pack' | 'synthetic_seed';
-  license: string;
-  timestamp: number;
+export type CablePackFetcher = (
+  target: URL,
+  options: PinnedFetchOptions
+) => Promise<CablePackFetchResponse>;
+
+export interface CableAdapterOptions {
+  clock?: SimClock;
+  seedFixturePath?: string;
+  enabled?: boolean;
 }
 
-export interface CableDownloadOptions {
-  licenseAccepted: boolean;
-  packUrl?: string;
-  expectedSha256?: string;
-  timeoutMs?: number;
+export interface CablePackLoaderOptions {
+  clock?: SimClock;
+  enabled?: boolean;
+  manifests?: readonly CablePackManifest[];
+  fetcher?: CablePackFetcher;
 }
 
-/**
- * Submarine Cable Pack Loader (PLAN.md §5 & §10 Phase 4)
- * Enforces zero-bundling policy for non-commercial (CC BY-NC-SA) TeleGeography data
-/**
- * Generates a clean synthetic cable topology for seed/airgap mode with zero NC encumbrance.
- */
-export function loadSyntheticCablePack(clock: SimClock = new SystemClock()): CableCatalog {
-  return {
-    cables: [
-      {
-        id: 'cable-transatlantic-1',
-        name: 'Synthetic Transatlantic Route Alpha',
-        owners: 'Open Consortium',
-        rfs_year: 2024,
-        length_km: 6600,
-        color: '#00ffff',
-        landing_points: [
-          {
-            id: 'lp-bude',
-            name: 'Bude Station',
-            latitude: 50.83,
-            longitude: -4.54,
-            country: 'United Kingdom',
-          },
-          {
-            id: 'lp-ny',
-            name: 'Shirley Landing Point',
-            latitude: 40.8,
-            longitude: -72.87,
-            country: 'United States',
-          },
-        ],
-        coordinates: [
-          [
-            [-4.54, 50.83],
-            [-15.0, 52.0],
-            [-30.0, 50.0],
-            [-45.0, 45.0],
-            [-60.0, 42.0],
-            [-72.87, 40.8],
-          ],
-        ],
-      },
-      {
-        id: 'cable-transpacific-1',
-        name: 'Synthetic Transpacific Route Beta',
-        owners: 'Pacific Transit Group',
-        rfs_year: 2023,
-        length_km: 9800,
-        color: '#ff00ff',
-        landing_points: [
-          {
-            id: 'lp-tokyo',
-            name: 'Chiba Station',
-            latitude: 35.6,
-            longitude: 140.1,
-            country: 'Japan',
-          },
-          {
-            id: 'lp-oregon',
-            name: 'Pacific City',
-            latitude: 45.2,
-            longitude: -123.96,
-            country: 'United States',
-          },
-        ],
-        coordinates: [
-          [
-            [140.1, 35.6],
-            [160.0, 40.0],
-            [180.0, 45.0],
-            [-160.0, 47.0],
-            [-140.0, 46.0],
-            [-123.96, 45.2],
-          ],
-        ],
-      },
-      {
-        id: 'cable-suez-1',
-        name: 'Synthetic Mediterranean-Red Sea Route',
-        owners: 'Eurasia Gateway',
-        rfs_year: 2022,
-        length_km: 4200,
-        color: '#ffff00',
-        landing_points: [
-          {
-            id: 'lp-marseille',
-            name: 'Marseille Hub',
-            latitude: 43.3,
-            longitude: 5.37,
-            country: 'France',
-          },
-          {
-            id: 'lp-alexandria',
-            name: 'Abu Talat',
-            latitude: 31.1,
-            longitude: 29.8,
-            country: 'Egypt',
-          },
-          {
-            id: 'lp-djibouti',
-            name: 'Djibouti City',
-            latitude: 11.6,
-            longitude: 43.15,
-            country: 'Djibouti',
-          },
-        ],
-        coordinates: [
-          [
-            [5.37, 43.3],
-            [15.0, 36.0],
-            [25.0, 33.0],
-            [29.8, 31.1],
-          ],
-          [
-            [32.5, 29.9],
-            [35.0, 25.0],
-            [40.0, 18.0],
-            [43.15, 11.6],
-          ],
-        ],
-      },
-    ],
-    source: 'synthetic_seed',
-    license: 'MIT / CC0 (Procedural Synthetic Topology)',
-    timestamp: clock.now(),
-  };
+function createCableResponse(
+  catalogInput: unknown,
+  clock: SimClock,
+  sourceMode: 'seed' | 'download_pack'
+) {
+  const catalog = CableCatalogSchema.parse(catalogInput);
+  return CableCatalogResponseSchema.parse({
+    ...catalog,
+    provenance: createDataProvenance({
+      providerId: CABLE_PROVIDER_ID,
+      feedId: CABLE_FEED_ID,
+      clock,
+      sourceMode,
+      observationPeriod: observationPeriodFromIso(catalog.observed_at),
+      vintage: { status: 'available', value: catalog.vintage },
+      ...(sourceMode === 'seed' ? { fixtureId: CABLE_SEED_FIXTURE_ID } : {}),
+    }),
+  });
 }
 
-/**
- * Downloads official TeleGeography cable pack, strictly requiring explicit license agreement.
- */
-export async function downloadCablePack(
-  options: CableDownloadOptions,
-  clock: SimClock = new SystemClock()
-): Promise<CableCatalog> {
-  if (!options.licenseAccepted) {
-    throw new Error(
-      'TeleGeography cable data requires explicit runtime license agreement (CC BY-NC-SA 4.0). Pass { licenseAccepted: true } to proceed.'
-    );
+/** Reads the one checked-in procedural cable fixture or the last atomically activated pack. */
+export class CableAdapter {
+  private readonly clock: SimClock;
+  private readonly seedFixturePath: string;
+  private readonly enabled: boolean;
+  private cachedSeedCatalog: CableCatalog | null = null;
+  private activePackCatalog: CableCatalog | null = null;
+  private activePackId: string | null = null;
+
+  constructor(options: CableAdapterOptions = {}) {
+    this.clock = options.clock ?? new SystemClock();
+    this.seedFixturePath =
+      options.seedFixturePath ?? resolveFixturePath('cables-synthetic-v1.json');
+    this.enabled = options.enabled ?? process.env.GEV_CABLES_ENABLED !== '0';
   }
 
-  const packUrl =
-    options.packUrl ??
-    'https://raw.githubusercontent.com/telegeography/www.submarinecablemap.com/master/web/public/api/v3/cable/cable-geo.json';
+  getMode(): 'seed' | 'download_pack' {
+    return this.activePackCatalog ? 'download_pack' : 'seed';
+  }
 
-  const url = new URL(packUrl);
-  const res = await pinnedFetch(url, {
-    headers: {
-      Accept: 'application/json',
-      'User-Agent': 'GEV-Cable-Pack-Loader/1.0',
-    },
-    allowedHosts: ['raw.githubusercontent.com', 'github.com', 'submarinecablemap.com'],
-    timeoutMs: options.timeoutMs ?? 15000,
-    maxBytes: 25 * 1024 * 1024, // 25 MB cap
-  });
+  isEnabled(): boolean {
+    return this.enabled;
+  }
 
-  const rawBuffer = await res.arrayBuffer();
-  const rawText = Buffer.from(rawBuffer).toString('utf-8');
+  getActivePackId(): string | null {
+    return this.activePackId;
+  }
 
-  if (options.expectedSha256) {
-    const computedHash = crypto.createHash('sha256').update(rawText).digest('hex');
-    if (computedHash !== options.expectedSha256) {
-      throw new Error(
-        `Cable pack integrity check failed: expected SHA-256 ${options.expectedSha256}, got ${computedHash}`
-      );
+  async getCatalog() {
+    this.assertEnabled();
+    const sourceMode = this.getMode();
+    const catalog = this.activePackCatalog ?? (await this.loadSeedCatalog());
+    return createCableResponse(catalog, this.clock, sourceMode);
+  }
+
+  activatePack(packId: string, responseInput: unknown): void {
+    this.assertEnabled();
+    const response = CableCatalogResponseSchema.parse(responseInput);
+    if (response.provenance.source_mode !== 'download_pack') {
+      throw new Error('Only a validated download-pack response can be activated');
+    }
+    const { provenance: _provenance, ...catalog } = response;
+    this.activePackCatalog = CableCatalogSchema.parse(catalog);
+    this.activePackId = packId;
+  }
+
+  private async loadSeedCatalog(): Promise<CableCatalog> {
+    if (this.cachedSeedCatalog) {
+      return this.cachedSeedCatalog;
+    }
+    const raw = await fs.promises.readFile(this.seedFixturePath, 'utf8');
+    this.cachedSeedCatalog = CableCatalogSchema.parse(JSON.parse(raw));
+    return this.cachedSeedCatalog;
+  }
+
+  private assertEnabled(): void {
+    if (!this.enabled) {
+      throw new CableProviderDisabledError();
+    }
+  }
+}
+
+/** Downloads only server-configured, digest-pinned licensed packs; no caller URL is accepted. */
+export class CablePackLoader {
+  private readonly clock: SimClock;
+  private readonly enabled: boolean;
+  private readonly manifests = new Map<string, CablePackManifest>();
+  private readonly fetcher: CablePackFetcher;
+
+  constructor(options: CablePackLoaderOptions = {}) {
+    this.clock = options.clock ?? new SystemClock();
+    this.enabled = options.enabled ?? process.env.GEV_CABLES_ENABLED !== '0';
+    this.fetcher = options.fetcher ?? ((target, fetchOptions) => pinnedFetch(target, fetchOptions));
+    for (const manifestInput of options.manifests ?? []) {
+      const manifest = CablePackManifestSchema.parse(manifestInput);
+      if (this.manifests.has(manifest.pack_id)) {
+        throw new Error(`Duplicate cable pack manifest '${manifest.pack_id}'`);
+      }
+      this.manifests.set(manifest.pack_id, manifest);
     }
   }
 
-  const parsedGeoJson = JSON.parse(rawText) as {
-    type: string;
-    features: Array<{
-      properties: {
-        id: string;
-        name: string;
-        owners?: string;
-        rfs?: string;
-        length?: string;
-        color?: string;
-      };
-      geometry: {
-        type: string;
-        coordinates: [number, number][][] | [number, number][];
-      };
-    }>;
-  };
-
-  const cables: SubmarineCable[] = (parsedGeoJson.features || []).map((f) => {
-    const coords =
-      f.geometry.type === 'MultiLineString'
-        ? (f.geometry.coordinates as [number, number][][])
-        : f.geometry.type === 'LineString'
-          ? [f.geometry.coordinates as [number, number][]]
-          : [];
-
-    return {
-      id: String(f.properties.id || crypto.randomUUID()),
-      name: f.properties.name || 'Unnamed Submarine Cable',
-      owners: f.properties.owners,
-      rfs_year: f.properties.rfs ? Number.parseInt(f.properties.rfs, 10) : undefined,
-      length_km: f.properties.length
-        ? Number.parseFloat(f.properties.length.replace(/[^0-9.]/g, ''))
-        : undefined,
-      color: f.properties.color || '#00e5ff',
-      landing_points: [],
-      coordinates: coords,
-    };
-  });
-
-  return {
-    cables,
-    source: 'download_pack',
-    license: 'Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC BY-NC-SA 4.0)',
-    timestamp: clock.now(),
-  };
-}
-
-/**
- * Submarine Cable Pack Loader instance helper (PLAN.md §5 & §10 Phase 4).
- */
-export class CablePackLoader {
-  private readonly defaultOptions: CableDownloadOptions;
-  private readonly clock: SimClock;
-
-  constructor(
-    defaultOptions: Partial<CableDownloadOptions> = {},
-    clock: SimClock = new SystemClock()
-  ) {
-    this.defaultOptions = {
-      licenseAccepted: defaultOptions.licenseAccepted ?? false,
-      packUrl: defaultOptions.packUrl,
-      expectedSha256: defaultOptions.expectedSha256,
-      timeoutMs: defaultOptions.timeoutMs,
-    };
-    this.clock = clock;
+  hasPack(packId: string): boolean {
+    return this.manifests.has(packId);
   }
 
-  loadSyntheticSeedPack(): CableCatalog {
-    return loadSyntheticCablePack(this.clock);
-  }
+  async loadPack(packId: string) {
+    if (!this.enabled) {
+      throw new CableProviderDisabledError();
+    }
+    const manifest = this.manifests.get(packId);
+    if (!manifest) {
+      throw new Error(`Cable download pack '${packId}' is not configured on this server`);
+    }
 
-  async downloadPack(overrideOptions?: Partial<CableDownloadOptions>): Promise<CableCatalog> {
-    return downloadCablePack(
-      {
-        ...this.defaultOptions,
-        ...overrideOptions,
-      },
-      this.clock
-    );
+    const url = new URL(manifest.download_url);
+    const response = await this.fetcher(url, {
+      headers: { Accept: 'application/json', 'User-Agent': 'GEV-Cable-Pack-Loader/2.0' },
+      allowedHosts: [manifest.allowed_host],
+      allowedPaths: [{ host: manifest.allowed_host, pathPrefix: manifest.allowed_path_prefix }],
+      timeoutMs: manifest.timeout_ms,
+      maxBytes: manifest.max_bytes,
+    });
+    if (!response.ok) {
+      throw new Error(`Cable pack returned HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (bytes.byteLength > manifest.max_bytes) {
+      throw new Error(`Cable pack exceeds the configured ${manifest.max_bytes}-byte limit`);
+    }
+    const actualSha256 = crypto.createHash('sha256').update(bytes).digest('hex');
+    if (actualSha256 !== manifest.expected_sha256) {
+      throw new Error('Cable pack integrity check failed: SHA-256 mismatch');
+    }
+
+    const catalog = CableCatalogSchema.parse(JSON.parse(bytes.toString('utf8')));
+    return createCableResponse(catalog, this.clock, 'download_pack');
   }
 }

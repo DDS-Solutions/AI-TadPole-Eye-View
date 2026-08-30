@@ -9,7 +9,7 @@ declare global {
   }
 }
 
-test.describe('GEV v2 Multi-Layer Telemetry, Virtualized Table & Frame Monitor Smoke (PLAN.md Phase 2)', () => {
+test.describe('GEV v2 implemented-layer telemetry, virtualized table, and frame monitor smoke', () => {
   test('renders keyless Cesium 3D globe, virtualized telemetry stream, and uPlot charts', async ({
     page,
   }) => {
@@ -39,7 +39,7 @@ test.describe('GEV v2 Multi-Layer Telemetry, Virtualized Table & Frame Monitor S
       })
       .toBe(true);
 
-    // 4. Condition-wait for all 9 layers to drain entities into Cesium (Rule 5 & Rule 2)
+    // 4. Condition-wait for all 10 implemented layers to drain entities into Cesium.
     await expect
       .poll(
         async () => {
@@ -55,7 +55,8 @@ test.describe('GEV v2 Multi-Layer Telemetry, Virtualized Table & Frame Monitor S
               (counts.cctv > 0 ? 1 : 0) +
               (counts.radio > 0 ? 1 : 0) +
               (counts.launches > 0 ? 1 : 0) +
-              (counts.weather > 0 ? 1 : 0)
+              (counts.weather > 0 ? 1 : 0) +
+              (counts.cables > 0 ? 1 : 0)
             );
           });
         },
@@ -64,7 +65,7 @@ test.describe('GEV v2 Multi-Layer Telemetry, Virtualized Table & Frame Monitor S
           intervals: [300, 600, 1200],
         }
       )
-      .toBe(9);
+      .toBe(10);
 
     // 5. Condition-wait for all HUD stat badge counts in one browser round trip.
     const hudCountSelector = [
@@ -77,6 +78,7 @@ test.describe('GEV v2 Multi-Layer Telemetry, Virtualized Table & Frame Monitor S
       '#radio-count',
       '#launch-count',
       '#weather-count',
+      '#cable-count',
     ].join(', ');
     await expect
       .poll(async () => {
@@ -87,10 +89,10 @@ test.describe('GEV v2 Multi-Layer Telemetry, Virtualized Table & Frame Monitor S
           }).length;
         });
       })
-      .toBe(9);
+      .toBe(10);
 
     // Provenance badges are derived from validated response envelopes, not hardcoded counts.
-    await expect(page.locator('#provenance-source-badge')).toHaveText('9 SOURCES');
+    await expect(page.locator('#provenance-source-badge')).toHaveText('10 SOURCES');
     await expect(page.locator('#provenance-mode-badge')).toContainText(/SEED|CACHED/);
     await expect(page.locator('#provenance-freshness-badge')).not.toHaveText('AWAITING');
     const provenanceBadges = page.locator('#provenance-badges');
@@ -99,6 +101,15 @@ test.describe('GEV v2 Multi-Layer Telemetry, Virtualized Table & Frame Monitor S
     await provenanceBadges.screenshot({
       path: path.join(resultsDir, 'provenance-badges.png'),
     });
+
+    // Exercise the cable switch while the table overlay is still collapsed.
+    const cablesToggle = page.locator('#toggle-cables');
+    await cablesToggle.scrollIntoViewIfNeeded();
+    await expect(cablesToggle).toBeChecked();
+    await cablesToggle.click();
+    await expect(cablesToggle).not.toBeChecked();
+    await cablesToggle.click();
+    await expect(cablesToggle).toBeChecked();
     await page.locator('.panel-header').evaluate((element) => element.scrollIntoView());
 
     // 6. Test Frame Budget Monitor integration on window.__gev
@@ -144,7 +155,6 @@ test.describe('GEV v2 Multi-Layer Telemetry, Virtualized Table & Frame Monitor S
     await expect(flightsToggle).not.toBeChecked();
     await flightsToggle.setChecked(true, { force: true });
     await expect(flightsToggle).toBeChecked();
-
     // 9. Test Filter tabs and interaction
     const filtersTabBtn = page.getByRole('button', { name: 'Filters' });
     await expect(filtersTabBtn).toBeVisible();

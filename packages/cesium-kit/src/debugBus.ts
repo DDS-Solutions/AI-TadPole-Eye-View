@@ -1,3 +1,4 @@
+import type { CableLayerController } from './cableLayer.js';
 import type { CctvLayerController } from './cctvLayer.js';
 import type { FirmsLayerController } from './firmsLayer.js';
 import type { FlightLayerController } from './flightLayer.js';
@@ -30,6 +31,7 @@ export interface LayerControllersMap {
   radio?: RadioLayerController;
   launches?: LaunchLayerController;
   weather?: WeatherLayerController;
+  cables?: CableLayerController;
 }
 
 export interface GevDebugBus {
@@ -46,6 +48,8 @@ export interface GevDebugBus {
   getRadioStationIds: () => string[];
   getMissionIds: () => string[];
   getWeatherStationIds: () => string[];
+  getCableRouteCount: () => number;
+  getCableLandingPointCount: () => number;
   getCameraHeight: () => number;
   getCameraPose: () => CameraPose;
   getSelectedEntity: () => unknown;
@@ -94,6 +98,7 @@ export function attachDebugBus(
       const radioCount = layers.radio?.getEntityCount() ?? 0;
       const launchCount = layers.launches?.getEntityCount() ?? 0;
       const weatherCount = layers.weather?.getEntityCount() ?? 0;
+      const cableCount = layers.cables?.getEntityCount() ?? 0;
       return (
         flightCount +
         marineCount +
@@ -103,7 +108,8 @@ export function attachDebugBus(
         cctvCount +
         radioCount +
         launchCount +
-        weatherCount
+        weatherCount +
+        cableCount
       );
     },
     getLayerCounts: () => {
@@ -117,6 +123,7 @@ export function attachDebugBus(
         radio: layers.radio?.getEntityCount() ?? 0,
         launches: layers.launches?.getEntityCount() ?? 0,
         weather: layers.weather?.getEntityCount() ?? 0,
+        cables: layers.cables?.getEntityCount() ?? 0,
       };
     },
     getFlightIds: () => layers.flight?.getFlightIds() ?? [],
@@ -128,6 +135,8 @@ export function attachDebugBus(
     getRadioStationIds: () => layers.radio?.getStationIds() ?? [],
     getMissionIds: () => layers.launches?.getMissionIds() ?? [],
     getWeatherStationIds: () => layers.weather?.getStationIds() ?? [],
+    getCableRouteCount: () => layers.cables?.getRouteCount() ?? 0,
+    getCableLandingPointCount: () => layers.cables?.getLandingPointCount() ?? 0,
     getCameraHeight: () => globe.viewer.camera.positionCartographic?.height ?? 0,
     getCameraPose: () => {
       const carto = globe.viewer.camera.positionCartographic;

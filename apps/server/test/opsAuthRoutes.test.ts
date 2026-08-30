@@ -8,6 +8,7 @@ const PROTECTED_OPS_ROUTES = [
   { method: 'GET', path: '/ops/audit/integrity' },
   { method: 'GET', path: '/ops/audit/stream' },
   { method: 'POST', path: '/ops/budget/reconcile' },
+  { method: 'POST', path: '/ops/cables/packs/activate' },
   { method: 'POST', path: '/ops/seed/reload' },
   { method: 'GET', path: '/ops/audit' },
   { method: 'GET', path: '/ops/status' },
@@ -84,7 +85,9 @@ describe('operations route authentication coverage', () => {
           headers: { Authorization: `Bearer ${OPS_TOKEN}` },
         });
 
-        expect(response.status).toBe(path === '/ops/budget/reconcile' ? 400 : 200);
+        expect(response.status).toBe(
+          path === '/ops/budget/reconcile' || path === '/ops/cables/packs/activate' ? 400 : 200
+        );
         if (path === '/ops/audit/stream') {
           expect(response.headers.get('content-type')).toContain('text/event-stream');
           await response.body?.cancel();

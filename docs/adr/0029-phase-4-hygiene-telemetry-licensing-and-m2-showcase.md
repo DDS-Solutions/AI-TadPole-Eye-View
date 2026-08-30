@@ -1,5 +1,8 @@
 # ADR 0029: Phase 4 Hygiene, Licensing Download Packs, Telemetry & Tadpole M2 Showcase
 
+> **2026-08-30 amendment:** ADR 0036 supersedes this record's TeleGeography raw-data
+> license and public-download assumptions using current official source evidence.
+
 ## Context
 
 PLAN.md §10 Phase 4 establishes final repository hygiene, full geospatial layer provenance documentation, clean licensing isolation for non-commercial datasets, self-hosted telemetry with k6 proxy load verification, a live showcase demonstration of the governed agent team (M1–M3), and the Tadpole integration spike toward M2 with Ed25519 cryptographic approvals.
@@ -12,8 +15,8 @@ PLAN.md §10 Phase 4 establishes final repository hygiene, full geospatial layer
 
 2. **Licensing Cleanliness & Non-Commercial Download Packs:**
    - Authored `docs/LICENSES.md` detailing software, data, and 3D asset licenses.
-   - Enforced zero bundling of Non-Commercial (CC BY-NC-SA 4.0) data (TeleGeography submarine cables) in the Git tree.
-   - Implemented `CablePackLoader` in `packages/providers/src/cables.ts` with a runtime license gate requiring explicit operator consent (`licenseAccepted: true`) and a synthetic procedural fallback for airgapped/seed environments.
+   - Kept third-party submarine-cable geometry out of the Git tree and used a synthetic procedural fallback for airgapped/seed environments.
+   - The original public-download and caller-provided consent design was superseded by ADR 0036. The current loader accepts only server-owned manifests for operator-licensed data and routes activation through shared governance.
 
 3. **Self-Hosted Telemetry & k6 Proxy Load Verification:**
    - Implemented `ServerTelemetryManager` in `apps/server/src/telemetry/index.ts` tracking OpenTelemetry-compatible spans, GlitchTip error captures, and PostHog/Plausible anonymous metrics with PII redaction by construction.

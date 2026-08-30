@@ -1,4 +1,5 @@
 import type {
+  CableLayerController,
   CctvLayerController,
   FirmsLayerController,
   FlightLayerController,
@@ -11,6 +12,7 @@ import type {
 } from '@gev/cesium-kit';
 import {
   BikeStationBatch,
+  CableCatalogResponseSchema,
   CctvCatalog,
   type DataProvenance,
   EarthquakeCollection,
@@ -33,6 +35,7 @@ interface FeedLayerBindings {
   radio: RadioLayerController | null;
   launches: LaunchLayerController | null;
   weather: WeatherLayerController | null;
+  cables: CableLayerController | null;
 }
 
 interface ProvenanceCarrier {
@@ -156,6 +159,16 @@ export async function pollVisibleFeeds(
         bindings.weather?.enqueueCollection(data);
         layerStore.counts.weather = bindings.weather?.getEntityCount() ?? 0;
         layerStore.rawEntities.weather = data.stations;
+      })
+    );
+  }
+
+  if (layerStore.visibility.cables && bindings.cables) {
+    tasks.push(
+      loadFeed('cables', '/api/cables', CableCatalogResponseSchema, signal, (data) => {
+        bindings.cables?.enqueueCatalog(data);
+        layerStore.counts.cables = bindings.cables?.getEntityCount() ?? 0;
+        layerStore.rawEntities.cables = data.routes;
       })
     );
   }
