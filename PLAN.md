@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-08-30
-**Status:** IN PROGRESS — Phase 5.2; task 5.2.2 verified; task 5.2.3 blocked on OQ-7
+**Status:** IN PROGRESS — Phase 5.2; OQ-7 resolved; task 5.2.3 awaits 4-Pillar authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -21,8 +21,8 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 PLAN_VERSION=3.0
 CURRENT_PHASE=5.2
 NEXT_TASK=5.2.3
-NEXT_TASK_STATUS=BLOCKED
-LAST_VERIFIED_UTC=2026-08-30
+NEXT_TASK_STATUS=READY
+LAST_VERIFIED_UTC=2026-09-04
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
 IMPLEMENTATION_STARTED=YES
 ```
@@ -247,7 +247,7 @@ this table.
 |---|---|---|---|---|
 | Flights — OpenSky | Implemented in seed mode | OAuth2 client ID/secret for authenticated live use; anonymous access has lower limits | Production/commercial-use terms decision remains separate from credentials | [OpenSky REST authentication and terms guidance](https://openskynetwork.github.io/opensky-api/rest.html) |
 | Marine — AISStream | Implemented in seed mode | Account API key, stored server-side | Developer API terms, bounded subscription area, and production approval | [AISStream documentation and account](https://aisstream.io/documentation) |
-| Satellites | Planned/unavailable; OQ-7 blocker | Source-specific after OQ-7 | Source, redistribution, fixture, refresh, attribution, and production-use decision in ADR 0034 | [CelesTrak candidate source](https://celestrak.org/) — candidate only, not approved |
+| Satellites | Planned/unavailable; CelesTrak standard GP JSON/OMM approved by ADR 0034 | No API key | Production remains locked pending written commercial-use confirmation or audited licensing-owner acceptance; GEV platform administrator owns the kill switch | [CelesTrak GP formats and usage policy](https://celestrak.org/NORAD/documentation/gp-data-formats.php) |
 | Earthquakes — USGS | Implemented in seed mode | None documented for the real-time feeds | USGS source/citation policy and registered freshness | [USGS real-time feed and API guidance](https://earthquake.usgs.gov/earthquakes/feed/v1.0/) |
 | Wildfires — NASA FIRMS | Implemented in seed mode | Free `MAP_KEY`, stored server-side | NASA/FIRMS terms, attribution, transaction budget, and approved products/geography | [Request and inspect a FIRMS map key](https://firms.modaps.eosdis.nasa.gov/api/map_key/) |
 | Traffic cameras | Implemented in seed mode | Source-specific | Each state/municipal catalog requires an allowlisted endpoint and separate terms, redistribution, attribution, and refresh decision | [U.S. DOT data portal](https://data.transportation.gov/) as discovery only; the actual agency page is authoritative |
@@ -326,7 +326,7 @@ Tool definitions, Zod input/output validation, capability checks, STASIS preflig
 
 ### 8.1 Geospatial completion
 
-- Satellites: OQ-7-approved GP/OMM source ingestion, validated orbital records, deterministic SGP4 propagation, correct time/frame conversion, Cesium layer, health, provenance, attribution, and offline tests; CelesTrak remains a candidate rather than an approved production source.
+- Satellites: ADR 0034-approved CelesTrak standard GP JSON/OMM ingestion, validated orbital records, deterministic SGP4 propagation, correct time/frame conversion, Cesium layer, health, provenance, attribution, and offline tests; production remains terms-locked until the ADR's approval condition is recorded.
 - Cables: validated contracts, fixture-based synthetic seed, optional separately licensed download pack, server/store/layer/UI wiring, provenance, and attribution.
 - Existing feeds: migrate to the shared registry and required provenance without changing their provider-to-store-to-render boundaries.
 - Operational conditions: after current Phase 5.2, evaluate and sequence NWS alerts, AWC aviation weather, NHC tropical cyclones, NOAA CO-OPS coastal observations/predictions, a deterministic solar terminator, and bounded nowCOAST/GLM imagery. Volcano, AirNow, SWPC, and NASA Blue/Black Marble remain visible candidate entries until separately authorized; discovery is not approval or implementation.
@@ -394,7 +394,7 @@ Economic results are decision-support signals, not guarantees, appraisals, legal
 | OQ-4 | Production identity provider, tenant model, roles, retention, export, and deletion requirements | Phase 7 |
 | OQ-5 | Approved OSM use/output classification and attribution/share-alike obligations | Phase 9 |
 | OQ-6 | Economic provider budgets, cache freshness, permitted live environments, and kill-switch owners | Phase 8 |
-| OQ-7 | Satellite source terms, redistribution allowance, refresh policy, and production source choice | Task 5.2.3 |
+| OQ-7 | **RESOLVED by ADR 0034:** CelesTrak standard GP JSON/OMM, synthetic fixture, derived-display-only redistribution, two-hour cache/rate policy, terms-locked production, and GEV platform-administrator kill switch | Task 5.2.3 |
 
 Unanswered questions do not block earlier independent safety work.
 
@@ -879,7 +879,7 @@ DOC_BLOCKER or LOGIC_BLOCKER with exact row/hash/migration evidence and bounded 
 
 - [x] 5.2.1 Add required provenance and registry contracts; retrofit existing adapters and UI badges using `SimClock`.
 - [x] 5.2.2 Complete cables: Zod contracts, fixture seed, validated optional pack, server/store/layer/UI, kill switch, health, tests, and license ADR.
-- [ ] 5.2.3 Complete satellites after OQ-7: GP/OMM adapter, deterministic fixture, propagation/frame conversion, server/store/layer/UI, kill switch, health, tests, and source ADR.
+- [ ] 5.2.3 Complete satellites under ADR 0034: GP/OMM adapter, deterministic fixture, propagation/frame conversion, server/store/layer/UI, kill switch, health, tests, and source controls.
 - [ ] 5.2.4 Generate DATA_SOURCES entries/counts from the registry and label implementation/mode accurately.
 - [ ] 5.2 exit: every implemented provider validates and carries provenance; seed mode makes zero network calls; satellite/cable smoke and performance budgets pass.
 
@@ -989,31 +989,32 @@ pack endpoint cannot be evidenced, keep download_pack unavailable and record DOC
 after three contract/parser approaches fail, record LOGIC_BLOCKER with bounded alternatives.
 ```
 
-#### Decision-blocked 4-Pillar brief for NEXT_TASK 5.2.3
+#### Decision-ready 4-Pillar brief for NEXT_TASK 5.2.3
 
-OQ-7 must be resolved and ADR 0034 accepted before this brief may be authorized. Source
-selection, redistribution, refresh, and production-use terms are human decisions; no
-candidate source is approved merely because it appears below.
+OQ-7 Option A is resolved by accepted ADR 0034. The exact brief below still requires explicit
+developer authorization before implementation or live-source access begins.
 
 ```text
-[SCOPE_CONTRACT] Resolve OQ-7 and accept reserved ADR 0034 before implementation;
-packages/contracts bounded GP/OMM satellite catalog, orbital element, propagated state,
+[SCOPE_CONTRACT] Under accepted ADR 0034, packages/contracts bounded GP/OMM satellite
+catalog, orbital element, propagated state,
 batch, and response contracts with required DataProvenance v1; packages/core deterministic
 SGP4 propagation and time/reference-frame conversion behind SimClock; packages/providers
-one adapter for the source approved by OQ-7, one redistribution-safe deterministic fixture,
+one CelesTrak standard-GP JSON/OMM adapter, one GEV-authored synthetic deterministic fixture,
 strict boundary validation, kill switch, and executable-registry mode/health/freshness;
 apps/server bounded governed/cache-aware catalog and propagation routes; packages/cesium-kit
 satellite controller through the rAF queue; apps/web polling/store/layer toggle, counts,
 selection, and provenance presentation; focused tests and source-specific documentation.
-Out of scope: unapproved CelesTrak or Space-Track downloads, credentials, caller-selected
-URLs or catalog groups, browser-to-provider calls, live calls in tests, cable changes,
+Out of scope: direct Space-Track, supplemental/historical GP, TLE-only contracts, credentials,
+caller-selected URLs or catalog groups, raw catalog mirroring/downloads, browser-to-provider
+calls, live calls without separate explicit developer instruction, cable changes,
 DATA_SOURCES generator redesign (5.2.4), production identity/tenancy, economic features,
 and visual redesign.
 
-[PERFORMANCE_THRESHOLD] OQ-7 and ADR 0034 identify the approved source, terms,
-redistribution/fixture allowance, attribution, refresh policy, live-environment policy,
-cache TTL, budget/rate limits, and kill-switch owner before code changes. Seed mode validates
-one checked-in lawful fixture plus provenance and opens zero network sockets. Propagation
+[PERFORMANCE_THRESHOLD] ADR 0034 controls source, terms, derived-display-only redistribution,
+attribution, environment gates, 7,200-second shared fresh-cache/rate policy, 86,400-second
+maximum stale retention, 1,000-record ceiling, and GEV platform-administrator kill switch.
+Production stays `TERMS_APPROVAL_REQUIRED` until the ADR condition is recorded. Seed mode
+validates one checked-in synthetic fixture plus provenance and opens zero network sockets. Propagation
 matches ADR-accepted SGP4 reference vectors at epoch and stepped SimClock times within the
 documented position/velocity tolerances; UTC/Julian/reference-frame conversions are tested
 across rollover and invalid-input boundaries without Date.now. Source responses fail closed
@@ -1024,8 +1025,8 @@ bundle budgets, canonical unit/load/performance, and Playwright satellite-toggle
 smoke pass with zero live calls.
 
 [ARCHITECTURE_MODE] PLAN.md §2 rules 1, 4–7, 9, and 12–15; §3 provider → store →
-UI/Cesium flow; §4.1–§4.2; docs/DESIGN.md; ADRs 0015, 0020, 0023–0025, 0035,
-0039, and 0040; create and accept reserved ADR 0034. Contracts and the executable registry
+UI/Cesium flow; §4.1–§4.2 and §4.5; docs/DESIGN.md; ADRs 0015, 0020, 0023–0025,
+0034, 0035, 0039, and 0040. Contracts and the executable registry
 remain the only source for satellite identity, source/mode, health, licensing/attribution,
 freshness, and provenance. Keep pure propagation/frame math in core, provider I/O behind
 pinned-fetch, time behind SimClock, server reads behind shared auth/rate/cache/budget policy
@@ -1033,8 +1034,8 @@ when billable, and all imperative Cesium ownership/rAF writes in cesium-kit. No 
 license, fixture, propagation library/tolerance, reference-frame, refresh, or cache-policy
 deviation without ADR evidence.
 
-[FAILURE_MODES] Do not start implementation before OQ-7, infer public-domain or
-redistribution rights from public accessibility, bundle an unapproved orbital catalog,
+[FAILURE_MODES] Do not treat accepted source selection as production terms activation,
+infer public-domain or redistribution rights from public accessibility, bundle a real orbital catalog,
 fall back from GP/OMM to a TLE-only domain contract, mix observation epoch with retrieval
 time, use wall-clock time in domain math, propagate malformed/stale elements, render
 unvalidated coordinates, duplicate registry truth, bypass pinned-fetch/governance, or make
@@ -1995,5 +1996,29 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   blocked task 5.2.3, and this planning amendment authorizes no implementation task.
 - Branch: `codex/helioclock-layer-access-plan`. GitHub CLI authentication was unavailable
   at session start, so open PR inspection and PR creation were not possible.
+
+### OQ-7 satellite-source decision checkpoint — 2026-09-04
+
+- The developer approved OQ-7 Option A: CelesTrak standard GP data requested as JSON with
+  OMM field names, a synthetic seed fixture, one shared two-hour cache, server-owned
+  allowlisted groups, a 1,000-record ceiling, derived visualization only, mandatory
+  provenance, and the GEV platform administrator as kill-switch owner.
+- Accepted ADR 0034 records the fixed CelesTrak GP path, no-key credential state, source and
+  redistribution evidence, attribution, seed/live environment boundary, 7,200-second fresh
+  TTL, 86,400-second maximum stale retention, rate/budget behavior, production licensing
+  lock, prohibited raw-catalog distribution, and safety-of-flight exclusions.
+- Production remains visibly `TERMS_APPROVAL_REQUIRED` until written commercial-use
+  confirmation or an audited formal decision by the designated licensing owner. Resolving
+  OQ-7 selects the technical source and locked production policy; it does not itself unlock
+  production or record the later §4.5 terms approval.
+- `docs/data-sources/satellites.md` and the ADR index now reflect the accepted decision.
+  No provider, contract, core, server, Cesium, web, fixture, dependency, or executable
+  registry implementation changed, and no CelesTrak or Space-Track data was requested.
+- Documentation baseline and post-edit evidence passed: ADG checked 54 documents, 403 paths,
+  and 18 module-qualified references with zero errors; all 11 ADG tests passed; synchronized
+  plan verification and `git diff --check` passed.
+- NEXT_TASK remains **5.2.3 Complete satellites** with status `READY`. Its exact decision-ready
+  4-Pillar brief is in §10 and still requires explicit developer authorization before code
+  changes or any separately authorized live-source validation.
 
 No later task is authorized merely because it appears in this plan.
