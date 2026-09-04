@@ -185,6 +185,90 @@ Economic values use a discriminated status such as `available`, `suppressed`, `u
 
 Geography is a discriminated union with a required kind and matching identifier/geometry. GeoJSON receives real runtime validation, coordinate bounds, ring/vertex/depth limits, and request-size limits. An empty geography object is invalid.
 
+### 4.5 Layer discovery, access, and unlock contract
+
+Every registry entry is discoverable in the layer controls, including entries that are
+`planned`, `incomplete`, unavailable, disabled by policy, missing configuration, awaiting
+terms approval, or awaiting credentials. Discoverable does not mean active: a layer toggle
+is enabled only when every required gate is satisfied. Locked toggles remain visible and
+visually muted, state the exact blocking reason, and provide an adjacent active **Set up**
+action into **Settings → Layer Access**. The UI never hides a source merely because setup is
+incomplete and never presents planned functionality as implemented.
+
+The typed registry is the only runtime source for the layer catalog and these independent
+access dimensions:
+
+- `implementation`: `planned`, `incomplete`, or `implemented`;
+- `credential`: `not_required`, `missing`, `pending_validation`, `valid`, `invalid`,
+  `expired`, `revoked`, or `scope_insufficient`;
+- `terms`: `not_required`, `unreviewed`, `pending_approval`, `approved`, `rejected`,
+  `expired`, or `superseded`;
+- `configuration`: `not_required`, `missing`, `valid`, or `invalid`;
+- `policy`: feature-flag/kill-switch state, approved environment, tenant/capability scope,
+  budget/rate/cache policy, and STASIS preflight; and
+- `runtime`: `healthy`, `degraded`, `stale`, or `unavailable`, with observation age kept
+  distinct from retrieval and cache age.
+
+Registry projections derive one effective access state: `available`, `setup_required`,
+`approval_required`, `configuration_required`, `planned`, `disabled`, `stasis`, or
+`unavailable`. No component may recreate this decision from environment variables or
+hardcoded provider names. An API key proves only authentication; it never proves permission
+to use, display, cache, transform, or redistribute a source. Conversely, approved terms do
+not compensate for missing or invalid credentials.
+
+Each entry supplies primary-source `setup`, `terms`, and attribution URLs; credential kind
+and required scopes; validation method; approval owner; allowed environments; and rotation,
+expiry, revocation, and deletion guidance. Instructions may link to an upstream account or
+key-request page, but GEV never automates account creation, agrees to terms for the operator,
+or stores a provider password. Secrets are submitted only to an authenticated server route,
+encrypted or delegated to the approved secret store, never persisted in browser storage,
+never returned after submission, and represented only by a masked fingerprint plus status.
+
+Terms approval records the tenant, human actor, source and terms identifiers, reviewed URL,
+version or content digest, approved use/redistribution/environments, time, expiry/review date,
+and revocation state through audit intent/outcome. Click-through acceptance is allowed only
+when the terms explicitly permit that actor to bind the relevant tenant; organizational,
+commercial, redistribution, or separately negotiated rights remain locked pending the
+designated legal/administrative approver. Credential validation uses a documented status
+endpoint when available or one bounded, budgeted, rate-limited request with no broad data
+pull. Revocation, expiry, insufficient scope, superseded terms, kill-switch disablement, or
+loss of approval relocks live activation immediately. Already held lawful seed or cached data
+may remain visible only with truthful mode/staleness labels and no continued live refresh.
+
+### 4.6 Layer-access discovery inventory
+
+This table is a planning snapshot researched on 2026-09-04, not executable registry truth
+and not a legal approval. Task 5.3.1 must re-verify the linked primary sources and record an
+ADR before adding planned entries. Task 5.2.4 remains responsible for generated documentation;
+the shipped Settings panel and layer controls must be registry-derived rather than copying
+this table.
+
+| Layer or service | Current/planned state | Credential path | Approval or configuration gate | Primary setup evidence |
+|---|---|---|---|---|
+| Flights — OpenSky | Implemented in seed mode | OAuth2 client ID/secret for authenticated live use; anonymous access has lower limits | Production/commercial-use terms decision remains separate from credentials | [OpenSky REST authentication and terms guidance](https://openskynetwork.github.io/opensky-api/rest.html) |
+| Marine — AISStream | Implemented in seed mode | Account API key, stored server-side | Developer API terms, bounded subscription area, and production approval | [AISStream documentation and account](https://aisstream.io/documentation) |
+| Satellites | Planned/unavailable; OQ-7 blocker | Source-specific after OQ-7 | Source, redistribution, fixture, refresh, attribution, and production-use decision in ADR 0034 | [CelesTrak candidate source](https://celestrak.org/) — candidate only, not approved |
+| Earthquakes — USGS | Implemented in seed mode | None documented for the real-time feeds | USGS source/citation policy and registered freshness | [USGS real-time feed and API guidance](https://earthquake.usgs.gov/earthquakes/feed/v1.0/) |
+| Wildfires — NASA FIRMS | Implemented in seed mode | Free `MAP_KEY`, stored server-side | NASA/FIRMS terms, attribution, transaction budget, and approved products/geography | [Request and inspect a FIRMS map key](https://firms.modaps.eosdis.nasa.gov/api/map_key/) |
+| Traffic cameras | Implemented in seed mode | Source-specific | Each state/municipal catalog requires an allowlisted endpoint and separate terms, redistribution, attribution, and refresh decision | [U.S. DOT data portal](https://data.transportation.gov/) as discovery only; the actual agency page is authoritative |
+| Radio directory/streams | Implemented in seed mode | No directory key; stream access varies | Radio Browser API use plus originating station/stream rights; an approved directory entry does not grant stream redistribution | [Radio Browser API documentation](https://api.radio-browser.info/) |
+| Launch replays — Launch Library 2 candidate | Implemented as reconstructed seed | No key at the documented anonymous quota; optional supporter key for higher limits | Upstream terms, quota, live-environment, and fixture/redistribution review | [Launch Library 2 current API documentation](https://ll.thespacedevs.com/) |
+| Weather radar — RainViewer | Implemented in seed mode | No public-API key | Public API is limited to personal, educational, and small community use; commercial deployment stays locked pending written terms | [RainViewer API terms](https://www.rainviewer.com/api.html) |
+| Bikeshare — regional GBFS | Implemented in seed mode | Usually none; source-specific configuration | Validate each feed's `license_id` or `license_url`, attribution, geography, version, and operator terms | [GBFS v3 licensing fields](https://gbfs.org/documentation/reference/) |
+| OpenStreetMap/Overpass | Feed implemented; layer incomplete | No generic key for the current public query path | OQ-5 output classification, ODbL/attribution obligations, endpoint capacity, and commercial deployment decision | [OpenStreetMap copyright/license](https://www.openstreetmap.org/copyright) and [public-service policies](https://operations.osmfoundation.org/policies/) |
+| Submarine cables | Implemented synthetic seed; optional pack | Approved manifest, license evidence, and mandatory SHA-256 rather than an API key | ADR 0036 operator-license, redistribution, activation, and fallback gates | [Source-specific cable documentation](./docs/data-sources/cables.md) |
+| Solar terminator/day-night | Proposed | None; deterministic SimClock calculation | No provider approval; math/reference-frame acceptance and render budget still required | Internal pure-domain implementation; no external service |
+| NWS watches/warnings | Proposed Phase 5.3 | No API key currently; identifiable User-Agent required | Official CAP/API use, attribution, cache/rate policy, alert validity, and U.S. coverage | [NWS alerts service](https://www.weather.gov/documentation/services-web-alerts) |
+| Aviation weather — METAR/TAF/SIGMET | Proposed Phase 5.3 | No API key currently; identifiable User-Agent required | AWC request/result bounds, 100-request/minute ceiling, cache-file strategy, product validity, and attribution | [Aviation Weather Center Data API](https://aviationweather.gov/data/api/) |
+| Tropical cyclones | Proposed Phase 5.3 | None documented | NHC product status, basin/validity, attribution, advisory disclaimers, and archive/current separation | [NHC GIS products](https://www.nhc.noaa.gov/gis/) |
+| Tides, water levels, and currents | Proposed Phase 5.3 | None documented | CO-OPS station/product limits, datum/time-zone correctness, attribution, and not-for-navigation disclaimer where applicable | [NOAA CO-OPS web services](https://tidesandcurrents.noaa.gov/web_services_info.html) |
+| Radar/cloud imagery — nowCOAST | Proposed bounded spike | None documented | Exact OGC layer/product, service status, attribution, caching, time semantics, geography, and bandwidth approval | [NOAA nowCOAST](https://nowcoast.noaa.gov/) |
+| Lightning — GOES GLM | Proposed bounded spike | Source/service-specific; no key assumed until the delivery endpoint is selected | Delivery endpoint, product level, coverage, latency, attribution, cache, and render-rate approval | [NOAA GLM product information](https://www.nesdis.noaa.gov/our-satellites/currently-flying/goes-east-west/geostationary-lightning-mapper-glm) |
+| Volcano status/history | Candidate, not scheduled | None documented for USGS HANS/Smithsonian WFS | Current-versus-historical semantics, US/global coverage, Smithsonian citation/terms, and alert disclaimer | [USGS HANS API](https://volcanoes.usgs.gov/hans-public/api/volcano/default) and [Smithsonian GVP WFS](https://volcano.si.edu/database/webservices.cfm) |
+| Current AQI — AirNow | Candidate future scope; distinct from AQS | AirNow account/API key | Explicit AirNow Data Use Guidelines acceptance; preliminary/current data must not be represented as validated AQS history | [Request an AirNow account and review its guidelines](https://docs.airnowapi.org/account/request/) |
+| Space weather — NOAA SWPC | Candidate, not scheduled | None documented for public products | Select exact products/endpoints, operational versus experimental status, attribution, refresh, and intended communications/infrastructure use | [NOAA SWPC products](https://www.swpc.noaa.gov/products-and-data) |
+| NASA Blue/Black Marble imagery | Candidate basemap/analysis layer | Product/access-path-specific; Earthdata Login may be required for some downloads | Select exact GIBS/Earthdata product, imagery terms, attribution, cache, resolution, and derived-analysis limits | [NASA Worldview/GIBS discovery](https://worldview.earthdata.nasa.gov/) |
+
 ---
 
 ## §5 — SECURITY AND PRIVACY ARCHITECTURE
@@ -242,9 +326,10 @@ Tool definitions, Zod input/output validation, capability checks, STASIS preflig
 
 ### 8.1 Geospatial completion
 
-- Satellites: CelesTrak GP/OMM seed ingestion, validated orbital records, deterministic SGP4 propagation, correct time/frame conversion, Cesium layer, health, provenance, attribution, and offline tests.
+- Satellites: OQ-7-approved GP/OMM source ingestion, validated orbital records, deterministic SGP4 propagation, correct time/frame conversion, Cesium layer, health, provenance, attribution, and offline tests; CelesTrak remains a candidate rather than an approved production source.
 - Cables: validated contracts, fixture-based synthetic seed, optional separately licensed download pack, server/store/layer/UI wiring, provenance, and attribution.
 - Existing feeds: migrate to the shared registry and required provenance without changing their provider-to-store-to-render boundaries.
+- Operational conditions: after current Phase 5.2, evaluate and sequence NWS alerts, AWC aviation weather, NHC tropical cyclones, NOAA CO-OPS coastal observations/predictions, a deterministic solar terminator, and bounded nowCOAST/GLM imagery. Volcano, AirNow, SWPC, and NASA Blue/Black Marble remain visible candidate entries until separately authorized; discovery is not approval or implementation.
 
 ### 8.2 Economic intelligence
 
@@ -255,6 +340,36 @@ Tool definitions, Zod input/output validation, capability checks, STASIS preflig
 - R4: authenticated tenant BusinessContext, evidence bundles, governed Tadpole tools, watches, exports, and deletion.
 
 Economic results are decision-support signals, not guarantees, appraisals, legal advice, underwriting decisions, or automated employment decisions.
+
+### 8.3 Operator interaction and evidence UX
+
+- **Progressive disclosure:** compact overview cards open bounded detail panels that may be
+  pinned; transient detail has a visible close countdown and resets only on intentional
+  interaction. Auto-close never discards an in-progress approval or credential form.
+- **Truthful feed health:** Settings and HUD surfaces show observation age, retrieval/cache
+  age, last successful update, last error, expected next update, delivery/source mode, and
+  exact `stale`, `unavailable`, `configuration required`, `approval required`, or `planned`
+  explanations. HTTP success with semantically old observations is degraded, not healthy.
+- **Named scenes and wallboard rotation:** reuse the versioned Scene contract for camera,
+  layers, selections, AOI, and SimClock offset. A named playlist may rotate scenes, pauses on
+  user interaction or priority alerts, and resumes only after a visible configured idle
+  interval; no parallel dashboard-state format is permitted.
+- **AOI scopes:** compatible point/raster/alert layers may provide selectable radius, range
+  rings, distance/bearing inspection, and bounded nudge controls without moving Cesium state
+  outside cesium-kit or issuing unbounded provider queries.
+- **Alert state machine:** urgency/severity/certainty, threshold step-up, deduplication,
+  cooldown, acknowledgement, expiry/cancellation, and restoration of preempted lower-priority
+  information are explicit audited states. Audio and external delivery are separately muted/
+  authorized and never inferred from a visible map alert.
+- **Evidence disagreement:** derived predictions, scores, or estimates visibly preserve and
+  link contradictory observations. A “model expected X; observed Y” condition is evidence,
+  not an error to hide or an instruction to overwrite either value.
+- **Solar context:** a SimClock-driven terminator/day-night layer is computed deterministically
+  without a live provider, validated across date/coordinate boundaries, and rendered within
+  the existing frame budget.
+- **Layer access:** every registered layer remains discoverable. Disabled toggles link to the
+  registry-derived Settings → Layer Access workflow in §4.5 rather than failing silently or
+  asking users to edit environment files blindly.
 
 ---
 
@@ -929,6 +1044,33 @@ frame approaches cannot meet accepted vectors and tolerances, record LOGIC_BLOCK
 the exact vectors, measured errors, and bounded library/boundary alternatives.
 ```
 
+### Phase 5.3 — Operational-awareness layers and access discovery
+
+- [ ] **5.3.1 Accept a source-and-access ADR.** Re-verify every §4.6 primary source,
+  rank the operational layers, define exact products/endpoints/coverage/terms/attribution/
+  credential and refresh/cache/rate/budget policies, and add accepted entries to the typed
+  registry as `planned` without increasing active counts.
+- [ ] **5.3.2 Add deterministic solar context, NWS alerts, and AWC aviation weather.** Build
+  the SimClock terminator in core/cesium-kit; add CAP alert polygons plus bounded METAR/TAF/
+  SIGMET products selected by the ADR, each with lawful fixtures, provenance, health, AOI
+  inspection, and zero network access in seed mode.
+- [ ] **5.3.3 Add NHC tropical-cyclone and NOAA CO-OPS coastal layers.** Preserve advisory
+  validity, forecast versus observation, cone/track uncertainty, station datum/time zone,
+  current-versus-prediction semantics, attribution, and not-for-navigation disclaimers.
+- [ ] **5.3.4 Run a bounded nowCOAST/GOES GLM spike.** Select exact official products and
+  delivery endpoints, then measure payload, cache, memory, bandwidth, playback, and Cesium
+  frame cost. Implement only the products that meet accepted limits; otherwise retain
+  discoverable `planned`/`unavailable` entries with measured evidence.
+- [ ] **5.3.5 Add the registry-derived Layer Access read model and Settings panel.** Show all
+  accepted implemented/planned entries and §4.5 gates, masked credential status, primary
+  setup/terms links, and explicit lock reasons. Before Phase 7 identity/tenancy, production
+  credential or terms writes remain disabled; existing local operator configuration may be
+  surfaced only through the current authenticated/audited authority.
+- [ ] **5.3 exit:** every accepted entry is discoverable without being falsely active; seed
+  mode makes zero live calls; stale `200 OK` data degrades health; alerts and time-enabled
+  layers preserve source validity and SimClock semantics; relevant performance, bundle,
+  Playwright, license, ADG, and source-network-denial gates pass.
+
 ### Phase 6 — Standards-compliant MCP HTTP
 
 - [ ] 6.1 Write an ADR comparing the official SDK with the existing hand-written server and pin the jointly supported stable protocol.
@@ -943,7 +1085,13 @@ the exact vectors, measured errors, and bounded library/boundary alternatives.
 - [ ] 7.1 Resolve OQ-4 in an ADR and implement authenticated principal/tenant/role context with resource ownership tests.
 - [ ] 7.2 Protect quota-consuming provider/economic calls and add per-tenant rate, cache, budget, and kill-switch policy.
 - [ ] 7.3 Add the lazy `/#/intelligence` view and navigation without Cesium; document any new dependency and enforce bundle delta.
-- [ ] 7 exit: cross-tenant access tests fail closed; private fields are redacted; direct route/reload works in the chosen hosting model.
+- [ ] 7.4 Activate tenant-scoped Layer Access administration: secure credential submission,
+  masked status, bounded validation, rotation/revocation/deletion, versioned terms evidence,
+  approval ownership, and deterministic relocking through the shared audit/approval/budget/
+  STASIS path. No provider password is collected and no submitted secret is readable later.
+- [ ] 7 exit: cross-tenant access tests fail closed; private fields and provider secrets are
+  redacted; invalid/revoked credentials and expired/superseded terms relock affected layers;
+  direct route/reload works in the chosen hosting model.
 
 ### Phase 8 — Economic R0: safe foundation
 
@@ -959,7 +1107,7 @@ the exact vectors, measured errors, and bounded library/boundary alternatives.
 - [ ] 9.1 Implement Census ACS using a versioned variable dictionary; retain estimate/MOE/geography/vintage and correct foreign-born definitions.
 - [ ] 9.2 Implement CBP/ZBP with disclosure suppression preserved and annual-statistical-estimate wording.
 - [ ] 9.3 Add OSM enrichment only after OQ-5, through the sanitizer/pinned-fetch/cache path with attribution and extraction limits.
-- [ ] 9.4 Implement deterministic market/competition/location-comparison analysis and evidence bundles.
+- [ ] 9.4 Implement deterministic market/competition/location-comparison analysis and evidence bundles; when a derived prediction or score conflicts with current observations, preserve both signals and expose a source-linked disagreement state rather than silently selecting one.
 - [ ] 9.5 Add protected APIs, MCP tools, and the lazy market UI; MapLibre is optional and newly reviewed, never assumed installed.
 - [ ] 9 exit: same inputs/config/fixtures yield the same outputs; every claim links to source variables/records; Playwright covers evidence inspection.
 
@@ -989,14 +1137,21 @@ the exact vectors, measured errors, and bounded library/boundary alternatives.
 - [ ] 13.1 Persist versioned BusinessContext only after Phase 7, with migrations, encryption decision, tenant ownership, retention, backup, export, and verified deletion.
 - [ ] 13.2 Produce immutable evidence bundles/analysis receipts with source IDs, vintages, variable dictionary, scoring config, code revision, and intent ID.
 - [ ] 13.3 Add read-only Tadpole economic tools that still enforce identity, quotas, budget, provenance, and untrusted-content handling.
-- [ ] 13.4 Add audited saved watches and bounded notifications; every write records intent/outcome and uses real M2 approval where required.
+- [ ] 13.4 Add audited saved AOI watches and bounded notifications with explicit severity/
+  urgency/certainty priority, threshold step-up, deduplication, cooldown, acknowledgement,
+  expiry/cancellation, and restoration of preempted lower-priority information; every write
+  records intent/outcome and uses real M2 approval where required, while audio and each
+  external delivery channel require separate tenant authorization.
 - [ ] 13 exit: cross-tenant isolation, redaction, deletion, stale/conflicting evidence, and claim-to-source tracing tests pass.
 
 ### Phase 14 — Documentation, release, and operational proof
 
 - [ ] 14.1 Reconcile README, DATA_SOURCES, SECURITY, RUNBOOK, DESIGN, API/tool docs, ADR index, environment reference, and generated registry tables.
 - [ ] 14.2 Run full uncached lint/typecheck/test/build, ADG, Playwright, performance, load, security, license, MCP conformance, and seed-network-denial gates.
-- [ ] 14.3 Produce a reproducible demo scene and rollback/runbook drill without claiming unavailable live integrations.
+- [ ] 14.3 Produce a reproducible demo scene, named-scene wallboard playlist, and rollback/
+  runbook drill without claiming unavailable live integrations; rotation preserves the Scene
+  contract, pauses on interaction or priority alert, visibly reports its resume countdown,
+  and resumes only after the configured idle interval.
 - [ ] 14 exit: release evidence is linked in §17; no known critical/high finding is open; plan status becomes COMPLETE only after human review.
 
 ---
@@ -1808,5 +1963,37 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   exact decision-blocked 4-Pillar brief is in §10; no satellite implementation is
   authorized or started.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.2.3. Resolve OQ-7, then authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Helioclock review and layer-access planning checkpoint — 2026-09-04
+
+- The developer authorized the exact documentation-only 4-Pillar brief for the Helioclock
+  review amendment. No provider, contract, server, Cesium, or web implementation changed;
+  no account was created, credential collected, terms accepted, live source called, or
+  production state mutated.
+- The public Helioclock product/manual/news corpus was reviewed as discovery input, then the
+  recorded access paths were checked against first-party provider documentation. Public
+  accessibility was not treated as commercial, redistribution, or production approval.
+- §4.5 now defines independent implementation, credential, terms, configuration, policy,
+  and runtime gates plus deterministic unlock/relock behavior. §4.6 records the dated
+  current/proposed/candidate layer inventory and authoritative onboarding links without
+  claiming executable registry state or legal approval.
+- §8.1 and new §8.3 add the operational-source candidates, progressive disclosure, semantic
+  feed health, named Scene wallboards, AOI scopes, audited alert priority/deduplication,
+  evidence disagreement, solar terminator, and Layer Access UX. Phase 5.3 sequences the
+  source ADR, initial layers, measured imagery spike, and read-only access surface; Phase 7.4
+  reserves tenant-scoped secure credential and terms administration.
+- Tasks 9.4, 13.4, and 14.3 now require visible prediction/observation disagreement, bounded
+  alert escalation/acknowledgement semantics, and Scene-contract wallboard pause/resume.
+  `docs/DESIGN.md` specifies the Settings → Layer Access content and secure setup flow,
+  gray-but-discoverable toggles, explicit empty/lock states, relocking, and accessibility.
+- Baseline and post-edit ADG passed. The canonical provider-registry generator rebuilt
+  contracts/providers and produced no registry artifact drift. `git diff --check` and
+  byte-identical PLAN.md/MASTER_PLAN_V3.md verification passed. The repository has no
+  `docs:providers:check` command; the canonical `pnpm docs:providers` generator was used.
+- The executable registry remains version 2 with 12 entries and unchanged active counts;
+  future task 5.3.1 must add accepted candidates as `planned`. NEXT_TASK remains decision-
+  blocked task 5.2.3, and this planning amendment authorizes no implementation task.
+- Branch: `codex/helioclock-layer-access-plan`. GitHub CLI authentication was unavailable
+  at session start, so open PR inspection and PR creation were not possible.
 
 No later task is authorized merely because it appears in this plan.
