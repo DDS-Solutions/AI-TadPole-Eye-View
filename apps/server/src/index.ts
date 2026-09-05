@@ -37,7 +37,12 @@ import { getConnInfo } from '@hono/node-server/conninfo';
 import { type Context, Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { CostGovernor, DEFAULT_PROVIDER_TIERS } from './middleware/costGovernor.js';
-import { InMemoryRateLimiter, type OpsAuthOptions, createOpsAuth } from './middleware/opsAuth.js';
+import {
+  InMemoryRateLimiter,
+  type OpsAuthOptions,
+  createOpsAuth,
+  createRateLimitMiddleware,
+} from './middleware/opsAuth.js';
 import { PRODUCT_VERSION } from './productVersion.js';
 import { createAuditIntegrityRouter } from './routes/auditIntegrity.js';
 import { createAuditStreamRouter } from './routes/auditStream.js';
@@ -63,6 +68,8 @@ import { ServerTelemetryManager } from './telemetry/index.js';
 import { attachWebSocketCollabServer } from './websocketCollab.js';
 
 export { attachWebSocketCollabServer } from './websocketCollab.js';
+
+export const SATELLITE_REQUESTS_PER_MINUTE = 60;
 
 export interface CreateAppOptions {
   opsAuth?: OpsAuthOptions;
@@ -299,6 +306,15 @@ export function createApp(options: CreateAppOptions = {}) {
   app.route('/api/cables', createCablesRouter(cableAdapter));
 
   // Source elements are cached inside the adapter; positions are re-propagated at SimClock time.
+  // Request limiting therefore stays separate from the response-caching cost governor.
+  app.use(
+    '/api/satellites/*',
+    createRateLimitMiddleware(rateLimiter, {
+      bucket: 'satellites-read',
+      limit: SATELLITE_REQUESTS_PER_MINUTE,
+      resolveClientId,
+    })
+  );
   app.route('/api/satellites', createSatellitesRouter(satelliteAdapter, satellitePropagator));
 
   // Voice Ephemeral Token Provisioning

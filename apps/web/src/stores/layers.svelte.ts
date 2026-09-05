@@ -1,4 +1,9 @@
-import type { CableRoute, DataProvenance } from '@gev/contracts';
+import {
+  type CableRoute,
+  type DataProvenance,
+  SATELLITE_USAGE_NOTICE,
+  type SatellitePropagatedState,
+} from '@gev/contracts';
 import { type UnifiedEntityCollections, buildUnifiedTelemetryItems } from '../unifiedTelemetry.js';
 
 export type { UnifiedTelemetryItem } from '../unifiedTelemetry.js';
@@ -189,6 +194,7 @@ class LayerStore {
   });
   satelliteAccessLock = $state<string | null>(null);
   satelliteAccessLockCode = $state<string | null>(null);
+  satelliteOmittedCount = $state(0);
 
   // Active inspection selection
   selectedEntity = $state<EntitySelection | null>(null);
@@ -232,12 +238,44 @@ class LayerStore {
     if (reason) {
       this.visibility.satellites = false;
       this.counts.satellites = 0;
+      this.satelliteOmittedCount = 0;
       this.rawEntities.satellites = [];
     }
   }
 
   setProvenance(layer: keyof LayerVisibility, provenance: DataProvenance): void {
     this.provenance[layer] = provenance;
+  }
+
+  refreshSelectedSatellite(states: readonly SatellitePropagatedState[]): void {
+    const selected = this.selectedEntity;
+    if (!selected || selected.kind !== 'satellite') return;
+    const selectedCatalogId = String(
+      selected.data.catalogId ?? selected.data.catalog_id ?? selected.id.replace(/^satellite-/, '')
+    );
+    const state = states.find((candidate) => candidate.catalog_id === selectedCatalogId);
+    if (!state) return;
+
+    this.selectedEntity = {
+      ...selected,
+      name: state.object_name,
+      data: {
+        ...selected.data,
+        entityKind: 'satellite',
+        catalogId: state.catalog_id,
+        objectId: state.object_id,
+        sourceGroup: state.source_group,
+        elementEpoch: state.element_epoch,
+        propagatedAt: state.propagated_at,
+        propagationMethod: state.propagation_method,
+        isEstimate: state.is_estimate,
+        usageNotice: SATELLITE_USAGE_NOTICE,
+        longitude: state.longitude_deg,
+        latitude: state.latitude_deg,
+        altitudeM: state.altitude_m,
+        speedMps: state.speed_mps,
+      },
+    };
   }
 
   setQuakeMinMagnitude(minMag: number): void {

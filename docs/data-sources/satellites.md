@@ -35,6 +35,10 @@ and rendering in `packages/cesium-kit/src/satelliteLayer.ts`
 - **Time and frames:** Propagation reads injectable `SimClock`, rejects element offsets beyond
   seven days, and converts SGP4 ECI/TEME estimates to WGS84 geodetic longitude, latitude, and
   altitude. UTC/Julian rollover and invalid-time boundaries are tested.
+- **Partial propagation:** A boundary-valid catalog is propagated record by record. An
+  individual element that cannot produce a safe SGP4 state is omitted without dropping the
+  remaining layer; `input_count` and `omitted_count` make that degradation explicit. A malformed
+  source catalog or a batch with zero usable states still fails closed.
 - **Contract:** Strict Zod boundaries require catalog identity, source group, OMM-derived orbital
   fields, epochs, identifiers, derived-state labels, safety notice, and DataProvenance v1.
 
@@ -44,7 +48,13 @@ and rendering in `packages/cesium-kit/src/satelliteLayer.ts`
 
 - **Credentials:** CelesTrak standard GP requires no API key. This does not satisfy or bypass the independent terms and environment gates.
 - **Catalog refresh:** Server-only through pinned-fetch, no more than one successful request per allowlisted group every two hours, with one shared single-flight cache.
+- **Retry policy:** A transient transport or service failure without a usable cache receives a
+  60-second retry backoff. Terminal client-policy responses and the CelesTrak-documented
+  301/403/404/500 stop signals receive the full two-hour hold; neither path creates a tight loop.
 - **Cache truth:** Fresh TTL is 7,200 seconds. The last valid response may remain visibly stale for at most 86,400 seconds after a failed refresh; it is unavailable after that bound. Redis is not installed, so any production shared-cache deployment remains a separate decision.
+- **Derived-read limit:** `/api/satellites` permits 60 requests per client per minute and returns
+  `429 RATE_LIMITED` with `Retry-After` when exhausted. It intentionally does not use the shared
+  response-body cost cache because positions must be re-propagated at the current `SimClock` time.
 - **Propagation window:** Non-synthetic elements are accepted only within seven days of their element epoch. Explicitly synthetic seed elements are exempt so the offline demonstration does not expire; they remain visibly marked synthetic estimates and make no real-world position claim.
 - **Budget:** No monetary source charge is currently documented, but the two-hour per-group rate, transport bounds, retry controls, 1,000-record ceiling, governance path, and kill switch are mandatory.
 - **Offline / airgap:** Task 5.2.3 may add only a small, time-frozen, GEV-authored synthetic GP/OMM fixture with no copied real catalog, object names, or catalog identifiers.
@@ -61,3 +71,7 @@ and rendering in `packages/cesium-kit/src/satelliteLayer.ts`
 - **Access UI:** The registry carries the no-key credential state and production terms lock for
   the planned Settings → Layer Access projection in task 5.3.5. Task 5.2.3 does not create a
   parallel access-state list or falsely present live production access as active.
+- **Runtime recheck:** While terms or the provider switch keeps the control disabled, the browser
+  rechecks the server-local gate at the normal five-second human cadence. This makes an approved
+  administrative unlock visible without a page reload and does not bypass the provider cache or
+  create an upstream request while the gate remains closed.

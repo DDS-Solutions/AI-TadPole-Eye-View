@@ -130,10 +130,53 @@ describe('satellite propagation', () => {
     );
     expect(batch.states).toHaveLength(1);
     expect(batch).toMatchObject({
+      input_count: 1,
+      omitted_count: 0,
       coordinate_frame: 'wgs84-geodetic',
       propagation_method: 'sgp4',
       is_estimate: true,
       provenance: { source: { provider_id: 'celestrak' } },
     });
+  });
+
+  it('omits an individually unusable element with explicit batch accounting', () => {
+    const batch = propagateSatelliteCatalog(
+      {
+        schema_version: 1,
+        catalog_id: 'mixed-validity-v1',
+        groups: ['stations'],
+        elements: [
+          valladoElement,
+          {
+            ...valladoElement,
+            catalog_id: '6',
+            element_epoch: new Date(
+              valladoEpoch - (MAX_SATELLITE_PROPAGATION_OFFSET_SECONDS + 1) * 1_000
+            ).toISOString(),
+          },
+        ],
+        provenance,
+      },
+      valladoEpoch
+    );
+
+    expect(batch.states.map((state) => state.catalog_id)).toEqual(['5']);
+    expect(batch.input_count).toBe(2);
+    expect(batch.omitted_count).toBe(1);
+  });
+
+  it('fails the batch when no element can be propagated safely', () => {
+    expect(() =>
+      propagateSatelliteCatalog(
+        {
+          schema_version: 1,
+          catalog_id: 'invalid-at-time-v1',
+          groups: ['stations'],
+          elements: [valladoElement],
+          provenance,
+        },
+        valladoEpoch + (MAX_SATELLITE_PROPAGATION_OFFSET_SECONDS + 1) * 1_000
+      )
+    ).toThrow(/could not produce a valid state/);
   });
 });

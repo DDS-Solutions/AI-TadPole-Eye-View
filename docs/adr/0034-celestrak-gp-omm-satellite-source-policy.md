@@ -76,6 +76,10 @@ gate rather than silently interpreted as permission.
   ceiling; transport byte, timeout, retry, and concurrency limits remain mandatory.
 - HTTP errors, schema failures, oversized catalogs, and budget/rate rejection stop refresh;
   they never trigger a tight retry loop or a fallback to an unapproved source.
+- Successful responses retain the two-hour source-cache window. Transient transport/service
+  failures use a 60-second retry backoff, while terminal 4xx policy responses and documented
+  301/403/404/500 stop signals retain a two-hour hold. Derived-position reads are independently
+  limited to 60 per client per minute without caching their SimClock-dependent response bodies.
 
 ### Production access and ownership
 
@@ -132,8 +136,12 @@ avoidance, maneuver planning, or other safety-of-flight operations.
   remain usable in deterministic offline demonstrations after their recorded epoch.
 - The satellite channel is `#c084fc` (`Orbital Lavender`) in DESIGN.md, web tokens, and Cesium
   tokens. This adds a literal domain channel without changing the accepted HUD layout.
-- The browser application entry is 90.93 KB gzip, compared with 88.57 KB before this task
-  (+2.36 KB); primary application CSS is 6.27 KB gzip, compared with 5.60 KB (+0.67 KB),
-  including the due semantic HUD token migration. The complete build is 1,230.22 KB gzip and
+- The browser application entry is 91.50 KB gzip, compared with 88.57 KB before this task
+  (+2.93 KB); primary application CSS is 6.28 KB gzip, compared with 5.60 KB (+0.68 KB),
+  including the due semantic HUD token migration. The complete build is 1,230.81 KB gzip and
   remains inside its accepted budget. `satellite.js` stays on the
   server-only `@gev/core/satellite-propagation` subpath and is absent from the browser bundle.
+- Valid catalogs degrade per element: unusable SGP4 states are omitted with explicit input and
+  omission counts, while malformed catalogs and zero-valid-state batches fail closed. Cesium
+  updates refresh both position and inspection properties on every batch, including an already
+  open satellite detail card.

@@ -156,6 +156,8 @@ const SatellitePropagationBatchFieldsSchema = z
     propagation_method: z.literal('sgp4'),
     is_estimate: z.literal(true),
     usage_notice: z.literal(SATELLITE_USAGE_NOTICE),
+    input_count: z.number().int().min(1).max(MAX_SATELLITE_RECORDS),
+    omitted_count: z.number().int().nonnegative().max(MAX_SATELLITE_RECORDS),
     states: z.array(SatellitePropagatedStateSchema).min(1).max(MAX_SATELLITE_RECORDS),
     provenance: DataProvenanceSchema,
   })
@@ -163,6 +165,22 @@ const SatellitePropagationBatchFieldsSchema = z
 
 export const SatellitePropagationBatchSchema = SatellitePropagationBatchFieldsSchema.superRefine(
   (batch, ctx) => {
+    const groupSet = new Set(batch.groups);
+    if (groupSet.size !== batch.groups.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['groups'],
+        message: 'satellite propagation batch groups must be unique',
+      });
+    }
+    if (batch.states.length + batch.omitted_count !== batch.input_count) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['omitted_count'],
+        message: 'propagated and omitted state counts must equal the input count',
+      });
+    }
+
     const ids = new Set<string>();
     for (const [index, state] of batch.states.entries()) {
       if (state.propagated_at !== batch.propagated_at) {
@@ -179,7 +197,29 @@ export const SatellitePropagationBatchSchema = SatellitePropagationBatchFieldsSc
           message: `duplicate propagated satellite ID: ${state.catalog_id}`,
         });
       }
+      if (!groupSet.has(state.source_group)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['states', index, 'source_group'],
+          message: `state group '${state.source_group}' is absent from batch groups`,
+        });
+      }
+      if (state.catalog_id.startsWith('synthetic-') !== (state.source_group === 'synthetic')) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['states', index, 'source_group'],
+          message: 'propagated synthetic identity and group must agree',
+        });
+      }
       ids.add(state.catalog_id);
+    }
+
+    if (groupSet.has('synthetic') && groupSet.size !== 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['groups'],
+        message: 'synthetic propagation batches cannot mix live-source groups',
+      });
     }
   }
 );

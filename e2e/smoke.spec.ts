@@ -194,16 +194,22 @@ test.describe('GEV v2 implemented-layer telemetry, virtualized table, and frame 
   test('visibly locks satellite controls when production terms are not approved', async ({
     page,
   }) => {
+    let satelliteRequests = 0;
     await page.route('**/api/satellites', async (route) => {
-      await route.fulfill({
-        status: 423,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          code: 'TERMS_APPROVAL_REQUIRED',
-          error:
-            'Live satellite access is locked pending written commercial-use confirmation or formal licensing-owner acceptance',
-        }),
-      });
+      satelliteRequests += 1;
+      if (satelliteRequests === 1) {
+        await route.fulfill({
+          status: 423,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            code: 'TERMS_APPROVAL_REQUIRED',
+            error:
+              'Live satellite access is locked pending written commercial-use confirmation or formal licensing-owner acceptance',
+          }),
+        });
+        return;
+      }
+      await route.continue();
     });
 
     await page.goto('/');
@@ -220,5 +226,9 @@ test.describe('GEV v2 implemented-layer telemetry, virtualized table, and frame 
     await page.locator('#satellite-layer-row').screenshot({
       path: path.join(resultsDir, 'satellite-terms-lock.png'),
     });
+
+    await expect(toggle).toBeEnabled({ timeout: 10_000 });
+    await expect(toggle).not.toBeChecked();
+    expect(satelliteRequests).toBeGreaterThanOrEqual(2);
   });
 });

@@ -21,7 +21,12 @@
       {:else}
         <span class="layer-sub">
           {layerStore.provenance.satellites?.source.name ?? 'Awaiting validated source'} ·
-          <span id="satellite-count" class="mono">{layerStore.counts.satellites}</span>
+          <span id="satellite-count" class="mono">{layerStore.counts.satellites}</span> shown
+          {#if layerStore.satelliteOmittedCount > 0}
+            · <span id="satellite-omitted-count" class="omitted mono">
+              {layerStore.satelliteOmittedCount} omitted
+            </span>
+          {/if}
         </span>
       {/if}
     </div>
@@ -62,6 +67,7 @@
   .layer-name { font-size: 0.76rem; font-weight: 600; color: var(--hud-text-panel); }
   .layer-sub { font-size: 0.63rem; color: var(--hud-text-secondary); }
   .lock-reason { color: var(--hud-warning); }
+  .omitted { color: var(--hud-warning); }
   .mono { font-family: ui-monospace, monospace; }
 
   .switch { position: relative; display: inline-block; width: 34px; height: 18px; }

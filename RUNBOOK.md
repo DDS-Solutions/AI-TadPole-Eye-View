@@ -179,6 +179,15 @@ and [ADR 0036](./docs/adr/0036-cable-fixture-and-licensed-pack-policy.md).
   groups at the fixed CelesTrak JSON endpoint. It shares a two-hour cache, retains a validated
   stale catalog for no more than 24 hours after refresh failure, and renders at most 1,000
   derived estimates.
+- Before the first administrator-authorized live activation, verify that the fixed request shape
+  `https://celestrak.org/NORAD/elements/gp.php?GROUP=STATIONS&FORMAT=JSON` answers directly
+  without a redirect.
+  Do not add `www` or enable redirect following to make a failed check pass. A 301, 403, 404, or
+  500 response is a stop condition: keep production locked, record the evidence, and contact the
+  source owner rather than retrying or widening the network allowlist.
+- Transient transport/service failures use a 60-second retry backoff. Terminal source-policy
+  responses hold for two hours. Browser gate checks may continue every five seconds while locked,
+  but they stop at the server gate and do not contact CelesTrak.
 - Satellite coordinates are estimates from the displayed element epoch. They are not live and
   must not be used for navigation, conjunction assessment, or collision avoidance.
 

@@ -19,6 +19,7 @@ import {
 
 export const SATELLITE_CACHE_FRESH_SECONDS = 7_200;
 export const SATELLITE_CACHE_MAX_STALE_SECONDS = 86_400;
+export const SATELLITE_TRANSIENT_RETRY_SECONDS = 60;
 export const CELESTRAK_GP_HOST = 'celestrak.org';
 export const CELESTRAK_GP_PATH = '/NORAD/elements/gp.php';
 export const SATELLITE_LIVE_GROUPS = ['STATIONS', 'WEATHER', 'GPS-OPS', 'GEO'] as const;
@@ -96,6 +97,16 @@ export class SatelliteLiveAccessLockedError extends Error {
   }
 }
 
+export class SatelliteUpstreamHttpError extends Error {
+  constructor(
+    readonly status: number,
+    statusText: string
+  ) {
+    super(`CelesTrak GP returned HTTP ${status}: ${statusText}`);
+    this.name = 'SatelliteUpstreamHttpError';
+  }
+}
+
 interface SatelliteFetchResponse {
   ok: boolean;
   status: number;
@@ -134,6 +145,16 @@ function observationPeriodForElements(elements: readonly SatelliteOrbitalElement
     return { status: 'unavailable' as const, reason: 'Source returned no orbital elements' };
   }
   return { status: 'available' as const, start, end };
+}
+
+function errorChainMentionsRedirect(error: unknown): boolean {
+  let current = error;
+  for (let depth = 0; depth < 4; depth += 1) {
+    if (current instanceof Error && current.message.toLowerCase().includes('redirect')) return true;
+    if (typeof current !== 'object' || current === null || !('cause' in current)) return false;
+    current = (current as { cause?: unknown }).cause;
+  }
+  return false;
 }
 
 function normalizeLiveElement(
@@ -178,7 +199,7 @@ export class SatelliteAdapter {
   private seedCatalog: SatelliteCatalog | null = null;
   private liveCache: CachedSatelliteCatalog | null = null;
   private refreshInFlight: Promise<SatelliteCatalogResponse> | null = null;
-  private lastRefreshAttemptAtMs: number | null = null;
+  private retryBlockedUntilMs: number | null = null;
 
   constructor(options: SatelliteAdapterOptions = {}) {
     this.clock = options.clock ?? new SystemClock();
@@ -258,10 +279,7 @@ export class SatelliteAdapter {
     }
     if (this.refreshInFlight) return this.refreshInFlight;
 
-    if (
-      this.lastRefreshAttemptAtMs !== null &&
-      now - this.lastRefreshAttemptAtMs <= SATELLITE_CACHE_FRESH_SECONDS * 1_000
-    ) {
+    if (this.retryBlockedUntilMs !== null && now < this.retryBlockedUntilMs) {
       if (
         this.liveCache &&
         now - this.liveCache.storedAtMs <= SATELLITE_CACHE_MAX_STALE_SECONDS * 1_000
@@ -270,17 +288,18 @@ export class SatelliteAdapter {
         return this.cachedResponse(this.liveCache);
       }
       this.onHealthChange('unavailable');
-      throw new Error('CelesTrak refresh cooldown is active after a failed attempt');
+      throw new Error('CelesTrak refresh retry backoff is active after a failed attempt');
     }
 
-    this.lastRefreshAttemptAtMs = now;
     this.refreshInFlight = this.refreshLiveCatalog();
     try {
       return await this.refreshInFlight;
     } catch (error) {
+      const failedAtMs = this.clock.now();
+      this.retryBlockedUntilMs = failedAtMs + this.retryDelaySeconds(error) * 1_000;
       if (
         this.liveCache &&
-        now - this.liveCache.storedAtMs <= SATELLITE_CACHE_MAX_STALE_SECONDS * 1_000
+        failedAtMs - this.liveCache.storedAtMs <= SATELLITE_CACHE_MAX_STALE_SECONDS * 1_000
       ) {
         this.onHealthChange('degraded');
         return this.cachedResponse(this.liveCache);
@@ -308,6 +327,7 @@ export class SatelliteAdapter {
     });
     const response = this.createResponse(catalog, 'live');
     this.liveCache = { response, storedAtMs: this.clock.now() };
+    this.retryBlockedUntilMs = null;
     this.onHealthChange('healthy');
     return response;
   }
@@ -324,10 +344,21 @@ export class SatelliteAdapter {
       maxBytes: 4_000_000,
     });
     if (!response.ok) {
-      throw new Error(`CelesTrak GP returned HTTP ${response.status}: ${response.statusText}`);
+      throw new SatelliteUpstreamHttpError(response.status, response.statusText);
     }
     const payload = RawCelesTrakPayloadSchema.parse(JSON.parse(await response.text()));
     return payload.map((item) => normalizeLiveElement(item, group));
+  }
+
+  private retryDelaySeconds(error: unknown): number {
+    if (errorChainMentionsRedirect(error)) return SATELLITE_CACHE_FRESH_SECONDS;
+    if (
+      error instanceof SatelliteUpstreamHttpError &&
+      (error.status === 301 || error.status === 500 || (error.status >= 400 && error.status < 500))
+    ) {
+      return SATELLITE_CACHE_FRESH_SECONDS;
+    }
+    return SATELLITE_TRANSIENT_RETRY_SECONDS;
   }
 
   private createResponse(

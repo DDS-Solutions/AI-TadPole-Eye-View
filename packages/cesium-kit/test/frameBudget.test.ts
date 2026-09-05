@@ -432,6 +432,8 @@ describe('Cesium Frame Budget Monitor & Ingestion Benchmark (PLAN.md §10 Phase 
   it(`BENCHMARK: updates 1,000 derived satellites < ${INGESTION_P95_BUDGET_MS}ms p95`, () => {
     const satellites = new SatelliteLayerController({ viewer: createMockViewer() });
     const batch = {
+      input_count: 1_000,
+      omitted_count: 0,
       states: Array.from({ length: 1_000 }, (_, index) => ({
         catalog_id: String(index + 1),
         object_name: `SATELLITE ${index + 1}`,

@@ -39,7 +39,7 @@ Most agent demos show swarm diagrams. This one shows a working product and the r
 | 🌦️ Weather Radar | RainViewer, NOAA | ACTIVE | `weather.ts` provider, server route, weather Cesium layer, fixture. |
 | 🗺️ Overpass / OSM | OpenStreetMap Overpass API | ACTIVE | Overpass QL sanitizer in `@gev/security`, server proxy route, query endpoint. |
 | 🌐 Submarine Cables | TeleGeography NC Download Pack | PARTIAL | `cables.ts` provider and contract schemas exist. Server route and Cesium layer NOT wired into the app. Data ships as optional download pack (NC license gate at runtime, never bundled). |
-| 🛰️ Satellites | CelesTrak / Space-Track SGP4 | NOT BUILT | No implementation exists: no satellite provider file, no SGP4 math in `core/`, no Cesium layer. Planned in PLAN.md section 8. |
+| 🛰️ Satellites | CelesTrak standard GP JSON/OMM | ACTIVE (SEED) / LIVE LOCKED | Synthetic seed → server SGP4 → Cesium layer is implemented. Production retrieval remains terms-locked under ADR 0034; raw catalog mirroring and live-position claims are prohibited. |
 | 🎙️ AI Voice Copilot | OpenAI Realtime, Seed/Mock Driver | ACTIVE | `voiceMachine.ts` (XState v5), `VoiceControlOrb.svelte`, `voice.svelte.ts`, `MockAgentAdapter` + `OpenAIRealtimeAdapter` in `core/`, voice token route on server. Mock driver works without API keys. |
 | 👥 T2 Live Co-Op | Custom CRDT Rooms + Presence | PARTIAL | Yjs dependency installed. `CollabRoomManager` (native CRDT via `CollabIntentDoc`), JWT-signed room tokens, `CollabBar.svelte` UI, `collab.ts` store. Custom WebSocket synchronization protocol (not standard `y-websocket` server). |
 

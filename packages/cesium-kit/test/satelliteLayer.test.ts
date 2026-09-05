@@ -18,6 +18,8 @@ function createMockViewer(): Viewer {
 
 function batch(): SatellitePropagationBatch {
   return {
+    input_count: 1,
+    omitted_count: 0,
     states: [
       {
         catalog_id: 'synthetic-001',
@@ -50,6 +52,23 @@ describe('SatelliteLayerController', () => {
       entityKind: 'satellite',
       isEstimate: true,
       propagationMethod: 'sgp4',
+    });
+
+    const updated = batch();
+    const state = updated.states[0];
+    if (!state) throw new Error('satellite test fixture must contain one state');
+    state.propagated_at = '2026-09-04T12:35:00.000Z';
+    state.longitude_deg = -74;
+    state.latitude_deg = 41;
+    state.altitude_m = 421_000;
+    state.speed_mps = 7_640;
+    controller.enqueueBatch(updated);
+    expect(entity?.properties?.getValue(new Date())).toMatchObject({
+      propagatedAt: '2026-09-04T12:35:00.000Z',
+      longitude: -74,
+      latitude: 41,
+      altitudeM: 421_000,
+      speedMps: 7_640,
     });
 
     controller.setVisible(false);

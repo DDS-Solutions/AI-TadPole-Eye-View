@@ -211,12 +211,17 @@ export async function pollVisibleFeeds(
     );
   }
 
-  if (layerStore.visibility.satellites && bindings.satellites) {
+  if (
+    (layerStore.visibility.satellites || layerStore.satelliteAccessLock !== null) &&
+    bindings.satellites
+  ) {
     tasks.push(
       loadFeed('satellites', '/api/satellites', SatellitePropagationBatchSchema, signal, (data) => {
         bindings.satellites?.enqueueBatch(data);
         layerStore.counts.satellites = bindings.satellites?.getEntityCount() ?? 0;
+        layerStore.satelliteOmittedCount = data.omitted_count;
         layerStore.rawEntities.satellites = data.states;
+        layerStore.refreshSelectedSatellite(data.states);
       })
     );
   }

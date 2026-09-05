@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-08-30
-**Status:** IN PROGRESS — Phase 5.2; OQ-7 resolved; task 5.2.3 awaits 4-Pillar authorization
+**Status:** IN PROGRESS — Phase 5.2; task 5.2.4 awaits 4-Pillar authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=5.2
-NEXT_TASK=5.2.3
+NEXT_TASK=5.2.4
 NEXT_TASK_STATUS=READY
 LAST_VERIFIED_UTC=2026-09-04
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
@@ -879,7 +879,7 @@ DOC_BLOCKER or LOGIC_BLOCKER with exact row/hash/migration evidence and bounded 
 
 - [x] 5.2.1 Add required provenance and registry contracts; retrofit existing adapters and UI badges using `SimClock`.
 - [x] 5.2.2 Complete cables: Zod contracts, fixture seed, validated optional pack, server/store/layer/UI, kill switch, health, tests, and license ADR.
-- [ ] 5.2.3 Complete satellites under ADR 0034: GP/OMM adapter, deterministic fixture, propagation/frame conversion, server/store/layer/UI, kill switch, health, tests, and source controls.
+- [x] 5.2.3 Complete satellites under ADR 0034: GP/OMM adapter, deterministic fixture, propagation/frame conversion, server/store/layer/UI, kill switch, health, tests, and source controls.
 - [ ] 5.2.4 Generate DATA_SOURCES entries/counts from the registry and label implementation/mode accurately.
 - [ ] 5.2 exit: every implemented provider validates and carries provenance; seed mode makes zero network calls; satellite/cable smoke and performance budgets pass.
 
@@ -1043,6 +1043,45 @@ network calls in seed tests. If terms or fixture redistribution cannot be eviden
 the provider planned/unavailable and record DOC_BLOCKER. If three propagation/reference-
 frame approaches cannot meet accepted vectors and tolerances, record LOGIC_BLOCKER with
 the exact vectors, measured errors, and bounded library/boundary alternatives.
+```
+
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 5.2.4
+
+```text
+[SCOPE_CONTRACT] Make DATA_SOURCES.md provider/feed/layer entries and counts deterministic
+projections of the executable typed registry. Scope is packages/providers registry rendering
+only where a reusable projection is required; scripts/generate-provider-registry.mjs and its
+tests; DATA_SOURCES.md plus docs/generated/provider-registry.md marker-delimited generated
+sections; ADG/source-document checks; and narrowly related documentation. Preserve authored
+policy prose outside generated sections. Out of scope: provider/contract/server/Cesium/web
+behavior, new registry entries or layers, live source calls, source or licensing decisions,
+credential/terms administration, the Settings Layer Access UI (5.3.5), Phase 5.3 sources,
+identity/tenancy, and economic features.
+
+[PERFORMANCE_THRESHOLD] One canonical offline command regenerates both registry-backed
+documentation surfaces deterministically and a check-mode test fails on any stale generated
+content. Tables expose registered and active provider/feed/layer counts, implementation state,
+requested/runtime mode, health, freshness, source, license/terms, attribution, and documentation
+link without counting planned, incomplete, download-pack, disabled, or unavailable entries as
+active. Seed and representative locked-live projections are tested; generated content contains
+no wall-clock timestamp or environment-secret value and performs zero network access. Root lint,
+affected typecheck/test/build, ADG and its tests, architecture drift, generated-doc parity,
+git diff --check, and synchronized-plan checks pass.
+
+[ARCHITECTURE_MODE] PLAN.md §2 rules 1, 4, 6–7, 11, 14–15; §3 registry boundary; §4.1,
+§4.5–§4.6; ADRs 0034–0036 and 0040. The typed provider registry remains the only source for
+identity, counts, implementation, mode, health, freshness, source, and licensing metadata.
+Rendering is a pure deterministic projection over a validated registry; the generator may write
+only designated documentation artifacts and must preserve authored narrative outside explicit
+generated markers. No provider metadata copy, second count table, or hand-maintained status map.
+
+[FAILURE_MODES] Do not hand-edit generated rows/counts, infer active state from implementation
+alone, label seed/cached/disabled/unavailable data live, expose environment values, use wall-clock
+generation stamps, contact providers, overwrite authored provenance/security policy, or make
+generated links claim implementation that the registry does not support. If one registry field
+cannot be represented truthfully, fail generation and record DOC_BLOCKER with the exact entry and
+missing contract rather than inventing text. After three deterministic-marker/projection
+approaches fail, record LOGIC_BLOCKER with diff evidence and bounded alternatives.
 ```
 
 ### Phase 5.3 — Operational-awareness layers and access discovery
@@ -2020,5 +2059,61 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
 - NEXT_TASK remains **5.2.3 Complete satellites** with status `READY`. Its exact decision-ready
   4-Pillar brief is in §10 and still requires explicit developer authorization before code
   changes or any separately authorized live-source validation.
+
+### Task 5.2.3 completion checkpoint — 2026-09-04
+
+- The developer authorized the exact task 5.2.3 4-Pillar brief under approved OQ-7 Option A.
+  Work remained local/seed; no CelesTrak, Space-Track, or other live source was contacted,
+  no credential or terms acceptance was recorded, and no production state was mutated.
+- Versioned contracts now bound GP/OMM-derived catalogs, orbital elements, propagated states,
+  1,000-object batches, required DataProvenance, synthetic identity, and mandatory not-live/
+  not-for-navigation/conjunction/collision language. `satellite.js` 7.1.0 is isolated on the
+  server-only core propagation subpath; fixed Vallado OMM vectors verify SGP4 position and
+  velocity at epoch and +360 minutes, with tested UTC/Julian/WGS84 conversion and stale or
+  invalid non-synthetic rejection. Valid catalogs now omit only individual unusable SGP4
+  states, expose input/omission accounting, and still fail closed when no state is usable.
+- The CelesTrak adapter fixes the standard GP JSON path, accepts only server-owned STATIONS,
+  WEATHER, GPS-OPS, and GEO groups, validates before use, de-duplicates and caps at 1,000,
+  caches source elements for 7,200 seconds with an 86,400-second last-valid stale limit and
+  separates the successful-cache window from a 60-second transient-failure retry backoff,
+  retains a two-hour hold for terminal source-policy responses, and uses pinned-fetch only
+  after both live-access and licensing gates.
+  The checked-in fixture contains four GEV-only synthetic records and opens zero sockets.
+- Production remains fail-closed: `GEV_SATELLITES_ENABLED=0` is the platform-administrator
+  kill switch, and live mode remains `TERMS_APPROVAL_REQUIRED` until both explicit live access
+  and written commercial-use confirmation/formal licensing-owner acceptance are configured.
+  The UI turns that state into a grayed, unchecked, non-clickable satellite control with an
+  explicit lock reason and rechecks the server-local gate without requiring a page reload.
+  CelesTrak requires no API key; the registry-derived all-layer setup, key, terms, and relock
+  panel remains correctly reserved for task 5.3.5.
+- The server returns derived positions only and never exposes a raw catalogue endpoint. The
+  derived route is limited to 60 requests per client per minute without caching its SimClock-
+  dependent response body. The web store, polling boundary, Cesium rAF controller, HUD count,
+  Orbital Lavender toggle, telemetry filter, live-refreshing selection card, provenance, and
+  safety labels all use validated contracts.
+  Architectural gates were resolved by splitting enlarged composition/presenter/filter files;
+  there are now zero source files above 500 lines, and touched HUD colors use semantic tokens.
+- Evidence passed: root lint on 240 files; full monorepo typecheck; 397 unit tests; server load
+  p95 14.11 ms under 300 ms; 1,060-entity Cesium ingestion p95 8.73 ms and dedicated 1,000-
+  satellite ingestion p95 4.12 ms under 16.6 ms; production build 10/10; bundle budgets;
+  ADG on 54 documents, 415 paths, and 18 module-qualified symbols; 11 ADG tests;
+  architecture drift; generated registry parity; and `git diff --check`. The app entry is
+  91.50 KiB gzip and the complete bundle 1,230.81 KiB gzip, both within accepted budgets.
+- Playwright passed 2/2. Visual inspection confirmed the populated four-row orbital-estimate
+  table and HUD/filter treatment in `e2e/test-results/globe-task-5.2.3-satellites.png`, plus
+  the disabled terms state in `e2e/test-results/satellite-terms-lock.png`; automation also
+  verified the details card's prohibited-use warning and recovery to an enabled-but-unchecked
+  control after the server-side gate opens.
+- Final local status reported `STASIS_INACTIVE` with the required non-authoritative offline
+  snapshot caveat, seed mode, 12/12 active providers, 12/12 active feeds, 11/12 active layers,
+  and 12 healthy feeds. No governance state was resumed, deleted, or rewritten.
+- Branch: `codex/task-5.2.3-satellites`; implementation commit `9420b58`; review-hardening
+  corrections and synchronized completion evidence remain in the working tree. GitHub CLI
+  authentication remained unavailable, so open PR inspection and PR creation were not possible.
+- Next task: **5.2.4 Generate DATA_SOURCES entries/counts from the registry and label
+  implementation/mode accurately.** Its exact ready-to-authorize 4-Pillar brief is in §10;
+  task 5.2.4 has not been authorized or started.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.2.4. Authorize the embedded
+  4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.

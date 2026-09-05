@@ -3,7 +3,7 @@ import { FrozenClock } from '@gev/core';
 import { createGovernanceRuntimeContext } from '@gev/governance';
 import { createProviderRegistry } from '@gev/providers';
 import { describe, expect, it, vi } from 'vitest';
-import { createApp } from '../src/index.js';
+import { SATELLITE_REQUESTS_PER_MINUTE, createApp } from '../src/index.js';
 
 const clock = new FrozenClock(Date.parse('2026-09-04T12:30:00.000Z'));
 
@@ -130,6 +130,37 @@ describe('satellite server composition', () => {
       expect(batch.states).toHaveLength(4);
       expect(batch.provenance.source_mode).toBe('live');
       expect(fetcher).toHaveBeenCalledTimes(4);
+    } finally {
+      runtime.close();
+    }
+  });
+
+  it('rate-limits derived position reads without caching SimClock-dependent responses', async () => {
+    const requestClock = new FrozenClock(Date.parse('2026-09-04T12:30:00.000Z'));
+    const runtime = createGovernanceRuntimeContext({ clock: requestClock, dbPath: ':memory:' });
+    try {
+      const { app } = createApp({
+        clock: requestClock,
+        governanceContext: runtime,
+        resolveClientId: () => 'satellite-test-client',
+      });
+      const first = SatellitePropagationBatchSchema.parse(
+        await (await app.request('/api/satellites')).json()
+      );
+      requestClock.setTime(requestClock.now() + 1_000);
+      const second = SatellitePropagationBatchSchema.parse(
+        await (await app.request('/api/satellites')).json()
+      );
+      expect(second.propagated_at).not.toBe(first.propagated_at);
+
+      for (let index = 2; index < SATELLITE_REQUESTS_PER_MINUTE; index += 1) {
+        expect((await app.request('/api/satellites')).status).toBe(200);
+      }
+
+      const limited = await app.request('/api/satellites');
+      expect(limited.status).toBe(429);
+      expect(Number(limited.headers.get('Retry-After'))).toBeGreaterThan(0);
+      await expect(limited.json()).resolves.toMatchObject({ code: 'RATE_LIMITED' });
     } finally {
       runtime.close();
     }

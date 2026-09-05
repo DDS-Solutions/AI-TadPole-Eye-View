@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   MAX_SATELLITE_RECORDS,
+  SATELLITE_USAGE_NOTICE,
   SatelliteCatalogSchema,
   SatelliteOrbitalElementSchema,
+  SatellitePropagationBatchSchema,
 } from '../src/index.js';
 
 const validElement = {
@@ -26,6 +28,62 @@ const validElement = {
   mean_motion_ddot: 0,
   is_synthetic: true,
 } as const;
+
+const validProvenance = {
+  schema_version: 1,
+  source: {
+    provider_id: 'celestrak',
+    feed_id: 'satellites',
+    name: 'GEV synthetic satellite fixture',
+    canonical_url: 'fixture://satellites-synthetic-v1',
+  },
+  retrieved_at: '2026-09-04T12:30:00.000Z',
+  observation_period: {
+    status: 'available',
+    start: '2026-09-04T12:00:00.000Z',
+    end: '2026-09-04T12:00:00.000Z',
+  },
+  vintage: { status: 'available', value: 'synthetic-fixture-2026-09-04' },
+  mode: 'seed',
+  source_mode: 'seed',
+  license: { id: 'gev-synthetic-fixture-mit', name: 'GEV synthetic fixture (MIT)' },
+  attribution: 'GEV-authored synthetic orbital elements',
+  fixture_id: 'satellites-synthetic-v1',
+  cache: null,
+  freshness: { status: 'fresh', age_seconds: 0, fresh_for_seconds: 7_200 },
+} as const;
+
+function validPropagationBatch() {
+  return {
+    schema_version: 1,
+    catalog_id: 'satellites-synthetic-v1',
+    groups: ['synthetic'],
+    propagated_at: '2026-09-04T12:30:00.000Z',
+    coordinate_frame: 'wgs84-geodetic',
+    propagation_method: 'sgp4',
+    is_estimate: true,
+    usage_notice: SATELLITE_USAGE_NOTICE,
+    input_count: 1,
+    omitted_count: 0,
+    states: [
+      {
+        catalog_id: 'synthetic-001',
+        object_name: 'GEV SYNTHETIC LEO 1',
+        object_id: null,
+        source_group: 'synthetic',
+        element_epoch: '2026-09-04T12:00:00.000Z',
+        propagated_at: '2026-09-04T12:30:00.000Z',
+        propagation_method: 'sgp4',
+        is_estimate: true,
+        longitude_deg: -75,
+        latitude_deg: 40,
+        altitude_m: 420_000,
+        speed_mps: 7_650,
+      },
+    ],
+    provenance: validProvenance,
+  } as const;
+}
 
 describe('satellite contracts', () => {
   it('accepts a bounded synthetic GP/OMM catalog', () => {
@@ -82,5 +140,43 @@ describe('satellite contracts', () => {
         elements: oversized,
       })
     ).toThrow();
+  });
+
+  it('requires propagation groups and accounting to match the emitted states', () => {
+    expect(SatellitePropagationBatchSchema.parse(validPropagationBatch()).states).toHaveLength(1);
+
+    expect(() =>
+      SatellitePropagationBatchSchema.parse({
+        ...validPropagationBatch(),
+        groups: ['synthetic', 'synthetic'],
+      })
+    ).toThrow(/unique/);
+
+    expect(() =>
+      SatellitePropagationBatchSchema.parse({
+        ...validPropagationBatch(),
+        groups: ['stations'],
+      })
+    ).toThrow(/absent from batch groups/);
+
+    expect(() =>
+      SatellitePropagationBatchSchema.parse({
+        ...validPropagationBatch(),
+        groups: ['stations'],
+        states: [
+          {
+            ...validPropagationBatch().states[0],
+            source_group: 'stations',
+          },
+        ],
+      })
+    ).toThrow(/synthetic identity and group/);
+
+    expect(() =>
+      SatellitePropagationBatchSchema.parse({
+        ...validPropagationBatch(),
+        input_count: 2,
+      })
+    ).toThrow(/counts must equal/);
   });
 });

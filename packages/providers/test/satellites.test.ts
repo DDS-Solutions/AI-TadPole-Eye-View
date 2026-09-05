@@ -7,6 +7,7 @@ import {
   CELESTRAK_GP_PATH,
   SATELLITE_CACHE_FRESH_SECONDS,
   SATELLITE_LIVE_GROUPS,
+  SATELLITE_TRANSIENT_RETRY_SECONDS,
   SatelliteAdapter,
   SatelliteLiveAccessLockedError,
   SatelliteProviderDisabledError,
@@ -154,6 +155,84 @@ describe('satellite GP/OMM provider boundary', () => {
     clock.setTime(epoch + 25 * 60 * 60 * 1_000);
     await expect(adapter.getCatalog()).rejects.toThrow(/upstream unavailable/);
     expect(healthChanges.at(-1)).toBe('unavailable');
+  });
+
+  it('retries an initial transient failure after a short backoff, not the two-hour cache TTL', async () => {
+    const clock = new FrozenClock(epoch);
+    const fetcher = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('temporary DNS failure'))
+      .mockResolvedValue(responseFor([rawOmm(1)]));
+    const adapter = new SatelliteAdapter({
+      clock,
+      seedMode: false,
+      liveMode: true,
+      liveAccessEnabled: true,
+      termsApproved: true,
+      groups: ['STATIONS'],
+      fetcher,
+    });
+
+    await expect(adapter.getCatalog()).rejects.toThrow(/temporary DNS failure/);
+    await expect(adapter.getCatalog()).rejects.toThrow(/retry backoff/);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+
+    clock.setTime(epoch + SATELLITE_TRANSIENT_RETRY_SECONDS * 1_000);
+    await expect(adapter.getCatalog()).resolves.toMatchObject({ elements: [{ catalog_id: '1' }] });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not hammer terminal upstream responses during the two-hour source window', async () => {
+    const clock = new FrozenClock(epoch);
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        statusText: 'Forbidden',
+        text: async () => '',
+      })
+      .mockResolvedValue(responseFor([rawOmm(1)]));
+    const adapter = new SatelliteAdapter({
+      clock,
+      seedMode: false,
+      liveMode: true,
+      liveAccessEnabled: true,
+      termsApproved: true,
+      groups: ['STATIONS'],
+      fetcher,
+    });
+
+    await expect(adapter.getCatalog()).rejects.toThrow(/HTTP 403/);
+    clock.setTime(epoch + SATELLITE_TRANSIENT_RETRY_SECONDS * 1_000);
+    await expect(adapter.getCatalog()).rejects.toThrow(/retry backoff/);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+
+    clock.setTime(epoch + SATELLITE_CACHE_FRESH_SECONDS * 1_000);
+    await expect(adapter.getCatalog()).resolves.toMatchObject({ elements: [{ catalog_id: '1' }] });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps redirect rejection on the fixed host under the terminal two-hour hold', async () => {
+    const clock = new FrozenClock(epoch);
+    const redirectError = Object.assign(new TypeError('fetch failed'), {
+      cause: new Error('redirect mode is set to error'),
+    });
+    const fetcher = vi.fn().mockRejectedValue(redirectError);
+    const adapter = new SatelliteAdapter({
+      clock,
+      seedMode: false,
+      liveMode: true,
+      liveAccessEnabled: true,
+      termsApproved: true,
+      groups: ['STATIONS'],
+      fetcher,
+    });
+
+    await expect(adapter.getCatalog()).rejects.toThrow(/fetch failed/);
+    clock.setTime(epoch + SATELLITE_TRANSIENT_RETRY_SECONDS * 1_000);
+    await expect(adapter.getCatalog()).rejects.toThrow(/retry backoff/);
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 
   it('normalizes a CelesTrak UTC epoch that omits the Z suffix', async () => {

@@ -127,7 +127,7 @@ export function propagateSatelliteElement(
     );
   }
 
-  return SatellitePropagatedStateSchema.parse({
+  const parsedState = SatellitePropagatedStateSchema.safeParse({
     catalog_id: element.catalog_id,
     object_name: element.object_name,
     object_id: element.object_id,
@@ -141,6 +141,12 @@ export function propagateSatelliteElement(
     altitude_m: geodetic.height * 1_000,
     speed_mps: speedKmS * 1_000,
   });
+  if (!parsedState.success) {
+    throw new SatellitePropagationError(
+      `SGP4 produced a state outside the bounded contract for satellite '${element.catalog_id}'`
+    );
+  }
+  return parsedState.data;
 }
 
 export function propagateSatelliteCatalog(
@@ -149,7 +155,21 @@ export function propagateSatelliteCatalog(
 ): SatellitePropagationBatch {
   const catalog = SatelliteCatalogResponseSchema.parse(catalogInput);
   const propagatedAt = validatedDate(utcMs).toISOString();
-  const states = catalog.elements.map((element) => propagateSatelliteElement(element, utcMs));
+  const states: SatellitePropagatedState[] = [];
+  let omittedCount = 0;
+  for (const element of catalog.elements) {
+    try {
+      states.push(propagateSatelliteElement(element, utcMs));
+    } catch (error) {
+      if (!(error instanceof SatellitePropagationError)) throw error;
+      omittedCount += 1;
+    }
+  }
+  if (states.length === 0) {
+    throw new SatellitePropagationError(
+      `SGP4 could not produce a valid state for any of ${catalog.elements.length} satellite elements`
+    );
+  }
 
   return SatellitePropagationBatchSchema.parse({
     schema_version: 1,
@@ -160,6 +180,8 @@ export function propagateSatelliteCatalog(
     propagation_method: 'sgp4',
     is_estimate: true,
     usage_notice: SATELLITE_USAGE_NOTICE,
+    input_count: catalog.elements.length,
+    omitted_count: omittedCount,
     states,
     provenance: catalog.provenance,
   });
