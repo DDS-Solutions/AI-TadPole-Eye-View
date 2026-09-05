@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-08-30
-**Status:** IN PROGRESS — Phase 5.3; task 5.3.1 awaits 4-Pillar authorization
+**Status:** IN PROGRESS — Phase 5.3; task 5.3.2 awaits 4-Pillar authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=5.3
-NEXT_TASK=5.3.1
+NEXT_TASK=5.3.2
 NEXT_TASK_STATUS=READY
 LAST_VERIFIED_UTC=2026-09-05
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
@@ -237,9 +237,10 @@ may remain visible only with truthful mode/staleness labels and no continued liv
 
 ### 4.6 Layer-access discovery inventory
 
-This table is a planning snapshot researched on 2026-09-04, not executable registry truth
-and not a legal approval. Task 5.3.1 must re-verify the linked primary sources and record an
-ADR before adding planned entries. Task 5.2.4 remains responsible for generated documentation;
+This table began as a planning snapshot researched on 2026-09-04. Task 5.3.1 re-verified every
+entry against first-party evidence on 2026-09-05; ADR 0045 accepts seven ranked operational
+sources as executable `planned`/`unavailable` registry entries and defers four candidates. The
+table is still not legal approval or live-access authority. Task 5.2.4 remains responsible for generated documentation;
 the shipped Settings panel and layer controls must be registry-derived rather than copying
 this table.
 
@@ -257,17 +258,17 @@ this table.
 | Bikeshare — regional GBFS | Implemented in seed mode | Usually none; source-specific configuration | Validate each feed's `license_id` or `license_url`, attribution, geography, version, and operator terms | [GBFS v3 licensing fields](https://gbfs.org/documentation/reference/) |
 | OpenStreetMap/Overpass | Feed implemented; layer incomplete | No generic key for the current public query path | OQ-5 output classification, ODbL/attribution obligations, endpoint capacity, and commercial deployment decision | [OpenStreetMap copyright/license](https://www.openstreetmap.org/copyright) and [public-service policies](https://operations.osmfoundation.org/policies/) |
 | Submarine cables | Implemented synthetic seed; optional pack | Approved manifest, license evidence, and mandatory SHA-256 rather than an API key | ADR 0036 operator-license, redistribution, activation, and fallback gates | [Source-specific cable documentation](./docs/data-sources/cables.md) |
-| Solar terminator/day-night | Proposed | None; deterministic SimClock calculation | No provider approval; math/reference-frame acceptance and render budget still required | Internal pure-domain implementation; no external service |
-| NWS watches/warnings | Proposed Phase 5.3 | No API key currently; identifiable User-Agent required | Official CAP/API use, attribution, cache/rate policy, alert validity, and U.S. coverage | [NWS alerts service](https://www.weather.gov/documentation/services-web-alerts) |
-| Aviation weather — METAR/TAF/SIGMET | Proposed Phase 5.3 | No API key currently; identifiable User-Agent required | AWC request/result bounds, 100-request/minute ceiling, cache-file strategy, product validity, and attribution | [Aviation Weather Center Data API](https://aviationweather.gov/data/api/) |
-| Tropical cyclones | Proposed Phase 5.3 | None documented | NHC product status, basin/validity, attribution, advisory disclaimers, and archive/current separation | [NHC GIS products](https://www.nhc.noaa.gov/gis/) |
-| Tides, water levels, and currents | Proposed Phase 5.3 | None documented | CO-OPS station/product limits, datum/time-zone correctness, attribution, and not-for-navigation disclaimer where applicable | [NOAA CO-OPS web services](https://tidesandcurrents.noaa.gov/web_services_info.html) |
-| Radar/cloud imagery — nowCOAST | Proposed bounded spike | None documented | Exact OGC layer/product, service status, attribution, caching, time semantics, geography, and bandwidth approval | [NOAA nowCOAST](https://nowcoast.noaa.gov/) |
-| Lightning — GOES GLM | Proposed bounded spike | Source/service-specific; no key assumed until the delivery endpoint is selected | Delivery endpoint, product level, coverage, latency, attribution, cache, and render-rate approval | [NOAA GLM product information](https://www.nesdis.noaa.gov/our-satellites/currently-flying/goes-east-west/geostationary-lightning-mapper-glm) |
-| Volcano status/history | Candidate, not scheduled | None documented for USGS HANS/Smithsonian WFS | Current-versus-historical semantics, US/global coverage, Smithsonian citation/terms, and alert disclaimer | [USGS HANS API](https://volcanoes.usgs.gov/hans-public/api/volcano/default) and [Smithsonian GVP WFS](https://volcano.si.edu/database/webservices.cfm) |
-| Current AQI — AirNow | Candidate future scope; distinct from AQS | AirNow account/API key | Explicit AirNow Data Use Guidelines acceptance; preliminary/current data must not be represented as validated AQS history | [Request an AirNow account and review its guidelines](https://docs.airnowapi.org/account/request/) |
-| Space weather — NOAA SWPC | Candidate, not scheduled | None documented for public products | Select exact products/endpoints, operational versus experimental status, attribution, refresh, and intended communications/infrastructure use | [NOAA SWPC products](https://www.swpc.noaa.gov/products-and-data) |
-| NASA Blue/Black Marble imagery | Candidate basemap/analysis layer | Product/access-path-specific; Earthdata Login may be required for some downloads | Select exact GIBS/Earthdata product, imagery terms, attribution, cache, resolution, and derived-analysis limits | [NASA Worldview/GIBS discovery](https://worldview.earthdata.nasa.gov/) |
+| Solar terminator/day-night | ADR 0045 rank 1; registered planned/unavailable | None; deterministic SimClock calculation | No provider approval; offline conformance, one-Hz update cap, frame budget, and kill switch remain required | [Solar source record](./docs/data-sources/solar-context.md) |
+| NWS watches/warnings | ADR 0045 rank 2; registered planned/unavailable | No API key; contact-bearing server User-Agent | Data/licensing-owner terms record, CAP validity, 30-second cache/rate policy, payload bounds, and kill switch | [NWS alerts source record](./docs/data-sources/nws-alerts.md) |
+| Aviation weather — METAR/TAF/SIGMET | ADR 0045 rank 3; registered planned/unavailable | No API key; descriptive server User-Agent | Data/licensing-owner terms record, GeoJSON-only fixed products, validity, 400-record bounds, cache/rate policy, and kill switch | [AWC source record](./docs/data-sources/aviation-weather.md) |
+| Tropical cyclones | ADR 0045 rank 4; registered planned/unavailable | No API key; identifiable User-Agent and fixed basin allowlist | Data/licensing-owner terms record, advisory/archive separation, validity, asset bounds, and kill switch | [NHC/CPHC source record](./docs/data-sources/tropical-cyclones.md) |
+| Tides, water levels, and currents | ADR 0045 rank 5; registered planned/unavailable | Fixed non-secret application identifier | Data/licensing-owner terms record, station/datum/time-zone and observation/prediction separation, bounds, and kill switch | [CO-OPS source record](./docs/data-sources/coastal-conditions.md) |
+| Radar/cloud imagery — nowCOAST | ADR 0045 rank 6; registered planned/unavailable bounded spike | No API key; identifiable User-Agent and fixed ImageServer root | Data/licensing-owner terms record, one bounded AOI/time slice, measured delivery/render cost, and kill switch | [NWS MRMS radar source record](./docs/data-sources/nowcoast-radar.md) |
+| Lightning — GOES GLM | ADR 0045 rank 7; registered planned/unavailable bounded spike | No key; fixed GOES-18/19 public bucket roots | Data/licensing-owner terms record, 30-granule/60-MiB spike bounds, measured decode/render cost, and kill switch | [GOES GLM source record](./docs/data-sources/goes-glm.md) |
+| Volcano status/history | Deferred by ADR 0045; outside executable registry | Source-specific | Exact USGS-current versus Smithsonian-global/history split and commercial permission remain unresolved | [USGS HANS API](https://volcanoes.usgs.gov/hans-public/api/volcano/default) and [Smithsonian GVP WFS](https://volcano.si.edu/database/webservices.cfm) |
+| Current AQI — AirNow | Deferred by ADR 0045; distinct from AQS and outside executable registry | AirNow account/API key | Account/data-use acceptance and preliminary-current versus validated-history semantics remain unresolved | [Request an AirNow account and review its guidelines](https://docs.airnowapi.org/account/request/) |
+| Space weather — NOAA SWPC | Deferred by ADR 0045; outside executable registry | Product-specific | Exact operational rather than experimental product/endpoints, time semantics, and intended-use warning remain unresolved | [NOAA SWPC products](https://www.swpc.noaa.gov/products-and-data) |
+| NASA Blue/Black Marble imagery | Deferred by ADR 0045; outside executable registry | Product/access-path-specific | Exact GIBS/Earthdata layer, attribution, cache, resolution, rights, and performance boundary remain unresolved | [NASA Worldview/GIBS discovery](https://worldview.earthdata.nasa.gov/) |
 
 ---
 
@@ -1086,7 +1087,7 @@ approaches fail, record LOGIC_BLOCKER with diff evidence and bounded alternative
 
 ### Phase 5.3 — Operational-awareness layers and access discovery
 
-- [ ] **5.3.1 Accept a source-and-access ADR.** Re-verify every §4.6 primary source,
+- [x] **5.3.1 Accept a source-and-access ADR.** Re-verify every §4.6 primary source,
   rank the operational layers, define exact products/endpoints/coverage/terms/attribution/
   credential and refresh/cache/rate/budget policies, and add accepted entries to the typed
   registry as `planned` without increasing active counts.
@@ -1111,7 +1112,7 @@ approaches fail, record LOGIC_BLOCKER with diff evidence and bounded alternative
   layers preserve source validity and SimClock semantics; relevant performance, bundle,
   Playwright, license, ADG, and source-network-denial gates pass.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 5.3.1
+#### Authorized 4-Pillar brief for completed task 5.3.1
 
 ```text
 [SCOPE_CONTRACT] Re-verify every PLAN.md §4.6 candidate against current first-party source,
@@ -1153,6 +1154,57 @@ or add hardcoded counts/status outside the registry. If an exact product, endpoi
 attribution, approval owner, or safe operational policy cannot be evidenced, defer that candidate
 and record DOC_BLOCKER with the missing primary evidence. After three bounded source/product
 selection approaches fail, record LOGIC_BLOCKER with the evaluated options and tradeoffs.
+```
+
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 5.3.2
+
+```text
+[SCOPE_CONTRACT] Implement only the first three ADR 0045-ranked entries: deterministic solar
+context from injected SimClock; NWS active CAP alerts; and AWC METAR, TAF, and SIGMET products.
+Add or extend versioned Zod contracts, pure core solar math, lawful time-frozen fixtures,
+provider adapters, fixed authenticated server routes/caches/rate and budget controls, registry
+state/freshness/provenance, stores, Cesium-kit controllers, existing Svelte HUD/layer wiring,
+AOI inspection, source documentation, and focused unit/property/server/Cesium/Playwright tests.
+Regenerate registry documentation after each accepted entry becomes implemented. In scope:
+packages/contracts, packages/core, packages/providers, packages/security only if an existing
+pinned-fetch boundary needs a narrowly tested extension, apps/server, packages/cesium-kit,
+apps/web, fixtures, docs/data-sources, generated registry docs, and relevant tests. Out of scope:
+NHC/CPHC, CO-OPS, nowCOAST, GOES GLM, volcano, AirNow, SWPC, NASA imagery, arbitrary URLs or
+products, credential/terms administration, production terms approval, Layer Access settings,
+economic features, new transports, person tracking, and tasks 5.3.3–5.3.5.
+
+[PERFORMANCE_THRESHOLD] Seed/test/CI open zero provider sockets. Solar results match independent
+published reference vectors across equinoxes, solstices, date rollover, polar day/night, and all
+three twilight bands; domain code never calls Date.now and render state updates at no more than
+1 Hz through the Cesium rAF queue. NWS retains CAP sent/effective/onset/expires/ends/update
+semantics, caps 500 records and 2 MiB, refreshes no faster than 30 seconds, and becomes unavailable
+after the five-minute stale limit. Each AWC product is GeoJSON-only, caps 400 records and 4 MiB,
+preserves observation/issue/validity independently, refreshes no faster than 60 seconds, and never
+displays expired data. Representative maximum contract/provider replay parses under 50 ms p95;
+combined maximum layer ingestion stays below 16.6 ms p95 in the deterministic Cesium harness.
+Existing bundle budgets hold; condition-wait Playwright smoke and visually inspected screenshots
+prove solar, alert, aviation, empty, stale, unavailable, and recovery states. Root lint; full
+typecheck/unit/performance/build; affected gates; ADG/tests; architecture drift; generated-doc
+parity; bundle; network-denial; git diff; and synchronized-plan checks pass.
+
+[ARCHITECTURE_MODE] PLAN.md §2 rules 1–7, 9, and 11–15; §3 provider→store→UI/Cesium data flow;
+§4 provenance, freshness, registry, geography, and Layer Access read boundaries; §8.1 and §8.3;
+ADR 0015, ADR 0020, ADR 0023–0025, ADR 0035, ADR 0039–0040, and ADR 0045. TypeScript remains
+the default; core solar math is pure and SimClock-driven; all external I/O is server-side through
+pinned-fetch with fixed hosts/products, Zod validation, shared single-flight caching, governance,
+audit where mutation occurs, rate/budget limits, kill switches, and required provenance. Stores
+own UI state and cesium-kit alone owns imperative Cesium objects. Provider/advisory text is
+untrusted data, never instructions. No architectural or source-policy deviation without an ADR.
+
+[FAILURE_MODES] Do not call live sources while building fixtures/tests, copy restricted or
+unreviewed payloads, use wall-clock time in domain/provider logic, accept arbitrary endpoint/AOI
+input, omit CAP or forecast validity, treat retrieval time as observation time, roll expired data
+forward, call AWC from the browser, exceed ADR 0045 bounds, render planned entries as active before
+their complete path is healthy, bypass pinned-fetch/cache/rate/budget/STASIS, add per-frame rune
+writes, or interpolate provider text into LLM instructions. Production live activation stays
+fail-closed until the separate terms record exists. If first-party contracts have materially
+changed, stop with DOC_BLOCKER and amend ADR 0045 before implementation. After three genuine
+bounded implementation approaches fail, record LOGIC_BLOCKER with evidence and alternatives.
 ```
 
 ### Phase 6 — Standards-compliant MCP HTTP
@@ -2200,5 +2252,77 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   brief is in §10; task 5.3.1 has not been authorized or started.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.3.1. Authorize the embedded
   4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 5.3.1 checkpoint — 2026-09-05
+
+- The developer authorized the exact embedded task 5.3.1 4-Pillar brief. Work remained an
+  offline research, documentation, and typed registry projection: zero live network sockets,
+  credentials, terms acceptances, or accounts were created or contacted.
+- Accepted ADR 0045 (`docs/adr/0045-operational-awareness-source-and-access-policy.md`), ranking
+  7 operational-awareness sources (Solar terminator, NWS CAP alerts, AWC METAR/TAF/SIGMET,
+  NHC/CPHC tropical cyclones, CO-OPS coastal conditions, and bounded research spikes for nowCOAST
+  radar and GOES GLM lightning) and explicitly deferring volcano, AirNow, SWPC, and NASA imagery.
+- Created dedicated source documentation records in `docs/data-sources/` (`solar-context.md`,
+  `nws-alerts.md`, `aviation-weather.md`, `tropical-cyclones.md`, `coastal-conditions.md`,
+  `nowcoast-radar.md`, `goes-glm.md`) and updated `docs/data-sources/README.md`.
+- Added accepted entries to the executable registry via `operationalRegistryDefinitions.ts` and
+  `operationalRegistryDefinitionsImagery.ts` as `planned` and `unavailable` with complete typed
+  provenance, freshness, licensing, and attribution metadata.
+- Projected deterministic documentation into `DATA_SOURCES.md` and `docs/generated/provider-registry.md`.
+  Active counts remained unchanged at 12/12 providers, 12/12 feeds, and 11/12 layers; registered
+  counts increased to 19 providers, 27 feeds, and 27 layers.
+- Evidence passed: Biome lint, ADG (62 docs, 470 paths), documentation tests (14/14), architecture
+  check, full Turbo typecheck, unit test suite (16/16 packages), provider registry tests (42/42),
+  and `pnpm docs:providers:check`.
+- Branch: `codex/task-5.3.1`. Changes committed and pushed to origin for PR creation. GitHub CLI
+  was unauthenticated, so PR title and description are provided for PR creation via the repository
+  web interface.
+- Next task: **5.3.2 Implement solar context, NWS alerts, and aviation weather**. Its exact
+  ready-to-authorize 4-Pillar brief is in §10; task 5.3.2 has not been authorized or started.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.3.2. Authorize the embedded
+  4-Pillar brief exactly; do not advance into later tasks.`
+
++### Task 5.3.1 completion checkpoint — 2026-09-05
+
+- The developer authorized the exact embedded task 5.3.1 4-Pillar brief. Work remained
+  documentation and executable registry planning only: no provider data endpoint was called,
+  no account or credential was created, no terms were accepted, and no server/store/Cesium/web,
+  production, identity/tenancy, or economic behavior was changed.
+- ADR 0045 records the 2026-09-05 first-party re-verification of all 23 §4.6 entries.
+  Deterministic solar context, NWS active alerts, AWC METAR/TAF/SIGMET, NHC/CPHC GIS
+  advisories, NOAA CO-OPS coastal conditions, NWS time-enabled MRMS radar, and GOES-R GLM
+  L2 LCFA are ranked and accepted as planned entries. Volcano, AirNow, SWPC, and NASA
+  Blue/Black Marble remain deferred outside executable registry truth with the missing
+  product/permission decisions recorded.
+- Complete typed source-access metadata fixes each accepted product, endpoint/format, coverage,
+  time semantics, credential validation, approval owner, terms/attribution links, permitted
+  environments after gates, refresh/cache/stale/rate/budget policy, payload/record/concurrency
+  limits, kill switch, and fallback. Seven source records mirror those boundaries. The two
+  generated registry documents are deterministic projections and their authored sections remain
+  untouched.
+- Registered truth is now 19 providers, 22 feeds, and 19 layers. Active seed truth remains
+  exactly 12 providers, 12 feeds, and 11 layers; all seven providers and ten feeds introduced
+  by this task resolve to planned/unavailable in seed and representative live projections.
+  Focused tests prove those counts, complete bounds, unique kill switches, documentation paths,
+  zero registry fetches, and zero wall-clock reads.
+- Evidence passed: root Biome checked 244 files; forced affected lint/typecheck/test/build
+  completed 40/40 tasks; 400 unit tests passed, including provider 42/42 and the registry ripple
+  in CLI/operator-tool consumers; documentation/marker tests passed 14/14; generated-document
+  check mode was clean; ADG checked 62 documents, 456 paths, and 18 module-qualified symbols;
+  architecture drift reported zero oversized files; and staged plus working-tree diff checks
+  passed. The first sandboxed affected run encountered only local worker-process spawn EPERM;
+  the approved rerun outside that restriction completed all gates.
+- Final local status reported Phase 5.3, STASIS_INACTIVE, the required non-authoritative
+  offline snapshot caveat, seed mode, 12/19 active providers, 12/22 active feeds, 11/19 active
+  layers, 12 healthy feeds, and 10 unavailable planned feeds. No governance state was resumed,
+  deleted, or rewritten.
+- Branch: codex/task-5.3.1-source-access-adr; implementation commit bf6f092.
+  GitHub CLI remained unauthenticated, so open PR inspection and PR creation were unavailable.
+- Next task: **5.3.2 Add deterministic solar context, NWS alerts, and AWC aviation weather.**
+  Its exact ready-to-authorize 4-Pillar brief is in §10; task 5.3.2 has not been authorized or
+  started.
+- Recommended new-chat instruction: Resume PLAN.md at NEXT_TASK 5.3.2. Authorize the embedded
+  4-Pillar brief exactly; do not advance into later tasks.
+
 
 No later task is authorized merely because it appears in this plan.
