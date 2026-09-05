@@ -2100,8 +2100,8 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   architecture drift; generated registry parity; and `git diff --check`. The app entry is
   91.50 KiB gzip and the complete bundle 1,230.81 KiB gzip, both within accepted budgets.
 - Playwright passed 2/2. Visual inspection confirmed the populated four-row orbital-estimate
-  table and HUD/filter treatment in `e2e/test-results/globe-task-5.2.3-satellites.png`, plus
-  the disabled terms state in `e2e/test-results/satellite-terms-lock.png`; automation also
+  table and HUD/filter treatment in the captured globe screenshot (`globe-task-5.2.3-satellites.png`),
+  plus the disabled terms state in `satellite-terms-lock.png`; automation also
   verified the details card's prohibited-use warning and recovery to an enabled-but-unchecked
   control after the server-side gate opens.
 - Final local status reported `STASIS_INACTIVE` with the required non-authoritative offline
