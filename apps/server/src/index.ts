@@ -1,6 +1,4 @@
 import crypto from 'node:crypto';
-import type { IncomingMessage } from 'node:http';
-import type { Duplex } from 'node:stream';
 import {
   type Actor,
   type CablePackManifest,
@@ -10,6 +8,7 @@ import {
   SystemHealthResponseSchema,
 } from '@gev/contracts';
 import { GovernedToolExecutor, type SimClock, SystemClock } from '@gev/core';
+import { SatellitePropagator } from '@gev/core/satellite-propagation';
 import { type GovernanceRuntimeContext, createGovernanceRuntimeContext } from '@gev/governance';
 import {
   AisAdapter,
@@ -22,19 +21,28 @@ import {
   LaunchAdapter,
   OpenSkyAdapter,
   RadioAdapter,
+  SatelliteAdapter,
+  type SatelliteFetcher,
+  type SatelliteLiveGroup,
   UsgsQuakeAdapter,
   WeatherAdapter,
   activateProviderDownloadPack,
   createConfiguredProviderRegistry,
   withDisabledProviders,
+  withProviderHealth,
+  withUnavailableProviders,
 } from '@gev/providers';
 import { serve } from '@hono/node-server';
 import { getConnInfo } from '@hono/node-server/conninfo';
 import { type Context, Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { WebSocketServer } from 'ws';
 import { CostGovernor, DEFAULT_PROVIDER_TIERS } from './middleware/costGovernor.js';
-import { InMemoryRateLimiter, type OpsAuthOptions, createOpsAuth } from './middleware/opsAuth.js';
+import {
+  InMemoryRateLimiter,
+  type OpsAuthOptions,
+  createOpsAuth,
+  createRateLimitMiddleware,
+} from './middleware/opsAuth.js';
 import { PRODUCT_VERSION } from './productVersion.js';
 import { createAuditIntegrityRouter } from './routes/auditIntegrity.js';
 import { createAuditStreamRouter } from './routes/auditStream.js';
@@ -42,11 +50,7 @@ import { createBudgetReconciliationRouter } from './routes/budgetReconciliation.
 import { createCablePackActivationRouter } from './routes/cablePackActivation.js';
 import { createCablesRouter } from './routes/cables.js';
 import { createCctvRouter } from './routes/cctv.js';
-import {
-  CollabRoomManager,
-  createCollabRouter,
-  isAllowedWebSocketOrigin,
-} from './routes/collab.js';
+import { CollabRoomManager, createCollabRouter } from './routes/collab.js';
 import { createFirmsRouter } from './routes/firms.js';
 import { createFlightsRouter } from './routes/flights.js';
 import { createGbfsRouter } from './routes/gbfs.js';
@@ -55,11 +59,17 @@ import { createLaunchRouter } from './routes/launches.js';
 import { createOverpassRouter } from './routes/overpass.js';
 import { createQuakesRouter } from './routes/quakes.js';
 import { createRadioRouter } from './routes/radio.js';
+import { createSatellitesRouter } from './routes/satellites.js';
 import { createSeedReloadRouter } from './routes/seedReload.js';
 import { createShipsRouter } from './routes/ships.js';
 import { createVoiceRouter } from './routes/voice.js';
 import { createWeatherRouter } from './routes/weather.js';
 import { ServerTelemetryManager } from './telemetry/index.js';
+import { attachWebSocketCollabServer } from './websocketCollab.js';
+
+export { attachWebSocketCollabServer } from './websocketCollab.js';
+
+export const SATELLITE_REQUESTS_PER_MINUTE = 60;
 
 export interface CreateAppOptions {
   opsAuth?: OpsAuthOptions;
@@ -72,6 +82,11 @@ export interface CreateAppOptions {
   cablesEnabled?: boolean;
   cablePackManifests?: readonly CablePackManifest[];
   cablePackFetcher?: CablePackFetcher;
+  satellitesEnabled?: boolean;
+  satelliteLiveAccessEnabled?: boolean;
+  celestrakTermsApproved?: boolean;
+  satelliteGroups?: readonly SatelliteLiveGroup[];
+  satelliteFetcher?: SatelliteFetcher;
 }
 
 export function createApp(options: CreateAppOptions = {}) {
@@ -101,12 +116,25 @@ export function createApp(options: CreateAppOptions = {}) {
       }
     });
   const cablesEnabled = options.cablesEnabled ?? process.env.GEV_CABLES_ENABLED !== '0';
+  const satellitesEnabled = options.satellitesEnabled ?? process.env.GEV_SATELLITES_ENABLED !== '0';
+  const satelliteLiveAccessEnabled =
+    options.satelliteLiveAccessEnabled ?? process.env.GEV_SATELLITES_LIVE_ACCESS === '1';
+  const celestrakTermsApproved =
+    options.celestrakTermsApproved ?? process.env.GEV_CELESTRAK_TERMS_APPROVED === '1';
   const configuredProviderRegistry = ProviderRegistrySchema.parse(
     options.providerRegistry ?? createConfiguredProviderRegistry()
   );
   let providerRegistry = cablesEnabled
     ? configuredProviderRegistry
     : withDisabledProviders(configuredProviderRegistry, ['submarine-cables']);
+  if (!satellitesEnabled) {
+    providerRegistry = withDisabledProviders(providerRegistry, ['celestrak']);
+  } else if (
+    providerRegistry.requested_mode === 'live' &&
+    (!satelliteLiveAccessEnabled || !celestrakTermsApproved)
+  ) {
+    providerRegistry = withUnavailableProviders(providerRegistry, ['celestrak']);
+  }
 
   // Adapters
   const openSkyAdapter = new OpenSkyAdapter({ clock });
@@ -125,6 +153,20 @@ export function createApp(options: CreateAppOptions = {}) {
     manifests: options.cablePackManifests,
     fetcher: options.cablePackFetcher,
   });
+  const satelliteAdapter = new SatelliteAdapter({
+    clock,
+    seedMode: providerRegistry.requested_mode !== 'live',
+    liveMode: providerRegistry.requested_mode === 'live',
+    enabled: satellitesEnabled,
+    liveAccessEnabled: satelliteLiveAccessEnabled,
+    termsApproved: celestrakTermsApproved,
+    groups: options.satelliteGroups,
+    fetcher: options.satelliteFetcher,
+    onHealthChange: (health) => {
+      providerRegistry = withProviderHealth(providerRegistry, 'celestrak', health);
+    },
+  });
+  const satellitePropagator = new SatellitePropagator(clock);
 
   // One shared governance runtime is used by every server route and middleware.
   const { auditSink, budgetGovernor, budgetLedger, approvalGate } = governanceContext;
@@ -262,6 +304,18 @@ export function createApp(options: CreateAppOptions = {}) {
 
   app.use('/api/cables/*', costGovernor.middleware('cables'));
   app.route('/api/cables', createCablesRouter(cableAdapter));
+
+  // Source elements are cached inside the adapter; positions are re-propagated at SimClock time.
+  // Request limiting therefore stays separate from the response-caching cost governor.
+  app.use(
+    '/api/satellites/*',
+    createRateLimitMiddleware(rateLimiter, {
+      bucket: 'satellites-read',
+      limit: SATELLITE_REQUESTS_PER_MINUTE,
+      resolveClientId,
+    })
+  );
+  app.route('/api/satellites', createSatellitesRouter(satelliteAdapter, satellitePropagator));
 
   // Voice Ephemeral Token Provisioning
   app.route(
@@ -418,70 +472,11 @@ export function createApp(options: CreateAppOptions = {}) {
       radio: radioAdapter,
       cctv: cctvAdapter,
       cables: cableAdapter,
+      satellites: satelliteAdapter,
     },
   };
 }
 
-export function attachWebSocketCollabServer(
-  server: ReturnType<typeof serve>,
-  collabRoomManager: CollabRoomManager,
-  rateLimiter: InMemoryRateLimiter,
-  allowedOrigin = process.env.GEV_CORS_ORIGIN || 'http://localhost:5173'
-) {
-  const wss = new WebSocketServer({ noServer: true });
-
-  server.on('upgrade', async (req: IncomingMessage, socket: Duplex, head: Buffer) => {
-    const origin = req.headers.origin;
-    if (!isAllowedWebSocketOrigin(origin, allowedOrigin)) {
-      socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
-      socket.destroy();
-      return;
-    }
-
-    const url = new URL(req.url || '/', 'http://127.0.0.1');
-    const pathMatch = /^\/api\/collab\/room\/([^/]+)$/.exec(url.pathname);
-    if (pathMatch) {
-      const clientId = req.socket.remoteAddress ?? 'unknown-client';
-      const rateDecision = rateLimiter.consume('collab-ws-upgrade', clientId, 20);
-      if (!rateDecision.allowed) {
-        socket.write(
-          `HTTP/1.1 429 Too Many Requests\r\nRetry-After: ${rateDecision.retryAfterSeconds}\r\n\r\n`
-        );
-        socket.destroy();
-        return;
-      }
-      const token = url.searchParams.get('token');
-      if (!token) {
-        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-        socket.destroy();
-        return;
-      }
-
-      let requestedRoomId: string;
-      try {
-        requestedRoomId = decodeURIComponent(pathMatch[1] ?? '');
-      } catch {
-        socket.write('HTTP/1.1 400 Bad Request\r\n\r\n');
-        socket.destroy();
-        return;
-      }
-      const verified = await collabRoomManager.verifyRoomTokenForRoom(token, requestedRoomId);
-      if (!verified) {
-        socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
-        socket.destroy();
-        return;
-      }
-
-      wss.handleUpgrade(req, socket, head, (ws) => {
-        collabRoomManager.handleWebSocketPeer(ws, verified);
-      });
-    } else {
-      socket.destroy();
-    }
-  });
-
-  return wss;
-}
 if (process.env.NODE_ENV !== 'test') {
   const { app, collabRoomManager, rateLimiter } = createApp();
   const port = Number(process.env.PORT) || 3000;

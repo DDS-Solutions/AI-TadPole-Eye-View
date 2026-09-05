@@ -10,6 +10,7 @@ export { RadioLayerController, type RadioLayerOptions } from './radioLayer.js';
 export { LaunchLayerController, type LaunchLayerOptions } from './launchLayer.js';
 export { WeatherLayerController, type WeatherLayerOptions } from './weatherLayer.js';
 export { CableLayerController, type CableLayerOptions } from './cableLayer.js';
+export { SatelliteLayerController, type SatelliteLayerOptions } from './satelliteLayer.js';
 export { CollabLayerController, type CollabLayerOptions } from './collabLayer.js';
 export {
   attachDebugBus,

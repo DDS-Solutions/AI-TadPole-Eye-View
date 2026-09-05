@@ -40,7 +40,11 @@ provenance, and HUD badges; those consumers must not maintain duplicate provider
 ## 3. Security & Rate Governance
 
 - All outbound telemetry requests pass through `packages/security/pinned-fetch` with TLS IP pinning, SSRF mitigation, and mandatory timeouts.
-- Server proxies currently enforce bounded in-process TTL caching and Cost Governor tiers. Redis is not installed; any shared production cache requires its own architecture and deployment decision.
+- Server proxies currently enforce bounded in-process TTL caching and Cost Governor tiers.
+  The satellite route instead uses a per-client request limiter because caching its derived
+  HTTP body would freeze SimClock-dependent positions; its source catalog remains protected by
+  the provider's shared two-hour cache. Redis is not installed; any shared production cache
+  requires its own architecture and deployment decision.
 - A cached response retains its original `source_mode`, changes response `mode` to `cached`,
   records a bounded cache identity and origin retrieval time, and recomputes freshness with
   the injected SimClock.

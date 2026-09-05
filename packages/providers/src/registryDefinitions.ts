@@ -28,7 +28,6 @@ export function resolveProviderDefinitionSource(
     : (definition.mode_sources?.[mode] ?? definition.source);
 }
 
-const unavailableFreshness = (reason: string) => ({ status: 'unavailable' as const, reason });
 const definedFreshness = (freshForSeconds: number) => ({
   status: 'defined' as const,
   fresh_for_seconds: freshForSeconds,
@@ -97,27 +96,38 @@ export const PROVIDER_DEFINITIONS: readonly ProviderDefinition[] = [
     id: 'celestrak',
     name: 'CelesTrak',
     source: {
-      name: 'CelesTrak',
-      url: 'https://celestrak.org/',
-      license_id: 'pending-task-5-2-3',
-      license: 'Source terms pending task 5.2.3 and OQ-7',
-      attribution: 'CelesTrak (planned source)',
+      name: 'CelesTrak standard GP (JSON/OMM)',
+      url: 'https://celestrak.org/NORAD/documentation/gp-data-formats.php',
+      license_id: 'celestrak-usage-guidelines-commercial-confirmation-required',
+      license:
+        'CelesTrak usage guidelines; production requires recorded commercial-use confirmation or owner acceptance',
+      attribution:
+        'Orbital elements: CelesTrak; Basic SSA data: U.S. Space Force / 18 SDS via Space-Track.org; positions are GEV-derived estimates',
     },
-    implementation: 'planned',
-    supported_modes: [],
+    mode_sources: {
+      seed: {
+        name: 'GEV synthetic satellite fixture',
+        url: 'https://github.com/DDS-Solutions/AI-TadPole-Eye-View',
+        license_id: 'gev-synthetic-fixture-mit',
+        license: 'MIT synthetic fixture generated for GEV',
+        attribution: 'GEV synthetic orbital elements; no real catalog records',
+      },
+    },
+    implementation: 'implemented',
+    supported_modes: ['seed', 'live'],
     feeds: [
       {
         id: 'satellites',
         name: 'Orbital elements',
-        implementation: 'planned',
-        freshness: unavailableFreshness('Freshness policy is deferred to task 5.2.3'),
+        implementation: 'implemented',
+        freshness: definedFreshness(7_200),
       },
     ],
     layers: [
       {
         id: 'satellites',
         name: 'Satellite tracks',
-        implementation: 'planned',
+        implementation: 'implemented',
         documentation_path: 'docs/data-sources/satellites.md',
       },
     ],

@@ -126,7 +126,7 @@ describe('GEV v2 Operator MCP Server (@gev/ops-mcp)', () => {
     expect(parsedHealth.feeds[0].status).toBe('healthy');
     expect(
       parsedHealth.feeds.find((feed: { provider: string }) => feed.provider === 'celestrak')
-    ).toMatchObject({ implementation: 'planned', status: 'unavailable' });
+    ).toMatchObject({ implementation: 'implemented', mode: 'seed', status: 'healthy' });
 
     // get_budget
     const budgetRes = await server.handleRequest({

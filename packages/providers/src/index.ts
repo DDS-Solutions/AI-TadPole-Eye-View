@@ -8,5 +8,6 @@ export * from './cctv.js';
 export * from './launches.js';
 export * from './weather.js';
 export * from './cables.js';
+export * from './satellites.js';
 export * from './registry.js';
 export * from './provenance.js';

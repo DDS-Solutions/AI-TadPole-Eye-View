@@ -12,6 +12,7 @@ import { LaunchLayerController } from '../src/launchLayer.js';
 import { MarineLayerController } from '../src/marineLayer.js';
 import { QuakeLayerController } from '../src/quakeLayer.js';
 import { RadioLayerController } from '../src/radioLayer.js';
+import { SatelliteLayerController } from '../src/satelliteLayer.js';
 import { WeatherLayerController } from '../src/weatherLayer.js';
 
 const INGESTION_P95_BUDGET_MS = 16.6;
@@ -426,5 +427,44 @@ describe('Cesium Frame Budget Monitor & Ingestion Benchmark (PLAN.md §10 Phase 
     expect(cables.getRouteCount()).toBe(1_000);
     expect(cables.getEntityCount()).toBe(1_002);
     cables.destroy();
+  });
+
+  it(`BENCHMARK: updates 1,000 derived satellites < ${INGESTION_P95_BUDGET_MS}ms p95`, () => {
+    const satellites = new SatelliteLayerController({ viewer: createMockViewer() });
+    const batch = {
+      input_count: 1_000,
+      omitted_count: 0,
+      states: Array.from({ length: 1_000 }, (_, index) => ({
+        catalog_id: String(index + 1),
+        object_name: `SATELLITE ${index + 1}`,
+        object_id: null,
+        source_group: 'geo' as const,
+        element_epoch: '2026-09-04T12:00:00.000Z',
+        propagated_at: '2026-09-04T12:30:00.000Z',
+        propagation_method: 'sgp4' as const,
+        is_estimate: true as const,
+        longitude_deg: (index % 360) - 180,
+        latitude_deg: (index % 160) - 80,
+        altitude_m: 420_000 + index,
+        speed_mps: 7_650,
+      })),
+    } as Parameters<SatelliteLayerController['enqueueBatch']>[0];
+
+    for (let warmup = 0; warmup < 5; warmup++) satellites.enqueueBatch(batch);
+    const latencies: number[] = [];
+    for (let iteration = 0; iteration < 50; iteration++) {
+      const startedAt = performance.now();
+      satellites.enqueueBatch(batch);
+      latencies.push(performance.now() - startedAt);
+    }
+    latencies.sort((left, right) => left - right);
+    const p95 = latencies[Math.floor(latencies.length * 0.95)] ?? Number.POSITIVE_INFINITY;
+
+    console.log(
+      `[Benchmark Satellite Ingestion] Objects=1000 | Budget=${INGESTION_P95_BUDGET_MS.toFixed(1)}ms p95 | p95: ${p95.toFixed(2)}ms`
+    );
+    expect(p95).toBeLessThan(INGESTION_P95_BUDGET_MS);
+    expect(satellites.getEntityCount()).toBe(1_000);
+    satellites.destroy();
   });
 });

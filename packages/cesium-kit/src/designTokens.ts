@@ -15,6 +15,7 @@ export const CESIUM_DESIGN_TOKENS = {
     launch: '#facc15',
     weather: '#60a5fa',
     cables: '#f472b6',
+    satellites: '#c084fc',
     collaborationFallback: '#00f0ff',
   },
   outlines: {
@@ -27,6 +28,7 @@ export const CESIUM_DESIGN_TOKENS = {
     radio: '#083344',
     weather: '#1e3a8a',
     cables: '#500724',
+    satellites: '#3b0764',
   },
   effects: {
     launchArc: 'rgba(250, 204, 21, 0.75)',

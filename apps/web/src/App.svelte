@@ -3,6 +3,7 @@
   import {
     GlobeController,
     CableLayerController,
+    SatelliteLayerController,
     FlightLayerController,
     MarineLayerController,
     QuakeLayerController,
@@ -44,6 +45,7 @@
   let launchLayer: LaunchLayerController | null = null;
   let weatherLayer: WeatherLayerController | null = null;
   let cableLayer: CableLayerController | null = null;
+  let satelliteLayer: SatelliteLayerController | null = null;
   let collabLayer: CollabLayerController | null = null;
 
   let pollInterval: ReturnType<typeof setInterval> | null = null;
@@ -63,6 +65,7 @@
       launches: launchLayer,
       weather: weatherLayer,
       cables: cableLayer,
+      satellites: satelliteLayer,
     }, abortController.signal);
   }
 
@@ -93,7 +96,8 @@
         | 'radio'
         | 'launch'
         | 'weather'
-        | 'cable') || 'flight';
+        | 'cable'
+        | 'satellite') || 'flight';
 
     layerStore.selectEntity({
       kind,
@@ -196,6 +200,7 @@
     launchLayer?.setVisible(layerStore.visibility.launches);
     weatherLayer?.setVisible(layerStore.visibility.weather);
     cableLayer?.setVisible(layerStore.visibility.cables);
+    satelliteLayer?.setVisible(layerStore.visibility.satellites);
 
     quakeLayer?.setMinMagnitude(layerStore.filters.quakes.minMagnitude);
     firmsLayer?.setMinFrp(layerStore.filters.firms.minFrp);
@@ -253,6 +258,7 @@
       launchLayer = new LaunchLayerController({ viewer: globe.viewer });
       weatherLayer = new WeatherLayerController({ viewer: globe.viewer });
       cableLayer = new CableLayerController({ viewer: globe.viewer });
+      satelliteLayer = new SatelliteLayerController({ viewer: globe.viewer });
       collabLayer = new CollabLayerController({ viewer: globe.viewer });
 
       setupToolExecutors();
@@ -270,6 +276,7 @@
           launches: launchLayer,
           weather: weatherLayer,
           cables: cableLayer,
+          satellites: satelliteLayer,
         },
         {
           frameMonitor,
@@ -325,6 +332,7 @@
     launchLayer?.destroy();
     weatherLayer?.destroy();
     cableLayer?.destroy();
+    satelliteLayer?.destroy();
     collabLayer?.destroy();
     globe?.destroy();
   });
@@ -356,9 +364,9 @@
     width: 100vw;
     height: 100vh;
     overflow: hidden;
-    background-color: #030712;
+    background-color: var(--hud-surface-dark);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    color: #f8fafc;
+    color: var(--hud-text-primary);
   }
 
   .app-layout {
@@ -386,19 +394,19 @@
     position: absolute;
     bottom: 8px;
     left: 16px;
-    background: rgba(15, 23, 42, 0.8);
+    background: var(--hud-panel-bg-muted);
     backdrop-filter: blur(8px);
-    border: 1px solid rgba(148, 163, 184, 0.15);
+    border: 1px solid var(--hud-chip-border);
     border-radius: 4px;
     padding: 4px 8px;
     font-size: 0.68rem;
-    color: #94a3b8;
+    color: var(--hud-text-secondary);
     pointer-events: auto;
     z-index: 10;
   }
 
   .attribution-badge a {
-    color: #38bdf8;
+    color: var(--hud-accent);
     text-decoration: none;
   }
 

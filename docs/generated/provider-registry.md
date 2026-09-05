@@ -4,13 +4,13 @@
 
 Registry version 2; requested mode `seed`.
 
-Active/registered: 11/12 providers, 11/12 feeds, 10/12 layers.
+Active/registered: 12/12 providers, 12/12 feeds, 11/12 layers.
 
 | Provider | Feed | Layer | Source | License ID | License / terms | Attribution | Freshness | Provider state | Feed state | Layer state | Mode | Health | Documentation |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | `opensky` | `flights` | `flights` | [OpenSky Network](https://opensky-network.org/) | `opensky-terms-of-use` | OpenSky Network terms of use | The OpenSky Network | 5s | implemented | implemented | implemented | seed | healthy | [ADS-B aviation](../data-sources/flights.md) |
 | `aisstream` | `ships` | `marine` | [AISStream](https://aisstream.io/) | `aisstream-developer-api-terms` | AISStream developer API terms | AISStream | 15s | implemented | implemented | implemented | seed | healthy | [AIS maritime](../data-sources/ships.md) |
-| `celestrak` | `satellites` | `satellites` | [CelesTrak](https://celestrak.org/) | `pending-task-5-2-3` | Source terms pending task 5.2.3 and OQ-7 | CelesTrak (planned source) | unavailable: Freshness policy is deferred to task 5.2.3 | planned | planned | planned | unavailable | unavailable | [Satellite tracks](../data-sources/satellites.md) |
+| `celestrak` | `satellites` | `satellites` | [GEV synthetic satellite fixture](https://github.com/DDS-Solutions/AI-TadPole-Eye-View) | `gev-synthetic-fixture-mit` | MIT synthetic fixture generated for GEV | GEV synthetic orbital elements; no real catalog records | 7200s | implemented | implemented | implemented | seed | healthy | [Satellite tracks](../data-sources/satellites.md) |
 | `usgs` | `quakes` | `quakes` | [USGS Earthquake Hazards Program](https://earthquake.usgs.gov/) | `us-government-public-domain` | U.S. government public-domain data; source terms apply | U.S. Geological Survey | 60s | implemented | implemented | implemented | seed | healthy | [Earthquakes](../data-sources/quakes.md) |
 | `nasa-firms` | `firms` | `firms` | [NASA Fire Information for Resource Management System](https://firms.modaps.eosdis.nasa.gov/) | `nasa-earthdata-firms-terms` | NASA Earthdata and FIRMS source terms | NASA LANCE / FIRMS MODIS and VIIRS | 300s | implemented | implemented | implemented | seed | healthy | [Wildfires and thermal hotspots](../data-sources/fires.md) |
 | `dot-traffic` | `cctv` | `cctv` | [State and municipal transportation agencies](https://www.transportation.gov/) | `source-specific-public-feed-terms` | Source-specific public-feed terms | Source transportation agency | 10s | implemented | implemented | implemented | seed | healthy | [Public traffic cameras](../data-sources/cctv.md) |

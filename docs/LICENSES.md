@@ -17,7 +17,8 @@ This document outlines the software licenses, open data terms, and 3D asset attr
 |---|---|---|---|
 | OpenSky Flight Data | OpenSky Network | Open Data / Research | Non-commercial research / OpenSky ToS |
 | AIS Vessel Telemetry | AISStream | Developer API Terms | API token required for live feed |
-| Orbital TLEs | CelesTrak / Space-Track | Public Domain / Open | Free for tracking & educational use |
+| Synthetic orbital seed elements | DDS-Solutions procedural fixture | MIT | Bundled synthetic records only; no real catalogue identifiers or names |
+| Orbital GP/OMM elements | CelesTrak (basic SSA data originates with U.S. Space Force / 18 SDS via Space-Track.org) | CelesTrak usage guidelines; production confirmation required | Derived visualization only; production stays locked until written commercial-use confirmation or formal owner acceptance is recorded; no raw catalogue mirroring |
 | Earthquakes | USGS / EMSC | Public Domain / CC BY 4.0 | U.S. Geological Survey |
 | NASA FIRMS Hotspots | NASA EOSDIS | Public Domain | NASA open science data policy |
 | Traffic CCTV Feeds | State DOTs (Caltrans, NYCDOT, TfL) | Public Safety Open Data | Public traffic observation only |

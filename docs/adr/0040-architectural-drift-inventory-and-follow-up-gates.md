@@ -52,6 +52,12 @@ Task 5.1.2 resolved `DRIFT-LARGE-TOOL-CONTRACTS` by splitting the stable `tools.
 barrel into cohesive schema, registry/metadata, and transport-projection modules. Each
 resulting source file is below 500 lines, so the exemption was removed from the inventory.
 
+Task 5.2.3 resolved the remaining large-file findings that its satellite wiring touched.
+Entity chart helpers, satellite details, unified telemetry construction, telemetry channel
+filters, and WebSocket collaboration server composition now have cohesive modules. The four
+previously exempt UI files and the server application root are all below 500 lines, so the
+machine inventory now contains no large-file exemptions.
+
 ### Design colors
 
 Cesium controller colors now come from one `packages/cesium-kit` token module. Web
@@ -67,9 +73,15 @@ file, whichever comes first. `CollabBar.svelte` and `VoiceControlOrb.svelte` add
 require accepted collaboration and voice-state palettes in DESIGN.md. New literals,
 files, or count changes fail closed rather than falling under a broad ignore.
 
+Task 5.2.3 also resolved `DRIFT-COLOR-WEB-HUD` for the application shell, HUD header,
+entity card, and virtualized telemetry table when those files received satellite UI edits.
+Their existing rendered values are now semantic custom properties in `hudTokens.css`, along
+with the accepted Orbital Lavender channel. Collaboration, timeline-chart, and voice-state
+palettes remain independently bounded because task 5.2.3 did not visually edit those surfaces.
+
 ### Cesium dependency boundary
 
-Both direct declarations remain for this task. All 16 product/test imports use the
+Both direct declarations remain for this task. All 20 product/test imports use the
 public `cesium` surface and none import `@cesium/engine` directly. The lockfile resolves
 `cesium` to 1.144.0 and its engine to 26.2.0; `vite-plugin-cesium-engine` and Cesium's
 own package graph require the engine surface. Removing a declaration is authorized

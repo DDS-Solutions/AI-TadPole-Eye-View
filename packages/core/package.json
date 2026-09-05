@@ -8,6 +8,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./satellite-propagation": {
+      "types": "./dist/satellitePropagation.d.ts",
+      "import": "./dist/satellitePropagation.js"
     }
   },
   "scripts": {
@@ -18,6 +22,7 @@
   },
   "dependencies": {
     "@gev/contracts": "workspace:*",
+    "satellite.js": "7.1.0",
     "xstate": "^5.32.6",
     "yjs": "^13.6.32"
   },

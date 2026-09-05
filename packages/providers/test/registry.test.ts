@@ -16,9 +16,9 @@ describe('typed provider registry', () => {
     const counts = summarizeProviderRegistry(registry);
 
     expect(counts).toEqual({
-      providers: { total: 12, active: 11 },
-      feeds: { total: 12, active: 11 },
-      layers: { total: 12, active: 10 },
+      providers: { total: 12, active: 12 },
+      feeds: { total: 12, active: 12 },
+      layers: { total: 12, active: 11 },
     });
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
@@ -32,15 +32,16 @@ describe('typed provider registry', () => {
     expect(ais?.layers[0]?.id).toBe('marine');
   });
 
-  it('does not mark planned, incomplete, or unsupported-mode entries active', () => {
+  it('publishes synthetic satellite mode and keeps unsupported modes unavailable', () => {
     const seedRegistry = createProviderRegistry({ requestedMode: 'seed' });
     const satellite = seedRegistry.providers.find((provider) => provider.id === 'celestrak');
     const cables = seedRegistry.providers.find((provider) => provider.id === 'submarine-cables');
 
     expect(satellite).toMatchObject({
-      implementation: 'planned',
-      mode: 'unavailable',
-      health: 'unavailable',
+      implementation: 'implemented',
+      mode: 'seed',
+      health: 'healthy',
+      source: { license_id: 'gev-synthetic-fixture-mit' },
     });
     expect(cables).toMatchObject({
       implementation: 'implemented',
@@ -51,9 +52,9 @@ describe('typed provider registry', () => {
 
     const liveCounts = summarizeProviderRegistry(createProviderRegistry({ requestedMode: 'live' }));
     expect(liveCounts).toEqual({
-      providers: { total: 12, active: 6 },
-      feeds: { total: 12, active: 6 },
-      layers: { total: 12, active: 5 },
+      providers: { total: 12, active: 7 },
+      feeds: { total: 12, active: 7 },
+      layers: { total: 12, active: 6 },
     });
   });
 

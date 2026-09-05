@@ -14,7 +14,7 @@ This directory documents the provenance, licensing terms, update cadence, and ra
 |---|---|---|---|
 | Flights | OpenSky Network · adsb.lol | Open Data / CC BY 4.0 | [flights.md](./flights.md) |
 | Ships | AISStream | Developer API Terms | [ships.md](./ships.md) |
-| Satellites | Space-Track · CelesTrak | Public Orbital Data | [satellites.md](./satellites.md) |
+| Satellites | CelesTrak standard GP (JSON/OMM) | MIT synthetic seed / CelesTrak usage guidelines (terms approval required) | [satellites.md](./satellites.md) |
 | Earthquakes | USGS · EMSC | Public Domain / CC BY 4.0 | [quakes.md](./quakes.md) |
 | Wildfires | NASA FIRMS | Public Domain | [fires.md](./fires.md) |
 | CCTV | State DOT Feeds | Public Traffic Feeds | [cctv.md](./cctv.md) |
