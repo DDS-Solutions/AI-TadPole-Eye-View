@@ -2308,7 +2308,7 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
 - Evidence passed: root Biome checked 244 files; forced affected lint/typecheck/test/build
   completed 40/40 tasks; 400 unit tests passed, including provider 42/42 and the registry ripple
   in CLI/operator-tool consumers; documentation/marker tests passed 14/14; generated-document
-  check mode was clean; ADG checked 62 documents, 456 paths, and 18 module-qualified symbols;
+  check mode was clean; ADG checked 62 documents, 478 paths, and 18 module-qualified symbols;
   architecture drift reported zero oversized files; and staged plus working-tree diff checks
   passed. The first sandboxed affected run encountered only local worker-process spawn EPERM;
   the approved rerun outside that restriction completed all gates.
