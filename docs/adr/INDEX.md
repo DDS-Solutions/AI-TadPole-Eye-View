@@ -32,3 +32,4 @@ This directory records all significant architectural and structural decisions ma
 | [0042](./0042-signed-m2-approval-verification.md) | Signed M2 approval verification | Accepted (provisional integration profile) | 2026-08-28 |
 | [0043](./0043-m3-ledger-reservation-settlement-and-reconciliation.md) | M3 ledger reservation, settlement, refund, and reconciliation | Accepted | 2026-08-28 |
 | [0044](./0044-versioned-sqlite-audit-chain-redaction-and-retention.md) | Versioned SQLite audit chain, redaction, and retention boundaries | Accepted | 2026-08-29 |
+| [0045](./0045-operational-awareness-source-and-access-policy.md) | Operational-awareness source and access policy | Accepted | 2026-09-05 |

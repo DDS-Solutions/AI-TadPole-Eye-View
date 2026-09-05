@@ -120,7 +120,7 @@ describe('GEV v2 Operator MCP Server (@gev/ops-mcp)', () => {
     expect((healthRes?.result as { structuredContent: unknown }).structuredContent).toEqual(
       parsedHealth
     );
-    expect(parsedHealth.feeds).toHaveLength(12);
+    expect(parsedHealth.feeds).toHaveLength(22);
     expect(parsedHealth.feeds[0].feed).toBe('flights');
     expect(parsedHealth.feeds[0].provider).toBe('opensky');
     expect(parsedHealth.feeds[0].status).toBe('healthy');

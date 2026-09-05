@@ -5,6 +5,9 @@ import type {
   ProviderRuntimeMode,
   ProviderSource,
 } from '@gev/contracts';
+import { OPERATIONAL_AWARENESS_PROVIDER_DEFINITIONS } from './operationalRegistryDefinitions.js';
+import type { OperationalAccessDecision } from './operationalRegistryDefinitions.js';
+import { OPERATIONAL_IMAGERY_PROVIDER_DEFINITIONS } from './operationalRegistryDefinitionsImagery.js';
 
 type SupportedProviderMode = Exclude<ProviderRuntimeMode, 'unavailable'>;
 
@@ -14,6 +17,7 @@ export interface ProviderDefinition {
   source: ProviderSource;
   mode_sources?: Partial<Record<SupportedProviderMode, ProviderSource>>;
   implementation: ProviderImplementationState;
+  source_access?: OperationalAccessDecision;
   supported_modes: SupportedProviderMode[];
   feeds: ProviderRegistryFeed[];
   layers: ProviderRegistryLayer[];
@@ -402,4 +406,6 @@ export const PROVIDER_DEFINITIONS: readonly ProviderDefinition[] = [
       },
     ],
   },
+  ...OPERATIONAL_AWARENESS_PROVIDER_DEFINITIONS,
+  ...OPERATIONAL_IMAGERY_PROVIDER_DEFINITIONS,
 ];
