@@ -98,6 +98,12 @@
       <span id="weather-count" class="stat-value">{layerStore.counts.weather}</span>
     </div>
 
+    <div class="stat-badge satellite-channel" class:inactive={!layerStore.visibility.satellites}>
+      <span class="channel-dot satellite-dot"></span>
+      <span class="stat-label">Sat Estimates</span>
+      <span id="satellite-header-count" class="stat-value">{layerStore.counts.satellites}</span>
+    </div>
+
     <div class="stat-badge total-channel">
       <span class="stat-label">Total Visible</span>
       <span id="total-count" class="stat-value">{layerStore.totalCount}</span>
@@ -120,13 +126,13 @@
   }
 
   .hud-title-card {
-    background: rgba(15, 23, 42, 0.85);
+    background: var(--hud-panel-bg);
     backdrop-filter: blur(12px);
-    border: 1px solid rgba(148, 163, 184, 0.18);
+    border: 1px solid var(--hud-border);
     border-radius: 8px;
     padding: 10px 16px;
     pointer-events: auto;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 20px var(--hud-shadow-medium);
   }
 
   .title-row {
@@ -141,7 +147,7 @@
     font-size: 1.05rem;
     font-weight: 700;
     letter-spacing: -0.02em;
-    color: #f8fafc;
+    color: var(--hud-text-primary);
   }
 
   .version-badge {
@@ -150,15 +156,15 @@
     letter-spacing: 0.08em;
     padding: 2px 6px;
     border-radius: 4px;
-    background: rgba(56, 189, 248, 0.15);
-    color: #38bdf8;
-    border: 1px solid rgba(56, 189, 248, 0.3);
+    background: var(--hud-accent-soft);
+    color: var(--hud-accent);
+    border: 1px solid var(--hud-accent-border);
   }
 
   .table-toggle-btn {
-    background: rgba(30, 41, 59, 0.8);
-    border: 1px solid rgba(56, 189, 248, 0.3);
-    color: #38bdf8;
+    background: var(--hud-chip-bg-strong);
+    border: 1px solid var(--hud-accent-border);
+    color: var(--hud-accent);
     font-size: 0.68rem;
     font-weight: 600;
     padding: 3px 8px;
@@ -168,13 +174,13 @@
   }
 
   .table-toggle-btn:hover {
-    background: rgba(56, 189, 248, 0.2);
-    border-color: #38bdf8;
+    background: var(--hud-accent-selected);
+    border-color: var(--hud-accent);
   }
 
   .table-toggle-btn.active {
-    background: #38bdf8;
-    color: #030712;
+    background: var(--hud-accent);
+    color: var(--hud-surface-dark);
     font-weight: 700;
   }
 
@@ -183,26 +189,26 @@
     align-items: center;
     gap: 8px;
     font-size: 0.75rem;
-    color: #94a3b8;
+    color: var(--hud-text-secondary);
   }
 
   .status-indicator {
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background-color: #10b981;
-    box-shadow: 0 0 8px #10b981;
+    background-color: var(--hud-success);
+    box-shadow: 0 0 8px var(--hud-success);
     display: inline-block;
   }
 
   .divider {
-    color: rgba(148, 163, 184, 0.3);
+    color: var(--hud-border-solid-soft);
   }
 
   .clock-display {
     font-family: ui-monospace, 'JetBrains Mono', monospace;
     font-size: 0.72rem;
-    color: #cbd5e1;
+    color: var(--hud-text-mid);
     font-variant-numeric: tabular-nums;
   }
 
@@ -216,21 +222,21 @@
   }
 
   .stat-badge {
-    background: rgba(15, 23, 42, 0.85);
+    background: var(--hud-panel-bg);
     backdrop-filter: blur(12px);
-    border: 1px solid rgba(148, 163, 184, 0.18);
+    border: 1px solid var(--hud-border);
     border-radius: 8px;
     padding: 6px 10px;
     display: flex;
     align-items: center;
     gap: 6px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 4px 16px var(--hud-shadow-soft);
     transition: opacity 0.2s ease, border-color 0.2s ease;
   }
 
   .stat-badge.inactive {
     opacity: 0.4;
-    border-color: rgba(148, 163, 184, 0.08);
+    border-color: var(--hud-border-faint);
   }
 
   .channel-dot {
@@ -240,40 +246,43 @@
   }
 
   /* Strict DESIGN.md §2.2 Telemetry Channel Color Laws */
-  .flight-dot { background-color: #38bdf8; box-shadow: 0 0 6px #38bdf8; }
-  .flight-channel .stat-value { color: #38bdf8; }
+  .flight-dot { background-color: var(--channel-flight); box-shadow: 0 0 6px var(--channel-flight); }
+  .flight-channel .stat-value { color: var(--channel-flight); }
 
-  .marine-dot { background-color: #2dd4bf; box-shadow: 0 0 6px #2dd4bf; }
-  .marine-channel .stat-value { color: #2dd4bf; }
+  .marine-dot { background-color: var(--channel-marine); box-shadow: 0 0 6px var(--channel-marine); }
+  .marine-channel .stat-value { color: var(--channel-marine); }
 
-  .quake-dot { background-color: #fb923c; box-shadow: 0 0 6px #fb923c; }
-  .quake-channel .stat-value { color: #fb923c; }
+  .quake-dot { background-color: var(--channel-quake); box-shadow: 0 0 6px var(--channel-quake); }
+  .quake-channel .stat-value { color: var(--channel-quake); }
 
-  .firms-dot { background-color: #f43f5e; box-shadow: 0 0 6px #f43f5e; }
-  .firms-channel .stat-value { color: #f43f5e; }
+  .firms-dot { background-color: var(--channel-firms); box-shadow: 0 0 6px var(--channel-firms); }
+  .firms-channel .stat-value { color: var(--channel-firms); }
 
-  .gbfs-dot { background-color: #818cf8; box-shadow: 0 0 6px #818cf8; }
-  .gbfs-channel .stat-value { color: #818cf8; }
+  .gbfs-dot { background-color: var(--channel-gbfs); box-shadow: 0 0 6px var(--channel-gbfs); }
+  .gbfs-channel .stat-value { color: var(--channel-gbfs); }
 
-  .cctv-dot { background-color: #a855f7; box-shadow: 0 0 6px #a855f7; }
-  .cctv-channel .stat-value { color: #a855f7; }
+  .cctv-dot { background-color: var(--channel-cctv); box-shadow: 0 0 6px var(--channel-cctv); }
+  .cctv-channel .stat-value { color: var(--channel-cctv); }
 
-  .radio-dot { background-color: #06b6d4; box-shadow: 0 0 6px #06b6d4; }
-  .radio-channel .stat-value { color: #06b6d4; }
+  .radio-dot { background-color: var(--channel-radio); box-shadow: 0 0 6px var(--channel-radio); }
+  .radio-channel .stat-value { color: var(--channel-radio); }
 
-  .launch-dot { background-color: #facc15; box-shadow: 0 0 6px #facc15; }
-  .launch-channel .stat-value { color: #facc15; }
+  .launch-dot { background-color: var(--channel-launch); box-shadow: 0 0 6px var(--channel-launch); }
+  .launch-channel .stat-value { color: var(--channel-launch); }
 
-  .weather-dot { background-color: #60a5fa; box-shadow: 0 0 6px #60a5fa; }
-  .weather-channel .stat-value { color: #60a5fa; }
+  .weather-dot { background-color: var(--channel-weather); box-shadow: 0 0 6px var(--channel-weather); }
+  .weather-channel .stat-value { color: var(--channel-weather); }
 
-  .total-channel .stat-value { color: #f8fafc; }
+  .satellite-dot { background-color: var(--channel-satellites); box-shadow: 0 0 6px var(--channel-satellites); }
+  .satellite-channel .stat-value { color: var(--channel-satellites); }
+
+  .total-channel .stat-value { color: var(--hud-text-primary); }
 
   .stat-label {
     font-size: 0.65rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: #94a3b8;
+    color: var(--hud-text-secondary);
   }
 
   .stat-value {

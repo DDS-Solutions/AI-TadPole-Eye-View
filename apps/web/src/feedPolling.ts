@@ -8,6 +8,7 @@ import type {
   MarineLayerController,
   QuakeLayerController,
   RadioLayerController,
+  SatelliteLayerController,
   WeatherLayerController,
 } from '@gev/cesium-kit';
 import {
@@ -19,6 +20,7 @@ import {
   FlightBatch,
   LaunchCatalog,
   RadioCatalog,
+  SatellitePropagationBatchSchema,
   ShipBatch,
   ThermalHotspotBatch,
   WeatherCollection,
@@ -36,10 +38,38 @@ interface FeedLayerBindings {
   launches: LaunchLayerController | null;
   weather: WeatherLayerController | null;
   cables: CableLayerController | null;
+  satellites: SatelliteLayerController | null;
 }
 
 interface ProvenanceCarrier {
   provenance: DataProvenance;
+}
+
+class FeedHttpError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string | null,
+    message: string
+  ) {
+    super(message);
+    this.name = 'FeedHttpError';
+  }
+}
+
+async function createFeedHttpError(response: Response, url: string): Promise<FeedHttpError> {
+  let code: string | null = null;
+  let message = `${url} returned HTTP ${response.status}`;
+  try {
+    const payload: unknown = await response.json();
+    if (typeof payload === 'object' && payload !== null) {
+      const record = payload as Record<string, unknown>;
+      if (typeof record.code === 'string') code = record.code;
+      if (typeof record.error === 'string') message = record.error;
+    }
+  } catch {
+    // A non-JSON error remains a bounded status-only failure.
+  }
+  return new FeedHttpError(response.status, code, message);
 }
 
 async function loadFeed<T extends ProvenanceCarrier>(
@@ -52,17 +82,25 @@ async function loadFeed<T extends ProvenanceCarrier>(
   try {
     const response = await fetch(url, { signal });
     if (!response.ok) {
-      throw new Error(`${url} returned HTTP ${response.status}`);
+      throw await createFeedHttpError(response, url);
     }
     const data = schema.parse(await response.json());
     consume(data);
     layerStore.setProvenance(layer, data.provenance);
     layerStore.activeErrors[layer] = null;
+    if (layer === 'satellites') layerStore.setSatelliteAccessLock(null);
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       return;
     }
     layerStore.activeErrors[layer] = error instanceof Error ? error.message : String(error);
+    if (
+      layer === 'satellites' &&
+      error instanceof FeedHttpError &&
+      (error.code === 'TERMS_APPROVAL_REQUIRED' || error.code === 'PROVIDER_DISABLED')
+    ) {
+      layerStore.setSatelliteAccessLock(error.message, error.code);
+    }
   }
 }
 
@@ -169,6 +207,16 @@ export async function pollVisibleFeeds(
         bindings.cables?.enqueueCatalog(data);
         layerStore.counts.cables = bindings.cables?.getEntityCount() ?? 0;
         layerStore.rawEntities.cables = data.routes;
+      })
+    );
+  }
+
+  if (layerStore.visibility.satellites && bindings.satellites) {
+    tasks.push(
+      loadFeed('satellites', '/api/satellites', SatellitePropagationBatchSchema, signal, (data) => {
+        bindings.satellites?.enqueueBatch(data);
+        layerStore.counts.satellites = bindings.satellites?.getEntityCount() ?? 0;
+        layerStore.rawEntities.satellites = data.states;
       })
     );
   }

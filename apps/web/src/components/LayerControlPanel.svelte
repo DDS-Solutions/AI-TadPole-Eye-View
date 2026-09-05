@@ -2,6 +2,7 @@
   import { layerStore } from '../stores/layers.svelte.js';
   import LayerFilterControls from './LayerFilterControls.svelte';
   import ProvenanceBadges from './ProvenanceBadges.svelte';
+  import SatelliteLayerToggle from './SatelliteLayerToggle.svelte';
 
   let isCollapsed = $state(false);
   let activeTab = $state<'layers' | 'filters'>('layers');
@@ -222,6 +223,8 @@
               <span class="slider weather-slider"></span>
             </label>
           </div>
+
+          <SatelliteLayerToggle />
 
           <!-- Submarine Cable Infrastructure -->
           <div class="layer-toggle-row cable-row">

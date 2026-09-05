@@ -166,6 +166,25 @@ When an upstream provider (e.g. OpenSky Network) is rate-limited or degraded:
 See [Submarine Cables — Source, Fixture, and Licensed-Pack Policy](./docs/data-sources/cables.md)
 and [ADR 0036](./docs/adr/0036-cable-fixture-and-licensed-pack-policy.md).
 
+### Satellite source controls
+
+- Satellite seed mode reads `fixtures/satellites-synthetic-v1.json`, which contains only
+  GEV-authored synthetic GP/OMM elements and makes no network request.
+- Set `GEV_SATELLITES_ENABLED=0` before server startup to stop fixture reads, live retrieval,
+  propagation, and rendering before dispatch. The GEV platform administrator owns this switch.
+- CelesTrak standard GP needs no API key. Live access requires `GEV_LIVE_MODE=1`,
+  `GEV_SATELLITES_LIVE_ACCESS=1`, and `GEV_CELESTRAK_TERMS_APPROVED=1`; the final flag may be
+  recorded only after written commercial-use confirmation or formal licensing-owner acceptance.
+- The live adapter accepts only the server-owned `STATIONS`, `WEATHER`, `GPS-OPS`, and `GEO`
+  groups at the fixed CelesTrak JSON endpoint. It shares a two-hour cache, retains a validated
+  stale catalog for no more than 24 hours after refresh failure, and renders at most 1,000
+  derived estimates.
+- Satellite coordinates are estimates from the displayed element epoch. They are not live and
+  must not be used for navigation, conjunction assessment, or collision avoidance.
+
+See [Satellites & Orbital Mechanics](./docs/data-sources/satellites.md) and
+[ADR 0034](./docs/adr/0034-celestrak-gp-omm-satellite-source-policy.md).
+
 ---
 
 ## 3. Keyless Cesium 3D Globe Baseline & Fallbacks
@@ -234,4 +253,3 @@ pnpm gev demo
 # Run high-concurrency proxy load verification benchmark
 pnpm --filter @gev/server test
 ```
-

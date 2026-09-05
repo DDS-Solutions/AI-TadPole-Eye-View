@@ -19,6 +19,7 @@ import {
 export interface CreateProviderRegistryOptions {
   requestedMode?: ProviderRequestedMode;
   disabledProviderIds?: Iterable<string>;
+  unavailableProviderIds?: Iterable<string>;
   activeDownloadPackProviderIds?: Iterable<string>;
 }
 
@@ -26,6 +27,7 @@ function resolveProviderState(
   definition: ProviderDefinition,
   requestedMode: ProviderRequestedMode,
   disabledProviderIds: ReadonlySet<string>,
+  unavailableProviderIds: ReadonlySet<string>,
   activeDownloadPackProviderIds: ReadonlySet<string>
 ): { mode: ProviderRuntimeMode; health: ProviderHealth } {
   if (definition.implementation === 'planned') {
@@ -33,6 +35,10 @@ function resolveProviderState(
   }
 
   if (definition.implementation === 'incomplete') {
+    return { mode: 'unavailable', health: 'unavailable' };
+  }
+
+  if (unavailableProviderIds.has(definition.id)) {
     return { mode: 'unavailable', health: 'unavailable' };
   }
 
@@ -67,6 +73,7 @@ export function createProviderRegistry(
 ): ProviderRegistry {
   const requestedMode = options.requestedMode ?? 'seed';
   const disabledProviderIds = new Set(options.disabledProviderIds ?? []);
+  const unavailableProviderIds = new Set(options.unavailableProviderIds ?? []);
   const activeDownloadPackProviderIds = new Set(options.activeDownloadPackProviderIds ?? []);
 
   return ProviderRegistrySchema.parse({
@@ -77,6 +84,7 @@ export function createProviderRegistry(
         definition,
         requestedMode,
         disabledProviderIds,
+        unavailableProviderIds,
         activeDownloadPackProviderIds
       );
       return {
@@ -91,9 +99,19 @@ export function createProviderRegistry(
 export function createConfiguredProviderRegistry(
   environment: Readonly<Record<string, string | undefined>> = process.env
 ): ProviderRegistry {
+  const requestedMode = resolveProviderRequestedMode(environment);
+  const disabledProviderIds: string[] = [];
+  if (environment.GEV_CABLES_ENABLED === '0') disabledProviderIds.push('submarine-cables');
+  if (environment.GEV_SATELLITES_ENABLED === '0') disabledProviderIds.push('celestrak');
+
+  const satelliteLiveLocked =
+    requestedMode === 'live' &&
+    (environment.GEV_SATELLITES_LIVE_ACCESS !== '1' ||
+      environment.GEV_CELESTRAK_TERMS_APPROVED !== '1');
   return createProviderRegistry({
-    requestedMode: resolveProviderRequestedMode(environment),
-    disabledProviderIds: environment.GEV_CABLES_ENABLED === '0' ? ['submarine-cables'] : [],
+    requestedMode,
+    disabledProviderIds,
+    unavailableProviderIds: satelliteLiveLocked ? ['celestrak'] : [],
   });
 }
 
@@ -193,6 +211,37 @@ export function withDisabledProviders(
           ? ('degraded' as const)
           : provider.health,
     })),
+  });
+}
+
+export function withUnavailableProviders(
+  registry: ProviderRegistry,
+  unavailableProviderIds: Iterable<string>
+): ProviderRegistry {
+  const unavailable = new Set(unavailableProviderIds);
+  return ProviderRegistrySchema.parse({
+    ...registry,
+    providers: registry.providers.map((provider) =>
+      unavailable.has(provider.id)
+        ? { ...provider, mode: 'unavailable' as const, health: 'unavailable' as const }
+        : provider
+    ),
+  });
+}
+
+export function withProviderHealth(
+  registry: ProviderRegistry,
+  providerId: string,
+  health: ProviderHealth
+): ProviderRegistry {
+  if (!registry.providers.some((provider) => provider.id === providerId)) {
+    throw new Error(`Unknown provider '${providerId}'`);
+  }
+  return ProviderRegistrySchema.parse({
+    ...registry,
+    providers: registry.providers.map((provider) =>
+      provider.id === providerId ? { ...provider, health } : provider
+    ),
   });
 }
 

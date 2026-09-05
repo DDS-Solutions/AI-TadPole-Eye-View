@@ -40,7 +40,7 @@ function createMockViewer(): Viewer {
   } as unknown as Viewer;
 }
 
-describe('Cesium Kit Telemetry Layer Controllers (PLAN.md §8 Layers 1-9)', () => {
+describe('Cesium Kit Telemetry Layer Controllers (PLAN.md §8)', () => {
   it('FlightLayerController: enqueues and drains aircraft batches', () => {
     const viewer = createMockViewer();
     const flightLayer = new FlightLayerController({ viewer });
@@ -443,7 +443,7 @@ describe('Cesium Kit Telemetry Layer Controllers (PLAN.md §8 Layers 1-9)', () =
     expect(weatherLayer.getEntityCount()).toBe(0);
   });
 
-  it('attachDebugBus: provides complete 9-layer count and telemetry introspection', () => {
+  it('attachDebugBus: provides complete implemented-layer counts and telemetry introspection', () => {
     const viewer = createMockViewer();
     const mockGlobe = {
       viewer,
@@ -485,6 +485,7 @@ describe('Cesium Kit Telemetry Layer Controllers (PLAN.md §8 Layers 1-9)', () =
       launches: 0,
       weather: 0,
       cables: 0,
+      satellites: 0,
     });
   });
 });

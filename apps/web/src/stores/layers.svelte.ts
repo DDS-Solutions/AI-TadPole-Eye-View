@@ -1,16 +1,7 @@
-import type {
-  BikeStation,
-  CableRoute,
-  CctvCamera,
-  DataProvenance,
-  EarthquakeFeature,
-  FlightState,
-  LaunchMission,
-  RadioStation,
-  ShipState,
-  ThermalHotspot,
-  WeatherStation,
-} from '@gev/contracts';
+import type { CableRoute, DataProvenance } from '@gev/contracts';
+import { type UnifiedEntityCollections, buildUnifiedTelemetryItems } from '../unifiedTelemetry.js';
+
+export type { UnifiedTelemetryItem } from '../unifiedTelemetry.js';
 
 export interface LayerVisibility {
   flights: boolean;
@@ -23,6 +14,7 @@ export interface LayerVisibility {
   launches: boolean;
   weather: boolean;
   cables: boolean;
+  satellites: boolean;
 }
 
 export interface ProvenanceSummary {
@@ -53,24 +45,11 @@ export interface EntitySelection {
     | 'radio'
     | 'launch'
     | 'weather'
-    | 'cable';
+    | 'cable'
+    | 'satellite';
   id: string;
   name: string;
   data: Record<string, unknown>;
-}
-
-export interface UnifiedTelemetryItem {
-  id: string;
-  kind: 'flight' | 'marine' | 'quake' | 'firms' | 'gbfs' | 'cctv' | 'radio' | 'launch' | 'weather';
-  name: string;
-  metric1: string;
-  metric2: string;
-  coordinates: string;
-  lat: number;
-  lon: number;
-  alt: number;
-  timeText: string;
-  rawData: Record<string, unknown>;
 }
 
 class LayerStore {
@@ -86,6 +65,7 @@ class LayerStore {
     launches: true,
     weather: true,
     cables: true,
+    satellites: true,
   });
 
   // Layer filter settings
@@ -98,7 +78,7 @@ class LayerStore {
     radio: { category: 'all' },
   });
 
-  // Active entity counts across all 9 feeds
+  // Active entity counts across implemented globe layers.
   counts = $state({
     flights: 0,
     marine: 0,
@@ -110,6 +90,7 @@ class LayerStore {
     launches: 0,
     weather: 0,
     cables: 0,
+    satellites: 0,
   });
 
   // Last validated provenance envelope for each visible telemetry layer.
@@ -144,18 +125,7 @@ class LayerStore {
   });
 
   // Raw entities cached for High-Density Telemetry Table
-  rawEntities = $state<{
-    flights: FlightState[];
-    marine: ShipState[];
-    quakes: EarthquakeFeature[];
-    firms: ThermalHotspot[];
-    gbfs: BikeStation[];
-    cctv: CctvCamera[];
-    radio: RadioStation[];
-    launches: LaunchMission[];
-    weather: WeatherStation[];
-    cables: CableRoute[];
-  }>({
+  rawEntities = $state<UnifiedEntityCollections & { cables: CableRoute[] }>({
     flights: [],
     marine: [],
     quakes: [],
@@ -166,6 +136,7 @@ class LayerStore {
     launches: [],
     weather: [],
     cables: [],
+    satellites: [],
   });
 
   // High-Density Telemetry Table UI state
@@ -182,6 +153,7 @@ class LayerStore {
     | 'radio'
     | 'launch'
     | 'weather'
+    | 'satellite'
   >('all');
 
   // Total active entities across visible layers
@@ -195,7 +167,8 @@ class LayerStore {
       (this.visibility.radio ? this.counts.radio : 0) +
       (this.visibility.launches ? this.counts.launches : 0) +
       (this.visibility.weather ? this.counts.weather : 0) +
-      (this.visibility.cables ? this.counts.cables : 0)
+      (this.visibility.cables ? this.counts.cables : 0) +
+      (this.visibility.satellites ? this.counts.satellites : 0)
   );
 
   // Global console status
@@ -212,7 +185,10 @@ class LayerStore {
     launches: null,
     weather: null,
     cables: null,
+    satellites: null,
   });
+  satelliteAccessLock = $state<string | null>(null);
+  satelliteAccessLockCode = $state<string | null>(null);
 
   // Active inspection selection
   selectedEntity = $state<EntitySelection | null>(null);
@@ -221,187 +197,7 @@ class LayerStore {
   flyToTarget = $state<{ lat: number; lon: number; alt: number } | null>(null);
 
   // Derived unified telemetry feed for virtualized table
-  unifiedItems = $derived.by(() => {
-    const items: UnifiedTelemetryItem[] = [];
-
-    // 1. Flights
-    if (this.visibility.flights) {
-      for (const f of this.rawEntities.flights) {
-        if (f.longitude === null || f.latitude === null) continue;
-        const alt = f.geo_altitude ?? f.baro_altitude ?? 0;
-        items.push({
-          id: f.icao24,
-          kind: 'flight',
-          name: f.callsign || f.icao24,
-          metric1: `Alt: ${alt.toLocaleString()}m`,
-          metric2: `Vel: ${f.velocity ? `${f.velocity.toFixed(0)} m/s` : 'N/A'}`,
-          coordinates: `${f.latitude.toFixed(2)}°, ${f.longitude.toFixed(2)}°`,
-          lat: f.latitude,
-          lon: f.longitude,
-          alt: Math.max(1000, alt),
-          timeText: f.last_contact ? new Date(f.last_contact * 1000).toLocaleTimeString() : 'Live',
-          rawData: f as unknown as Record<string, unknown>,
-        });
-      }
-    }
-
-    // 2. Ships
-    if (this.visibility.marine) {
-      for (const s of this.rawEntities.marine) {
-        items.push({
-          id: s.mmsi,
-          kind: 'marine',
-          name: s.name || `Vessel ${s.mmsi}`,
-          metric1: `SOG: ${(s.sog_knots ?? 0).toFixed(1)} kts`,
-          metric2: `Type: ${s.ship_type ?? 'Cargo'}`,
-          coordinates: `${s.latitude.toFixed(2)}°, ${s.longitude.toFixed(2)}°`,
-          lat: s.latitude,
-          lon: s.longitude,
-          alt: 500,
-          timeText: 'Live AIS',
-          rawData: s as unknown as Record<string, unknown>,
-        });
-      }
-    }
-
-    // 3. Quakes
-    if (this.visibility.quakes) {
-      for (const q of this.rawEntities.quakes) {
-        items.push({
-          id: q.id,
-          kind: 'quake',
-          name: `M${q.mag.toFixed(1)} Earthquake`,
-          metric1: `Mag: M${q.mag.toFixed(1)}`,
-          metric2: `Depth: ${q.depth_km} km`,
-          coordinates: `${q.latitude.toFixed(2)}°, ${q.longitude.toFixed(2)}°`,
-          lat: q.latitude,
-          lon: q.longitude,
-          alt: 5000,
-          timeText: q.time ? new Date(q.time).toLocaleTimeString() : 'Recent',
-          rawData: q as unknown as Record<string, unknown>,
-        });
-      }
-    }
-
-    // 4. FIRMS
-    if (this.visibility.firms) {
-      for (const h of this.rawEntities.firms) {
-        items.push({
-          id: h.id,
-          kind: 'firms',
-          name: `Thermal Hotspot ${h.id}`,
-          metric1: `FRP: ${h.frp_mw.toFixed(1)} MW`,
-          metric2: `Temp: ${h.brightness_kelvin.toFixed(0)} K`,
-          coordinates: `${h.latitude.toFixed(2)}°, ${h.longitude.toFixed(2)}°`,
-          lat: h.latitude,
-          lon: h.longitude,
-          alt: 2000,
-          timeText: `${h.acq_date} ${h.acq_time}`,
-          rawData: h as unknown as Record<string, unknown>,
-        });
-      }
-    }
-
-    // 5. GBFS
-    if (this.visibility.gbfs) {
-      for (const b of this.rawEntities.gbfs) {
-        items.push({
-          id: b.station_id,
-          kind: 'gbfs',
-          name: b.name,
-          metric1: `Bikes: ${b.num_bikes_available}`,
-          metric2: `Docks: ${b.num_docks_available}`,
-          coordinates: `${b.latitude.toFixed(2)}°, ${b.longitude.toFixed(2)}°`,
-          lat: b.latitude,
-          lon: b.longitude,
-          alt: 500,
-          timeText: 'Realtime',
-          rawData: b as unknown as Record<string, unknown>,
-        });
-      }
-    }
-
-    // 6. CCTV
-    if (this.visibility.cctv) {
-      for (const c of this.rawEntities.cctv) {
-        items.push({
-          id: c.id,
-          kind: 'cctv',
-          name: c.name,
-          metric1: `Agency: ${c.agency}`,
-          metric2: `Rate: ${c.refresh_interval_sec}s`,
-          coordinates: `${c.latitude.toFixed(2)}°, ${c.longitude.toFixed(2)}°`,
-          lat: c.latitude,
-          lon: c.longitude,
-          alt: 400,
-          timeText: c.status,
-          rawData: c as unknown as Record<string, unknown>,
-        });
-      }
-    }
-
-    // 7. Radio
-    if (this.visibility.radio) {
-      for (const r of this.rawEntities.radio) {
-        items.push({
-          id: r.id,
-          kind: 'radio',
-          name: r.name,
-          metric1: `Freq: ${r.frequency_mhz ? `${r.frequency_mhz} MHz` : 'Web'}`,
-          metric2: `Cat: ${r.category.toUpperCase()}`,
-          coordinates: `${r.latitude.toFixed(2)}°, ${r.longitude.toFixed(2)}°`,
-          lat: r.latitude,
-          lon: r.longitude,
-          alt: 400,
-          timeText: `${r.bitrate_kbps} kbps`,
-          rawData: r as unknown as Record<string, unknown>,
-        });
-      }
-    }
-
-    // 8. Launches
-    if (this.visibility.launches) {
-      for (const l of this.rawEntities.launches) {
-        const firstPt = l.trajectory[0];
-        const lat = firstPt?.latitude ?? 34.6;
-        const lon = firstPt?.longitude ?? -120.6;
-        items.push({
-          id: l.id,
-          kind: 'launch',
-          name: l.name,
-          metric1: `Orbit: ${l.target_orbit}`,
-          metric2: `Vehicle: ${l.vehicle}`,
-          coordinates: `${lat.toFixed(2)}°, ${lon.toFixed(2)}°`,
-          lat,
-          lon,
-          alt: 50000,
-          timeText: l.status.toUpperCase(),
-          rawData: l as unknown as Record<string, unknown>,
-        });
-      }
-    }
-
-    // 9. Weather
-    if (this.visibility.weather) {
-      for (const w of this.rawEntities.weather) {
-        items.push({
-          id: w.id,
-          kind: 'weather',
-          name: w.name,
-          metric1: `Temp: ${w.temp_c}°C`,
-          metric2: `Wind: ${w.wind_speed_kmh} km/h`,
-          coordinates: `${w.latitude.toFixed(2)}°, ${w.longitude.toFixed(2)}°`,
-          lat: w.latitude,
-          lon: w.longitude,
-          alt: 600,
-          timeText: w.condition,
-          rawData: w as unknown as Record<string, unknown>,
-        });
-      }
-    }
-
-    return items;
-  });
+  unifiedItems = $derived.by(() => buildUnifiedTelemetryItems(this.visibility, this.rawEntities));
 
   // Filtered telemetry feed matching search query and channel filter
   filteredItems = $derived.by(() => {
@@ -424,7 +220,20 @@ class LayerStore {
   });
 
   toggleLayer(layer: keyof LayerVisibility): void {
+    if (layer === 'satellites' && this.satelliteAccessLock) {
+      return;
+    }
     this.visibility[layer] = !this.visibility[layer];
+  }
+
+  setSatelliteAccessLock(reason: string | null, code: string | null = null): void {
+    this.satelliteAccessLock = reason;
+    this.satelliteAccessLockCode = code;
+    if (reason) {
+      this.visibility.satellites = false;
+      this.counts.satellites = 0;
+      this.rawEntities.satellites = [];
+    }
   }
 
   setProvenance(layer: keyof LayerVisibility, provenance: DataProvenance): void {

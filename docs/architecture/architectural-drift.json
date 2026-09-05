@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "task": "5.2.2",
-  "adr": "0036",
+  "task": "5.2.3",
+  "adr": "0034",
   "wallClock": [
     {
       "path": "packages/cesium-kit/src/frameBudget.ts",
@@ -28,36 +28,8 @@
       "reason": "Offline build-tool timing reports ADG duration and never enters product or domain state."
     }
   ],
-  "largeFiles": [
-    {
-      "path": "apps/web/src/components/EntityInfoCard.svelte",
-      "lines": 502,
-      "classification": "adr-exempt",
-      "adr": "0040",
-      "followUp": "DRIFT-LARGE-ENTITY-INFO",
-      "owner": "apps/web UI owner",
-      "gate": "Extract entity-kind presenters before the next direct feature edit to this component."
-    },
-    {
-      "path": "apps/web/src/components/VirtualizedTelemetryTable.svelte",
-      "lines": 525,
-      "classification": "adr-exempt",
-      "adr": "0040",
-      "followUp": "DRIFT-LARGE-TELEMETRY-TABLE",
-      "owner": "apps/web UI owner",
-      "gate": "Resolve the installed TanStack-versus-manual windowing boundary and split controls/rows before task 7.3 or the next direct feature edit."
-    }
-  ],
+  "largeFiles": [],
   "colors": [
-    {
-      "path": "apps/web/src/App.svelte",
-      "occurrences": 6,
-      "fingerprint": "c80452b2cec830f4db09a05157b550666f41d330c95ae590627b0d988c0eafe7",
-      "classification": "follow-up",
-      "followUp": "DRIFT-COLOR-WEB-HUD",
-      "owner": "apps/web UI owner",
-      "gate": "Migrate the exact fingerprint to semantic CSS custom properties before task 7.3 or the next visual edit to this file."
-    },
     {
       "path": "apps/web/src/components/CollabBar.svelte",
       "occurrences": 36,
@@ -68,43 +40,9 @@
       "gate": "Add an accepted collaboration channel to DESIGN.md and tokenize this exact palette before the next visual edit to CollabBar."
     },
     {
-      "path": "apps/web/src/components/EntityInfoCard.svelte",
-      "occurrences": 47,
-      "fingerprint": "761d499d39185ba1799e5476435635eac6bdaddc724efedb6d9b438047495e8d",
-      "classification": "follow-up",
-      "followUp": "DRIFT-COLOR-WEB-HUD",
-      "owner": "apps/web UI owner",
-      "gate": "Migrate the exact fingerprint to semantic CSS custom properties before task 7.3 or the next visual edit to this file."
-    },
-    {
-      "path": "apps/web/src/components/HudHeader.svelte",
-      "occurrences": 52,
-      "fingerprint": "a4891deeb9b917c34a75546c2d1dfe6de0cc1936fbaaff937320c4edc136c813",
-      "classification": "follow-up",
-      "followUp": "DRIFT-COLOR-WEB-HUD",
-      "owner": "apps/web UI owner",
-      "gate": "Migrate the exact fingerprint to semantic CSS custom properties before task 7.3 or the next visual edit to this file."
-    },
-    {
-      "path": "apps/web/src/hudTokens.css",
-      "occurrences": 30,
-      "fingerprint": "ac0fd99ac57a2bd1cbbb4f071767e4d612b18c5c67dda4022f0fbee86a71201f",
-      "classification": "fixed",
-      "reason": "Task 5.2.2 added the accepted submarine-infrastructure channel as a semantic HUD token defined by DESIGN.md and ADR 0036."
-    },
-    {
       "path": "apps/web/src/components/TelemetryTimelineChart.svelte",
       "occurrences": 15,
       "fingerprint": "e544fb94f1415f2f9b52c74b2ada325f1b3d4aecf0ea96dbe540250f8f35ba53",
-      "classification": "follow-up",
-      "followUp": "DRIFT-COLOR-WEB-HUD",
-      "owner": "apps/web UI owner",
-      "gate": "Migrate the exact fingerprint to semantic CSS custom properties before task 7.3 or the next visual edit to this file."
-    },
-    {
-      "path": "apps/web/src/components/VirtualizedTelemetryTable.svelte",
-      "occurrences": 65,
-      "fingerprint": "d8273b522bb0c51437a488e376350030e0411d8c2dbd7ee5309d6f5e88a062f6",
       "classification": "follow-up",
       "followUp": "DRIFT-COLOR-WEB-HUD",
       "owner": "apps/web UI owner",
@@ -121,17 +59,24 @@
     },
     {
       "path": "apps/web/src/designTokens.ts",
-      "occurrences": 11,
-      "fingerprint": "ccc52387e9129285115928c2c59097294b130f6975fd75d72d5fb7b66aaf5829",
+      "occurrences": 12,
+      "fingerprint": "3c2379929daa3e5056f7c4556cfca238ddbc0a0b9a6ba974f2988ad09b8fa630",
       "classification": "fixed",
-      "reason": "Task 5.2.2 extended the centralized canvas/chart channel map with the accepted submarine-infrastructure token."
+      "reason": "Task 5.2.3 extended the centralized canvas/chart channel map with the accepted orbital-estimate token."
+    },
+    {
+      "path": "apps/web/src/hudTokens.css",
+      "occurrences": 66,
+      "fingerprint": "e8e84057587f5955530bb5656d4c244ad7f2c6dcc3020548c8c604c303a3a6e8",
+      "classification": "fixed",
+      "reason": "Task 5.2.3 completed the due core-HUD token migration and added the accepted orbital-estimate channel without changing rendered values."
     },
     {
       "path": "packages/cesium-kit/src/designTokens.ts",
-      "occurrences": 21,
-      "fingerprint": "15462d5f2fd9bf9cb850e5b073f70f711fe8c1fe493bc3d96dafe4b4e496f452",
+      "occurrences": 23,
+      "fingerprint": "ce5ca4bfb1ebc3170a49a002430aed888802a8f72aa92edaf75a2e4783ef9688",
       "classification": "fixed",
-      "reason": "Task 5.2.2 extended the centralized Cesium channel and outline map with the accepted submarine-infrastructure tokens."
+      "reason": "Task 5.2.3 extended the centralized Cesium channel and outline map with the accepted orbital-estimate tokens."
     }
   ],
   "cesiumDirect": [
@@ -161,7 +106,7 @@
     }
   ],
   "cesiumImports": {
-    "cesium": 18,
+    "cesium": 20,
     "@cesium/engine": 0
   },
   "stackPackages": {
@@ -177,5 +122,6 @@
     "vite-plugin-pwa": false,
     "@tanstack/svelte-virtual": true,
     "uplot": true
-  }
+  },
+  "falseClaims": []
 }

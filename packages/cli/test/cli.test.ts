@@ -48,9 +48,9 @@ describe('GEV v2 CLI Surface (@gev/cli)', () => {
     expect(parsed.cap_usd).toBe(10);
     expect(parsed.remaining_usd).toBe(10);
     expect(parsed.registry_counts).toEqual({
-      providers: { total: 12, active: 11 },
-      feeds: { total: 12, active: 11 },
-      layers: { total: 12, active: 10 },
+      providers: { total: 12, active: 12 },
+      feeds: { total: 12, active: 12 },
+      layers: { total: 12, active: 11 },
     });
     expect(parsed.provider_registry.providers).toHaveLength(12);
   });
@@ -68,7 +68,7 @@ describe('GEV v2 CLI Surface (@gev/cli)', () => {
     expect(logs.some((l) => l.includes('OpenSky'))).toBe(true);
     expect(logs.some((l) => l.includes('HEALTHY'))).toBe(true);
     expect(logs.some((l) => l.includes('CelesTrak'))).toBe(true);
-    expect(logs.some((l) => l.includes('UNAVAILABLE'))).toBe(true);
+    expect(logs.some((l) => l.includes('satellites'))).toBe(true);
   });
 
   it('runAuditTail() displays audit log table', async () => {

@@ -10,5 +10,6 @@ export const WEB_CHANNEL_COLORS = {
   launch: '#facc15',
   weather: '#60a5fa',
   cable: '#f472b6',
+  satellite: '#c084fc',
   muted: '#94a3b8',
 } as const;

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { WEB_CHANNEL_COLORS } from '../designTokens.js';
   import { layerStore, type UnifiedTelemetryItem } from '../stores/layers.svelte.js';
+  import TelemetryChannelFilters from './TelemetryChannelFilters.svelte';
 
   let scrollContainer: HTMLDivElement | null = $state(null);
   let scrollTop = $state(0);
@@ -64,6 +65,8 @@
         return WEB_CHANNEL_COLORS.launch;
       case 'weather':
         return WEB_CHANNEL_COLORS.weather;
+      case 'satellite':
+        return WEB_CHANNEL_COLORS.satellite;
       default:
         return WEB_CHANNEL_COLORS.muted;
     }
@@ -80,79 +83,7 @@
         <span class="count-badge mono">{totalItems.toLocaleString()} ENTITIES</span>
       </div>
 
-      <!-- Channel Filters -->
-      <div class="channel-filter-group">
-        <button
-          class="channel-btn"
-          class:active={layerStore.tableChannel === 'all'}
-          onclick={() => (layerStore.tableChannel = 'all')}
-        >
-          ALL
-        </button>
-        <button
-          class="channel-btn btn-flight"
-          class:active={layerStore.tableChannel === 'flight'}
-          onclick={() => (layerStore.tableChannel = 'flight')}
-        >
-          ADS-B
-        </button>
-        <button
-          class="channel-btn btn-marine"
-          class:active={layerStore.tableChannel === 'marine'}
-          onclick={() => (layerStore.tableChannel = 'marine')}
-        >
-          AIS
-        </button>
-        <button
-          class="channel-btn btn-quake"
-          class:active={layerStore.tableChannel === 'quake'}
-          onclick={() => (layerStore.tableChannel = 'quake')}
-        >
-          USGS
-        </button>
-        <button
-          class="channel-btn btn-firms"
-          class:active={layerStore.tableChannel === 'firms'}
-          onclick={() => (layerStore.tableChannel = 'firms')}
-        >
-          FIRMS
-        </button>
-        <button
-          class="channel-btn btn-gbfs"
-          class:active={layerStore.tableChannel === 'gbfs'}
-          onclick={() => (layerStore.tableChannel = 'gbfs')}
-        >
-          GBFS
-        </button>
-        <button
-          class="channel-btn btn-cctv"
-          class:active={layerStore.tableChannel === 'cctv'}
-          onclick={() => (layerStore.tableChannel = 'cctv')}
-        >
-          CCTV
-        </button>
-        <button
-          class="channel-btn btn-radio"
-          class:active={layerStore.tableChannel === 'radio'}
-          onclick={() => (layerStore.tableChannel = 'radio')}
-        >
-          RADIO
-        </button>
-        <button
-          class="channel-btn btn-launch"
-          class:active={layerStore.tableChannel === 'launch'}
-          onclick={() => (layerStore.tableChannel = 'launch')}
-        >
-          LAUNCH
-        </button>
-        <button
-          class="channel-btn btn-weather"
-          class:active={layerStore.tableChannel === 'weather'}
-          onclick={() => (layerStore.tableChannel = 'weather')}
-        >
-          WX
-        </button>
-      </div>
+      <TelemetryChannelFilters />
 
       <!-- Search & Close -->
       <div class="search-actions">
@@ -255,17 +186,17 @@
     bottom: 36px;
     left: 16px;
     right: 16px;
-    background: rgba(15, 23, 42, 0.94);
+    background: var(--hud-panel-bg-overlay);
     backdrop-filter: blur(16px);
-    border: 1px solid rgba(148, 163, 184, 0.22);
+    border: 1px solid var(--hud-border-strong);
     border-radius: 8px;
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 16px rgba(56, 189, 248, 0.15);
+    box-shadow: 0 12px 36px var(--hud-shadow), 0 0 16px var(--hud-accent-soft);
     z-index: 40;
     pointer-events: auto;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    color: #f8fafc;
+    color: var(--hud-text-primary);
   }
 
   .table-header {
@@ -273,8 +204,8 @@
     justify-content: space-between;
     align-items: center;
     padding: 8px 14px;
-    background: rgba(3, 7, 18, 0.6);
-    border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+    background: var(--hud-surface-dark-soft);
+    border-bottom: 1px solid var(--hud-chip-border);
     gap: 12px;
     flex-wrap: wrap;
   }
@@ -286,7 +217,7 @@
   }
 
   .pulse-icon {
-    color: #22c55e;
+    color: var(--hud-success-signal);
     font-size: 0.7rem;
     animation: pulse 2s infinite;
   }
@@ -301,58 +232,17 @@
     font-size: 0.85rem;
     font-weight: 600;
     letter-spacing: 0.04em;
-    color: #f8fafc;
+    color: var(--hud-text-primary);
   }
 
   .count-badge {
     font-size: 0.68rem;
-    background: rgba(56, 189, 248, 0.15);
-    color: #38bdf8;
-    border: 1px solid rgba(56, 189, 248, 0.3);
+    background: var(--hud-accent-soft);
+    color: var(--hud-accent);
+    border: 1px solid var(--hud-accent-border);
     padding: 2px 6px;
     border-radius: 4px;
   }
-
-  .channel-filter-group {
-    display: flex;
-    gap: 4px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  .channel-btn {
-    background: rgba(30, 41, 59, 0.6);
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    color: #94a3b8;
-    font-size: 0.65rem;
-    font-weight: 600;
-    padding: 3px 8px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .channel-btn:hover {
-    background: rgba(51, 65, 85, 0.8);
-    color: #f8fafc;
-  }
-
-  .channel-btn.active {
-    background: #38bdf8;
-    color: #030712;
-    border-color: #38bdf8;
-    font-weight: 700;
-  }
-
-  .btn-flight.active { background: #38bdf8; color: #030712; }
-  .btn-marine.active { background: #2dd4bf; color: #030712; }
-  .btn-quake.active { background: #fb923c; color: #030712; }
-  .btn-firms.active { background: #f43f5e; color: #ffffff; }
-  .btn-gbfs.active { background: #818cf8; color: #030712; }
-  .btn-cctv.active { background: #a855f7; color: #030712; }
-  .btn-radio.active { background: #06b6d4; color: #030712; }
-  .btn-launch.active { background: #facc15; color: #030712; }
-  .btn-weather.active { background: #60a5fa; color: #030712; }
 
   .search-actions {
     display: flex;
@@ -363,8 +253,8 @@
   .search-box {
     display: flex;
     align-items: center;
-    background: rgba(15, 23, 42, 0.8);
-    border: 1px solid rgba(148, 163, 184, 0.25);
+    background: var(--hud-panel-bg-muted);
+    border: 1px solid var(--hud-border-prominent);
     border-radius: 4px;
     padding: 2px 8px;
     gap: 6px;
@@ -372,36 +262,36 @@
 
   .search-icon {
     font-size: 0.75rem;
-    color: #64748b;
+    color: var(--hud-text-dim);
   }
 
   .search-box input {
     background: transparent;
     border: none;
     outline: none;
-    color: #f8fafc;
+    color: var(--hud-text-primary);
     font-size: 0.75rem;
     font-family: inherit;
     width: 180px;
   }
 
   .search-box input::placeholder {
-    color: #64748b;
+    color: var(--hud-text-dim);
   }
 
   .clear-search-btn {
     background: none;
     border: none;
-    color: #94a3b8;
+    color: var(--hud-text-secondary);
     cursor: pointer;
     font-size: 0.7rem;
     padding: 0;
   }
 
   .close-table-btn {
-    background: rgba(30, 41, 59, 0.8);
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    color: #94a3b8;
+    background: var(--hud-chip-bg-strong);
+    border: 1px solid var(--hud-border-medium);
+    color: var(--hud-text-secondary);
     width: 24px;
     height: 24px;
     border-radius: 4px;
@@ -412,20 +302,20 @@
   }
 
   .close-table-btn:hover {
-    color: #f8fafc;
-    background: rgba(239, 68, 68, 0.3);
-    border-color: #ef4444;
+    color: var(--hud-text-primary);
+    background: var(--hud-danger-soft);
+    border-color: var(--hud-danger);
   }
 
   .columns-header {
     display: grid;
     grid-template-columns: 80px 1.5fr 1.2fr 1.2fr 1.2fr 100px 90px;
     padding: 6px 12px;
-    background: rgba(3, 7, 18, 0.8);
-    border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+    background: var(--hud-surface-dark-strong);
+    border-bottom: 1px solid var(--hud-chip-border);
     font-size: 0.68rem;
     font-weight: 700;
-    color: #94a3b8;
+    color: var(--hud-text-secondary);
     letter-spacing: 0.05em;
   }
 
@@ -441,11 +331,11 @@
   }
 
   .virtual-viewport::-webkit-scrollbar-track {
-    background: rgba(3, 7, 18, 0.5);
+    background: var(--hud-surface-dark-faint);
   }
 
   .virtual-viewport::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.3);
+    background: var(--hud-border-solid-soft);
     border-radius: 3px;
   }
 
@@ -464,19 +354,19 @@
     align-items: center;
     padding: 0 12px;
     box-sizing: border-box;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+    border-bottom: 1px solid var(--hud-border-faint);
     font-size: 0.75rem;
     cursor: pointer;
     transition: background 0.1s ease;
   }
 
   .virtual-row:hover {
-    background: rgba(56, 189, 248, 0.08);
+    background: var(--hud-accent-faint);
   }
 
   .virtual-row.selected {
-    background: rgba(56, 189, 248, 0.18);
-    border-left: 3px solid #38bdf8;
+    background: var(--hud-accent-row-selected);
+    border-left: 3px solid var(--hud-accent);
   }
 
   .col {
@@ -500,9 +390,9 @@
   }
 
   .focus-btn {
-    background: rgba(56, 189, 248, 0.15);
-    border: 1px solid rgba(56, 189, 248, 0.3);
-    color: #38bdf8;
+    background: var(--hud-accent-soft);
+    border: 1px solid var(--hud-accent-border);
+    color: var(--hud-accent);
     font-size: 0.65rem;
     font-family: ui-monospace, monospace;
     padding: 2px 6px;
@@ -512,14 +402,14 @@
   }
 
   .focus-btn:hover {
-    background: #38bdf8;
-    color: #030712;
+    background: var(--hud-accent);
+    color: var(--hud-surface-dark);
   }
 
   .empty-state {
     padding: 32px;
     text-align: center;
-    color: #94a3b8;
+    color: var(--hud-text-secondary);
     font-size: 0.8rem;
   }
 </style>

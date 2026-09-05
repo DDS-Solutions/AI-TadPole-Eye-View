@@ -8,6 +8,7 @@ import { GbfsAdapter } from '../src/gbfs.js';
 import { LaunchAdapter } from '../src/launches.js';
 import { OpenSkyAdapter } from '../src/opensky.js';
 import { RadioAdapter } from '../src/radio.js';
+import { SatelliteAdapter } from '../src/satellites.js';
 import { UsgsQuakeAdapter } from '../src/usgs.js';
 import { WeatherAdapter } from '../src/weather.js';
 
@@ -68,6 +69,7 @@ describe('Provider Adapters Seed Replay (PLAN.md §10 Phase 1)', () => {
       new RadioAdapter({ clock }).getCatalog(),
       new LaunchAdapter({ clock }).getLaunches(),
       new WeatherAdapter({ clock }).getWeather(),
+      new SatelliteAdapter({ clock, seedMode: true }).getCatalog(),
     ]);
 
     for (const response of responses) {

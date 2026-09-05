@@ -1,38 +1,13 @@
 <script lang="ts">
   import { WEB_CHANNEL_COLORS } from '../designTokens.js';
+  import { getFlightTimeSeries, getLaunchTimeSeries, getWeatherTimeSeries } from '../entityChartData.js';
   import { layerStore } from '../stores/layers.svelte.js';
+  import SatelliteEntityDetails from './SatelliteEntityDetails.svelte';
   import TelemetryTimelineChart from './TelemetryTimelineChart.svelte';
 
   const entity = $derived(layerStore.selectedEntity);
   let audioPlayer = $state<HTMLAudioElement | null>(null);
 
-  function getFlightTimeSeries(data: Record<string, unknown>): [number[], number[], number[]] {
-    const alt = Number(data.baro_altitude ?? data.geo_altitude ?? 8000);
-    const vel = Number(data.velocity ?? 220);
-    const vertRate = Number(data.vertical_rate ?? 0);
-    const timestamps = [0, 10, 20, 30, 40, 50, 60];
-    const altitudes = timestamps.map((t) => Math.max(0, alt - (60 - t) * (vertRate || 2)));
-    const velocities = timestamps.map((t) => Math.max(0, vel + Math.sin(t / 10) * 5));
-    return [timestamps, altitudes, velocities];
-  }
-
-  function getLaunchTimeSeries(
-    trajectory: Array<{ time_offset_sec: number; altitude_m: number; velocity_ms: number }>
-  ): [number[], number[], number[]] {
-    const times = trajectory.map((p) => p.time_offset_sec);
-    const alts = trajectory.map((p) => p.altitude_m / 1000);
-    const vels = trajectory.map((p) => p.velocity_ms);
-    return [times, alts, vels];
-  }
-
-  function getWeatherTimeSeries(data: Record<string, unknown>): [number[], number[], number[]] {
-    const baseTemp = Number(data.temp_c ?? 18);
-    const baseWind = Number(data.wind_speed_kmh ?? 15);
-    const hours = [0, 2, 4, 6, 8, 10, 12];
-    const temps = hours.map((h) => Number((baseTemp + Math.sin(h / 2) * 3).toFixed(1)));
-    const winds = hours.map((h) => Number(Math.max(0, baseWind + Math.cos(h / 2) * 4).toFixed(1)));
-    return [hours, temps, winds];
-  }
 </script>
 
 {#if entity}
@@ -48,6 +23,7 @@
     class:kind-radio={entity.kind === 'radio'}
     class:kind-launch={entity.kind === 'launch'}
     class:kind-weather={entity.kind === 'weather'}
+    class:kind-satellite={entity.kind === 'satellite'}
   >
     <div class="card-header">
       <div class="header-main">
@@ -311,6 +287,8 @@
             height={130}
           />
         {/if}
+      {:else if entity.kind === 'satellite'}
+        <SatelliteEntityDetails data={entity.data} />
       {:else if entity.kind === 'weather'}
         <div class="telemetry-grid">
           <div class="metric-row">
@@ -356,26 +334,27 @@
     bottom: 36px;
     right: 16px;
     width: 320px;
-    background: rgba(15, 23, 42, 0.92);
+    background: var(--hud-panel-bg-raised);
     backdrop-filter: blur(14px);
-    border: 1px solid rgba(148, 163, 184, 0.18);
+    border: 1px solid var(--hud-border);
     border-radius: 10px;
     padding: 14px;
     pointer-events: auto;
     z-index: 20;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 8px 32px var(--hud-shadow);
   }
 
   /* Channel Law Border Glows */
-  .kind-flight { border-left: 3px solid #38bdf8; }
-  .kind-marine { border-left: 3px solid #2dd4bf; }
-  .kind-quake { border-left: 3px solid #fb923c; }
-  .kind-firms { border-left: 3px solid #f43f5e; }
-  .kind-gbfs { border-left: 3px solid #818cf8; }
-  .kind-cctv { border-left: 3px solid #a855f7; }
-  .kind-radio { border-left: 3px solid #06b6d4; }
-  .kind-launch { border-left: 3px solid #facc15; }
-  .kind-weather { border-left: 3px solid #60a5fa; }
+  .kind-flight { border-left: 3px solid var(--channel-flight); }
+  .kind-marine { border-left: 3px solid var(--channel-marine); }
+  .kind-quake { border-left: 3px solid var(--channel-quake); }
+  .kind-firms { border-left: 3px solid var(--channel-firms); }
+  .kind-gbfs { border-left: 3px solid var(--channel-gbfs); }
+  .kind-cctv { border-left: 3px solid var(--channel-cctv); }
+  .kind-radio { border-left: 3px solid var(--channel-radio); }
+  .kind-launch { border-left: 3px solid var(--channel-launch); }
+  .kind-weather { border-left: 3px solid var(--channel-weather); }
+  .kind-satellite { border-left: 3px solid var(--channel-satellites); }
 
   .card-header {
     display: flex;
@@ -383,7 +362,7 @@
     align-items: flex-start;
     gap: 8px;
     margin-bottom: 12px;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    border-bottom: 1px solid var(--hud-border-muted);
     padding-bottom: 8px;
   }
 
@@ -402,27 +381,28 @@
     width: fit-content;
   }
 
-  .kind-flight .kind-badge { background: rgba(56, 189, 248, 0.2); color: #38bdf8; }
-  .kind-marine .kind-badge { background: rgba(45, 212, 191, 0.2); color: #2dd4bf; }
-  .kind-quake .kind-badge { background: rgba(251, 146, 60, 0.2); color: #fb923c; }
-  .kind-firms .kind-badge { background: rgba(244, 63, 94, 0.2); color: #f43f5e; }
-  .kind-gbfs .kind-badge { background: rgba(129, 140, 248, 0.2); color: #818cf8; }
-  .kind-cctv .kind-badge { background: rgba(168, 85, 247, 0.2); color: #a855f7; }
-  .kind-radio .kind-badge { background: rgba(6, 182, 212, 0.2); color: #06b6d4; }
-  .kind-launch .kind-badge { background: rgba(250, 204, 21, 0.2); color: #facc15; }
-  .kind-weather .kind-badge { background: rgba(96, 165, 250, 0.2); color: #60a5fa; }
+  .kind-flight .kind-badge { background: var(--channel-flight-soft); color: var(--channel-flight); }
+  .kind-marine .kind-badge { background: var(--channel-marine-soft); color: var(--channel-marine); }
+  .kind-quake .kind-badge { background: var(--channel-quake-soft); color: var(--channel-quake); }
+  .kind-firms .kind-badge { background: var(--channel-firms-soft); color: var(--channel-firms); }
+  .kind-gbfs .kind-badge { background: var(--channel-gbfs-soft); color: var(--channel-gbfs); }
+  .kind-cctv .kind-badge { background: var(--channel-cctv-soft); color: var(--channel-cctv); }
+  .kind-radio .kind-badge { background: var(--channel-radio-soft); color: var(--channel-radio); }
+  .kind-launch .kind-badge { background: var(--channel-launch-soft); color: var(--channel-launch); }
+  .kind-weather .kind-badge { background: var(--channel-weather-soft); color: var(--channel-weather); }
+  .kind-satellite .kind-badge { background: var(--channel-satellites-soft); color: var(--channel-satellites); }
 
   .entity-title {
     margin: 0;
     font-size: 0.92rem;
     font-weight: 700;
-    color: #f8fafc;
+    color: var(--hud-text-primary);
   }
 
   .close-btn {
     background: transparent;
     border: none;
-    color: #94a3b8;
+    color: var(--hud-text-secondary);
     cursor: pointer;
     font-size: 0.85rem;
     padding: 2px 4px;
@@ -437,8 +417,8 @@
   .media-container {
     border-radius: 6px;
     overflow: hidden;
-    background: #030712;
-    border: 1px solid rgba(148, 163, 184, 0.15);
+    background: var(--hud-surface-dark);
+    border: 1px solid var(--hud-chip-border);
   }
 
   .cctv-preview-img {
@@ -450,7 +430,7 @@
 
   .radio-player-container {
     padding: 6px;
-    background: rgba(15, 23, 42, 0.6);
+    background: var(--hud-panel-bg-soft);
   }
 
   .tactical-audio-player {
@@ -472,12 +452,12 @@
     font-size: 0.65rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: #94a3b8;
+    color: var(--hud-text-secondary);
   }
 
   .value {
     font-size: 0.82rem;
-    color: #e2e8f0;
+    color: var(--hud-text-data);
   }
 
   .value.mono {
@@ -485,18 +465,18 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .highlight-teal { color: #2dd4bf; font-weight: 600; }
-  .highlight-amber { color: #fb923c; font-weight: 600; }
-  .highlight-rose { color: #f43f5e; font-weight: 600; }
-  .highlight-indigo { color: #818cf8; font-weight: 600; }
-  .highlight-purple { color: #a855f7; font-weight: 600; }
-  .highlight-cyan { color: #06b6d4; font-weight: 600; }
-  .highlight-gold { color: #facc15; font-weight: 600; }
-  .highlight-blue { color: #60a5fa; font-weight: 600; }
+  .highlight-teal { color: var(--channel-marine); font-weight: 600; }
+  .highlight-amber { color: var(--channel-quake); font-weight: 600; }
+  .highlight-rose { color: var(--channel-firms); font-weight: 600; }
+  .highlight-indigo { color: var(--channel-gbfs); font-weight: 600; }
+  .highlight-purple { color: var(--channel-cctv); font-weight: 600; }
+  .highlight-cyan { color: var(--channel-radio); font-weight: 600; }
+  .highlight-gold { color: var(--channel-launch); font-weight: 600; }
+  .highlight-blue { color: var(--channel-weather); font-weight: 600; }
 
   .simulation-badge {
     font-size: 0.70rem;
-    color: #fbbf24;
+    color: var(--hud-warning);
     font-weight: 600;
   }
 </style>

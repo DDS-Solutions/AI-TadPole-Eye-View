@@ -8,6 +8,7 @@ import type { LaunchLayerController } from './launchLayer.js';
 import type { MarineLayerController } from './marineLayer.js';
 import type { QuakeLayerController } from './quakeLayer.js';
 import type { RadioLayerController } from './radioLayer.js';
+import type { SatelliteLayerController } from './satelliteLayer.js';
 import type { WeatherLayerController } from './weatherLayer.js';
 
 import type { FrameBudgetMonitor, FrameBudgetReport, FrameMetrics } from './frameBudget.js';
@@ -32,6 +33,7 @@ export interface LayerControllersMap {
   launches?: LaunchLayerController;
   weather?: WeatherLayerController;
   cables?: CableLayerController;
+  satellites?: SatelliteLayerController;
 }
 
 export interface GevDebugBus {
@@ -50,6 +52,7 @@ export interface GevDebugBus {
   getWeatherStationIds: () => string[];
   getCableRouteCount: () => number;
   getCableLandingPointCount: () => number;
+  getSatelliteIds: () => string[];
   getCameraHeight: () => number;
   getCameraPose: () => CameraPose;
   getSelectedEntity: () => unknown;
@@ -99,6 +102,7 @@ export function attachDebugBus(
       const launchCount = layers.launches?.getEntityCount() ?? 0;
       const weatherCount = layers.weather?.getEntityCount() ?? 0;
       const cableCount = layers.cables?.getEntityCount() ?? 0;
+      const satelliteCount = layers.satellites?.getEntityCount() ?? 0;
       return (
         flightCount +
         marineCount +
@@ -109,7 +113,8 @@ export function attachDebugBus(
         radioCount +
         launchCount +
         weatherCount +
-        cableCount
+        cableCount +
+        satelliteCount
       );
     },
     getLayerCounts: () => {
@@ -124,6 +129,7 @@ export function attachDebugBus(
         launches: layers.launches?.getEntityCount() ?? 0,
         weather: layers.weather?.getEntityCount() ?? 0,
         cables: layers.cables?.getEntityCount() ?? 0,
+        satellites: layers.satellites?.getEntityCount() ?? 0,
       };
     },
     getFlightIds: () => layers.flight?.getFlightIds() ?? [],
@@ -137,6 +143,7 @@ export function attachDebugBus(
     getWeatherStationIds: () => layers.weather?.getStationIds() ?? [],
     getCableRouteCount: () => layers.cables?.getRouteCount() ?? 0,
     getCableLandingPointCount: () => layers.cables?.getLandingPointCount() ?? 0,
+    getSatelliteIds: () => layers.satellites?.getSatelliteIds() ?? [],
     getCameraHeight: () => globe.viewer.camera.positionCartographic?.height ?? 0,
     getCameraPose: () => {
       const carto = globe.viewer.camera.positionCartographic;

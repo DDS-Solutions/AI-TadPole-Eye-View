@@ -103,11 +103,37 @@ avoidance, maneuver planning, or other safety-of-flight operations.
 
 - OQ-7 is resolved: CelesTrak standard GP JSON/OMM is the selected technical source, while
   production activation has a deterministic licensing lock.
-- Task 5.2.3 may be briefed for authorization, but this ADR alone does not authorize its
-  implementation or any live source call.
+- Task 5.2.3 was explicitly authorized under its recorded 4-Pillar brief. That authorization
+  covers implementation and seed verification only; no live source call was made or authorized.
 - Direct Space-Track integration would require a new decision covering accounts, passwords,
   user-agreement obligations, and the §4.5 rule that GEV does not store provider passwords.
 - SupGP and commercial ephemeris products require separate source, rights, accuracy, and
   attribution review.
 - The executable registry, provider documentation, tests, and Layer Access UI must derive
   the selected source and gate state without presenting the production layer as active.
+
+## Implementation record
+
+- `satellite.js` 7.1.0 is accepted as the narrowly scoped propagation dependency. It is MIT
+  licensed, ships TypeScript declarations, has no runtime dependencies, accepts JSON/OMM, and
+  exposes SGP4 plus the required UTC/Julian and ECI-to-geodetic transforms.
+- The fixed OMM regression vector for Vallado case 00005 at
+  `2000-06-27T18:50:19.733Z` is position
+  `(6297.670023, -3423.954223, -4.234603)` km and velocity
+  `(3.704543, 5.551524, 4.530508)` km/s. At +360 minutes it is position
+  `(-7944.967662, -1511.519673, -3541.791777)` km and velocity
+  `(3.307500, -5.368354, -2.091725)` km/s. Regression precision is 0.0001 km for
+  position and 0.000001 km/s for velocity; these values guard the reviewed library route and
+  are not an independent orbit-accuracy claim.
+- Source OMM mean elements are interpreted through SGP4. The UI contract exposes derived
+  WGS84-geodetic longitude, latitude, and altitude labeled as estimates. Propagation is bounded
+  to seven days on either side of the element epoch for non-synthetic elements. Explicitly
+  synthetic seed fixtures are exempt because they make no real-world freshness claim and must
+  remain usable in deterministic offline demonstrations after their recorded epoch.
+- The satellite channel is `#c084fc` (`Orbital Lavender`) in DESIGN.md, web tokens, and Cesium
+  tokens. This adds a literal domain channel without changing the accepted HUD layout.
+- The browser application entry is 90.93 KB gzip, compared with 88.57 KB before this task
+  (+2.36 KB); primary application CSS is 6.27 KB gzip, compared with 5.60 KB (+0.67 KB),
+  including the due semantic HUD token migration. The complete build is 1,230.22 KB gzip and
+  remains inside its accepted budget. `satellite.js` stays on the
+  server-only `@gev/core/satellite-propagation` subpath and is absent from the browser bundle.
