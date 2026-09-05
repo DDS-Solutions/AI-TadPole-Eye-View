@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-08-30
-**Status:** IN PROGRESS — Phase 5.2; task 5.2.4 awaits 4-Pillar authorization
+**Status:** IN PROGRESS — Phase 5.3; task 5.3.1 awaits 4-Pillar authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -19,10 +19,10 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 
 ```text
 PLAN_VERSION=3.0
-CURRENT_PHASE=5.2
-NEXT_TASK=5.2.4
+CURRENT_PHASE=5.3
+NEXT_TASK=5.3.1
 NEXT_TASK_STATUS=READY
-LAST_VERIFIED_UTC=2026-09-04
+LAST_VERIFIED_UTC=2026-09-05
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
 IMPLEMENTATION_STARTED=YES
 ```
@@ -880,8 +880,8 @@ DOC_BLOCKER or LOGIC_BLOCKER with exact row/hash/migration evidence and bounded 
 - [x] 5.2.1 Add required provenance and registry contracts; retrofit existing adapters and UI badges using `SimClock`.
 - [x] 5.2.2 Complete cables: Zod contracts, fixture seed, validated optional pack, server/store/layer/UI, kill switch, health, tests, and license ADR.
 - [x] 5.2.3 Complete satellites under ADR 0034: GP/OMM adapter, deterministic fixture, propagation/frame conversion, server/store/layer/UI, kill switch, health, tests, and source controls.
-- [ ] 5.2.4 Generate DATA_SOURCES entries/counts from the registry and label implementation/mode accurately.
-- [ ] 5.2 exit: every implemented provider validates and carries provenance; seed mode makes zero network calls; satellite/cable smoke and performance budgets pass.
+- [x] 5.2.4 Generate DATA_SOURCES entries/counts from the registry and label implementation/mode accurately.
+- [x] 5.2 exit: every implemented provider validates and carries provenance; seed mode makes zero network calls; satellite/cable smoke and performance budgets pass.
 
 #### Authorized 4-Pillar brief for completed task 5.2.1
 
@@ -1045,7 +1045,7 @@ frame approaches cannot meet accepted vectors and tolerances, record LOGIC_BLOCK
 the exact vectors, measured errors, and bounded library/boundary alternatives.
 ```
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 5.2.4
+#### Authorized 4-Pillar brief for completed task 5.2.4
 
 ```text
 [SCOPE_CONTRACT] Make DATA_SOURCES.md provider/feed/layer entries and counts deterministic
@@ -1110,6 +1110,50 @@ approaches fail, record LOGIC_BLOCKER with diff evidence and bounded alternative
   mode makes zero live calls; stale `200 OK` data degrades health; alerts and time-enabled
   layers preserve source validity and SimClock semantics; relevant performance, bundle,
   Playwright, license, ADG, and source-network-denial gates pass.
+
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 5.3.1
+
+```text
+[SCOPE_CONTRACT] Re-verify every PLAN.md §4.6 candidate against current first-party source,
+API, terms, attribution, credential, coverage, and operational-policy evidence; rank the
+operational-awareness layers; accept one source-and-access ADR; add only accepted entries to
+packages/providers/src/registryDefinitions.ts as planned providers/feeds/layers with complete
+typed metadata; create or update their docs/data-sources source records; regenerate the two
+marker-delimited registry documentation surfaces; and add focused registry/documentation tests.
+Out of scope: provider adapters, fixtures, live or cached data calls, credentials or account
+creation, terms acceptance, production activation, server/store/Cesium/web behavior, the Layer
+Access UI (5.3.5), identity/tenancy, economic features, and tasks 5.3.2–5.3.5.
+
+[PERFORMANCE_THRESHOLD] The accepted ADR cites dated first-party evidence and defines each
+accepted source's exact product, endpoint/format, geographic coverage, observation/validity
+semantics, credential and approval owner, license/terms/attribution, allowed environments,
+refresh/cache/stale/rate/budget policy, payload bounds, kill switch, and fallback. Candidate
+ranking records the selection criteria and why deferred/rejected sources remain outside the
+executable registry. All accepted entries validate as planned/unavailable and increase only
+registered counts; active provider/feed/layer counts remain exactly unchanged in seed and
+representative locked-live projections. `pnpm docs:providers` is deterministic, check mode is
+clean, generated links resolve, and no command contacts a provider. Root lint, affected
+typecheck/test/build, ADG and its tests, architecture drift, generated-doc parity, git diff
+checks, and synchronized-plan checks pass.
+
+[ARCHITECTURE_MODE] PLAN.md §2 rules 1, 4–7, 9, and 11–15; §3 registry boundary; §4.1,
+§4.5–§4.6; §8.1 and §8.3; ADRs 0034–0036, 0039, and 0040. First-party evidence and the accepted
+ADR govern source selection; the typed registry remains the only executable source for identity,
+implementation, mode, health, freshness, source, licensing, and derived counts. New entries are
+discoverable but not active, use literal names, and make no network call. Public accessibility,
+an API key, or terms approval alone never proves commercial use, display, caching, transformation,
+or redistribution rights. No source, product, policy, or registry-state deviation without ADR
+evidence.
+
+[FAILURE_MODES] Do not copy the dated §4.6 planning snapshot without re-verification, rely on
+third-party summaries where a first-party source exists, automate account creation, request or
+store credentials, accept terms, call a live endpoint, mark a candidate implemented/healthy,
+increase active counts, infer rights from public access, conflate forecast and observation time,
+or add hardcoded counts/status outside the registry. If an exact product, endpoint, terms version,
+attribution, approval owner, or safe operational policy cannot be evidenced, defer that candidate
+and record DOC_BLOCKER with the missing primary evidence. After three bounded source/product
+selection approaches fail, record LOGIC_BLOCKER with the evaluated options and tradeoffs.
+```
 
 ### Phase 6 — Standards-compliant MCP HTTP
 
@@ -2114,6 +2158,47 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   implementation/mode accurately.** Its exact ready-to-authorize 4-Pillar brief is in §10;
   task 5.2.4 has not been authorized or started.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.2.4. Authorize the embedded
+  4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 5.2.4 and Phase 5.2 exit checkpoint — 2026-09-05
+
+- The developer authorized the exact embedded task 5.2.4 4-Pillar brief. Work remained an
+  offline deterministic registry/documentation projection: no provider, credential, terms,
+  account, live-source, production, UI, identity/tenancy, or economic operation was performed.
+- `DATA_SOURCES.md` and `docs/generated/provider-registry.md` now preserve authored policy
+  outside explicit provider-registry markers while one `pnpm docs:providers` command replaces
+  both generated sections. The projections contain separate provider, feed, and layer tables
+  with registered/active counts, implementation, requested/runtime mode, health, freshness,
+  source, license/terms, attribution, and source-document links.
+- Active summaries now require an implemented entry on a healthy provider in seed or live
+  runtime mode. Planned, incomplete, disabled/degraded, download-pack, and unavailable entries
+  remain registered but do not increase active counts. Seed output remains 12/12 active providers,
+  12/12 active feeds, and 11/12 active layers; tests also cover disabled, download-pack, and
+  production-locked live projections.
+- The generator validates one ordered marker pair per document, plans all replacements before
+  writing, preserves line endings and authored surroundings, and has a read-only `--check` mode
+  that reports every stale artifact without partially writing. Tests prove stale detection,
+  marker failure atomicity, zero registry-generation fetches, no wall-clock access, and no
+  environment-secret interpolation. CI now runs ADG tests and generated-document parity.
+- Evidence passed: root Biome checked 242 files; forced affected lint/typecheck/test/build
+  completed 40/40 tasks; provider tests passed 41/41; documentation/marker tests passed 14/14;
+  ADG checked 54 documents, 424 paths, and 18 module-qualified symbols; architecture drift,
+  generated-document parity, bundle budgets, and `git diff --check` passed. The canonical
+  `pnpm gev test` passed 399 unit tests, server load p95 15.88 ms under 300 ms, 1,060-entity
+  Cesium p95 7.03 ms, 1,000-cable p95 6.90 ms, and 1,000-satellite p95 4.87 ms under 16.6 ms.
+  Canonical Playwright QA rebuilt successfully and passed both Phase 5.2 smoke tests in 1.4
+  minutes. The app entry remained 91.50 KiB gzip and total bundle footprint 1,230.81 KiB gzip.
+- Phase 5.2 exit is supported by the current contract/provider provenance suite, zero-network
+  seed tests, cable and satellite server/Cesium tests, performance gates, and the two browser
+  smoke scenarios. Final local status reported Phase 5.3, `STASIS_INACTIVE`, seed mode, 12/12
+  active providers, 12/12 active feeds, and 11/12 active layers; it remains a non-authoritative
+  offline snapshot, and no governance state was resumed, deleted, or rewritten.
+- Branch: `codex/task-5.2.4-registry-docs`. All changes for Task 5.2.4 committed and
+  pushed to origin for PR creation. GitHub CLI was unauthenticated, so PR title and
+  description are provided for PR creation via the repository web interface.
+- Next task: **5.3.1 Accept a source-and-access ADR**. Its exact ready-to-authorize 4-Pillar
+  brief is in §10; task 5.3.1 has not been authorized or started.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.3.1. Authorize the embedded
   4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.

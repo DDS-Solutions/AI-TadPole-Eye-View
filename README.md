@@ -2,7 +2,7 @@
 
 > Watch the world live — then watch governed AI agents build and run the thing doing the watching.
 
-[![Status](https://img.shields.io/badge/status-Early%20Stage%20WIP-orange)](./PLAN.md) [![Phase](https://img.shields.io/badge/phase-5.2%20(Provenance%20%26%20Layers)-blue)](./PLAN.md) [![Governance](https://img.shields.io/badge/governed%20by-AI--TadPole--OS-purple)](https://github.com/DDS-Solutions/AI-TadPole-OS) [![License](https://img.shields.io/badge/code-MIT-blue)](#license)
+[![Status](https://img.shields.io/badge/status-Early%20Stage%20WIP-orange)](./PLAN.md) [![Phase](https://img.shields.io/badge/phase-5.3%20(Operational%20Awareness)-blue)](./PLAN.md) [![Governance](https://img.shields.io/badge/governed%20by-AI--TadPole--OS-purple)](https://github.com/DDS-Solutions/AI-TadPole-OS) [![License](https://img.shields.io/badge/code-MIT-blue)](#license)
 
 > ⚠️ **Project Status: Early Stage WIP (Work in Progress)**  
 > This repository is an active, ground-up rewrite of [bilawalsidhu/gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view) into an agent-native architecture designed for [AI-TadPole-OS](https://github.com/DDS-Solutions/AI-TadPole-OS) governance. Core telemetry layers, security perimeters, typed provider registries, and local governance work in seed mode. Shared M2 verification, M3 accounting, and a versioned SQLite audit chain are implemented locally; external production identity, Tadpole M4 orchestration, and remaining telemetry layers are still in development.

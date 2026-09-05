@@ -38,6 +38,10 @@ jobs:
           GEV_SEED_MODE: '1'
       - name: ADG — documentation must match code
         run: pnpm docs:check
+      - name: Documentation guard and generated-section tests
+        run: pnpm docs:test
+      - name: Provider registry generated-document parity
+        run: pnpm docs:providers:check
       - name: Architectural drift inventory
         run: pnpm architecture:check
 
