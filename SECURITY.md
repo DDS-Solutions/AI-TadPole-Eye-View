@@ -1,6 +1,6 @@
 # Security & Threat Model
 
-**Project:** GEV v2 (`AI-TadPole-Eye-View`) · **Status:** Phase 5.2 provenance and missing geospatial layers · **Companion docs:** [PLAN.md](./PLAN.md), [AGENTS.md](./AGENTS.md), [RUNBOOK.md](./RUNBOOK.md)
+**Project:** GEV v2 (`AI-TadPole-Eye-View`) · **Status:** Phase 5.3 operational-awareness layers and access discovery · **Companion docs:** [PLAN.md](./PLAN.md), [AGENTS.md](./AGENTS.md), [RUNBOOK.md](./RUNBOOK.md)
 
 GEV v2 is an agent-native geospatial OSINT telemetry console tracking public data on a 3D globe. This document details the threat model, trust boundaries, STRIDE analysis across the system topology, and incident response procedures.
 

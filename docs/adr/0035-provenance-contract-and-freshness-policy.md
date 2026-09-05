@@ -82,6 +82,19 @@ The existing HUD badge surface shows a registry/provenance-derived source count,
 mode, and aggregate freshness. It does not infer values from environment variables or HTTP
 headers and does not create another provider summary.
 
+### Deterministic documentation projection
+
+Task 5.2.4 makes `DATA_SOURCES.md` and `docs/generated/provider-registry.md` deterministic,
+marker-delimited projections of the same validated registry. One offline generator updates
+both surfaces while preserving authored policy outside the markers; its check mode fails on
+missing markers or stale content and never consults wall-clock time, environment secrets, or
+the network.
+
+For registry summaries and generated documentation, an entry is active only when its own
+implementation is `implemented` and its provider is healthy in `seed` or `live` runtime
+mode. Planned, incomplete, disabled/degraded, `download_pack`, and `unavailable` entries
+remain registered for truthful discovery but do not increase active counts.
+
 ### Cross-platform line endings
 
 The repository owns LF normalization through `.gitattributes`. This makes Biome lint
@@ -99,5 +112,7 @@ task diff.
 - Cached seed data is labeled cached delivery from a seed source, not live data.
 - Provider registry version 2 is a deliberate breaking schema change and generated registry
   documentation must be refreshed.
+- Registry-backed documentation rows and counts cannot drift silently: generated parity is
+  an explicit source-document gate.
 - Cables and satellites must adopt this contract in tasks 5.2.2 and 5.2.3 rather than being
   partially implemented here.
