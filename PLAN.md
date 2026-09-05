@@ -2253,36 +2253,7 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.3.1. Authorize the embedded
   4-Pillar brief exactly; do not advance into later tasks.`
 
-### Task 5.3.1 checkpoint — 2026-09-05
-
-- The developer authorized the exact embedded task 5.3.1 4-Pillar brief. Work remained an
-  offline research, documentation, and typed registry projection: zero live network sockets,
-  credentials, terms acceptances, or accounts were created or contacted.
-- Accepted ADR 0045 (`docs/adr/0045-operational-awareness-source-and-access-policy.md`), ranking
-  7 operational-awareness sources (Solar terminator, NWS CAP alerts, AWC METAR/TAF/SIGMET,
-  NHC/CPHC tropical cyclones, CO-OPS coastal conditions, and bounded research spikes for nowCOAST
-  radar and GOES GLM lightning) and explicitly deferring volcano, AirNow, SWPC, and NASA imagery.
-- Created dedicated source documentation records in `docs/data-sources/` (`solar-context.md`,
-  `nws-alerts.md`, `aviation-weather.md`, `tropical-cyclones.md`, `coastal-conditions.md`,
-  `nowcoast-radar.md`, `goes-glm.md`) and updated `docs/data-sources/README.md`.
-- Added accepted entries to the executable registry via `operationalRegistryDefinitions.ts` and
-  `operationalRegistryDefinitionsImagery.ts` as `planned` and `unavailable` with complete typed
-  provenance, freshness, licensing, and attribution metadata.
-- Projected deterministic documentation into `DATA_SOURCES.md` and `docs/generated/provider-registry.md`.
-  Active counts remained unchanged at 12/12 providers, 12/12 feeds, and 11/12 layers; registered
-  counts increased to 19 providers, 27 feeds, and 27 layers.
-- Evidence passed: Biome lint, ADG (62 docs, 470 paths), documentation tests (14/14), architecture
-  check, full Turbo typecheck, unit test suite (16/16 packages), provider registry tests (42/42),
-  and `pnpm docs:providers:check`.
-- Branch: `codex/task-5.3.1`. Changes committed and pushed to origin for PR creation. GitHub CLI
-  was unauthenticated, so PR title and description are provided for PR creation via the repository
-  web interface.
-- Next task: **5.3.2 Implement solar context, NWS alerts, and aviation weather**. Its exact
-  ready-to-authorize 4-Pillar brief is in §10; task 5.3.2 has not been authorized or started.
-- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.3.2. Authorize the embedded
-  4-Pillar brief exactly; do not advance into later tasks.`
-
-+### Task 5.3.1 completion checkpoint — 2026-09-05
+### Task 5.3.1 completion checkpoint — 2026-09-05
 
 - The developer authorized the exact embedded task 5.3.1 4-Pillar brief. Work remained
   documentation and executable registry planning only: no provider data endpoint was called,
@@ -2308,7 +2279,7 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
 - Evidence passed: root Biome checked 244 files; forced affected lint/typecheck/test/build
   completed 40/40 tasks; 400 unit tests passed, including provider 42/42 and the registry ripple
   in CLI/operator-tool consumers; documentation/marker tests passed 14/14; generated-document
-  check mode was clean; ADG checked 62 documents, 478 paths, and 18 module-qualified symbols;
+  check mode was clean; ADG checked 62 documents, 470 paths, and 18 module-qualified symbols;
   architecture drift reported zero oversized files; and staged plus working-tree diff checks
   passed. The first sandboxed affected run encountered only local worker-process spawn EPERM;
   the approved rerun outside that restriction completed all gates.
@@ -2316,13 +2287,13 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   offline snapshot caveat, seed mode, 12/19 active providers, 12/22 active feeds, 11/19 active
   layers, 12 healthy feeds, and 10 unavailable planned feeds. No governance state was resumed,
   deleted, or rewritten.
-- Branch: codex/task-5.3.1-source-access-adr; implementation commit bf6f092.
-  GitHub CLI remained unauthenticated, so open PR inspection and PR creation were unavailable.
+- Branch: codex/task-5.3.1; implementation commit 96586a3. GitHub CLI remained unauthenticated,
+  so PR inspection and creation
+  through the CLI were unavailable.
 - Next task: **5.3.2 Add deterministic solar context, NWS alerts, and AWC aviation weather.**
   Its exact ready-to-authorize 4-Pillar brief is in §10; task 5.3.2 has not been authorized or
   started.
 - Recommended new-chat instruction: Resume PLAN.md at NEXT_TASK 5.3.2. Authorize the embedded
   4-Pillar brief exactly; do not advance into later tasks.
-
 
 No later task is authorized merely because it appears in this plan.
