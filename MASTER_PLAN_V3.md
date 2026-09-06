@@ -2,8 +2,8 @@
 
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
-**Verified against repository:** 2026-08-30
-**Status:** IN PROGRESS — Phase 5.3; task 5.3.2 awaits 4-Pillar authorization
+**Verified against repository:** 2026-09-06
+**Status:** IN PROGRESS — Phase 5.3; task 5.3.3 awaits 4-Pillar authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=5.3
-NEXT_TASK=5.3.2
+NEXT_TASK=5.3.3
 NEXT_TASK_STATUS=READY
 LAST_VERIFIED_UTC=2026-09-05
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
@@ -1091,7 +1091,7 @@ approaches fail, record LOGIC_BLOCKER with diff evidence and bounded alternative
   rank the operational layers, define exact products/endpoints/coverage/terms/attribution/
   credential and refresh/cache/rate/budget policies, and add accepted entries to the typed
   registry as `planned` without increasing active counts.
-- [ ] **5.3.2 Add deterministic solar context, NWS alerts, and AWC aviation weather.** Build
+- [x] **5.3.2 Add deterministic solar context, NWS alerts, and AWC aviation weather.** Build
   the SimClock terminator in core/cesium-kit; add CAP alert polygons plus bounded METAR/TAF/
   SIGMET products selected by the ADR, each with lawful fixtures, provenance, health, AOI
   inspection, and zero network access in seed mode.
@@ -1156,7 +1156,7 @@ and record DOC_BLOCKER with the missing primary evidence. After three bounded so
 selection approaches fail, record LOGIC_BLOCKER with the evaluated options and tradeoffs.
 ```
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 5.3.2
+#### Authorized 4-Pillar brief for completed task 5.3.2
 
 ```text
 [SCOPE_CONTRACT] Implement only the first three ADR 0045-ranked entries: deterministic solar
@@ -1205,6 +1205,71 @@ writes, or interpolate provider text into LLM instructions. Production live acti
 fail-closed until the separate terms record exists. If first-party contracts have materially
 changed, stop with DOC_BLOCKER and amend ADR 0045 before implementation. After three genuine
 bounded implementation approaches fail, record LOGIC_BLOCKER with evidence and alternatives.
+```
+
+
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 5.3.3
+
+```text
+[SCOPE_CONTRACT] Implement only the ADR 0045 rank-4 and rank-5 entries: current NHC/CPHC
+Atlantic, Eastern Pacific, and Central Pacific GIS advisories, and NOAA CO-OPS coastal water
+levels, tide predictions, current observations, and current predictions. Re-verify the selected
+first-party schemas and access policies before editing; add or extend versioned Zod contracts,
+lawful time-frozen fixtures, bounded provider parsers/adapters, fixed authenticated server
+routes/caches/rate and budget controls, registry state/freshness/provenance, stores, cesium-kit
+controllers, existing Svelte HUD/layer wiring, AOI/station inspection, source documentation,
+and focused unit/property/server/Cesium/Playwright tests. Preserve NHC advisory number, issue,
+observation, and forecast-valid times plus track/cone/watch-warning distinctions; preserve CO-OPS
+station, datum, units, time zone, observation/prediction identity, quality flags, and metadata
+retrieval. Regenerate registry documentation after each complete path becomes implemented. In
+scope: packages/contracts, packages/core only for pure bounded geospatial/time helpers,
+packages/providers, packages/security only for a narrowly tested existing boundary extension,
+apps/server, packages/cesium-kit, apps/web, fixtures, docs/data-sources, generated registry docs,
+and relevant tests. Out of scope: nowCOAST/MRMS and GOES GLM spikes (5.3.4), Layer Access
+settings (5.3.5), archives as current data, arbitrary basins/assets/stations/products, credential
+or terms administration, production terms approval, navigation or life-safety claims, economic
+features, new transports, identity/tenancy, and later tasks.
+
+[PERFORMANCE_THRESHOLD] Seed/test/CI open zero provider sockets. NHC accepts only the three
+fixed basin indexes and same-origin advisory assets, caps 256 current index items, 5 MiB per
+compressed response/asset, 32 archive entries and 20 MiB expanded KMZ content, uses at most two
+concurrent requests, refreshes no faster than 300 seconds, labels stale data through six hours,
+and never substitutes archive products or displays advisory geometry beyond source validity.
+CO-OPS accepts only fixed station metadata/data roots and an allowlisted product set, caps 100
+normalized AOI stations, 10,000 records and 2 MiB per response, uses at most four concurrent
+station requests and 240 upstream requests/hour, refreshes no faster than 360 seconds, labels
+observations stale only through 30 minutes, and removes predictions after validity. Representative
+maximum parser replay stays below 50 ms p95 per source and combined maximum Cesium ingestion stays
+below 16.6 ms p95. Condition-wait Playwright smoke plus visually inspected screenshots prove
+current/forecast separation, datum/time-zone disclosure, track/cone/watch-warning rendering,
+empty, stale, unavailable, expiry, and recovery states with visible NOAA attribution and
+not-for-navigation/life-safety disclaimers. Existing bundle budgets hold. Root lint; full
+typecheck/unit/performance/build; affected gates; ADG/tests; architecture drift; generated-doc
+parity; bundle; network-denial; git diff; and synchronized-plan checks pass.
+
+[ARCHITECTURE_MODE] PLAN.md §2 rules 1–7, 9, and 11–15; §3 provider→store→UI/Cesium data flow;
+§4 provenance, freshness, registry, geography, and Layer Access read boundaries; §8.1 and §8.3;
+ADR 0015, ADR 0020, ADR 0023–0025, ADR 0035, ADR 0039–0040, ADR 0045, and ADR 0046.
+TypeScript remains the default. External I/O stays server-side through pinned-fetch with fixed
+hosts, basin indexes, same-origin asset validation, station/product allowlists, Zod validation,
+shared single-flight caching, governance, rate/budget limits, kill switches, and required
+provenance. Compressed advisory assets are canonicalized and bounded before and after expansion.
+Stores own UI state and cesium-kit alone owns imperative Cesium objects. Advisory, station, and
+metadata text is untrusted data, never instructions. Observation, forecast, prediction, retrieval,
+and cache times remain separate. No architectural or source-policy deviation without an ADR.
+
+[FAILURE_MODES] Do not call live sources while building fixtures/tests, copy restricted or
+unreviewed payloads, accept arbitrary RSS/KMZ/KML URLs, follow cross-origin assets, permit zip
+slip/bombs or recursive archives, use wall-clock time in domain/provider logic, accept arbitrary
+station/product input, infer datum/time zone, merge preliminary observations with verified
+predictions, turn missing/suppressed values into zero, treat retrieval time as source-valid time,
+roll expired advisories or predictions forward, substitute archives as current, call CO-OPS or
+NHC from the browser, bypass pinned-fetch/cache/rate/budget/STASIS, add per-frame rune writes, or
+interpolate source content into LLM instructions. Production live activation stays fail-closed
+until separate terms records exist. If current first-party contracts, asset topology, or use
+terms materially differ from ADR 0045, stop with DOC_BLOCKER and amend the ADR before
+implementation. After three genuine bounded implementation approaches fail, record
+LOGIC_BLOCKER with evidence and alternatives.
 ```
 
 ### Phase 6 — Standards-compliant MCP HTTP
@@ -2325,4 +2390,51 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   4-Pillar brief exactly; do not advance into later tasks.
 
 
+### Task 5.3.2 completion checkpoint — 2026-09-06
+
+- The developer authorized the exact embedded task 5.3.2 4-Pillar brief. The implementation
+  remained inside solar context, NWS active alerts, and AWC METAR/TAF/SIGMET scope; no NHC,
+  CO-OPS, imagery-spike, Layer Access, identity/tenancy, economic, live-provider, terms,
+  credential, or production operation was performed.
+- Versioned contracts, pure SimClock solar calculations, four lawful synthetic fixtures, bounded
+  NWS/AWC adapters, fixed authenticated and STASIS-protected server routes, shared cache/rate/budget
+  controls, registry-backed provenance/health, Svelte stores/HUD, and cesium-kit controllers now
+  form one provider→store→UI/Cesium path. ADR 0046 records the rendering boundary and accepted
+  architecture inventory. NWS CAP times and AWC observation/issue/validity remain distinct;
+  expired products disappear and stale NWS data becomes unavailable after five minutes.
+- Seed truth is now 15/19 active providers, 17/22 active feeds, and 14/19 active layers. Solar
+  refresh is SimClock-driven at no more than 1 Hz through the rAF queue; NWS and AWC enforce ADR
+  0045 record, byte, host, path, timeout, concurrency, freshness, and source-validity bounds.
+  Seed/test/CI network-denial tests and explicit locked-live tests prove zero provider sockets
+  without all required gates. Production live activation remains fail-closed pending the separate
+  owner terms records.
+- Evidence passed: root Biome checked 262 files; strict typecheck completed 17/17 tasks; 422 unit
+  tests passed across 16 Turbo tasks, including providers 47/47 and server 109/109; documentation
+  tests passed 14/14; generated registry parity was clean; ADG checked 63 documents, 480 paths,
+  and 18 module-qualified symbols; architecture drift reported zero oversized files; production
+  build, bundle budgets, staged/working-tree diff checks, and synchronized-plan checks passed.
+- Performance evidence passed: 100 concurrent server requests measured 15.41 ms p95 under the
+  300 ms budget; maximum NWS 500-record and combined AWC 1,200-record parser replays measured
+  17.92 ms and 19.28 ms p95 under 50 ms; existing 1,060-entity, 1,000-cable, and 1,000-satellite
+  ingestion measured 6.08 ms, 5.86 ms, and 4.09 ms p95; the new 1,700-entity operational batch
+  measured 11.07 ms p95 under 16.6 ms.
+- Canonical Playwright smoke passed all three scenarios. A focused visual-state rerun also passed;
+  manually inspected screenshots prove the populated operational HUD plus empty, stale,
+  unavailable, and recovered states. The app entry is 95.29 KiB gzip and total bundle footprint
+  is 1,235.08 KiB gzip, within the existing budgets.
+- The supplied independent review was validated and its approval verdict holds. Its terrain-clamped
+  polygon-outline note is informational because fills remain visible; antimeridian rejection is
+  the documented split-AOI policy; and the pre-existing CLI shell-spawn deprecation is a bounded,
+  out-of-scope hygiene follow-up. Cross-checking also hardened AWC SIGMET `rawAirSigmet`
+  compatibility and corrected the locked-live test's exact AWC environment guard.
+- Final local status reported Phase 5.3, `STASIS_INACTIVE`, seed mode, 15/19 active providers,
+  17/22 active feeds, 14/19 active layers, 17 healthy feeds, and five unavailable planned feeds.
+  This remains the required non-authoritative offline snapshot; no governance state was resumed,
+  deleted, or rewritten.
+- Branch: `codex/task-5.3.2`; implementation commit `5c75461`. GitHub CLI authentication
+  remained unavailable, so open-PR inspection, push, and PR creation were not performed.
+- Next task: **5.3.3 Add NHC tropical-cyclone and NOAA CO-OPS coastal layers.** Its exact
+  ready-to-authorize 4-Pillar brief is in §10; task 5.3.3 has not been authorized or started.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.3.3. Authorize the embedded
+  4-Pillar brief exactly; do not advance into later tasks.`
 No later task is authorized merely because it appears in this plan.
