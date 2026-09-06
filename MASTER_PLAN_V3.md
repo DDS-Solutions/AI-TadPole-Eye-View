@@ -2635,8 +2635,9 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   20/22 active feeds, 16/19 active layers, and two unavailable planned feeds. This remains the
   required non-authoritative offline snapshot; no governance state was resumed, deleted, or
   rewritten.
-- Branch: `codex/task-5.3.4`; implementation commit `91f1001`. GitHub CLI authentication
-  remained unavailable, so open-PR inspection and PR creation through the CLI were not possible.
+- Branch: `codex/task-5.3.4`; implementation commit `fa74dcc`; the implementation and
+  synchronized completion evidence were pushed to origin. GitHub CLI authentication remained
+  unavailable, so open-PR inspection and PR creation through the CLI were not possible.
 - Next task: **5.3.5 Add the registry-derived Layer Access read model and Settings panel.** Its
   exact ready-to-authorize 4-Pillar brief is in §10; task 5.3.5 has not been authorized or started.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.3.5. Authorize the embedded
