@@ -486,6 +486,9 @@ describe('Cesium Kit Telemetry Layer Controllers (PLAN.md §8)', () => {
       weather: 0,
       cables: 0,
       satellites: 0,
+      solar: 0,
+      alerts: 0,
+      aviationWeather: 0,
     });
   });
 });

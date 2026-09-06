@@ -1,0 +1,8 @@
+{
+  "type": "FeatureCollection",
+  "fixture_metadata": {"id": "awc-metar-synthetic-v1", "license": "MIT", "generated_by": "GEV", "reference_time": "2024-08-25T10:00:00.000Z"},
+  "features": [
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [-104.6737, 39.8561]}, "properties": {"icaoId": "KDEN", "reportTime": "2024-08-25T09:55:00.000Z", "rawOb": "KDEN 250955Z 18008KT 10SM FEW080 18/08 A3012", "fltCat": "VFR", "temp": 18, "wspd": 8}},
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [-73.7789, 40.6398]}, "properties": {"icaoId": "KJFK", "reportTime": "2024-08-25T09:54:00.000Z", "rawOb": "KJFK 250954Z 21012KT 6SM BKN020 22/18 A2998", "fltCat": "MVFR", "temp": 22, "wspd": 12}}
+  ]
+}

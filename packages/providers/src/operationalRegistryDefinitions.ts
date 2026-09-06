@@ -54,6 +54,10 @@ export const noFreshness = (reason: string) => ({
   status: 'unavailable' as const,
   reason,
 });
+const definedFreshness = (freshForSeconds: number) => ({
+  status: 'defined' as const,
+  fresh_for_seconds: freshForSeconds,
+});
 
 export const noScopes: readonly string[] = [];
 export const allLiveEnvironments: readonly LiveEnvironment[] = [
@@ -73,21 +77,21 @@ export const OPERATIONAL_AWARENESS_PROVIDER_DEFINITIONS = [
       license: 'MIT-licensed GEV pure-domain calculation',
       attribution: 'DDS-Solutions GEV; twilight definitions referenced to U.S. Naval Observatory',
     },
-    implementation: 'planned',
+    implementation: 'implemented',
     supported_modes: ['seed', 'live'],
     feeds: [
       {
         id: 'solar-context',
         name: 'SimClock solar position and twilight context',
-        implementation: 'planned',
-        freshness: noFreshness('Planned deterministic calculation has no runtime freshness yet'),
+        implementation: 'implemented',
+        freshness: definedFreshness(1),
       },
     ],
     layers: [
       {
         id: 'solar-context',
         name: 'Day, night, and twilight context',
-        implementation: 'planned',
+        implementation: 'implemented',
         documentation_path: 'docs/data-sources/solar-context.md',
       },
     ],
@@ -144,21 +148,21 @@ export const OPERATIONAL_AWARENESS_PROVIDER_DEFINITIONS = [
       license: 'NWS public-domain notice and service-use policy; source-specific exceptions apply',
       attribution: 'NOAA / National Weather Service',
     },
-    implementation: 'planned',
+    implementation: 'implemented',
     supported_modes: ['seed', 'live'],
     feeds: [
       {
         id: 'nws-alerts',
         name: 'Active NWS CAP alerts',
-        implementation: 'planned',
-        freshness: noFreshness('Planned source has no implemented freshness evaluation'),
+        implementation: 'implemented',
+        freshness: definedFreshness(30),
       },
     ],
     layers: [
       {
         id: 'nws-alerts',
         name: 'NWS watches, warnings, and advisories',
-        implementation: 'planned',
+        implementation: 'implemented',
         documentation_path: 'docs/data-sources/nws-alerts.md',
       },
     ],
@@ -220,35 +224,33 @@ export const OPERATIONAL_AWARENESS_PROVIDER_DEFINITIONS = [
         'NWS public-domain notice and AWC Data API restrictions; source-specific exceptions apply',
       attribution: 'NOAA / National Weather Service / Aviation Weather Center',
     },
-    implementation: 'planned',
+    implementation: 'implemented',
     supported_modes: ['seed', 'live'],
     feeds: [
       {
         id: 'aviation-metar',
         name: 'METAR terminal observations',
-        implementation: 'planned',
-        freshness: noFreshness(
-          'Planned observation source has no implemented freshness evaluation'
-        ),
+        implementation: 'implemented',
+        freshness: definedFreshness(60),
       },
       {
         id: 'aviation-taf',
         name: 'TAF terminal forecasts',
-        implementation: 'planned',
-        freshness: noFreshness('Planned forecast source has no implemented validity evaluation'),
+        implementation: 'implemented',
+        freshness: definedFreshness(60),
       },
       {
         id: 'aviation-sigmet',
         name: 'SIGMET aviation warnings',
-        implementation: 'planned',
-        freshness: noFreshness('Planned warning source has no implemented validity evaluation'),
+        implementation: 'implemented',
+        freshness: definedFreshness(60),
       },
     ],
     layers: [
       {
         id: 'aviation-weather',
         name: 'Aviation observations, forecasts, and warnings',
-        implementation: 'planned',
+        implementation: 'implemented',
         documentation_path: 'docs/data-sources/aviation-weather.md',
       },
     ],

@@ -1,6 +1,7 @@
 export * from './geoMath.js';
 export * from './cockpitMath.js';
 export * from './scopeMask.js';
+export * from './solarContext.js';
 export * from './clock.js';
 export * from './sceneSerializer.js';
 export * from './toolExecutor.js';

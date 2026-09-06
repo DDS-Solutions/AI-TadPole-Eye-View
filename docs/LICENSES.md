@@ -28,6 +28,11 @@ This document outlines the software licenses, open data terms, and 3D asset attr
 | OpenStreetMap | OpenStreetMap Foundation | ODbL 1.0 | Requires attribution & share-alike |
 | Synthetic Submarine Cables | DDS-Solutions procedural fixture | MIT | Bundled test fixture; explicitly synthetic |
 | Licensed Submarine Cable Pack | TeleGeography | Operator-specific annual data license | **NOT BUNDLED** — no default manifest or public raw-data endpoint |
+| Deterministic Solar Context | DDS-Solutions GEV; USNO/NOAA reference equations | MIT implementation / U.S. Government references | Pure SimClock-derived geometry; no third-party data is bundled |
+| Synthetic NWS CAP Alerts | DDS-Solutions procedural fixture | MIT | Schema-shaped test alerts only; not issued by NWS and not operational guidance |
+| NWS Active Alerts | NOAA / National Weather Service | U.S. Government source; disclaimer applies | Live use remains disabled pending a recorded source-policy approval and identified User-Agent |
+| Synthetic AWC METAR/TAF/SIGMET | DDS-Solutions procedural fixtures | MIT | Schema-shaped test products only; not valid for flight planning |
+| METAR/TAF/SIGMET | NOAA / NWS / Aviation Weather Center | U.S. Government source; disclaimer applies | Live use remains disabled pending a recorded source-policy approval and descriptive User-Agent |
 
 ---
 

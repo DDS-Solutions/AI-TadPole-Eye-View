@@ -12,7 +12,7 @@ import {
 import { OPERATIONAL_AWARENESS_PROVIDER_DEFINITIONS } from '../src/operationalRegistryDefinitions.js';
 import { OPERATIONAL_IMAGERY_PROVIDER_DEFINITIONS } from '../src/operationalRegistryDefinitionsImagery.js';
 
-const plannedOperationalDefinitions = [
+const operationalDefinitions = [
   ...OPERATIONAL_AWARENESS_PROVIDER_DEFINITIONS,
   ...OPERATIONAL_IMAGERY_PROVIDER_DEFINITIONS,
 ];
@@ -24,9 +24,9 @@ describe('typed provider registry', () => {
     const counts = summarizeProviderRegistry(registry);
 
     expect(counts).toEqual({
-      providers: { total: 19, active: 12 },
-      feeds: { total: 22, active: 12 },
-      layers: { total: 19, active: 11 },
+      providers: { total: 19, active: 15 },
+      feeds: { total: 22, active: 17 },
+      layers: { total: 19, active: 14 },
     });
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
@@ -60,9 +60,9 @@ describe('typed provider registry', () => {
 
     const liveCounts = summarizeProviderRegistry(createProviderRegistry({ requestedMode: 'live' }));
     expect(liveCounts).toEqual({
-      providers: { total: 19, active: 7 },
-      feeds: { total: 22, active: 7 },
-      layers: { total: 19, active: 6 },
+      providers: { total: 19, active: 10 },
+      feeds: { total: 22, active: 12 },
+      layers: { total: 19, active: 9 },
     });
   });
 
@@ -74,9 +74,9 @@ describe('typed provider registry', () => {
     expect(feeds.find((feed) => feed.provider === 'opensky')?.status).toBe('degraded');
     expect(listProviderRegistryFeeds(registry)[0]?.status).toBe('healthy');
     expect(summarizeProviderRegistry(disabled)).toEqual({
-      providers: { total: 19, active: 11 },
-      feeds: { total: 22, active: 11 },
-      layers: { total: 19, active: 10 },
+      providers: { total: 19, active: 14 },
+      feeds: { total: 22, active: 16 },
+      layers: { total: 19, active: 13 },
     });
   });
 
@@ -87,9 +87,9 @@ describe('typed provider registry', () => {
     );
 
     expect(summarizeProviderRegistry(registry)).toEqual({
-      providers: { total: 19, active: 11 },
-      feeds: { total: 22, active: 11 },
-      layers: { total: 19, active: 10 },
+      providers: { total: 19, active: 14 },
+      feeds: { total: 22, active: 16 },
+      layers: { total: 19, active: 13 },
     });
   });
 
@@ -105,7 +105,7 @@ describe('typed provider registry', () => {
       .split('\n')
       .find((line) => line.startsWith('| `celestrak` | CelesTrak |'));
 
-    expect(markdown).toContain('| Providers | 19 | 6 |');
+    expect(markdown).toContain('| Providers | 19 | 9 |');
     expect(satelliteProviderRow).toContain('| no | `implemented` | `live` | `unavailable` |');
     expect(markdown).not.toContain('DOC_SECRET_SENTINEL');
     expect(markdown).not.toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/);
@@ -114,33 +114,38 @@ describe('typed provider registry', () => {
     vi.unstubAllEnvs();
   });
 
-  it('keeps every accepted operational source planned, unavailable, bounded, and documented', () => {
+  it('keeps implemented and planned operational sources honest, bounded, and documented', () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
     const nowSpy = vi.spyOn(Date, 'now');
     const seedRegistry = createProviderRegistry({ requestedMode: 'seed' });
     const liveRegistry = createProviderRegistry({ requestedMode: 'live' });
 
-    expect(plannedOperationalDefinitions).toHaveLength(7);
+    expect(operationalDefinitions).toHaveLength(7);
     expect(
-      plannedOperationalDefinitions.map((definition) => definition.source_access.decision_rank)
+      operationalDefinitions.map((definition) => definition.source_access.decision_rank)
     ).toEqual([1, 2, 3, 4, 5, 6, 7]);
 
     const killSwitches = new Set<string>();
-    for (const definition of plannedOperationalDefinitions) {
-      expect(definition.implementation).toBe('planned');
-      expect(definition.feeds.every((feed) => feed.implementation === 'planned')).toBe(true);
-      expect(definition.layers.every((layer) => layer.implementation === 'planned')).toBe(true);
+    for (const definition of operationalDefinitions) {
+      const implementation =
+        definition.source_access.decision_rank <= 3 ? 'implemented' : 'planned';
+      const seedRuntime =
+        implementation === 'implemented'
+          ? { mode: 'seed', health: 'healthy' }
+          : { mode: 'unavailable', health: 'unavailable' };
+      expect(definition.implementation).toBe(implementation);
+      expect(definition.feeds.every((feed) => feed.implementation === implementation)).toBe(true);
+      expect(definition.layers.every((layer) => layer.implementation === implementation)).toBe(
+        true
+      );
       expect(
         seedRegistry.providers.find((provider) => provider.id === definition.id)
-      ).toMatchObject({
-        mode: 'unavailable',
-        health: 'unavailable',
-      });
+      ).toMatchObject(seedRuntime);
       expect(
         liveRegistry.providers.find((provider) => provider.id === definition.id)
       ).toMatchObject({
-        mode: 'unavailable',
-        health: 'unavailable',
+        mode: implementation === 'implemented' ? 'live' : 'unavailable',
+        health: implementation === 'implemented' ? 'healthy' : 'unavailable',
       });
 
       const access = definition.source_access;

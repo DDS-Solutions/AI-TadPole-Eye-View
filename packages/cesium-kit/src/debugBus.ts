@@ -1,3 +1,4 @@
+import type { AviationWeatherLayerController } from './aviationWeatherLayer.js';
 import type { CableLayerController } from './cableLayer.js';
 import type { CctvLayerController } from './cctvLayer.js';
 import type { FirmsLayerController } from './firmsLayer.js';
@@ -6,9 +7,11 @@ import type { GbfsLayerController } from './gbfsLayer.js';
 import type { GlobeController } from './globe.js';
 import type { LaunchLayerController } from './launchLayer.js';
 import type { MarineLayerController } from './marineLayer.js';
+import type { NwsAlertLayerController } from './nwsAlertLayer.js';
 import type { QuakeLayerController } from './quakeLayer.js';
 import type { RadioLayerController } from './radioLayer.js';
 import type { SatelliteLayerController } from './satelliteLayer.js';
+import type { SolarContextLayerController } from './solarContextLayer.js';
 import type { WeatherLayerController } from './weatherLayer.js';
 
 import type { FrameBudgetMonitor, FrameBudgetReport, FrameMetrics } from './frameBudget.js';
@@ -34,6 +37,9 @@ export interface LayerControllersMap {
   weather?: WeatherLayerController;
   cables?: CableLayerController;
   satellites?: SatelliteLayerController;
+  solar?: SolarContextLayerController;
+  alerts?: NwsAlertLayerController;
+  aviationWeather?: AviationWeatherLayerController;
 }
 
 export interface GevDebugBus {
@@ -53,6 +59,8 @@ export interface GevDebugBus {
   getCableRouteCount: () => number;
   getCableLandingPointCount: () => number;
   getSatelliteIds: () => string[];
+  getAlertIds: () => string[];
+  getAviationWeatherIds: () => string[];
   getCameraHeight: () => number;
   getCameraPose: () => CameraPose;
   getSelectedEntity: () => unknown;
@@ -103,6 +111,9 @@ export function attachDebugBus(
       const weatherCount = layers.weather?.getEntityCount() ?? 0;
       const cableCount = layers.cables?.getEntityCount() ?? 0;
       const satelliteCount = layers.satellites?.getEntityCount() ?? 0;
+      const solarCount = layers.solar?.getEntityCount() ?? 0;
+      const alertCount = layers.alerts?.getEntityCount() ?? 0;
+      const aviationWeatherCount = layers.aviationWeather?.getEntityCount() ?? 0;
       return (
         flightCount +
         marineCount +
@@ -114,7 +125,10 @@ export function attachDebugBus(
         launchCount +
         weatherCount +
         cableCount +
-        satelliteCount
+        satelliteCount +
+        solarCount +
+        alertCount +
+        aviationWeatherCount
       );
     },
     getLayerCounts: () => {
@@ -130,6 +144,9 @@ export function attachDebugBus(
         weather: layers.weather?.getEntityCount() ?? 0,
         cables: layers.cables?.getEntityCount() ?? 0,
         satellites: layers.satellites?.getEntityCount() ?? 0,
+        solar: layers.solar?.getEntityCount() ?? 0,
+        alerts: layers.alerts?.getEntityCount() ?? 0,
+        aviationWeather: layers.aviationWeather?.getEntityCount() ?? 0,
       };
     },
     getFlightIds: () => layers.flight?.getFlightIds() ?? [],
@@ -144,6 +161,8 @@ export function attachDebugBus(
     getCableRouteCount: () => layers.cables?.getRouteCount() ?? 0,
     getCableLandingPointCount: () => layers.cables?.getLandingPointCount() ?? 0,
     getSatelliteIds: () => layers.satellites?.getSatelliteIds() ?? [],
+    getAlertIds: () => layers.alerts?.getAlertIds() ?? [],
+    getAviationWeatherIds: () => layers.aviationWeather?.getWeatherIds() ?? [],
     getCameraHeight: () => globe.viewer.camera.positionCartographic?.height ?? 0,
     getCameraPose: () => {
       const carto = globe.viewer.camera.positionCartographic;

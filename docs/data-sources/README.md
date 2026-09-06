@@ -24,9 +24,9 @@ This directory documents the provenance, licensing terms, update cadence, and ra
 | GBFS | Source-specific regional GBFS systems | Seed implemented; each feed's license fields, operator terms, geography, and version require review | [gbfs.md](./gbfs.md) |
 | Overpass | OpenStreetMap Foundation | ODbL 1.0 | [overpass.md](./overpass.md) |
 | Cables | GEV synthetic fixture / optional operator-licensed TeleGeography pack | MIT seed / operator-specific annual license | [cables.md](./cables.md) |
-| Solar context | GEV pure-domain calculation; USNO/NOAA references | Planned/unavailable; no network or credentials | [solar-context.md](./solar-context.md) |
-| NWS alerts | NOAA National Weather Service CAP API | Planned/unavailable; identifiable User-Agent and terms record required | [nws-alerts.md](./nws-alerts.md) |
-| Aviation weather | NOAA Aviation Weather Center | Planned/unavailable; identifiable User-Agent and terms record required | [aviation-weather.md](./aviation-weather.md) |
+| Solar context | GEV pure-domain calculation; USNO/NOAA references | Seed implemented; offline and credential-free | [solar-context.md](./solar-context.md) |
+| NWS alerts | NOAA National Weather Service CAP API | Synthetic seed implemented; live requires identifiable User-Agent and terms record | [nws-alerts.md](./nws-alerts.md) |
+| Aviation weather | NOAA Aviation Weather Center | Synthetic seed implemented; live requires identifiable User-Agent and terms record | [aviation-weather.md](./aviation-weather.md) |
 | Tropical cyclones | NOAA NHC/CPHC GIS advisories | Planned/unavailable; fixed basin feeds and terms record required | [tropical-cyclones.md](./tropical-cyclones.md) |
 | Coastal conditions | NOAA CO-OPS APIs | Planned/unavailable; application ID and terms record required | [coastal-conditions.md](./coastal-conditions.md) |
 | Time-enabled radar | NOAA/NWS MRMS ImageServer | Planned/unavailable bounded spike; exact AOI/time/image caps apply | [nowcoast-radar.md](./nowcoast-radar.md) |

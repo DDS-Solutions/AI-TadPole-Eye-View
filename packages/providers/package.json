@@ -13,7 +13,8 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --exclude test/operationalAwarenessPerformance.test.ts",
+    "test:performance": "vitest run test/operationalAwarenessPerformance.test.ts --no-file-parallelism --maxWorkers=1",
     "lint": "biome check ."
   },
   "dependencies": {

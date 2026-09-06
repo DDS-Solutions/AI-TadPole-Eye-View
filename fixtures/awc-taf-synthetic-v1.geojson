@@ -1,0 +1,8 @@
+{
+  "type": "FeatureCollection",
+  "fixture_metadata": {"id": "awc-taf-synthetic-v1", "license": "MIT", "generated_by": "GEV", "reference_time": "2024-08-25T10:00:00.000Z"},
+  "features": [
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [-104.6737, 39.8561]}, "properties": {"icaoId": "KDEN", "issueTime": "2024-08-25T09:00:00.000Z", "validTimeFrom": "2024-08-25T09:00:00.000Z", "validTimeTo": "2024-08-26T12:00:00.000Z", "rawTAF": "TAF KDEN 250900Z 2509/2612 18008KT P6SM FEW080"}},
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [-122.375, 37.619]}, "properties": {"icaoId": "KSFO", "issueTime": "2024-08-25T09:10:00.000Z", "validTimeFrom": "2024-08-25T10:00:00.000Z", "validTimeTo": "2024-08-26T12:00:00.000Z", "rawTAF": "TAF KSFO 250910Z 2510/2612 28012KT P6SM SCT020"}}
+  ]
+}

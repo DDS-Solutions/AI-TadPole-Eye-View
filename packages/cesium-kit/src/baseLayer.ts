@@ -22,6 +22,7 @@ export abstract class BaseLayerController<
   protected readonly viewer: Viewer;
   protected readonly entityMap = new Map<string, Entity>();
   protected pendingUpdates: TItem[] = [];
+  private hasPendingSnapshot = false;
   private rafHandle: number | null = null;
   protected isDestroyed = false;
 
@@ -38,6 +39,7 @@ export abstract class BaseLayerController<
   protected enqueueUpdates(items: TItem[]): void {
     if (this.isDestroyed) return;
     this.pendingUpdates = items;
+    this.hasPendingSnapshot = true;
     this.scheduleRafDrain();
   }
 
@@ -103,10 +105,11 @@ export abstract class BaseLayerController<
    * Drains all pending updates into Cesium entities in a single frame with entity reconciliation.
    */
   private drainQueue(): void {
-    if (this.pendingUpdates.length === 0 || this.isDestroyed) return;
+    if (!this.hasPendingSnapshot || this.isDestroyed) return;
 
     const updates = this.pendingUpdates;
     this.pendingUpdates = [];
+    this.hasPendingSnapshot = false;
 
     this.dataSource.entities.suspendEvents();
     this.beforeDrain?.();
@@ -148,5 +151,6 @@ export abstract class BaseLayerController<
     this.viewer.dataSources.remove(this.dataSource, true);
     this.entityMap.clear();
     this.pendingUpdates = [];
+    this.hasPendingSnapshot = false;
   }
 }

@@ -33,4 +33,11 @@ export const CESIUM_DESIGN_TOKENS = {
   effects: {
     launchArc: 'rgba(250, 204, 21, 0.75)',
   },
+  governance: { attention: '#eab308', danger: '#ef4444' },
+  solar: {
+    sunset: '#f8fafc',
+    civil: '#94a3b8',
+    nautical: '#60a5fa',
+    astronomical: '#818cf8',
+  },
 } as const;

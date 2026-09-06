@@ -10,9 +10,9 @@ Registry version 2; requested mode `seed`.
 
 | Entity | Registered | Active |
 |---|---:|---:|
-| Providers | 19 | 12 |
-| Feeds | 22 | 12 |
-| Layers | 19 | 11 |
+| Providers | 19 | 15 |
+| Feeds | 22 | 17 |
+| Layers | 19 | 14 |
 
 ### Providers
 
@@ -30,9 +30,9 @@ Registry version 2; requested mode `seed`.
 | `gbfs` | General Bikeshare Feed Specification | yes | `implemented` | `seed` | `seed` | `healthy` | [Regional GBFS operators](https://gbfs.org/) | `source-specific-open-data-terms` | Source-specific open-data terms | Originating GBFS system operator |
 | `overpass-api` | OpenStreetMap Overpass API | yes | `implemented` | `seed` | `seed` | `healthy` | [OpenStreetMap](https://www.openstreetmap.org/) | `odbl-1-0` | Open Database License 1.0; output obligations depend on use | OpenStreetMap contributors |
 | `submarine-cables` | Submarine cable catalog | yes | `implemented` | `seed` | `seed` | `healthy` | [GEV procedural synthetic cable fixture](https://github.com/DDS-Solutions/AI-TadPole-Eye-View/tree/main/fixtures) | `gev-synthetic-fixture-mit` | MIT-licensed procedural synthetic fixture | DDS-Solutions GEV synthetic fixture |
-| `gev-solar-context` | GEV deterministic solar context | no | `planned` | `seed` | `unavailable` | `unavailable` | [GEV deterministic solar context](https://github.com/DDS-Solutions/AI-TadPole-Eye-View) | `mit` | MIT-licensed GEV pure-domain calculation | DDS-Solutions GEV; twilight definitions referenced to U.S. Naval Observatory |
-| `noaa-nws-alerts` | NOAA National Weather Service alerts | no | `planned` | `seed` | `unavailable` | `unavailable` | [NWS Alerts Web Service](https://www.weather.gov/documentation/services-web-alerts) | `us-government-public-domain` | NWS public-domain notice and service-use policy; source-specific exceptions apply | NOAA / National Weather Service |
-| `noaa-aviation-weather-center` | NOAA Aviation Weather Center | no | `planned` | `seed` | `unavailable` | `unavailable` | [Aviation Weather Center Data API](https://aviationweather.gov/data/api/) | `us-government-public-domain` | NWS public-domain notice and AWC Data API restrictions; source-specific exceptions apply | NOAA / National Weather Service / Aviation Weather Center |
+| `gev-solar-context` | GEV deterministic solar context | yes | `implemented` | `seed` | `seed` | `healthy` | [GEV deterministic solar context](https://github.com/DDS-Solutions/AI-TadPole-Eye-View) | `mit` | MIT-licensed GEV pure-domain calculation | DDS-Solutions GEV; twilight definitions referenced to U.S. Naval Observatory |
+| `noaa-nws-alerts` | NOAA National Weather Service alerts | yes | `implemented` | `seed` | `seed` | `healthy` | [NWS Alerts Web Service](https://www.weather.gov/documentation/services-web-alerts) | `us-government-public-domain` | NWS public-domain notice and service-use policy; source-specific exceptions apply | NOAA / National Weather Service |
+| `noaa-aviation-weather-center` | NOAA Aviation Weather Center | yes | `implemented` | `seed` | `seed` | `healthy` | [Aviation Weather Center Data API](https://aviationweather.gov/data/api/) | `us-government-public-domain` | NWS public-domain notice and AWC Data API restrictions; source-specific exceptions apply | NOAA / National Weather Service / Aviation Weather Center |
 | `noaa-national-hurricane-center` | NOAA National Hurricane Center | no | `planned` | `seed` | `unavailable` | `unavailable` | [NHC and CPHC GIS advisory feeds](https://www.nhc.noaa.gov/gis/rss.php) | `us-government-public-domain` | NWS public-domain notice; experimental GIS service disclaimer applies | NOAA / National Hurricane Center and Central Pacific Hurricane Center |
 | `noaa-coops` | NOAA CO-OPS | no | `planned` | `seed` | `unavailable` | `unavailable` | [NOAA CO-OPS Data and Metadata APIs](https://tidesandcurrents.noaa.gov/web_services_info.html) | `us-government-public-domain` | NOAA public-domain notice; CO-OPS raw-data and prediction disclaimers apply | NOAA / National Ocean Service / CO-OPS |
 | `noaa-nowcoast` | NOAA nowCOAST / NWS Map Services | no | `planned` | `seed` | `unavailable` | `unavailable` | [NWS time-enabled MRMS base reflectivity image service](https://mapservices.weather.noaa.gov/eventdriven/rest/services/radar/radar_base_reflectivity_time/ImageServer) | `us-government-public-domain` | NWS public-domain notice and map-service appropriate-use policy | NOAA / National Weather Service / MRMS |
@@ -54,11 +54,11 @@ Registry version 2; requested mode `seed`.
 | `gbfs` | Bikeshare station status | `gbfs` | yes | `implemented` | `seed` | `seed` | `healthy` | 30s |
 | `overpass` | Sanitized OSM queries | `overpass-api` | yes | `implemented` | `seed` | `seed` | `healthy` | 30s |
 | `cables` | Submarine cable catalog | `submarine-cables` | yes | `implemented` | `seed` | `seed` | `healthy` | 86400s |
-| `solar-context` | SimClock solar position and twilight context | `gev-solar-context` | no | `planned` | `seed` | `unavailable` | `unavailable` | unavailable: Planned deterministic calculation has no runtime freshness yet |
-| `nws-alerts` | Active NWS CAP alerts | `noaa-nws-alerts` | no | `planned` | `seed` | `unavailable` | `unavailable` | unavailable: Planned source has no implemented freshness evaluation |
-| `aviation-metar` | METAR terminal observations | `noaa-aviation-weather-center` | no | `planned` | `seed` | `unavailable` | `unavailable` | unavailable: Planned observation source has no implemented freshness evaluation |
-| `aviation-taf` | TAF terminal forecasts | `noaa-aviation-weather-center` | no | `planned` | `seed` | `unavailable` | `unavailable` | unavailable: Planned forecast source has no implemented validity evaluation |
-| `aviation-sigmet` | SIGMET aviation warnings | `noaa-aviation-weather-center` | no | `planned` | `seed` | `unavailable` | `unavailable` | unavailable: Planned warning source has no implemented validity evaluation |
+| `solar-context` | SimClock solar position and twilight context | `gev-solar-context` | yes | `implemented` | `seed` | `seed` | `healthy` | 1s |
+| `nws-alerts` | Active NWS CAP alerts | `noaa-nws-alerts` | yes | `implemented` | `seed` | `seed` | `healthy` | 30s |
+| `aviation-metar` | METAR terminal observations | `noaa-aviation-weather-center` | yes | `implemented` | `seed` | `seed` | `healthy` | 60s |
+| `aviation-taf` | TAF terminal forecasts | `noaa-aviation-weather-center` | yes | `implemented` | `seed` | `seed` | `healthy` | 60s |
+| `aviation-sigmet` | SIGMET aviation warnings | `noaa-aviation-weather-center` | yes | `implemented` | `seed` | `seed` | `healthy` | 60s |
 | `tropical-cyclone-advisories` | Current NHC and CPHC GIS advisories | `noaa-national-hurricane-center` | no | `planned` | `seed` | `unavailable` | `unavailable` | unavailable: Planned advisory source has no implemented validity evaluation |
 | `coastal-water-levels` | CO-OPS water-level observations and tide predictions | `noaa-coops` | no | `planned` | `seed` | `unavailable` | `unavailable` | unavailable: Planned observation and prediction source has no implemented evaluation |
 | `coastal-currents` | CO-OPS current observations and predictions | `noaa-coops` | no | `planned` | `seed` | `unavailable` | `unavailable` | unavailable: Planned observation and prediction source has no implemented evaluation |
@@ -81,9 +81,9 @@ Registry version 2; requested mode `seed`.
 | `gbfs` | Bikeshare stations | `gbfs` | yes | `implemented` | `seed` | `seed` | `healthy` | [Bikeshare stations](../data-sources/gbfs.md) |
 | `overpass` | OpenStreetMap query results | `overpass-api` | no | `incomplete` | `seed` | `seed` | `healthy` | [OpenStreetMap query results](../data-sources/overpass.md) |
 | `cables` | Submarine cables | `submarine-cables` | yes | `implemented` | `seed` | `seed` | `healthy` | [Submarine cables](../data-sources/cables.md) |
-| `solar-context` | Day, night, and twilight context | `gev-solar-context` | no | `planned` | `seed` | `unavailable` | `unavailable` | [Day, night, and twilight context](../data-sources/solar-context.md) |
-| `nws-alerts` | NWS watches, warnings, and advisories | `noaa-nws-alerts` | no | `planned` | `seed` | `unavailable` | `unavailable` | [NWS watches, warnings, and advisories](../data-sources/nws-alerts.md) |
-| `aviation-weather` | Aviation observations, forecasts, and warnings | `noaa-aviation-weather-center` | no | `planned` | `seed` | `unavailable` | `unavailable` | [Aviation observations, forecasts, and warnings](../data-sources/aviation-weather.md) |
+| `solar-context` | Day, night, and twilight context | `gev-solar-context` | yes | `implemented` | `seed` | `seed` | `healthy` | [Day, night, and twilight context](../data-sources/solar-context.md) |
+| `nws-alerts` | NWS watches, warnings, and advisories | `noaa-nws-alerts` | yes | `implemented` | `seed` | `seed` | `healthy` | [NWS watches, warnings, and advisories](../data-sources/nws-alerts.md) |
+| `aviation-weather` | Aviation observations, forecasts, and warnings | `noaa-aviation-weather-center` | yes | `implemented` | `seed` | `seed` | `healthy` | [Aviation observations, forecasts, and warnings](../data-sources/aviation-weather.md) |
 | `tropical-cyclones` | Tropical cyclone tracks, cones, and watches/warnings | `noaa-national-hurricane-center` | no | `planned` | `seed` | `unavailable` | `unavailable` | [Tropical cyclone tracks, cones, and watches/warnings](../data-sources/tropical-cyclones.md) |
 | `coastal-conditions` | Coastal water levels, tides, and currents | `noaa-coops` | no | `planned` | `seed` | `unavailable` | `unavailable` | [Coastal water levels, tides, and currents](../data-sources/coastal-conditions.md) |
 | `nowcoast-radar` | Time-enabled radar reflectivity | `noaa-nowcoast` | no | `planned` | `seed` | `unavailable` | `unavailable` | [Time-enabled radar reflectivity](../data-sources/nowcoast-radar.md) |
