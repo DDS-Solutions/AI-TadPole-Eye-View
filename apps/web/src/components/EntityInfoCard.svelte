@@ -3,6 +3,7 @@
   import { getFlightTimeSeries, getLaunchTimeSeries, getWeatherTimeSeries } from '../entityChartData.js';
   import { layerStore } from '../stores/layers.svelte.js';
   import SatelliteEntityDetails from './SatelliteEntityDetails.svelte';
+  import OperationalEntityDetails from './OperationalEntityDetails.svelte';
   import TelemetryTimelineChart from './TelemetryTimelineChart.svelte';
 
   const entity = $derived(layerStore.selectedEntity);
@@ -24,6 +25,8 @@
     class:kind-launch={entity.kind === 'launch'}
     class:kind-weather={entity.kind === 'weather'}
     class:kind-satellite={entity.kind === 'satellite'}
+    class:kind-tropical={entity.kind === 'tropical-cyclone'}
+    class:kind-coastal={entity.kind === 'coastal-condition'}
   >
     <div class="card-header">
       <div class="header-main">
@@ -289,6 +292,8 @@
         {/if}
       {:else if entity.kind === 'satellite'}
         <SatelliteEntityDetails data={entity.data} />
+      {:else if entity.kind === 'tropical-cyclone' || entity.kind === 'coastal-condition'}
+        <OperationalEntityDetails kind={entity.kind} data={entity.data} />
       {:else if entity.kind === 'weather'}
         <div class="telemetry-grid">
           <div class="metric-row">
@@ -355,6 +360,8 @@
   .kind-launch { border-left: 3px solid var(--channel-launch); }
   .kind-weather { border-left: 3px solid var(--channel-weather); }
   .kind-satellite { border-left: 3px solid var(--channel-satellites); }
+  .kind-tropical { border-left: 3px solid var(--channel-weather); }
+  .kind-coastal { border-left: 3px solid var(--channel-marine); }
 
   .card-header {
     display: flex;
@@ -391,6 +398,8 @@
   .kind-launch .kind-badge { background: var(--channel-launch-soft); color: var(--channel-launch); }
   .kind-weather .kind-badge { background: var(--channel-weather-soft); color: var(--channel-weather); }
   .kind-satellite .kind-badge { background: var(--channel-satellites-soft); color: var(--channel-satellites); }
+  .kind-tropical .kind-badge { background: var(--channel-weather-soft); color: var(--channel-weather); }
+  .kind-coastal .kind-badge { background: var(--channel-marine-soft); color: var(--channel-marine); }
 
   .entity-title {
     margin: 0;

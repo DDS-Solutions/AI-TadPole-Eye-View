@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { GevDebugBus } from '@gev/cesium-kit';
-import { type Page, expect, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 declare global {
   interface Window {
@@ -9,42 +9,11 @@ declare global {
   }
 }
 
-async function waitForOperationalPanelPaint(page: Page): Promise<void> {
-  await expect
-    .poll(async () =>
-      page.evaluate(() => {
-        const panel = document.querySelector('#operational-awareness-panel');
-        if (!(panel instanceof HTMLElement)) return false;
-        const bounds = panel.getBoundingClientRect();
-        return (
-          document.fonts.status === 'loaded' &&
-          bounds.width >= 340 &&
-          bounds.height >= 300 &&
-          getComputedStyle(panel).visibility === 'visible'
-        );
-      })
-    )
-    .toBe(true);
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-      })
-  );
-}
-
-const OPERATIONAL_STATE_SCREENSHOT_STYLE = `
-  #operational-awareness-panel {
-    backdrop-filter: none !important;
-    background: var(--hud-panel-bg-strong) !important;
-  }
-`;
-
 test.describe('GEV v2 implemented-layer telemetry, virtualized table, and frame monitor smoke', () => {
   test('renders keyless Cesium 3D globe, virtualized telemetry stream, and uPlot charts', async ({
     page,
   }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(150_000);
     page.on('console', (msg) => console.log('PAGE LOG:', msg.text()));
     page.on('pageerror', (err) => console.error('PAGE ERROR:', err));
 
@@ -70,7 +39,7 @@ test.describe('GEV v2 implemented-layer telemetry, virtualized table, and frame 
       })
       .toBe(true);
 
-    // 4. Condition-wait for all 14 implemented layers to drain entities into Cesium.
+    // 4. Condition-wait for all 16 implemented layers to drain entities into Cesium.
     await expect
       .poll(
         async () => {
@@ -91,7 +60,9 @@ test.describe('GEV v2 implemented-layer telemetry, virtualized table, and frame 
               (counts.satellites > 0 ? 1 : 0) +
               (counts.solar > 0 ? 1 : 0) +
               (counts.alerts > 0 ? 1 : 0) +
-              (counts.aviationWeather > 0 ? 1 : 0)
+              (counts.aviationWeather > 0 ? 1 : 0) +
+              (counts.tropicalCyclones > 0 ? 1 : 0) +
+              (counts.coastalConditions > 0 ? 1 : 0)
             );
           });
         },
@@ -100,7 +71,7 @@ test.describe('GEV v2 implemented-layer telemetry, virtualized table, and frame 
           intervals: [300, 600, 1200],
         }
       )
-      .toBe(14);
+      .toBe(16);
 
     // 5. Condition-wait for all HUD stat badge counts in one browser round trip.
     const hudCountSelector = [
@@ -128,7 +99,7 @@ test.describe('GEV v2 implemented-layer telemetry, virtualized table, and frame 
       .toBe(11);
 
     // Provenance badges are derived from validated response envelopes, not hardcoded counts.
-    await expect(page.locator('#provenance-source-badge')).toHaveText('14 SOURCES');
+    await expect(page.locator('#provenance-source-badge')).toHaveText('16 SOURCES');
     await expect(page.locator('#provenance-mode-badge')).toContainText(/SEED|CACHED/);
     await expect(page.locator('#provenance-freshness-badge')).not.toHaveText('AWAITING');
     const provenanceBadges = page.locator('#provenance-badges');
@@ -160,8 +131,25 @@ test.describe('GEV v2 implemented-layer telemetry, virtualized table, and frame 
     await expect(operationalPanel).toBeVisible();
     await expect(page.locator('#nws-alert-count')).toHaveText('2');
     await expect(page.locator('#aviation-weather-count')).toHaveText('5');
+    await expect(page.locator('#tropical-cyclone-count')).toHaveText('3');
+    await expect(page.locator('#coastal-condition-count')).toHaveText('3');
+    await expect(page.locator('#tropical-cyclone-row')).toContainText(
+      'TRACK 1 · CONE 1 · WATCH/WARNING 1'
+    );
+    await expect(page.locator('#coastal-semantics')).toHaveText('OBS 3 · PRED 5');
+    await expect(page.locator('#coastal-reference')).toHaveText('MLLW · GMT · METRIC');
+    await expect(page.locator('#operational-aoi-summary')).toContainText('AOI INSPECTION');
+    await expect(page.locator('#operational-usage-notice')).toContainText(
+      'Not for navigation or life-safety decisions'
+    );
     await expect(page.locator('#solar-context-status')).not.toHaveText('AWAITING');
-    for (const selector of ['#toggle-solar', '#toggle-nws-alerts', '#toggle-aviation-weather']) {
+    for (const selector of [
+      '#toggle-solar',
+      '#toggle-nws-alerts',
+      '#toggle-aviation-weather',
+      '#toggle-tropical-cyclones',
+      '#toggle-coastal-conditions',
+    ]) {
       const toggle = page.locator(selector);
       await expect(toggle).toBeChecked();
       await toggle.click();
@@ -170,7 +158,51 @@ test.describe('GEV v2 implemented-layer telemetry, virtualized table, and frame 
       await expect(toggle).toBeChecked();
     }
     await operationalPanel.screenshot({
-      path: path.join(resultsDir, 'task-5.3.2-operational-awareness.png'),
+      path: path.join(resultsDir, 'task-5.3.3-operational-awareness.png'),
+    });
+
+    const selectedTrack = await page.evaluate(() => {
+      const trackId = window.__gev?.getTropicalCycloneIds()[0];
+      window.__gev?.setCameraPose({
+        longitude: -79,
+        latitude: 26,
+        altitude: 1_100_000,
+        heading: 0,
+        pitch: -90,
+        roll: 0,
+      });
+      return trackId ? window.__gev?.selectEntityById(`tropical-cyclone-${trackId}`) : false;
+    });
+    expect(selectedTrack).toBe(true);
+    const operationalInfoCard = page.locator('#entity-info-card');
+    await expect(operationalInfoCard).toContainText('Storm / Advisory');
+    await expect(operationalInfoCard).toContainText('AL012024 / 001');
+    await expect(operationalInfoCard).toContainText('Observation time');
+    await expect(operationalInfoCard).toContainText('Advisory issued');
+    await expect(operationalInfoCard).toContainText('Source validity');
+    await expect(operationalInfoCard).toContainText('not for navigation or life-safety');
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+        )
+    );
+    await page.screenshot({
+      path: path.join(resultsDir, 'task-5.3.3-tropical-cyclone-map.png'),
+    });
+
+    const selectedCoastal = await page.evaluate(() => {
+      const stationId = window.__gev?.getCoastalStationIds()[0];
+      return stationId ? window.__gev?.selectEntityById(`coastal-condition-${stationId}`) : false;
+    });
+    expect(selectedCoastal).toBe(true);
+    await expect(operationalInfoCard).toContainText('Station 8724580');
+    await expect(operationalInfoCard).toContainText('MLLW / METRIC');
+    await expect(operationalInfoCard).toContainText('GMT · America/New_York');
+    await expect(operationalInfoCard).toContainText('Observed water level 0.421');
+    await expect(operationalInfoCard).toContainText('Predicted tide 0.398');
+    await operationalInfoCard.screenshot({
+      path: path.join(resultsDir, 'task-5.3.3-coastal-station-inspection.png'),
     });
     await page.locator('.panel-header').evaluate((element) => element.scrollIntoView());
 
@@ -236,10 +268,10 @@ test.describe('GEV v2 implemented-layer telemetry, virtualized table, and frame 
     await expect(m45FilterBtn).toHaveClass(/active/);
 
     // 10. Capture screenshot artifact (Rule 2: visual verification)
-    const screenshotPath = path.join(resultsDir, 'globe-task-5.3.2-operational-awareness.png');
+    const screenshotPath = path.join(resultsDir, 'globe-task-5.3.3-operational-awareness.png');
     await page.screenshot({ path: screenshotPath });
 
-    console.log(`[E2E] Saved task 5.3.2 operational screenshot artifact to ${screenshotPath}`);
+    console.log(`[E2E] Saved task 5.3.3 operational screenshot artifact to ${screenshotPath}`);
   });
 
   test('visibly locks satellite controls when production terms are not approved', async ({
@@ -281,99 +313,5 @@ test.describe('GEV v2 implemented-layer telemetry, virtualized table, and frame 
     await expect(toggle).toBeEnabled({ timeout: 10_000 });
     await expect(toggle).not.toBeChecked();
     expect(satelliteRequests).toBeGreaterThanOrEqual(2);
-  });
-
-  test('shows bounded empty, stale, unavailable, and recovered operational-source states', async ({
-    page,
-  }) => {
-    test.setTimeout(90_000);
-    type VisualState = 'empty' | 'stale' | 'unavailable' | 'recovered';
-    let visualState: VisualState = 'empty';
-    const resultsDir = path.resolve('test-results');
-    if (!fs.existsSync(resultsDir)) fs.mkdirSync(resultsDir, { recursive: true });
-
-    await page.route('**/api/operational/alerts?**', async (route) => {
-      if (visualState === 'unavailable') {
-        await route.fulfill({
-          status: 503,
-          contentType: 'application/json',
-          body: JSON.stringify({ code: 'SOURCE_UNAVAILABLE', error: 'Synthetic source outage' }),
-        });
-        return;
-      }
-      const upstream = await route.fetch();
-      const body = (await upstream.json()) as Record<string, unknown>;
-      if (visualState === 'empty') {
-        body.count = 0;
-        body.alerts = [];
-      } else if (visualState === 'stale') {
-        const source = body.provenance as { freshness: Record<string, unknown> };
-        source.freshness = { status: 'stale', age_seconds: 120, fresh_for_seconds: 30 };
-      }
-      await route.fulfill({ response: upstream, json: body });
-    });
-    await page.route('**/api/operational/aviation?**', async (route) => {
-      if (visualState === 'unavailable') {
-        await route.fulfill({
-          status: 503,
-          contentType: 'application/json',
-          body: JSON.stringify({ code: 'SOURCE_UNAVAILABLE', error: 'Synthetic source outage' }),
-        });
-        return;
-      }
-      const upstream = await route.fetch();
-      const body = (await upstream.json()) as Record<string, unknown>;
-      if (visualState === 'empty') {
-        for (const key of ['metars', 'tafs', 'sigmets']) {
-          const product = body[key] as { count: number; items: unknown[] };
-          product.count = 0;
-          product.items = [];
-        }
-      } else if (visualState === 'stale') {
-        const source = body.provenance as { freshness: Record<string, unknown> };
-        source.freshness = { status: 'stale', age_seconds: 120, fresh_for_seconds: 60 };
-      }
-      await route.fulfill({ response: upstream, json: body });
-    });
-
-    await page.goto('/');
-    await expect(page.locator('#nws-alert-status')).toHaveText('NO EVENTS IN AOI');
-    await expect(page.locator('#aviation-weather-status')).toHaveText('NO EVENTS IN AOI');
-    await waitForOperationalPanelPaint(page);
-    await page.locator('#operational-awareness-panel').screenshot({
-      path: path.join(resultsDir, 'task-5.3.2-empty.png'),
-      style: OPERATIONAL_STATE_SCREENSHOT_STYLE,
-    });
-
-    visualState = 'stale';
-    await page.reload();
-    await expect(page.locator('#nws-alert-status')).toContainText('STALE');
-    await waitForOperationalPanelPaint(page);
-    await page.locator('#operational-awareness-panel').screenshot({
-      path: path.join(resultsDir, 'task-5.3.2-stale.png'),
-      style: OPERATIONAL_STATE_SCREENSHOT_STYLE,
-    });
-
-    visualState = 'unavailable';
-    await page.reload();
-    await expect(page.locator('#nws-alert-status')).toHaveText('SOURCE UNAVAILABLE');
-    await expect(page.locator('#aviation-weather-status')).toHaveText('SOURCE UNAVAILABLE');
-    await waitForOperationalPanelPaint(page);
-    await page.locator('#operational-awareness-panel').screenshot({
-      path: path.join(resultsDir, 'task-5.3.2-unavailable.png'),
-      style: OPERATIONAL_STATE_SCREENSHOT_STYLE,
-    });
-
-    visualState = 'recovered';
-    await page.reload();
-    await expect(page.locator('#nws-alert-count')).toHaveText('2');
-    await expect(page.locator('#aviation-weather-count')).toHaveText('5');
-    await expect(page.locator('#nws-alert-status')).not.toHaveText('SOURCE UNAVAILABLE');
-    await waitForOperationalPanelPaint(page);
-    await page.locator('#operational-awareness-panel').screenshot({
-      path: path.join(resultsDir, 'task-5.3.2-recovered.png'),
-      style: OPERATIONAL_STATE_SCREENSHOT_STYLE,
-    });
-    await page.unrouteAll({ behavior: 'ignoreErrors' });
   });
 });

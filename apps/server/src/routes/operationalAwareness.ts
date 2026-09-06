@@ -1,17 +1,21 @@
 import {
   AviationWeatherResponseSchema,
+  CoastalConditionsResponseSchema,
   NwsAlertCollectionSchema,
   type OperationalAoi,
   OperationalAoiSchema,
   type ProviderHealth,
   SolarContextResponseSchema,
+  TropicalCycloneResponseSchema,
 } from '@gev/contracts';
 import type { SimClock } from '@gev/core';
 import {
   AviationWeatherAdapter,
+  CoastalConditionsAdapter,
   NwsAlertsAdapter,
   OperationalSourceError,
   SolarContextAdapter,
+  TropicalCycloneAdapter,
 } from '@gev/providers';
 import { type Context, Hono, type MiddlewareHandler } from 'hono';
 import type { CostGovernor } from '../middleware/costGovernor.js';
@@ -39,6 +43,8 @@ export interface OperationalAwarenessRouterOptions {
   solarAdapter?: SolarContextAdapter;
   nwsAdapter?: NwsAlertsAdapter;
   aviationAdapter?: AviationWeatherAdapter;
+  tropicalCycloneAdapter?: TropicalCycloneAdapter;
+  coastalConditionsAdapter?: CoastalConditionsAdapter;
   onHealthChange?: (providerId: string, health: ProviderHealth) => void;
 }
 
@@ -90,6 +96,12 @@ export function createOperationalAwarenessRouter(options: OperationalAwarenessRo
   const aviation =
     options.aviationAdapter ??
     new AviationWeatherAdapter({ clock: options.clock, seedMode: options.seedMode });
+  const tropicalCyclones =
+    options.tropicalCycloneAdapter ??
+    new TropicalCycloneAdapter({ clock: options.clock, seedMode: options.seedMode });
+  const coastalConditions =
+    options.coastalConditionsAdapter ??
+    new CoastalConditionsAdapter({ clock: options.clock, seedMode: options.seedMode });
 
   router.use('*', options.auth.middleware());
   router.use('*', stasisGuard(options));
@@ -100,6 +112,24 @@ export function createOperationalAwarenessRouter(options: OperationalAwarenessRo
     createRateLimitMiddleware(options.rateLimiter, {
       bucket: 'nws-alerts-upstream',
       limit: 2,
+      resolveClientId: options.resolveClientId,
+    })
+  );
+  router.use('/tropical-cyclones', options.costGovernor.middleware('nhc-tropical-cyclones'));
+  router.use(
+    '/tropical-cyclones',
+    createRateLimitMiddleware(options.rateLimiter, {
+      bucket: 'nhc-tropical-cyclones-upstream',
+      limit: 1,
+      resolveClientId: options.resolveClientId,
+    })
+  );
+  router.use('/coastal', options.costGovernor.middleware('coops-coastal'));
+  router.use(
+    '/coastal',
+    createRateLimitMiddleware(options.rateLimiter, {
+      bucket: 'coops-coastal-upstream',
+      limit: 1,
       resolveClientId: options.resolveClientId,
     })
   );
@@ -162,6 +192,51 @@ export function createOperationalAwarenessRouter(options: OperationalAwarenessRo
       return context.json(response);
     } catch (error) {
       options.onHealthChange?.('noaa-aviation-weather-center', 'degraded');
+      return handleError(context, error);
+    }
+  });
+
+  router.get('/tropical-cyclones', async (context) => {
+    const aoi = parseAoi(context);
+    if (aoi instanceof Response) return aoi;
+    try {
+      const response = TropicalCycloneResponseSchema.parse(
+        await tropicalCyclones.getAdvisories(aoi)
+      );
+      options.onHealthChange?.(
+        'noaa-national-hurricane-center',
+        response.provenance.freshness.status === 'fresh' ? 'healthy' : 'degraded'
+      );
+      return context.json(response);
+    } catch (error) {
+      options.onHealthChange?.(
+        'noaa-national-hurricane-center',
+        error instanceof OperationalSourceError && error.code === 'SOURCE_STALE'
+          ? 'unavailable'
+          : 'degraded'
+      );
+      return handleError(context, error);
+    }
+  });
+
+  router.get('/coastal', async (context) => {
+    const aoi = parseAoi(context);
+    if (aoi instanceof Response) return aoi;
+    try {
+      const response = CoastalConditionsResponseSchema.parse(
+        await coastalConditions.getConditions(aoi)
+      );
+      const freshness = [
+        response.water_level_provenance.freshness.status,
+        response.current_provenance.freshness.status,
+      ];
+      options.onHealthChange?.(
+        'noaa-coops',
+        freshness.every((status) => status === 'fresh') ? 'healthy' : 'degraded'
+      );
+      return context.json(response);
+    } catch (error) {
+      options.onHealthChange?.('noaa-coops', 'degraded');
       return handleError(context, error);
     }
   });

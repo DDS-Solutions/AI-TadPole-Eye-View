@@ -11,6 +11,8 @@ export { LaunchLayerController, type LaunchLayerOptions } from './launchLayer.js
 export { WeatherLayerController, type WeatherLayerOptions } from './weatherLayer.js';
 export { NwsAlertLayerController } from './nwsAlertLayer.js';
 export { AviationWeatherLayerController } from './aviationWeatherLayer.js';
+export { TropicalCycloneLayerController } from './tropicalCycloneLayer.js';
+export { CoastalConditionsLayerController } from './coastalConditionsLayer.js';
 export { SolarContextLayerController, type SolarContextLayerOptions } from './solarContextLayer.js';
 export { CableLayerController, type CableLayerOptions } from './cableLayer.js';
 export { SatelliteLayerController, type SatelliteLayerOptions } from './satelliteLayer.js';

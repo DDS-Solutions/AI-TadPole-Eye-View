@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "indexes": [
+    {
+      "basin": "atlantic",
+      "xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><rss xmlns:nhc=\"https://www.nhc.noaa.gov/\" version=\"2.0\"><channel><title>GEV synthetic Atlantic GIS feed</title><item><title>Summary - Tropical Storm IRIS (1/AL012024)</title><guid isPermaLink=\"false\">summary-AL012024-202408251000</guid><pubDate>Sun, 25 Aug 2024 10:00:00 GMT</pubDate><nhc:Cyclone><nhc:center>24.0, -77.0</nhc:center><nhc:type>Tropical Storm</nhc:type><nhc:name>IRIS</nhc:name><nhc:wallet>1</nhc:wallet><nhc:atcf>AL012024</nhc:atcf><nhc:datetime>2024-08-25T10:00:00Z</nhc:datetime><nhc:movement>NW 10 KT</nhc:movement><nhc:pressure>995 MB</nhc:pressure><nhc:headline>SYNTHETIC EXERCISE ADVISORY</nhc:headline></nhc:Cyclone></item><item><title>Advisory #001 Forecast Track [kml] - Tropical Storm IRIS (1/AL012024)</title><link>https://www.nhc.noaa.gov/gis/kml/forecasts/AL012024_001adv_TRACK.kml</link><guid isPermaLink=\"false\">gis-track-kml-AL012024-001-202408251000</guid><pubDate>Sun, 25 Aug 2024 10:00:00 GMT</pubDate></item><item><title>Advisory #001 Cone of Uncertainty [kml] - Tropical Storm IRIS (1/AL012024)</title><link>https://www.nhc.noaa.gov/gis/kml/forecasts/AL012024_001adv_CONE.kml</link><guid isPermaLink=\"false\">gis-cone-kml-AL012024-001-202408251000</guid><pubDate>Sun, 25 Aug 2024 10:00:00 GMT</pubDate></item><item><title>Advisory #001 Watches/Warnings [kml] - Tropical Storm IRIS (1/AL012024)</title><link>https://www.nhc.noaa.gov/gis/kml/forecasts/AL012024_001adv_WW.kml</link><guid isPermaLink=\"false\">gis-wwa-kml-AL012024-001-202408251000</guid><pubDate>Sun, 25 Aug 2024 10:00:00 GMT</pubDate></item></channel></rss>"
+    },
+    {
+      "basin": "eastern_pacific",
+      "xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><rss xmlns:nhc=\"https://www.nhc.noaa.gov/\" version=\"2.0\"><channel><title>GEV synthetic Eastern Pacific GIS feed</title></channel></rss>"
+    },
+    {
+      "basin": "central_pacific",
+      "xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><rss xmlns:nhc=\"https://www.nhc.noaa.gov/\" version=\"2.0\"><channel><title>GEV synthetic Central Pacific GIS feed</title></channel></rss>"
+    }
+  ],
+  "assets": {
+    "/gis/kml/forecasts/AL012024_001adv_TRACK.kml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><kml xmlns=\"http://www.opengis.net/kml/2.2\"><Document><ExtendedData><Data name=\"issued_at\"><value>2024-08-25T10:00:00Z</value></Data><Data name=\"observation_time\"><value>2024-08-25T10:00:00Z</value></Data><Data name=\"valid_from\"><value>2024-08-25T10:00:00Z</value></Data><Data name=\"valid_to\"><value>2024-08-25T16:00:00Z</value></Data><Data name=\"forecast_times\"><value>2024-08-25T10:00:00Z,2024-08-25T16:00:00Z,2024-08-26T04:00:00Z</value></Data></ExtendedData><Placemark><name>IRIS Forecast Track</name><LineString><coordinates>-77.0,24.0,0 -78.2,25.5,0 -79.5,27.5,0</coordinates></LineString></Placemark></Document></kml>",
+    "/gis/kml/forecasts/AL012024_001adv_CONE.kml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><kml xmlns=\"http://www.opengis.net/kml/2.2\"><Document><ExtendedData><Data name=\"issued_at\"><value>2024-08-25T10:00:00Z</value></Data><Data name=\"observation_time\"><value>2024-08-25T10:00:00Z</value></Data><Data name=\"valid_from\"><value>2024-08-25T10:00:00Z</value></Data><Data name=\"valid_to\"><value>2024-08-25T16:00:00Z</value></Data></ExtendedData><Placemark><name>IRIS Cone of Uncertainty</name><Polygon><outerBoundaryIs><LinearRing><coordinates>-77.5,23.5,0 -80.8,27.0,0 -81.0,29.0,0 -78.0,26.0,0 -77.5,23.5,0</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark></Document></kml>",
+    "/gis/kml/forecasts/AL012024_001adv_WW.kml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><kml xmlns=\"http://www.opengis.net/kml/2.2\"><Document><ExtendedData><Data name=\"issued_at\"><value>2024-08-25T10:00:00Z</value></Data><Data name=\"observation_time\"><value>2024-08-25T10:00:00Z</value></Data><Data name=\"valid_from\"><value>2024-08-25T10:00:00Z</value></Data><Data name=\"valid_to\"><value>2024-08-25T16:00:00Z</value></Data><Data name=\"warning_type\"><value>TROPICAL STORM WARNING</value></Data></ExtendedData><Placemark><name>IRIS Tropical Storm Warning</name><LineString><coordinates>-80.1,25.1,0 -80.0,26.2,0 -80.2,27.1,0</coordinates></LineString></Placemark></Document></kml>"
+  }
+}

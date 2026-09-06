@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "stations": [
+    {
+      "metadata": {
+        "id": "8724580",
+        "name": "Key West, FL",
+        "lat": 24.5508,
+        "lng": -81.8081,
+        "timezone": "America/New_York"
+      },
+      "station_types": ["water_level", "tide_prediction"],
+      "datum": "MLLW",
+      "units": "metric",
+      "time_zone": "gmt",
+      "products": {
+        "water_level": {
+          "metadata": { "id": "8724580", "name": "Key West, FL", "lat": "24.5508", "lon": "-81.8081" },
+          "data": [
+            { "t": "2024-08-25 09:54", "v": "0.421", "s": "0.012", "f": "0,0,0,0", "q": "p" }
+          ]
+        },
+        "predictions": {
+          "predictions": [
+            { "t": "2024-08-25 10:00", "v": "0.398", "type": "L" },
+            { "t": "2024-08-25 16:00", "v": "0.812", "type": "H" }
+          ]
+        }
+      }
+    },
+    {
+      "metadata": {
+        "id": "cb0102",
+        "name": "Cape Henry LB 2CH",
+        "lat": 36.926,
+        "lng": -76.006,
+        "timezone": "America/New_York"
+      },
+      "station_types": ["current", "current_prediction"],
+      "datum": null,
+      "units": "metric",
+      "time_zone": "gmt",
+      "products": {
+        "currents": {
+          "data": [
+            { "t": "2024-08-25 09:54", "s": "42.4", "d": "132", "b": "4", "q": "preliminary" }
+          ]
+        },
+        "currents_predictions": {
+          "current_predictions": {
+            "cp": [
+              { "Time": "2024-08-25 10:10", "Velocity_Major": "38.2", "meanEbbDir": "315", "meanFloodDir": "135", "Bin": "4", "Depth": "6.1", "Speed": "38.2", "Direction": "135" },
+              { "Time": "2024-08-25 10:20", "Velocity_Major": "40.1", "meanEbbDir": "315", "meanFloodDir": "135", "Bin": "4", "Depth": "6.1", "Speed": "40.1", "Direction": "136" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "metadata": {
+        "id": "9414290",
+        "name": "San Francisco, CA",
+        "lat": 37.8063,
+        "lng": -122.4659,
+        "timezone": "America/Los_Angeles"
+      },
+      "station_types": ["water_level", "tide_prediction"],
+      "datum": "MLLW",
+      "units": "metric",
+      "time_zone": "gmt",
+      "products": {
+        "water_level": {
+          "data": [
+            { "t": "2024-08-25 09:54", "v": "", "s": null, "f": "1,0,0,0", "q": "p" }
+          ]
+        },
+        "predictions": {
+          "predictions": [
+            { "t": "2024-08-25 11:00", "v": "1.144", "type": "H" }
+          ]
+        }
+      }
+    }
+  ]
+}

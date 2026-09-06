@@ -1,6 +1,7 @@
 import type { AviationWeatherLayerController } from './aviationWeatherLayer.js';
 import type { CableLayerController } from './cableLayer.js';
 import type { CctvLayerController } from './cctvLayer.js';
+import type { CoastalConditionsLayerController } from './coastalConditionsLayer.js';
 import type { FirmsLayerController } from './firmsLayer.js';
 import type { FlightLayerController } from './flightLayer.js';
 import type { GbfsLayerController } from './gbfsLayer.js';
@@ -12,6 +13,7 @@ import type { QuakeLayerController } from './quakeLayer.js';
 import type { RadioLayerController } from './radioLayer.js';
 import type { SatelliteLayerController } from './satelliteLayer.js';
 import type { SolarContextLayerController } from './solarContextLayer.js';
+import type { TropicalCycloneLayerController } from './tropicalCycloneLayer.js';
 import type { WeatherLayerController } from './weatherLayer.js';
 
 import type { FrameBudgetMonitor, FrameBudgetReport, FrameMetrics } from './frameBudget.js';
@@ -40,6 +42,8 @@ export interface LayerControllersMap {
   solar?: SolarContextLayerController;
   alerts?: NwsAlertLayerController;
   aviationWeather?: AviationWeatherLayerController;
+  tropicalCyclones?: TropicalCycloneLayerController;
+  coastalConditions?: CoastalConditionsLayerController;
 }
 
 export interface GevDebugBus {
@@ -61,8 +65,12 @@ export interface GevDebugBus {
   getSatelliteIds: () => string[];
   getAlertIds: () => string[];
   getAviationWeatherIds: () => string[];
+  getTropicalCycloneIds: () => string[];
+  getCoastalStationIds: () => string[];
   getCameraHeight: () => number;
   getCameraPose: () => CameraPose;
+  setCameraPose: (pose: CameraPose) => void;
+  selectEntityById: (id: string) => boolean;
   getSelectedEntity: () => unknown;
   getFrameMetrics?: () => FrameMetrics | null;
   getFrameReport?: () => FrameBudgetReport | null;
@@ -114,6 +122,8 @@ export function attachDebugBus(
       const solarCount = layers.solar?.getEntityCount() ?? 0;
       const alertCount = layers.alerts?.getEntityCount() ?? 0;
       const aviationWeatherCount = layers.aviationWeather?.getEntityCount() ?? 0;
+      const tropicalCycloneCount = layers.tropicalCyclones?.getEntityCount() ?? 0;
+      const coastalConditionsCount = layers.coastalConditions?.getEntityCount() ?? 0;
       return (
         flightCount +
         marineCount +
@@ -128,7 +138,9 @@ export function attachDebugBus(
         satelliteCount +
         solarCount +
         alertCount +
-        aviationWeatherCount
+        aviationWeatherCount +
+        tropicalCycloneCount +
+        coastalConditionsCount
       );
     },
     getLayerCounts: () => {
@@ -147,6 +159,8 @@ export function attachDebugBus(
         solar: layers.solar?.getEntityCount() ?? 0,
         alerts: layers.alerts?.getEntityCount() ?? 0,
         aviationWeather: layers.aviationWeather?.getEntityCount() ?? 0,
+        tropicalCyclones: layers.tropicalCyclones?.getEntityCount() ?? 0,
+        coastalConditions: layers.coastalConditions?.getEntityCount() ?? 0,
       };
     },
     getFlightIds: () => layers.flight?.getFlightIds() ?? [],
@@ -163,6 +177,8 @@ export function attachDebugBus(
     getSatelliteIds: () => layers.satellites?.getSatelliteIds() ?? [],
     getAlertIds: () => layers.alerts?.getAlertIds() ?? [],
     getAviationWeatherIds: () => layers.aviationWeather?.getWeatherIds() ?? [],
+    getTropicalCycloneIds: () => layers.tropicalCyclones?.getAdvisoryIds() ?? [],
+    getCoastalStationIds: () => layers.coastalConditions?.getCoastalStationIds() ?? [],
     getCameraHeight: () => globe.viewer.camera.positionCartographic?.height ?? 0,
     getCameraPose: () => {
       const carto = globe.viewer.camera.positionCartographic;
@@ -175,6 +191,17 @@ export function attachDebugBus(
         pitch: deg(globe.viewer.camera.pitch),
         roll: deg(globe.viewer.camera.roll),
       };
+    },
+    setCameraPose: (pose) => globe.setCameraPose(pose),
+    selectEntityById: (id) => {
+      for (const layer of Object.values(layers)) {
+        const entity = layer?.dataSource.entities.getById(id);
+        if (entity) {
+          globe.selectEntity(entity);
+          return true;
+        }
+      }
+      return false;
     },
     getSelectedEntity: () => globe.getSelectedEntity(),
     getFrameMetrics: () => frameMonitor?.getMetrics() ?? null,

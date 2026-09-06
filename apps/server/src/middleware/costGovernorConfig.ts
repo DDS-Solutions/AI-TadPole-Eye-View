@@ -33,4 +33,6 @@ export const DEFAULT_PROVIDER_TIERS: Record<string, ProviderTierConfig> = {
   'solar-context': providerTier('solar-context', 0, 1),
   'nws-alerts': providerTier('nws-alerts', 0, 300),
   'awc-weather': providerTier('aviation-metar', 0, 7200),
+  'nhc-tropical-cyclones': providerTier('tropical-cyclone-advisories', 0, 21_600),
+  'coops-coastal': providerTier('coastal-water-levels', 0, 1_800),
 };

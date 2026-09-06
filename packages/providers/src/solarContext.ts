@@ -15,9 +15,11 @@ export class OperationalSourceError extends Error {
       | 'TERMS_APPROVAL_REQUIRED'
       | 'SOURCE_UNAVAILABLE'
       | 'SOURCE_STALE'
-      | 'UPSTREAM_CONTRACT_ERROR',
+      | 'UPSTREAM_CONTRACT_ERROR'
+      | 'RATE_LIMITED'
+      | 'CONFIGURATION_REQUIRED',
     message: string,
-    readonly status: 423 | 502 | 503 = 503
+    readonly status: 423 | 429 | 502 | 503 = 503
   ) {
     super(message);
     this.name = 'OperationalSourceError';

@@ -95,8 +95,9 @@ switch. Provider text and advisory content remain untrusted data and may not bec
 - Registered truth expands by seven providers, ten feeds, and seven layers; active truth does not
   change because every accepted entry is planned/unavailable.
 - Task 5.3.2 may implement only the first three ranked entries under its own authorized brief.
-- Task 5.3.3 may implement NHC and CO-OPS and perform the two bounded imagery spikes only after
-  measured evidence; this ADR does not pre-approve full imagery integration.
+- Task 5.3.3 implements only NHC and CO-OPS. Task 5.3.4 may perform the two bounded imagery
+  spikes and may integrate a product only after measured evidence; this ADR does not pre-approve
+  either imagery path.
 - A current first-party recheck is required again before implementation or live activation because
   endpoints, quotas, product status, terms, and attribution can change.
 - Deferred candidates need a separate ADR or explicit amendment before entering executable registry

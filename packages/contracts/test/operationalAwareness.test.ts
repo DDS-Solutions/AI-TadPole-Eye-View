@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   AviationWeatherResponseSchema,
+  CoastalConditionsResponsePayloadSchema,
   NwsAlertCollectionPayloadSchema,
   OperationalAoiSchema,
   OperationalAreaGeometrySchema,
   SolarContextPayloadSchema,
+  TropicalCycloneResponsePayloadSchema,
 } from '../src/operationalAwareness.js';
 
 describe('operational-awareness contracts', () => {
@@ -149,5 +151,127 @@ describe('operational-awareness contracts', () => {
         south_pole: 'night',
       })
     ).toThrow();
+  });
+
+  it('preserves advisory, observation, forecast, and product geometry semantics', () => {
+    const response = TropicalCycloneResponsePayloadSchema.parse({
+      retrieved_at: '2024-08-25T10:00:00.000Z',
+      count: 1,
+      usage_notice: 'Synthetic test; not for navigation or life-safety decisions.',
+      advisories: [
+        {
+          id: 'gis-track-kml-AL012024-001-202408251000',
+          storm_id: 'AL012024',
+          storm_name: 'IRIS',
+          storm_type: 'Tropical Storm',
+          basin: 'atlantic',
+          advisory_number: '001',
+          product: 'track',
+          issued_at: '2024-08-25T10:00:00.000Z',
+          observation_time: '2024-08-25T09:55:00.000Z',
+          valid_from: '2024-08-25T10:00:00.000Z',
+          valid_to: '2024-08-25T16:00:00.000Z',
+          geometry: {
+            type: 'LineString',
+            coordinates: [
+              [-77, 24],
+              [-78, 25],
+            ],
+          },
+          forecast_points: [
+            { position: { longitude: -77, latitude: 24 }, valid_at: '2024-08-25T10:00:00.000Z' },
+            { position: { longitude: -78, latitude: 25 }, valid_at: '2024-08-25T16:00:00.000Z' },
+          ],
+          warning_type: null,
+        },
+      ],
+    });
+    expect(response.advisories[0]).toMatchObject({
+      advisory_number: '001',
+      issued_at: '2024-08-25T10:00:00.000Z',
+      observation_time: '2024-08-25T09:55:00.000Z',
+      product: 'track',
+    });
+    expect(() =>
+      TropicalCycloneResponsePayloadSchema.parse({
+        ...response,
+        advisories: [{ ...response.advisories[0], product: 'cone' }],
+      })
+    ).toThrow(/Cone geometry/);
+  });
+
+  it('keeps CO-OPS missing values unavailable and observations separate from predictions', () => {
+    const provenance = {
+      schema_version: 1,
+      source: {
+        provider_id: 'noaa-coops',
+        feed_id: 'coastal-water-levels',
+        name: 'test',
+        canonical_url: 'https://example.com',
+      },
+      retrieved_at: '2024-08-25T10:00:00.000Z',
+      observation_period: {
+        status: 'available',
+        start: '2024-08-25T09:54:00.000Z',
+        end: '2024-08-25T09:54:00.000Z',
+      },
+      vintage: { status: 'unavailable', reason: 'test' },
+      mode: 'seed',
+      source_mode: 'seed',
+      license: { id: 'test', name: 'test' },
+      attribution: 'NOAA / NOS / CO-OPS',
+      fixture_id: 'test',
+      cache: null,
+      freshness: { status: 'fresh', age_seconds: 360, fresh_for_seconds: 360 },
+    } as const;
+    const parsed = CoastalConditionsResponsePayloadSchema.parse({
+      retrieved_at: '2024-08-25T10:00:00.000Z',
+      count: 1,
+      record_count: 2,
+      usage_notice: 'Not for navigation.',
+      water_level_provenance: provenance,
+      current_provenance: {
+        ...provenance,
+        source: { ...provenance.source, feed_id: 'coastal-currents' },
+      },
+      stations: [
+        {
+          station_id: '9414290',
+          name: 'San Francisco, CA',
+          position: { longitude: -122.4659, latitude: 37.8063 },
+          station_types: ['water_level', 'tide_prediction'],
+          datum: 'MLLW',
+          units: 'metric',
+          time_zone: 'gmt',
+          station_time_zone_name: 'America/Los_Angeles',
+          metadata_retrieved_at: '2024-08-25T10:00:00.000Z',
+          water_level_observations: [
+            {
+              observed_at: '2024-08-25T09:54:00.000Z',
+              value: { status: 'unavailable', reason: 'Source did not report a value' },
+              sigma: null,
+              quality: 'preliminary',
+              flags: ['1', '0', '0', '0'],
+            },
+          ],
+          tide_predictions: [
+            {
+              valid_at: '2024-08-25T11:00:00.000Z',
+              value: { status: 'available', value: 1.144 },
+              tide_type: 'H',
+            },
+          ],
+          current_observations: [],
+          current_predictions: [],
+        },
+      ],
+    });
+    expect(parsed.stations[0]?.water_level_observations[0]?.value).toEqual({
+      status: 'unavailable',
+      reason: 'Source did not report a value',
+    });
+    expect(() =>
+      CoastalConditionsResponsePayloadSchema.parse({ ...parsed, record_count: 0 })
+    ).toThrow(/record count/);
   });
 });
