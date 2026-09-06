@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "task": "5.3.3",
-  "adr": "0047",
+  "task": "5.3.4",
+  "adr": "0048",
   "wallClock": [
     {
       "path": "packages/cesium-kit/src/frameBudget.ts",
@@ -26,6 +26,12 @@
       "occurrences": 2,
       "classification": "compliant",
       "reason": "Offline build-tool timing reports ADG duration and never enters product or domain state."
+    },
+    {
+      "path": "scripts/measure-operational-imagery-spike.mjs",
+      "occurrences": 6,
+      "classification": "compliant",
+      "reason": "Explicitly authorized offline spike instrumentation measures monotonic request and cache durations; source and CLI-supplied UTC values remain separate from wall-clock time."
     }
   ],
   "largeFiles": [],

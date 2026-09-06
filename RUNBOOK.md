@@ -137,6 +137,21 @@ GEV v2 enforces **Seed Mode by default**. Zero live API calls occur in developme
 - **Seed Mode (Default):** `GEV_SEED_MODE=1` — Replays deterministic recorded fixtures from `fixtures/` with zero external network access.
 - **Live Mode:** `GEV_LIVE_MODE=1` — Calls external live APIs via `pinned-fetch` with TLS pinning and SSRF protection.
 
+### Bounded live research spikes
+
+- Live research spikes require the task brief to authorize the exact hosts, request
+  and byte ceilings, concurrency, timeout, and fixed source-time input.
+- Run them only while `pnpm gev status --json` reports authoritative connected
+  governance, inactive STASIS, and seed mode for the product runtime. A spike may
+  make only its separately approved research requests.
+- On Windows, Node's default DNS resolver can fail even when the system resolver is
+  healthy. Diagnose that distinction before retrying. A task-local resolver may be
+  used only when every returned address is still validated by `pinned-fetch` and TLS
+  remains pinned; never bypass the SSRF checks or switch to an unpinned client.
+- Persist measurements and object identifiers only. Do not retain sampled payloads,
+  and do not register a candidate as implemented until the task's render, playback,
+  provenance, and performance gates all pass.
+
 ### Feed Diagnostics & Circuit Breaking:
 ```bash
 # Check per-provider health, error rates, and remaining quotas
