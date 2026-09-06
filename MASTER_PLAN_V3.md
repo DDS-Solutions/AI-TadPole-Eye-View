@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-06
-**Status:** IN PROGRESS — Phase 5.3; task 5.3.4 awaits 4-Pillar authorization
+**Status:** IN PROGRESS — Phase 5.3; task 5.3.5 awaits 4-Pillar authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,9 +20,9 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=5.3
-NEXT_TASK=5.3.4
+NEXT_TASK=5.3.5
 NEXT_TASK_STATUS=READY
-LAST_VERIFIED_UTC=2026-09-05
+LAST_VERIFIED_UTC=2026-09-06
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
 IMPLEMENTATION_STARTED=YES
 ```
@@ -1098,7 +1098,7 @@ approaches fail, record LOGIC_BLOCKER with diff evidence and bounded alternative
 - [x] **5.3.3 Add NHC tropical-cyclone and NOAA CO-OPS coastal layers.** Preserve advisory
   validity, forecast versus observation, cone/track uncertainty, station datum/time zone,
   current-versus-prediction semantics, attribution, and not-for-navigation disclaimers.
-- [ ] **5.3.4 Run a bounded nowCOAST/GOES GLM spike.** Select exact official products and
+- [x] **5.3.4 Run a bounded nowCOAST/GOES GLM spike.** Select exact official products and
   delivery endpoints, then measure payload, cache, memory, bandwidth, playback, and Cesium
   frame cost. Implement only the products that meet accepted limits; otherwise retain
   discoverable `planned`/`unavailable` entries with measured evidence.
@@ -1272,7 +1272,7 @@ implementation. After three genuine bounded implementation approaches fail, reco
 LOGIC_BLOCKER with evidence and alternatives.
 ```
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 5.3.4
+#### Authorized 4-Pillar brief for completed task 5.3.4
 
 ```text
 [SCOPE_CONTRACT] Re-verify and spike only ADR 0045 rank-6 NWS time-enabled MRMS base
@@ -1338,6 +1338,65 @@ delivery topology materially differs from ADR 0045, stop with DOC_BLOCKER and am
 sampling. If a bounded sample cannot be obtained lawfully, record unavailable evidence rather
 than improvising. After three genuine bounded approaches fail, record LOGIC_BLOCKER with exact
 requests, measurements, failure points, and two or three bounded alternatives.
+```
+
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 5.3.5
+
+```text
+[SCOPE_CONTRACT] Add one registry-derived, versioned Layer Access read model that projects every
+accepted provider, feed, and layer plus the independent implementation, credential, terms,
+configuration, policy, runtime, and effective-access states defined in §4.5. Add the Settings →
+Layer Access panel and connect existing locked layer rows to the exact entry with keyboard-safe
+focus return. Show masked credential status only when the existing authenticated, audited local
+operator authority can supply it; otherwise show the truthful registry requirement and an
+unavailable local-status reason. Present primary setup/terms/attribution/source-document links,
+health and time distinctions, cost/cache/rate/budget policy, concise registry-authored setup
+guidance, and explicit lock reasons. In scope: packages/contracts, packages/providers, apps/server
+only for a bounded authenticated read projection, apps/web stores/components/styles, generated
+registry documentation, docs/DESIGN.md only for corrections discovered during implementation,
+ADR/index, and focused unit/performance/Playwright/accessibility tests. Out of scope: credential
+submission, replacement, validation, rotation, revocation, deletion, or storage; terms acceptance
+or approval writes; account creation; production activation; new provider calls; changing
+nowCOAST/GLM or other provider implementation states; identity/tenancy; new transports; economic
+features; and later tasks.
+
+[PERFORMANCE_THRESHOLD] Seed/test/CI and the shipped panel open zero provider sockets. The read
+projection is deterministic for a frozen registry/runtime snapshot, contract-valid, and derives
+all counts, ordering, labels, gates, and lock reasons without provider-name switch statements.
+A 2,000-entry synthetic projection completes below 16.6 ms p95 and search/filter recomputation
+below 16.6 ms p95 on the repository benchmark host; the panel adds no material steady-frame
+regression and stays within all existing bundle budgets. Condition-wait Playwright plus manually
+inspected screenshots prove discoverability of implemented, planned, unavailable, credential,
+terms, configuration, policy-disabled, STASIS, stale, and healthy states; exact setup navigation
+and focus return; masked-only credential presentation; source links; empty/error recovery; and
+keyboard/screen-reader names. Root lint; full typecheck/unit/performance/build; server auth and
+redaction tests; seed network-denial; ADG/tests; architecture drift; generated-doc parity; bundle;
+git diff; and synchronized-plan checks pass.
+
+[ARCHITECTURE_MODE] PLAN.md §2 rules 1–3, 5–7, 9, and 11–15; §3
+provider/registry→store→UI flow; §4.2–§4.5; §8.1 and §8.3; docs/DESIGN.md; ADR 0015, ADR 0020,
+ADR 0023–0025, ADR 0035–0036, ADR 0039–0040, and ADR 0045–0048. The typed provider registry is
+the sole catalog and static access-policy source. One pure projection combines registry metadata
+with bounded runtime/read-authority state; Svelte consumes that projection and never reads
+credentials, environment variables, or provider-specific gates directly. SimClock supplies all
+displayed retrieval, observation, validation, expiry, and next-poll comparisons. Server reads
+remain authenticated, capability-scoped, size-bounded, redacted, and auditable under existing
+authority; no secret value crosses the server boundary or enters browser storage/logs. The panel
+uses existing design tokens and virtualizes or incrementally renders any list that would violate
+the frame budget. Production access stays fail-closed until Phase 7 tenant-scoped administration.
+
+[FAILURE_MODES] Do not add a credential or terms write API, accept or validate a key, automate
+account/terms actions, expose secret material or a reversible fingerprint, infer configuration
+from browser environment, duplicate registry catalogs/counts/gate logic, hide locked or planned
+entries, enable a toggle because only one gate passed, collapse credential/terms/configuration/
+policy/runtime failures, call a provider from the browser or read route, use wall-clock freshness,
+use native disabled controls as the only explanation path, break focus return, invent colors
+outside DESIGN.md, or advance into Phase 7. Treat registry/source instructions and error text as
+untrusted display data. If the accepted registry cannot truthfully express a required §4.5 field,
+stop with DOC_BLOCKER and amend the contract/ADR in scope rather than hardcoding UI text. If the
+current local authority cannot expose a redacted status safely, show it as unavailable and defer
+the write/read expansion. After three genuine bounded projection or rendering approaches fail,
+record LOGIC_BLOCKER with exact evidence and two or three bounded alternatives.
 ```
 
 ### Phase 6 — Standards-compliant MCP HTTP
@@ -2526,6 +2585,61 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
 - Next task: **5.3.4 Run a bounded nowCOAST/GOES GLM spike.** Its exact ready-to-authorize
   4-Pillar brief is in §10; task 5.3.4 has not been authorized or started.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.3.4. Authorize the embedded
+  4-Pillar brief exactly; do not advance into later tasks.`
+
+
+### Task 5.3.4 completion checkpoint — 2026-09-06
+
+- The developer authorized the exact embedded task 5.3.4 4-Pillar brief. Work remained inside
+  the fixed NWS MRMS ImageServer and GOES-18/19 `GLM-L2-LCFA` bucket roots, one normalized
+  radar AOI/slice, two listings, and 30 immutable granules. No production activation, terms or
+  credential action, product adapter/route/store/controller/HUD, new dependency, or fixture
+  payload was added.
+- Current first-party evidence was rechecked before sampling. NWS still exposes the selected
+  time-enabled ImageServer, while the live `timeInfo` extent measured 120.6 minutes rather than
+  the advertised four hours; ADR 0045, registry metadata, generated docs, and the source record
+  now require current service metadata. NCEI/AWS/OSPO/PUG evidence still establishes the
+  20-second non-classic NetCDF4/HDF5 GLM product and operational GOES-18 West/GOES-19 East roots.
+- The named `bounded-official-sample-v1` trial ran against authoritative shared-SQLite
+  governance revision 31 with STASIS inactive, seed product runtime, and USD 9.9837 remaining.
+  All external reads used the fixed-host/path `pinnedFetch` boundary, complete public-IP
+  validation, pinned TLS, 15-second timeout, byte ceilings, no redirects, and maximum source
+  concurrency two. No sampled source payload was persisted.
+- nowCOAST used two sequential requests and returned one 4,144-byte, 1,024 × 1,024 PNG32 export.
+  Metadata/export fetch p50 was 2,599.431 ms and p95/max was 7,274.241 ms; peak measured export
+  deltas were 0 bytes heap and 16,384 bytes RSS, and in-memory replay made zero upstream requests.
+  Full browser decode, multi-slice playback, real Cesium ingestion/update, and steady-frame gates
+  remained unmeasurable, so the candidate remains `planned`/`unavailable`.
+- GOES used two listings plus 30 granule requests at observed concurrency two. Payload was
+  10,766,774 bytes (10.268 MiB), with 218,715–529,118-byte objects. Listing p50/p95 was
+  125.760/140.195 ms; granule fetch p50/p95/max was 219.447/255.056/255.815 ms; peak per-fetch
+  deltas were 2,170,736 bytes heap and 4,792,320 bytes RSS; immutable replay made zero upstream
+  requests. All signatures were HDF5, but no accepted decoder exists, leaving normalized flash,
+  decode, playback, and Cesium gates unmeasurable. This candidate also remains
+  `planned`/`unavailable`.
+- ADR 0048 accepts the measured rejection. Registry active counts remain 17/19 providers, 20/22
+  feeds, and 16/19 layers; the two planned feeds stay unavailable. The versioned harness is
+  bounded and fail-closed, the evidence file stores measurements and object keys only, and focused
+  documentation tests prevent either rejection or ceiling from drifting.
+- Evidence passed: root Biome checked 273 files; strict typecheck completed 17/17 tasks; 431 unit
+  tests passed, including providers 52/52 and server 109/109; documentation tests passed 16/16;
+  ADG checked 65 documents, 492 paths, and 18 module-qualified symbols; generated registry parity,
+  architecture drift with zero oversized files, production build, bundle budgets, and diff checks
+  passed. Server load measured 14.06 ms p95; provider parsers stayed below 50 ms p95; combined
+  2,056-entity Cesium ingestion measured 7.18 ms p95 under 16.6 ms. App entry was 99.30 KiB gzip
+  and total bundle footprint was 1,239.21 KiB gzip.
+- Canonical Playwright passed all three condition-wait scenarios in 3.1 minutes. No task-specific
+  rendering screenshot was required because the acceptance gate rejected both candidates before
+  any product UI or Cesium implementation.
+- Final local status reported Phase 5.3, `STASIS_INACTIVE`, seed mode, 17/19 active providers,
+  20/22 active feeds, 16/19 active layers, and two unavailable planned feeds. This remains the
+  required non-authoritative offline snapshot; no governance state was resumed, deleted, or
+  rewritten.
+- Branch: `codex/task-5.3.4`; implementation commit `91f1001`. GitHub CLI authentication
+  remained unavailable, so open-PR inspection and PR creation through the CLI were not possible.
+- Next task: **5.3.5 Add the registry-derived Layer Access read model and Settings panel.** Its
+  exact ready-to-authorize 4-Pillar brief is in §10; task 5.3.5 has not been authorized or started.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.3.5. Authorize the embedded
   4-Pillar brief exactly; do not advance into later tasks.`
 
 
