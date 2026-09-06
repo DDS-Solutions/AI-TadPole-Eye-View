@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-06
-**Status:** IN PROGRESS — Phase 5.3; task 5.3.3 awaits 4-Pillar authorization
+**Status:** IN PROGRESS — Phase 5.3; task 5.3.4 awaits 4-Pillar authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=5.3
-NEXT_TASK=5.3.3
+NEXT_TASK=5.3.4
 NEXT_TASK_STATUS=READY
 LAST_VERIFIED_UTC=2026-09-05
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
@@ -1095,7 +1095,7 @@ approaches fail, record LOGIC_BLOCKER with diff evidence and bounded alternative
   the SimClock terminator in core/cesium-kit; add CAP alert polygons plus bounded METAR/TAF/
   SIGMET products selected by the ADR, each with lawful fixtures, provenance, health, AOI
   inspection, and zero network access in seed mode.
-- [ ] **5.3.3 Add NHC tropical-cyclone and NOAA CO-OPS coastal layers.** Preserve advisory
+- [x] **5.3.3 Add NHC tropical-cyclone and NOAA CO-OPS coastal layers.** Preserve advisory
   validity, forecast versus observation, cone/track uncertainty, station datum/time zone,
   current-versus-prediction semantics, attribution, and not-for-navigation disclaimers.
 - [ ] **5.3.4 Run a bounded nowCOAST/GOES GLM spike.** Select exact official products and
@@ -1270,6 +1270,74 @@ until separate terms records exist. If current first-party contracts, asset topo
 terms materially differ from ADR 0045, stop with DOC_BLOCKER and amend the ADR before
 implementation. After three genuine bounded implementation approaches fail, record
 LOGIC_BLOCKER with evidence and alternatives.
+```
+
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 5.3.4
+
+```text
+[SCOPE_CONTRACT] Re-verify and spike only ADR 0045 rank-6 NWS time-enabled MRMS base
+reflectivity from the fixed `radar_base_reflectivity_time/ImageServer` and rank-7 NOAA
+GOES-18/19 `GLM-L2-LCFA` NetCDF4 granules beneath the fixed public bucket roots. Task
+authorization permits only the bounded, read-only, development-environment first-party sample
+requests defined below; it does not approve production activation, terms acceptance, credentials,
+or unbounded collection. Record exact source/product/time semantics and reproducible payload,
+cache, decode, memory, bandwidth, playback, and Cesium measurements in an accepted spike ADR and
+the two source records. A candidate may advance from `planned`/`unavailable` to `implemented`
+only when every accepted bound passes; then add the minimum versioned contracts, lawful synthetic
+fixtures, bounded server-side provider path, authenticated cached/rate/budget-governed route,
+registry/provenance/health state, store, cesium-kit controller, existing Svelte HUD wiring, and
+focused tests. If a candidate misses any bound, retain its current discoverable registry state
+and add measured rejection evidence only. In scope: packages/contracts, packages/providers,
+packages/security only for a narrowly tested existing boundary extension, apps/server,
+packages/cesium-kit, apps/web, fixtures, execution or scripts for a non-production measurement
+harness, docs/data-sources, generated registry docs, ADR/index, and relevant tests. Out of scope:
+NHC/CO-OPS changes beyond defects found by this spike, arbitrary ImageServer/WMS services, bucket
+roots, satellites, prefixes, AOIs, time ranges, formats, or object keys; archive ingestion;
+Cesium ion, the vector-tiles/3D Tiles technology preview, new production hosting; Layer Access;
+terms/credential administration; production writes; identity/tenancy; economic features; new
+transports; strike-level or life-safety claims; and later tasks.
+
+[PERFORMANCE_THRESHOLD] Seed/test/CI open zero provider sockets. The authorized development spike
+uses no more than two concurrent requests per source. nowCOAST permits one normalized AOI, one UTC
+slice, one export no larger than 1,024 by 1,024 pixels and 4 MiB, no more than 12 requests/hour,
+and a 15-second timeout. GLM permits only two fixed satellite listings and at most 30 immutable
+granules, 2 MiB each and 60 MiB total, with a 15-second timeout. Evidence reports request count,
+payload bytes, dimensions/granules, cache behavior, fetch/decode p50/p95/max, peak heap/RSS delta,
+normalized record count, Cesium ingestion/update p95, steady frame p95, and bounded playback cost
+for named reproducible trials. Implementation requires source-valid time playback, main-thread
+Cesium ingestion/update below 16.6 ms p95, no material steady-frame regression, an ADR-fixed
+normalized record and memory ceiling, and all existing bundle budgets. A missed or unmeasurable
+gate means the candidate remains `planned`/`unavailable`; partial success does not activate the
+other candidate. If implemented, condition-wait Playwright and visually inspected screenshots
+prove loading/current/stale/unavailable/expiry/recovery, time controls, attribution, and safety
+language. Root lint; full typecheck/unit/performance/build; affected security/network-denial gates;
+ADG/tests; architecture drift; generated-doc parity; bundle; git diff; and synchronized-plan
+checks pass.
+
+[ARCHITECTURE_MODE] PLAN.md §2 rules 1–7, 9, and 11–15; §3 provider→store→UI/Cesium flow; §4
+provenance, freshness, registry, geography, and Layer Access read boundaries; §8.1 and §8.3; ADR
+0015, ADR 0020, ADR 0023–0025, ADR 0035, ADR 0039–0040, ADR 0045–0047. TypeScript remains the
+production default; Python, if used, is offline measurement/data preparation only and cannot
+become a request path or source of domain truth. Every remote read stays server-side through
+pinned-fetch with exact host/path/prefix checks, byte/time/concurrency/rate/budget limits,
+single-flight caching, kill switches, provenance, and untrusted-data separation. Product,
+observation/flash, granule start/end/creation, retrieval, cache, selected slice, and SimClock
+times remain distinct. cesium-kit alone owns imagery/entities and all updates use the rAF queue.
+A NetCDF/runtime dependency, worker boundary, new renderer, vector-tile path, or material bundle
+change requires explicit ADR evidence and license/security review before adoption.
+
+[FAILURE_MODES] Do not broaden discovery into implementation, call live sources before their
+current first-party topology/policy recheck, exceed the spike request/byte/granule/AOI/time bounds,
+copy unreviewed payloads into fixtures, enumerate arbitrary buckets, accept caller-supplied URLs
+or product keys, treat `latest` or retrieval as source time, roll stale images/granules forward,
+present GLM as strike-level truth, use RainViewer or another fallback, bypass pinned-fetch/cache/
+rate/budget/STASIS, decode unbounded NetCDF on the main thread, update runes per frame, or mark a
+candidate implemented without every measured acceptance gate. Production live activation remains
+fail-closed pending separate owner terms records. If first-party products, access policy, or
+delivery topology materially differs from ADR 0045, stop with DOC_BLOCKER and amend the ADR before
+sampling. If a bounded sample cannot be obtained lawfully, record unavailable evidence rather
+than improvising. After three genuine bounded approaches fail, record LOGIC_BLOCKER with exact
+requests, measurements, failure points, and two or three bounded alternatives.
 ```
 
 ### Phase 6 — Standards-compliant MCP HTTP
@@ -2409,6 +2477,55 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
 - Next task: **5.3.3 Add NHC tropical-cyclone and NOAA CO-OPS coastal layers.** Its exact
   ready-to-authorize 4-Pillar brief is in §10; task 5.3.3 has not been authorized or started.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.3.3. Authorize the embedded
+  4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 5.3.3 completion checkpoint — 2026-09-06
+
+- The developer authorized the exact embedded task 5.3.3 4-Pillar brief. Work remained inside
+  current NHC/CPHC GIS advisories and NOAA CO-OPS coastal conditions. No nowCOAST/GLM spike,
+  Layer Access, terms/credential administration, production operation, or live provider call was
+  performed; the two new fixtures are self-authored synthetic seed records.
+- Versioned contracts and bounded adapters now preserve NHC basin, advisory, issue, observation,
+  forecast-valid, track, cone, and watch/warning distinctions plus CO-OPS station, datum, units,
+  requested/station time zone, metadata retrieval, quality, and observation/prediction identity.
+  Missing or suppressed coastal measurements remain explicitly unavailable and never become zero.
+- Both fixed authenticated routes use shared cost, cache, rate, budget, STASIS, provenance, health,
+  and kill-switch boundaries. NHC accepts only three fixed indexes and same-origin GIS assets;
+  passive XML and in-memory KMZ handling reject unsafe paths, nested/encrypted/multi-disk/ZIP64
+  archives, metadata ambiguity, and expansion beyond 32 entries/20 MiB. CO-OPS accepts only fixed
+  metadata/data roots and products with the 100-station, 10,000-record, 240-request/hour, and
+  four-request concurrency ceilings.
+- Registry truth is now 17/19 providers, 20/22 feeds, and 16/19 layers active. NHC and CO-OPS have
+  registry-derived 300-second and 360-second freshness; observations, predictions, advisories,
+  retrieval, and cache times remain separate. Live activation remains fail-closed behind explicit
+  access, terms, and public-identifier gates.
+- Evidence passed: root Biome checked 271 files; strict typecheck completed 17/17 tasks; 431 unit
+  tests passed, including providers 52/52 and server 109/109; documentation tests passed 14/14;
+  ADG checked 64 documents, 485 paths, and 18 module-qualified symbols; generated registry parity,
+  architecture drift with zero oversized files, production build, bundle budgets, and diff checks
+  passed. The app entry is 99.12 KiB gzip and total bundle footprint is 1,239.02 KiB gzip.
+- Final clean aggregate performance evidence passed: 100 concurrent server requests measured 13.89 ms
+  p95 under 300 ms; NHC 256-item and CO-OPS 100-station/10,000-record parser replays measured
+  4.89 ms and 35.73 ms p95 under 50 ms; the combined 2,056-entity operational snapshot measured
+  12.76 ms p95 under the 16.6 ms Cesium ingestion budget.
+- Canonical Playwright passed all three scenarios in 3.0 minutes. Manually inspected screenshots
+  prove track/cone/watch-warning rendering; advisory, observation, prediction, datum, units, and
+  time-zone inspection; explicit `NOT REPORTED` currents; and populated, empty, stale,
+  unavailable, expired, and recovered states with NOAA attribution and safety disclaimers.
+- ADR 0047 records the ordinary-entity rendering boundary, 27 direct public `cesium` imports and
+  zero direct `@cesium/engine` imports, final measurements, and exclusion of the 2026-09-02 Cesium
+  vector-tiles/3D Tiles technology preview. That preview requires its own scale, hosting, license,
+  offline/seed, cost, and migration evidence before adoption.
+- Final local status reported Phase 5.3, `STASIS_INACTIVE`, seed mode, 17/19 active providers,
+  20/22 active feeds, 16/19 active layers, 20 healthy feeds, and two unavailable planned feeds.
+  This remains the required non-authoritative offline snapshot; no governance state was resumed,
+  deleted, or rewritten.
+- Branch: `codex/task-5.3.3`; implementation commit `d8a9d99`. GitHub CLI authentication is
+  unavailable, so open-PR inspection and PR creation through the CLI were not possible; the
+  branch has not been pushed by this checkpoint.
+- Next task: **5.3.4 Run a bounded nowCOAST/GOES GLM spike.** Its exact ready-to-authorize
+  4-Pillar brief is in §10; task 5.3.4 has not been authorized or started.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 5.3.4. Authorize the embedded
   4-Pillar brief exactly; do not advance into later tasks.`
 
 

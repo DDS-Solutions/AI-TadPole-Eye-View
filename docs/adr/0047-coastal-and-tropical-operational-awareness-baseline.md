@@ -36,9 +36,9 @@ licensing, and rendering boundary.
 - The two controller modules add two direct public `cesium` imports. The measured import count
   moves from 25 to 27; direct `@cesium/engine` imports remain zero. Existing DESIGN.md tokens are
   reused without a token or color-fingerprint change.
-- Final canonical parser replay measured NHC's 256-item index at 4.54 ms p95 and CO-OPS at 100
-  stations/10,000 records at 31.36 ms p95, both below 50 ms. The combined 2,056-entity operational
-  snapshot measured 12.46 ms p95 against the 16.6 ms Cesium ingestion budget.
+- Final clean aggregate parser replay measured NHC's 256-item index at 4.89 ms p95 and CO-OPS at
+  100 stations/10,000 records at 35.73 ms p95, both below 50 ms. The combined 2,056-entity
+  operational snapshot measured 12.76 ms p95 against the 16.6 ms Cesium ingestion budget.
 
 ## Consequences
 
