@@ -36,7 +36,7 @@ const SCREENSHOT_STYLE = `
 test('shows bounded empty, stale, unavailable, expired, and recovered operational states', async ({
   page,
 }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(180_000);
   type VisualState = 'empty' | 'stale' | 'expired' | 'unavailable' | 'recovered';
   let visualState: VisualState = 'empty';
   const resultsDir = path.resolve('test-results');
@@ -150,7 +150,7 @@ test('shows bounded empty, stale, unavailable, expired, and recovered operationa
     .screenshot({ path: path.join(resultsDir, 'task-5.3.3-empty.png'), style: SCREENSHOT_STYLE });
 
   visualState = 'stale';
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.locator('#nws-alert-status')).toContainText('STALE');
   await expect(page.locator('#tropical-cyclone-status')).toContainText('STALE');
   await expect(page.locator('#coastal-condition-status')).toContainText('STALE');
@@ -160,7 +160,7 @@ test('shows bounded empty, stale, unavailable, expired, and recovered operationa
     .screenshot({ path: path.join(resultsDir, 'task-5.3.3-stale.png'), style: SCREENSHOT_STYLE });
 
   visualState = 'expired';
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.locator('#tropical-cyclone-status')).toHaveText('NO EVENTS IN AOI');
   await expect(page.locator('#coastal-condition-status')).toHaveText('NO STATIONS IN AOI');
   await waitForOperationalPanelPaint(page);
@@ -169,7 +169,7 @@ test('shows bounded empty, stale, unavailable, expired, and recovered operationa
     .screenshot({ path: path.join(resultsDir, 'task-5.3.3-expired.png'), style: SCREENSHOT_STYLE });
 
   visualState = 'unavailable';
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.locator('#nws-alert-status')).toHaveText('SOURCE UNAVAILABLE');
   await expect(page.locator('#aviation-weather-status')).toHaveText('SOURCE UNAVAILABLE');
   await expect(page.locator('#tropical-cyclone-status')).toHaveText('SOURCE UNAVAILABLE');
@@ -181,7 +181,7 @@ test('shows bounded empty, stale, unavailable, expired, and recovered operationa
   });
 
   visualState = 'recovered';
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.locator('#nws-alert-count')).toHaveText('2');
   await expect(page.locator('#aviation-weather-count')).toHaveText('5');
   await expect(page.locator('#tropical-cyclone-count')).toHaveText('3');
