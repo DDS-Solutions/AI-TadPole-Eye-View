@@ -1,7 +1,9 @@
 import {
   AviationWeatherResponseSchema,
+  CoastalConditionsResponseSchema,
   NwsAlertCollectionSchema,
   SolarContextResponseSchema,
+  TropicalCycloneResponseSchema,
 } from '@gev/contracts';
 import { FrozenClock } from '@gev/core';
 import { createGovernanceRuntimeContext } from '@gev/governance';
@@ -34,6 +36,10 @@ describe('operational-awareness server composition', () => {
       expect((await runtime.composition.app.request('/api/operational/solar')).status).toBe(401);
       expect((await runtime.composition.app.request('/api/operational/alerts')).status).toBe(401);
       expect((await runtime.composition.app.request('/api/operational/aviation')).status).toBe(401);
+      expect(
+        (await runtime.composition.app.request('/api/operational/tropical-cyclones')).status
+      ).toBe(401);
+      expect((await runtime.composition.app.request('/api/operational/coastal')).status).toBe(401);
 
       const solarResponse = await runtime.composition.app.request('/api/operational/solar', {
         headers: authorization,
@@ -44,16 +50,29 @@ describe('operational-awareness server composition', () => {
       const aviationResponse = await runtime.composition.app.request('/api/operational/aviation', {
         headers: authorization,
       });
+      const tropicalResponse = await runtime.composition.app.request(
+        '/api/operational/tropical-cyclones',
+        { headers: authorization }
+      );
+      const coastalResponse = await runtime.composition.app.request('/api/operational/coastal', {
+        headers: authorization,
+      });
       const solar = SolarContextResponseSchema.parse(await solarResponse.json());
       const alerts = NwsAlertCollectionSchema.parse(await alertsResponse.json());
       const aviation = AviationWeatherResponseSchema.parse(await aviationResponse.json());
+      const tropical = TropicalCycloneResponseSchema.parse(await tropicalResponse.json());
+      const coastal = CoastalConditionsResponseSchema.parse(await coastalResponse.json());
 
       expect(solarResponse.status).toBe(200);
       expect(alertsResponse.status).toBe(200);
       expect(aviationResponse.status).toBe(200);
+      expect(tropicalResponse.status).toBe(200);
+      expect(coastalResponse.status).toBe(200);
       expect(solar.computed_at).toBe(runtime.clock.iso());
       expect(alerts).toMatchObject({ count: 2, provenance: { mode: 'seed' } });
       expect(aviation.metars.count + aviation.tafs.count + aviation.sigmets.count).toBe(5);
+      expect(tropical).toMatchObject({ count: 3, provenance: { mode: 'seed' } });
+      expect(coastal).toMatchObject({ count: 3, record_count: 8, provenance: { mode: 'seed' } });
       expect(runtime.composition.budgetGovernor.state().spent_usd).toBe(0);
     } finally {
       runtime.governanceContext.close();
@@ -89,6 +108,32 @@ describe('operational-awareness server composition', () => {
       });
       expect(firstAviation.headers.get('X-GEV-TTL-Sec')).toBe('60');
       expect(secondAviation.headers.get('X-GEV-Cache')).toBe('HIT');
+
+      const firstTropical = await runtime.composition.app.request(
+        '/api/operational/tropical-cyclones',
+        { headers: authorization }
+      );
+      const secondTropical = await runtime.composition.app.request(
+        '/api/operational/tropical-cyclones',
+        { headers: authorization }
+      );
+      expect(firstTropical.headers.get('X-GEV-TTL-Sec')).toBe('300');
+      expect(secondTropical.headers.get('X-GEV-Cache')).toBe('HIT');
+      expect(TropicalCycloneResponseSchema.parse(await secondTropical.json()).provenance.mode).toBe(
+        'cached'
+      );
+
+      const firstCoastal = await runtime.composition.app.request('/api/operational/coastal', {
+        headers: authorization,
+      });
+      const secondCoastal = await runtime.composition.app.request('/api/operational/coastal', {
+        headers: authorization,
+      });
+      expect(firstCoastal.headers.get('X-GEV-TTL-Sec')).toBe('360');
+      expect(secondCoastal.headers.get('X-GEV-Cache')).toBe('HIT');
+      expect(
+        CoastalConditionsResponseSchema.parse(await secondCoastal.json()).provenance.mode
+      ).toBe('cached');
     } finally {
       runtime.governanceContext.close();
     }
@@ -154,6 +199,10 @@ describe('operational-awareness server composition', () => {
     vi.stubEnv('GEV_NWS_ALERTS_TERMS_APPROVED', '0');
     vi.stubEnv('GEV_AWC_WEATHER_LIVE_ACCESS', '0');
     vi.stubEnv('GEV_AWC_TERMS_APPROVED', '0');
+    vi.stubEnv('GEV_NHC_LIVE_ACCESS', '0');
+    vi.stubEnv('GEV_NHC_TERMS_APPROVED', '0');
+    vi.stubEnv('GEV_COOPS_LIVE_ACCESS', '0');
+    vi.stubEnv('GEV_COOPS_TERMS_APPROVED', '0');
     try {
       const liveComposition = createApp({
         clock: runtime.clock,
@@ -167,10 +216,20 @@ describe('operational-awareness server composition', () => {
       const aviation = await liveComposition.app.request('/api/operational/aviation', {
         headers: authorization,
       });
+      const tropical = await liveComposition.app.request('/api/operational/tropical-cyclones', {
+        headers: authorization,
+      });
+      const coastal = await liveComposition.app.request('/api/operational/coastal', {
+        headers: authorization,
+      });
       expect(alerts.status).toBe(423);
       expect(aviation.status).toBe(423);
+      expect(tropical.status).toBe(423);
+      expect(coastal.status).toBe(423);
       await expect(alerts.json()).resolves.toMatchObject({ code: 'TERMS_APPROVAL_REQUIRED' });
       await expect(aviation.json()).resolves.toMatchObject({ code: 'TERMS_APPROVAL_REQUIRED' });
+      await expect(tropical.json()).resolves.toMatchObject({ code: 'TERMS_APPROVAL_REQUIRED' });
+      await expect(coastal.json()).resolves.toMatchObject({ code: 'TERMS_APPROVAL_REQUIRED' });
     } finally {
       vi.unstubAllEnvs();
       runtime.governanceContext.close();

@@ -24,9 +24,9 @@ describe('typed provider registry', () => {
     const counts = summarizeProviderRegistry(registry);
 
     expect(counts).toEqual({
-      providers: { total: 19, active: 15 },
-      feeds: { total: 22, active: 17 },
-      layers: { total: 19, active: 14 },
+      providers: { total: 19, active: 17 },
+      feeds: { total: 22, active: 20 },
+      layers: { total: 19, active: 16 },
     });
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
@@ -60,9 +60,9 @@ describe('typed provider registry', () => {
 
     const liveCounts = summarizeProviderRegistry(createProviderRegistry({ requestedMode: 'live' }));
     expect(liveCounts).toEqual({
-      providers: { total: 19, active: 10 },
-      feeds: { total: 22, active: 12 },
-      layers: { total: 19, active: 9 },
+      providers: { total: 19, active: 12 },
+      feeds: { total: 22, active: 15 },
+      layers: { total: 19, active: 11 },
     });
   });
 
@@ -74,9 +74,9 @@ describe('typed provider registry', () => {
     expect(feeds.find((feed) => feed.provider === 'opensky')?.status).toBe('degraded');
     expect(listProviderRegistryFeeds(registry)[0]?.status).toBe('healthy');
     expect(summarizeProviderRegistry(disabled)).toEqual({
-      providers: { total: 19, active: 14 },
-      feeds: { total: 22, active: 16 },
-      layers: { total: 19, active: 13 },
+      providers: { total: 19, active: 16 },
+      feeds: { total: 22, active: 19 },
+      layers: { total: 19, active: 15 },
     });
   });
 
@@ -87,9 +87,9 @@ describe('typed provider registry', () => {
     );
 
     expect(summarizeProviderRegistry(registry)).toEqual({
-      providers: { total: 19, active: 14 },
-      feeds: { total: 22, active: 16 },
-      layers: { total: 19, active: 13 },
+      providers: { total: 19, active: 16 },
+      feeds: { total: 22, active: 19 },
+      layers: { total: 19, active: 15 },
     });
   });
 
@@ -105,7 +105,7 @@ describe('typed provider registry', () => {
       .split('\n')
       .find((line) => line.startsWith('| `celestrak` | CelesTrak |'));
 
-    expect(markdown).toContain('| Providers | 19 | 9 |');
+    expect(markdown).toContain('| Providers | 19 | 11 |');
     expect(satelliteProviderRow).toContain('| no | `implemented` | `live` | `unavailable` |');
     expect(markdown).not.toContain('DOC_SECRET_SENTINEL');
     expect(markdown).not.toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/);
@@ -128,7 +128,7 @@ describe('typed provider registry', () => {
     const killSwitches = new Set<string>();
     for (const definition of operationalDefinitions) {
       const implementation =
-        definition.source_access.decision_rank <= 3 ? 'implemented' : 'planned';
+        definition.source_access.decision_rank <= 5 ? 'implemented' : 'planned';
       const seedRuntime =
         implementation === 'implemented'
           ? { mode: 'seed', health: 'healthy' }
@@ -149,7 +149,7 @@ describe('typed provider registry', () => {
       });
 
       const access = definition.source_access;
-      expect(access.evidence_reviewed_on).toBe('2026-09-05');
+      expect(['2026-09-05', '2026-09-06']).toContain(access.evidence_reviewed_on);
       expect(access.products.length).toBeGreaterThan(0);
       expect(access.products.every((product) => product.endpoints.length > 0)).toBe(true);
       expect(access.products.every((product) => product.formats.length > 0)).toBe(true);

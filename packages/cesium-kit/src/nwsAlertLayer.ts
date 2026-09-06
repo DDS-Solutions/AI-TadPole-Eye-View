@@ -1,13 +1,15 @@
 import type { NwsAlert, NwsAlertCollection, OperationalAreaGeometry } from '@gev/contracts';
+import { Cartesian3, Color, PolygonHierarchy } from 'cesium';
 import {
-  Cartesian3,
-  Color,
-  ConstantPositionProperty,
-  ConstantProperty,
-  PolygonHierarchy,
-} from 'cesium';
-import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
+  BaseLayerController,
+  type BaseLayerOptions,
+  setEntityPosition,
+  setPolygonHierarchy,
+} from './baseLayer.js';
 import { CESIUM_DESIGN_TOKENS } from './designTokens.js';
+
+const DANGER_COLOR = Color.fromCssColorString(CESIUM_DESIGN_TOKENS.governance.danger);
+const ATTENTION_COLOR = Color.fromCssColorString(CESIUM_DESIGN_TOKENS.governance.attention);
 
 function outerRing(geometry: OperationalAreaGeometry): Array<[number, number]> {
   return geometry.type === 'Polygon'
@@ -16,11 +18,9 @@ function outerRing(geometry: OperationalAreaGeometry): Array<[number, number]> {
 }
 
 function alertColor(alert: NwsAlert): Color {
-  return Color.fromCssColorString(
-    alert.severity === 'Extreme' || alert.severity === 'Severe'
-      ? CESIUM_DESIGN_TOKENS.governance.danger
-      : CESIUM_DESIGN_TOKENS.governance.attention
-  );
+  return alert.severity === 'Extreme' || alert.severity === 'Severe'
+    ? DANGER_COLOR
+    : ATTENTION_COLOR;
 }
 
 export class NwsAlertLayerController extends BaseLayerController<NwsAlert, BaseLayerOptions> {
@@ -64,10 +64,8 @@ export class NwsAlertLayerController extends BaseLayerController<NwsAlert, BaseL
       this.entityMap.set(id, entity);
       return;
     }
-    existing.position = new ConstantPositionProperty(positions[0] as Cartesian3);
-    if (existing.polygon) {
-      existing.polygon.hierarchy = new ConstantProperty(new PolygonHierarchy(positions));
-    }
+    setEntityPosition(existing, positions[0] as Cartesian3);
+    setPolygonHierarchy(existing, new PolygonHierarchy(positions));
     existing.properties?.merge({ entityKind: 'nws-alert', ...alert });
   }
 

@@ -4,7 +4,9 @@
 
   let collapsed = $state(false);
 
-  function freshnessLabel(layer: 'solar' | 'alerts' | 'aviationWeather'): string {
+  function freshnessLabel(
+    layer: 'solar' | 'alerts' | 'aviationWeather' | 'tropicalCyclones' | 'coastalConditions'
+  ): string {
     const freshness: DataFreshness | undefined = layerStore.provenance[layer]?.freshness;
     if (!freshness) return layerStore.activeErrors[layer] ? 'SOURCE UNAVAILABLE' : 'AWAITING';
     if (freshness.status === 'unavailable') return 'SOURCE UNAVAILABLE';
@@ -25,6 +27,36 @@
         ? 'NO EVENTS IN AOI'
         : freshnessLabel('aviationWeather')
   );
+  const tropicalState = $derived(
+    layerStore.activeErrors.tropicalCyclones
+      ? 'SOURCE UNAVAILABLE'
+      : layerStore.counts.tropicalCyclones === 0
+        ? 'NO EVENTS IN AOI'
+        : freshnessLabel('tropicalCyclones')
+  );
+  const coastalState = $derived(
+    layerStore.activeErrors.coastalConditions
+      ? 'SOURCE UNAVAILABLE'
+      : layerStore.counts.coastalConditions === 0
+        ? 'NO STATIONS IN AOI'
+        : freshnessLabel('coastalConditions')
+  );
+  const tropicalProducts = $derived({
+    tracks: layerStore.operationalEntities.tropicalCyclones.filter((item) => item.product === 'track').length,
+    cones: layerStore.operationalEntities.tropicalCyclones.filter((item) => item.product === 'cone').length,
+    warnings: layerStore.operationalEntities.tropicalCyclones.filter((item) => item.product === 'watch_warning').length,
+  });
+  const coastalProducts = $derived({
+    observations: layerStore.operationalEntities.coastalConditions.reduce(
+      (count, station) => count + station.water_level_observations.length + station.current_observations.length,
+      0
+    ),
+    predictions: layerStore.operationalEntities.coastalConditions.reduce(
+      (count, station) => count + station.tide_predictions.length + station.current_predictions.length,
+      0
+    ),
+  });
+  const firstCoastalStation = $derived(layerStore.operationalEntities.coastalConditions[0]);
 </script>
 
 <aside id="operational-awareness-panel" class:collapsed aria-label="Operational awareness layers">
@@ -89,9 +121,40 @@
           <span></span>
         </label>
       </div>
+
+      <div class="row" id="tropical-cyclone-row">
+        <span class="indicator tropical"></span>
+        <div class="copy">
+          <strong>NHC / CPHC Advisories <b id="tropical-cyclone-count">{layerStore.counts.tropicalCyclones}</b></strong>
+          <span id="tropical-cyclone-status">{tropicalState}</span>
+          <small class="mono">TRACK {tropicalProducts.tracks} · CONE {tropicalProducts.cones} · WATCH/WARNING {tropicalProducts.warnings}</small>
+          <small>NOAA/NHC/CPHC · forecast geometry is uncertain</small>
+        </div>
+        <label class="switch">
+          <input id="toggle-tropical-cyclones" type="checkbox" checked={layerStore.visibility.tropicalCyclones} onchange={() => layerStore.toggleLayer('tropicalCyclones')} />
+          <span></span>
+        </label>
+      </div>
+
+      <div class="row" id="coastal-conditions-row">
+        <span class="indicator coastal"></span>
+        <div class="copy">
+          <strong>NOAA CO-OPS Coastal <b id="coastal-condition-count">{layerStore.counts.coastalConditions}</b></strong>
+          <span id="coastal-condition-status">{coastalState}</span>
+          <small class="mono" id="coastal-semantics">OBS {coastalProducts.observations} · PRED {coastalProducts.predictions}</small>
+          {#if firstCoastalStation}
+            <small class="mono" id="coastal-reference">{firstCoastalStation.datum ?? 'NO DATUM'} · {firstCoastalStation.time_zone.toUpperCase()} · {firstCoastalStation.units.toUpperCase()}</small>
+          {/if}
+          <small>NOAA / NOS / CO-OPS</small>
+        </div>
+        <label class="switch">
+          <input id="toggle-coastal-conditions" type="checkbox" checked={layerStore.visibility.coastalConditions} onchange={() => layerStore.toggleLayer('coastalConditions')} />
+          <span></span>
+        </label>
+      </div>
     </div>
 
-    <p class="notice">Synthetic seed records are for visualization tests only. Always follow official operational guidance.</p>
+    <p class="notice" id="operational-usage-notice">Synthetic seed records are for visualization tests only. NHC/CPHC GIS data is experimental; CO-OPS observations may be preliminary and predictions are guidance. Not for navigation or life-safety decisions.</p>
   {/if}
 </aside>
 
@@ -138,6 +201,8 @@
   .indicator.solar { background: var(--hud-text-primary); }
   .indicator.alert { background: var(--hud-danger); }
   .indicator.aviation { background: var(--channel-flight); }
+  .indicator.tropical { background: var(--channel-weather); }
+  .indicator.coastal { background: var(--channel-marine); }
   .copy { min-width: 0; flex: 1; display: grid; gap: 2px; }
   .copy strong { color: var(--hud-text-panel); font-size: 0.7rem; }
   .copy strong b { color: var(--hud-text-data); font: 600 0.64rem ui-monospace, monospace; }

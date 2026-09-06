@@ -39,6 +39,6 @@ describe('provider registry health composition', () => {
     expect(system.status).toBe('degraded');
     expect(system.seed_mode).toBe(false);
     expect(feedHealth.status).toBe('degraded');
-    expect(feedHealth.counts.providers.active).toBe(9);
+    expect(feedHealth.counts.providers.active).toBe(11);
   });
 });

@@ -2,6 +2,7 @@ import type {
   AviationWeatherLayerController,
   CableLayerController,
   CctvLayerController,
+  CoastalConditionsLayerController,
   FirmsLayerController,
   FlightLayerController,
   GbfsLayerController,
@@ -12,6 +13,7 @@ import type {
   RadioLayerController,
   SatelliteLayerController,
   SolarContextLayerController,
+  TropicalCycloneLayerController,
   WeatherLayerController,
 } from '@gev/cesium-kit';
 import {
@@ -19,6 +21,7 @@ import {
   BikeStationBatch,
   CableCatalogResponseSchema,
   CctvCatalog,
+  CoastalConditionsResponseSchema,
   type DataProvenance,
   EarthquakeCollection,
   FlightBatch,
@@ -29,6 +32,7 @@ import {
   ShipBatch,
   SolarContextResponseSchema,
   ThermalHotspotBatch,
+  TropicalCycloneResponseSchema,
   WeatherCollection,
 } from '@gev/contracts';
 import { type LayerVisibility, layerStore } from './stores/layers.svelte.js';
@@ -48,6 +52,8 @@ interface FeedLayerBindings {
   solar: SolarContextLayerController | null;
   alerts: NwsAlertLayerController | null;
   aviationWeather: AviationWeatherLayerController | null;
+  tropicalCyclones: TropicalCycloneLayerController | null;
+  coastalConditions: CoastalConditionsLayerController | null;
 }
 
 interface ProvenanceCarrier {
@@ -296,6 +302,48 @@ export async function pollVisibleFeeds(
           bindings.aviationWeather?.clear();
           layerStore.counts.aviationWeather = 0;
           layerStore.operationalEntities.aviationWeather = [];
+        }
+      )
+    );
+  }
+
+  if (layerStore.visibility.tropicalCyclones && bindings.tropicalCyclones) {
+    tasks.push(
+      loadFeed(
+        'tropicalCyclones',
+        `/api/operational/tropical-cyclones?${aoiQuery}`,
+        TropicalCycloneResponseSchema,
+        signal,
+        (data) => {
+          bindings.tropicalCyclones?.enqueueAdvisories(data);
+          layerStore.counts.tropicalCyclones = data.advisories.length;
+          layerStore.operationalEntities.tropicalCyclones = data.advisories;
+        },
+        () => {
+          bindings.tropicalCyclones?.clear();
+          layerStore.counts.tropicalCyclones = 0;
+          layerStore.operationalEntities.tropicalCyclones = [];
+        }
+      )
+    );
+  }
+
+  if (layerStore.visibility.coastalConditions && bindings.coastalConditions) {
+    tasks.push(
+      loadFeed(
+        'coastalConditions',
+        `/api/operational/coastal?${aoiQuery}`,
+        CoastalConditionsResponseSchema,
+        signal,
+        (data) => {
+          bindings.coastalConditions?.enqueueConditions(data);
+          layerStore.counts.coastalConditions = data.stations.length;
+          layerStore.operationalEntities.coastalConditions = data.stations;
+        },
+        () => {
+          bindings.coastalConditions?.clear();
+          layerStore.counts.coastalConditions = 0;
+          layerStore.operationalEntities.coastalConditions = [];
         }
       )
     );

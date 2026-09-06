@@ -15,7 +15,7 @@ export interface OperationalProductDecision {
 }
 
 export interface OperationalAccessDecision {
-  evidence_reviewed_on: '2026-09-05';
+  evidence_reviewed_on: '2026-09-05' | '2026-09-06';
   decision_rank: number;
   products: readonly OperationalProductDecision[];
   credential: {
@@ -54,7 +54,7 @@ export const noFreshness = (reason: string) => ({
   status: 'unavailable' as const,
   reason,
 });
-const definedFreshness = (freshForSeconds: number) => ({
+export const definedFreshness = (freshForSeconds: number) => ({
   status: 'defined' as const,
   fresh_for_seconds: freshForSeconds,
 });
@@ -328,26 +328,26 @@ export const OPERATIONAL_AWARENESS_PROVIDER_DEFINITIONS = [
       license: 'NWS public-domain notice; experimental GIS service disclaimer applies',
       attribution: 'NOAA / National Hurricane Center and Central Pacific Hurricane Center',
     },
-    implementation: 'planned',
+    implementation: 'implemented',
     supported_modes: ['seed', 'live'],
     feeds: [
       {
         id: 'tropical-cyclone-advisories',
         name: 'Current NHC and CPHC GIS advisories',
-        implementation: 'planned',
-        freshness: noFreshness('Planned advisory source has no implemented validity evaluation'),
+        implementation: 'implemented',
+        freshness: definedFreshness(300),
       },
     ],
     layers: [
       {
         id: 'tropical-cyclones',
         name: 'Tropical cyclone tracks, cones, and watches/warnings',
-        implementation: 'planned',
+        implementation: 'implemented',
         documentation_path: 'docs/data-sources/tropical-cyclones.md',
       },
     ],
     source_access: {
-      evidence_reviewed_on: '2026-09-05',
+      evidence_reviewed_on: '2026-09-06',
       decision_rank: 4,
       products: [
         {

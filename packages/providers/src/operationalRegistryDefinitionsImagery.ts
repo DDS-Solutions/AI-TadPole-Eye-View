@@ -1,6 +1,7 @@
 import {
   type PlannedOperationalProviderDefinition,
   allLiveEnvironments,
+  definedFreshness,
   noFreshness,
   noScopes,
 } from './operationalRegistryDefinitions.js';
@@ -16,36 +17,32 @@ export const OPERATIONAL_IMAGERY_PROVIDER_DEFINITIONS = [
       license: 'NOAA public-domain notice; CO-OPS raw-data and prediction disclaimers apply',
       attribution: 'NOAA / National Ocean Service / CO-OPS',
     },
-    implementation: 'planned',
+    implementation: 'implemented',
     supported_modes: ['seed', 'live'],
     feeds: [
       {
         id: 'coastal-water-levels',
         name: 'CO-OPS water-level observations and tide predictions',
-        implementation: 'planned',
-        freshness: noFreshness(
-          'Planned observation and prediction source has no implemented evaluation'
-        ),
+        implementation: 'implemented',
+        freshness: definedFreshness(360),
       },
       {
         id: 'coastal-currents',
         name: 'CO-OPS current observations and predictions',
-        implementation: 'planned',
-        freshness: noFreshness(
-          'Planned observation and prediction source has no implemented evaluation'
-        ),
+        implementation: 'implemented',
+        freshness: definedFreshness(360),
       },
     ],
     layers: [
       {
         id: 'coastal-conditions',
         name: 'Coastal water levels, tides, and currents',
-        implementation: 'planned',
+        implementation: 'implemented',
         documentation_path: 'docs/data-sources/coastal-conditions.md',
       },
     ],
     source_access: {
-      evidence_reviewed_on: '2026-09-05',
+      evidence_reviewed_on: '2026-09-06',
       decision_rank: 5,
       products: [
         {

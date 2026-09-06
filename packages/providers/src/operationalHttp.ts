@@ -6,6 +6,23 @@ export interface OperationalHttpResponse {
   readonly status: number;
   readonly headers: { get(name: string): string | null };
   text(): Promise<string>;
+  arrayBuffer?(): Promise<ArrayBuffer>;
+}
+
+export async function readBoundedBytes(
+  response: OperationalHttpResponse,
+  maxBytes: number
+): Promise<Uint8Array> {
+  if (!response.ok) {
+    throw new Error(`Upstream returned HTTP ${response.status}`);
+  }
+  const bytes = response.arrayBuffer
+    ? new Uint8Array(await response.arrayBuffer())
+    : new TextEncoder().encode(await response.text());
+  if (bytes.byteLength > maxBytes) {
+    throw new Error(`Upstream response exceeds ${maxBytes} bytes`);
+  }
+  return bytes;
 }
 
 export type OperationalFetcher = (
@@ -46,6 +63,20 @@ export async function readBoundedJson(
   }
   if (text.trim() === '') return { type: 'FeatureCollection', features: [] };
   return JSON.parse(text) as unknown;
+}
+
+export async function readBoundedText(
+  response: OperationalHttpResponse,
+  maxBytes: number
+): Promise<string> {
+  if (!response.ok) {
+    throw new Error(`Upstream returned HTTP ${response.status}`);
+  }
+  const text = await response.text();
+  if (new TextEncoder().encode(text).byteLength > maxBytes) {
+    throw new Error(`Upstream response exceeds ${maxBytes} bytes`);
+  }
+  return text;
 }
 
 function collectCoordinates(geometry: OperationalAreaGeometry): Array<[number, number]> {

@@ -7,6 +7,8 @@
     SolarContextLayerController,
     NwsAlertLayerController,
     AviationWeatherLayerController,
+    TropicalCycloneLayerController,
+    CoastalConditionsLayerController,
     FlightLayerController,
     MarineLayerController,
     QuakeLayerController,
@@ -54,6 +56,8 @@
   let solarLayer: SolarContextLayerController | null = null;
   let nwsAlertLayer: NwsAlertLayerController | null = null;
   let aviationWeatherLayer: AviationWeatherLayerController | null = null;
+  let tropicalCycloneLayer: TropicalCycloneLayerController | null = null;
+  let coastalConditionsLayer: CoastalConditionsLayerController | null = null;
 
   let pollInterval: ReturnType<typeof setInterval> | null = null;
   let abortController: AbortController | null = null;
@@ -76,6 +80,8 @@
       solar: solarLayer,
       alerts: nwsAlertLayer,
       aviationWeather: aviationWeatherLayer,
+      tropicalCyclones: tropicalCycloneLayer,
+      coastalConditions: coastalConditionsLayer,
     }, abortController.signal);
   }
 
@@ -110,7 +116,9 @@
         | 'satellite'
         | 'solar-context'
         | 'nws-alert'
-        | 'aviation-weather') || 'flight';
+        | 'aviation-weather'
+        | 'tropical-cyclone'
+        | 'coastal-condition') || 'flight';
 
     layerStore.selectEntity({
       kind,
@@ -279,6 +287,8 @@
       solarLayer = new SolarContextLayerController({ viewer: globe.viewer });
       nwsAlertLayer = new NwsAlertLayerController({ viewer: globe.viewer });
       aviationWeatherLayer = new AviationWeatherLayerController({ viewer: globe.viewer });
+      tropicalCycloneLayer = new TropicalCycloneLayerController({ viewer: globe.viewer });
+      coastalConditionsLayer = new CoastalConditionsLayerController({ viewer: globe.viewer });
 
       setupToolExecutors();
 
@@ -299,6 +309,8 @@
           solar: solarLayer,
           alerts: nwsAlertLayer,
           aviationWeather: aviationWeatherLayer,
+          tropicalCyclones: tropicalCycloneLayer,
+          coastalConditions: coastalConditionsLayer,
         },
         {
           frameMonitor,
@@ -359,6 +371,8 @@
     solarLayer?.destroy();
     nwsAlertLayer?.destroy();
     aviationWeatherLayer?.destroy();
+    tropicalCycloneLayer?.destroy();
+    coastalConditionsLayer?.destroy();
     globe?.destroy();
   });
 </script>

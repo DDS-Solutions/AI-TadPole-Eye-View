@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "task": "5.3.2",
-  "adr": "0046",
+  "task": "5.3.3",
+  "adr": "0047",
   "wallClock": [
     {
       "path": "packages/cesium-kit/src/frameBudget.ts",
@@ -106,7 +106,7 @@
     }
   ],
   "cesiumImports": {
-    "cesium": 25,
+    "cesium": 27,
     "@cesium/engine": 0
   },
   "stackPackages": {

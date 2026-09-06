@@ -1,6 +1,14 @@
 import type { SimClock } from '@gev/core';
 import { SystemClock } from '@gev/core';
-import { CustomDataSource, type Entity, type Viewer } from 'cesium';
+import {
+  type Cartesian3,
+  ConstantPositionProperty,
+  ConstantProperty,
+  CustomDataSource,
+  type Entity,
+  type PolygonHierarchy,
+  type Viewer,
+} from 'cesium';
 
 export interface BaseLayerOptions {
   viewer: Viewer;
@@ -114,6 +122,7 @@ export abstract class BaseLayerController<
     this.dataSource.entities.suspendEvents();
     this.beforeDrain?.();
 
+    const initialSize = this.entityMap.size;
     const seenIds = new Set<string>();
 
     for (let i = 0; i < updates.length; i++) {
@@ -128,10 +137,12 @@ export abstract class BaseLayerController<
     }
 
     // Reconcile: remove entities absent from latest snapshot
-    for (const [id, entity] of this.entityMap) {
-      if (!seenIds.has(id)) {
-        this.dataSource.entities.removeById(entity.id);
-        this.entityMap.delete(id);
+    if (this.entityMap.size !== initialSize || seenIds.size !== initialSize) {
+      for (const [id, entity] of this.entityMap) {
+        if (!seenIds.has(id)) {
+          this.dataSource.entities.removeById(entity.id);
+          this.entityMap.delete(id);
+        }
       }
     }
 
@@ -152,5 +163,33 @@ export abstract class BaseLayerController<
     this.entityMap.clear();
     this.pendingUpdates = [];
     this.hasPendingSnapshot = false;
+  }
+}
+
+export function setEntityPosition(entity: Entity, position: Cartesian3): void {
+  if (entity.position instanceof ConstantPositionProperty) {
+    entity.position.setValue(position);
+  } else {
+    entity.position = new ConstantPositionProperty(position);
+  }
+}
+
+export function setPolylinePositions(entity: Entity, positions: Cartesian3[]): void {
+  if (entity.polyline) {
+    if (entity.polyline.positions instanceof ConstantProperty) {
+      entity.polyline.positions.setValue(positions);
+    } else {
+      entity.polyline.positions = new ConstantProperty(positions);
+    }
+  }
+}
+
+export function setPolygonHierarchy(entity: Entity, hierarchy: PolygonHierarchy): void {
+  if (entity.polygon) {
+    if (entity.polygon.hierarchy instanceof ConstantProperty) {
+      entity.polygon.hierarchy.setValue(hierarchy);
+    } else {
+      entity.polygon.hierarchy = new ConstantProperty(hierarchy);
+    }
   }
 }

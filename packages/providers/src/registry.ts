@@ -113,6 +113,10 @@ export function createConfiguredProviderRegistry(
   if (environment.GEV_AWC_WEATHER_ENABLED === '0') {
     disabledProviderIds.push('noaa-aviation-weather-center');
   }
+  if (environment.GEV_NHC_TROPICAL_CYCLONES_ENABLED === '0') {
+    disabledProviderIds.push('noaa-national-hurricane-center');
+  }
+  if (environment.GEV_COOPS_ENABLED === '0') disabledProviderIds.push('noaa-coops');
 
   const satelliteLiveLocked =
     requestedMode === 'live' &&
@@ -129,6 +133,16 @@ export function createConfiguredProviderRegistry(
           environment.GEV_AWC_TERMS_APPROVED === '1'
             ? []
             : ['noaa-aviation-weather-center']),
+          ...(environment.GEV_NHC_LIVE_ACCESS === '1' &&
+          environment.GEV_NHC_TERMS_APPROVED === '1' &&
+          (environment.GEV_NHC_USER_AGENT?.trim().length ?? 0) >= 12
+            ? []
+            : ['noaa-national-hurricane-center']),
+          ...(environment.GEV_COOPS_LIVE_ACCESS === '1' &&
+          environment.GEV_COOPS_TERMS_APPROVED === '1' &&
+          /^[A-Za-z0-9_.-]{3,64}$/.test(environment.GEV_COOPS_APPLICATION_ID?.trim() ?? '')
+            ? []
+            : ['noaa-coops']),
         ]
       : [];
   return createProviderRegistry({

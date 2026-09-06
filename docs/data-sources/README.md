@@ -27,7 +27,7 @@ This directory documents the provenance, licensing terms, update cadence, and ra
 | Solar context | GEV pure-domain calculation; USNO/NOAA references | Seed implemented; offline and credential-free | [solar-context.md](./solar-context.md) |
 | NWS alerts | NOAA National Weather Service CAP API | Synthetic seed implemented; live requires identifiable User-Agent and terms record | [nws-alerts.md](./nws-alerts.md) |
 | Aviation weather | NOAA Aviation Weather Center | Synthetic seed implemented; live requires identifiable User-Agent and terms record | [aviation-weather.md](./aviation-weather.md) |
-| Tropical cyclones | NOAA NHC/CPHC GIS advisories | Planned/unavailable; fixed basin feeds and terms record required | [tropical-cyclones.md](./tropical-cyclones.md) |
-| Coastal conditions | NOAA CO-OPS APIs | Planned/unavailable; application ID and terms record required | [coastal-conditions.md](./coastal-conditions.md) |
+| Tropical cyclones | NOAA NHC/CPHC GIS advisories | Synthetic seed implemented; fixed basin feeds, identified User-Agent, and terms record required for live | [tropical-cyclones.md](./tropical-cyclones.md) |
+| Coastal conditions | NOAA CO-OPS APIs | Synthetic seed implemented; fixed application ID and terms record required for live | [coastal-conditions.md](./coastal-conditions.md) |
 | Time-enabled radar | NOAA/NWS MRMS ImageServer | Planned/unavailable bounded spike; exact AOI/time/image caps apply | [nowcoast-radar.md](./nowcoast-radar.md) |
 | Lightning | NOAA GOES-R GLM L2 LCFA | Planned/unavailable bounded spike; public buckets with strict granule/byte caps | [goes-glm.md](./goes-glm.md) |
