@@ -108,15 +108,36 @@ export function createConfiguredProviderRegistry(
   const disabledProviderIds: string[] = [];
   if (environment.GEV_CABLES_ENABLED === '0') disabledProviderIds.push('submarine-cables');
   if (environment.GEV_SATELLITES_ENABLED === '0') disabledProviderIds.push('celestrak');
+  if (environment.GEV_SOLAR_CONTEXT_ENABLED === '0') disabledProviderIds.push('gev-solar-context');
+  if (environment.GEV_NWS_ALERTS_ENABLED === '0') disabledProviderIds.push('noaa-nws-alerts');
+  if (environment.GEV_AWC_WEATHER_ENABLED === '0') {
+    disabledProviderIds.push('noaa-aviation-weather-center');
+  }
 
   const satelliteLiveLocked =
     requestedMode === 'live' &&
     (environment.GEV_SATELLITES_LIVE_ACCESS !== '1' ||
       environment.GEV_CELESTRAK_TERMS_APPROVED !== '1');
+  const operationalLiveLocked =
+    requestedMode === 'live'
+      ? [
+          ...(environment.GEV_NWS_ALERTS_LIVE_ACCESS === '1' &&
+          environment.GEV_NWS_ALERTS_TERMS_APPROVED === '1'
+            ? []
+            : ['noaa-nws-alerts']),
+          ...(environment.GEV_AWC_WEATHER_LIVE_ACCESS === '1' &&
+          environment.GEV_AWC_TERMS_APPROVED === '1'
+            ? []
+            : ['noaa-aviation-weather-center']),
+        ]
+      : [];
   return createProviderRegistry({
     requestedMode,
     disabledProviderIds,
-    unavailableProviderIds: satelliteLiveLocked ? ['celestrak'] : [],
+    unavailableProviderIds: [
+      ...(satelliteLiveLocked ? ['celestrak'] : []),
+      ...operationalLiveLocked,
+    ],
   });
 }
 

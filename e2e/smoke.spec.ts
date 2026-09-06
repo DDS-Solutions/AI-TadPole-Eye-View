@@ -1,13 +1,44 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { GevDebugBus } from '@gev/cesium-kit';
-import { expect, test } from '@playwright/test';
+import { type Page, expect, test } from '@playwright/test';
 
 declare global {
   interface Window {
     __gev?: GevDebugBus;
   }
 }
+
+async function waitForOperationalPanelPaint(page: Page): Promise<void> {
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const panel = document.querySelector('#operational-awareness-panel');
+        if (!(panel instanceof HTMLElement)) return false;
+        const bounds = panel.getBoundingClientRect();
+        return (
+          document.fonts.status === 'loaded' &&
+          bounds.width >= 340 &&
+          bounds.height >= 300 &&
+          getComputedStyle(panel).visibility === 'visible'
+        );
+      })
+    )
+    .toBe(true);
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      })
+  );
+}
+
+const OPERATIONAL_STATE_SCREENSHOT_STYLE = `
+  #operational-awareness-panel {
+    backdrop-filter: none !important;
+    background: var(--hud-panel-bg-strong) !important;
+  }
+`;
 
 test.describe('GEV v2 implemented-layer telemetry, virtualized table, and frame monitor smoke', () => {
   test('renders keyless Cesium 3D globe, virtualized telemetry stream, and uPlot charts', async ({
@@ -39,7 +70,7 @@ test.describe('GEV v2 implemented-layer telemetry, virtualized table, and frame 
       })
       .toBe(true);
 
-    // 4. Condition-wait for all 11 implemented layers to drain entities into Cesium.
+    // 4. Condition-wait for all 14 implemented layers to drain entities into Cesium.
     await expect
       .poll(
         async () => {
@@ -57,7 +88,10 @@ test.describe('GEV v2 implemented-layer telemetry, virtualized table, and frame 
               (counts.launches > 0 ? 1 : 0) +
               (counts.weather > 0 ? 1 : 0) +
               (counts.cables > 0 ? 1 : 0) +
-              (counts.satellites > 0 ? 1 : 0)
+              (counts.satellites > 0 ? 1 : 0) +
+              (counts.solar > 0 ? 1 : 0) +
+              (counts.alerts > 0 ? 1 : 0) +
+              (counts.aviationWeather > 0 ? 1 : 0)
             );
           });
         },
@@ -66,7 +100,7 @@ test.describe('GEV v2 implemented-layer telemetry, virtualized table, and frame 
           intervals: [300, 600, 1200],
         }
       )
-      .toBe(11);
+      .toBe(14);
 
     // 5. Condition-wait for all HUD stat badge counts in one browser round trip.
     const hudCountSelector = [
@@ -94,7 +128,7 @@ test.describe('GEV v2 implemented-layer telemetry, virtualized table, and frame 
       .toBe(11);
 
     // Provenance badges are derived from validated response envelopes, not hardcoded counts.
-    await expect(page.locator('#provenance-source-badge')).toHaveText('11 SOURCES');
+    await expect(page.locator('#provenance-source-badge')).toHaveText('14 SOURCES');
     await expect(page.locator('#provenance-mode-badge')).toContainText(/SEED|CACHED/);
     await expect(page.locator('#provenance-freshness-badge')).not.toHaveText('AWAITING');
     const provenanceBadges = page.locator('#provenance-badges');
@@ -121,6 +155,23 @@ test.describe('GEV v2 implemented-layer telemetry, virtualized table, and frame 
     await expect(satellitesToggle).not.toBeChecked();
     await satellitesToggle.click();
     await expect(satellitesToggle).toBeChecked();
+
+    const operationalPanel = page.locator('#operational-awareness-panel');
+    await expect(operationalPanel).toBeVisible();
+    await expect(page.locator('#nws-alert-count')).toHaveText('2');
+    await expect(page.locator('#aviation-weather-count')).toHaveText('5');
+    await expect(page.locator('#solar-context-status')).not.toHaveText('AWAITING');
+    for (const selector of ['#toggle-solar', '#toggle-nws-alerts', '#toggle-aviation-weather']) {
+      const toggle = page.locator(selector);
+      await expect(toggle).toBeChecked();
+      await toggle.click();
+      await expect(toggle).not.toBeChecked();
+      await toggle.click();
+      await expect(toggle).toBeChecked();
+    }
+    await operationalPanel.screenshot({
+      path: path.join(resultsDir, 'task-5.3.2-operational-awareness.png'),
+    });
     await page.locator('.panel-header').evaluate((element) => element.scrollIntoView());
 
     // 6. Test Frame Budget Monitor integration on window.__gev
@@ -185,10 +236,10 @@ test.describe('GEV v2 implemented-layer telemetry, virtualized table, and frame 
     await expect(m45FilterBtn).toHaveClass(/active/);
 
     // 10. Capture screenshot artifact (Rule 2: visual verification)
-    const screenshotPath = path.join(resultsDir, 'globe-task-5.2.3-satellites.png');
+    const screenshotPath = path.join(resultsDir, 'globe-task-5.3.2-operational-awareness.png');
     await page.screenshot({ path: screenshotPath });
 
-    console.log(`[E2E] Saved task 5.2.3 satellite screenshot artifact to ${screenshotPath}`);
+    console.log(`[E2E] Saved task 5.3.2 operational screenshot artifact to ${screenshotPath}`);
   });
 
   test('visibly locks satellite controls when production terms are not approved', async ({
@@ -230,5 +281,99 @@ test.describe('GEV v2 implemented-layer telemetry, virtualized table, and frame 
     await expect(toggle).toBeEnabled({ timeout: 10_000 });
     await expect(toggle).not.toBeChecked();
     expect(satelliteRequests).toBeGreaterThanOrEqual(2);
+  });
+
+  test('shows bounded empty, stale, unavailable, and recovered operational-source states', async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    type VisualState = 'empty' | 'stale' | 'unavailable' | 'recovered';
+    let visualState: VisualState = 'empty';
+    const resultsDir = path.resolve('test-results');
+    if (!fs.existsSync(resultsDir)) fs.mkdirSync(resultsDir, { recursive: true });
+
+    await page.route('**/api/operational/alerts?**', async (route) => {
+      if (visualState === 'unavailable') {
+        await route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: JSON.stringify({ code: 'SOURCE_UNAVAILABLE', error: 'Synthetic source outage' }),
+        });
+        return;
+      }
+      const upstream = await route.fetch();
+      const body = (await upstream.json()) as Record<string, unknown>;
+      if (visualState === 'empty') {
+        body.count = 0;
+        body.alerts = [];
+      } else if (visualState === 'stale') {
+        const source = body.provenance as { freshness: Record<string, unknown> };
+        source.freshness = { status: 'stale', age_seconds: 120, fresh_for_seconds: 30 };
+      }
+      await route.fulfill({ response: upstream, json: body });
+    });
+    await page.route('**/api/operational/aviation?**', async (route) => {
+      if (visualState === 'unavailable') {
+        await route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: JSON.stringify({ code: 'SOURCE_UNAVAILABLE', error: 'Synthetic source outage' }),
+        });
+        return;
+      }
+      const upstream = await route.fetch();
+      const body = (await upstream.json()) as Record<string, unknown>;
+      if (visualState === 'empty') {
+        for (const key of ['metars', 'tafs', 'sigmets']) {
+          const product = body[key] as { count: number; items: unknown[] };
+          product.count = 0;
+          product.items = [];
+        }
+      } else if (visualState === 'stale') {
+        const source = body.provenance as { freshness: Record<string, unknown> };
+        source.freshness = { status: 'stale', age_seconds: 120, fresh_for_seconds: 60 };
+      }
+      await route.fulfill({ response: upstream, json: body });
+    });
+
+    await page.goto('/');
+    await expect(page.locator('#nws-alert-status')).toHaveText('NO EVENTS IN AOI');
+    await expect(page.locator('#aviation-weather-status')).toHaveText('NO EVENTS IN AOI');
+    await waitForOperationalPanelPaint(page);
+    await page.locator('#operational-awareness-panel').screenshot({
+      path: path.join(resultsDir, 'task-5.3.2-empty.png'),
+      style: OPERATIONAL_STATE_SCREENSHOT_STYLE,
+    });
+
+    visualState = 'stale';
+    await page.reload();
+    await expect(page.locator('#nws-alert-status')).toContainText('STALE');
+    await waitForOperationalPanelPaint(page);
+    await page.locator('#operational-awareness-panel').screenshot({
+      path: path.join(resultsDir, 'task-5.3.2-stale.png'),
+      style: OPERATIONAL_STATE_SCREENSHOT_STYLE,
+    });
+
+    visualState = 'unavailable';
+    await page.reload();
+    await expect(page.locator('#nws-alert-status')).toHaveText('SOURCE UNAVAILABLE');
+    await expect(page.locator('#aviation-weather-status')).toHaveText('SOURCE UNAVAILABLE');
+    await waitForOperationalPanelPaint(page);
+    await page.locator('#operational-awareness-panel').screenshot({
+      path: path.join(resultsDir, 'task-5.3.2-unavailable.png'),
+      style: OPERATIONAL_STATE_SCREENSHOT_STYLE,
+    });
+
+    visualState = 'recovered';
+    await page.reload();
+    await expect(page.locator('#nws-alert-count')).toHaveText('2');
+    await expect(page.locator('#aviation-weather-count')).toHaveText('5');
+    await expect(page.locator('#nws-alert-status')).not.toHaveText('SOURCE UNAVAILABLE');
+    await waitForOperationalPanelPaint(page);
+    await page.locator('#operational-awareness-panel').screenshot({
+      path: path.join(resultsDir, 'task-5.3.2-recovered.png'),
+      style: OPERATIONAL_STATE_SCREENSHOT_STYLE,
+    });
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
   });
 });

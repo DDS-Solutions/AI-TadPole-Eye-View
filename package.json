@@ -10,7 +10,7 @@
     "typecheck": "turbo run typecheck",
     "test": "pnpm test:unit && pnpm test:performance",
     "test:unit": "turbo run test",
-    "test:performance": "pnpm --filter @gev/server test:load && pnpm --filter @gev/cesium-kit test:performance",
+    "test:performance": "pnpm --filter @gev/server test:load && pnpm --filter @gev/providers test:performance && pnpm --filter @gev/cesium-kit test:performance",
     "docs:check": "node scripts/adg.mjs",
     "docs:test": "node --test --test-isolation=none scripts/adg.test.mjs scripts/generate-provider-registry.test.mjs",
     "architecture:check": "node scripts/architectural-drift.mjs",

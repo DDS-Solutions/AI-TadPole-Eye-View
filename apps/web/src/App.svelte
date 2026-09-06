@@ -4,6 +4,9 @@
     GlobeController,
     CableLayerController,
     SatelliteLayerController,
+    SolarContextLayerController,
+    NwsAlertLayerController,
+    AviationWeatherLayerController,
     FlightLayerController,
     MarineLayerController,
     QuakeLayerController,
@@ -29,6 +32,7 @@
   import VirtualizedTelemetryTable from './components/VirtualizedTelemetryTable.svelte';
   import VoiceControlOrb from './components/VoiceControlOrb.svelte';
   import CollabBar from './components/CollabBar.svelte';
+  import OperationalAwarenessPanel from './components/OperationalAwarenessPanel.svelte';
   import { JulianDate, type Entity } from 'cesium';
 
   let globeContainer: HTMLDivElement;
@@ -47,6 +51,9 @@
   let cableLayer: CableLayerController | null = null;
   let satelliteLayer: SatelliteLayerController | null = null;
   let collabLayer: CollabLayerController | null = null;
+  let solarLayer: SolarContextLayerController | null = null;
+  let nwsAlertLayer: NwsAlertLayerController | null = null;
+  let aviationWeatherLayer: AviationWeatherLayerController | null = null;
 
   let pollInterval: ReturnType<typeof setInterval> | null = null;
   let abortController: AbortController | null = null;
@@ -66,6 +73,9 @@
       weather: weatherLayer,
       cables: cableLayer,
       satellites: satelliteLayer,
+      solar: solarLayer,
+      alerts: nwsAlertLayer,
+      aviationWeather: aviationWeatherLayer,
     }, abortController.signal);
   }
 
@@ -97,7 +107,10 @@
         | 'launch'
         | 'weather'
         | 'cable'
-        | 'satellite') || 'flight';
+        | 'satellite'
+        | 'solar-context'
+        | 'nws-alert'
+        | 'aviation-weather') || 'flight';
 
     layerStore.selectEntity({
       kind,
@@ -201,6 +214,9 @@
     weatherLayer?.setVisible(layerStore.visibility.weather);
     cableLayer?.setVisible(layerStore.visibility.cables);
     satelliteLayer?.setVisible(layerStore.visibility.satellites);
+    solarLayer?.setVisible(layerStore.visibility.solar);
+    nwsAlertLayer?.setVisible(layerStore.visibility.alerts);
+    aviationWeatherLayer?.setVisible(layerStore.visibility.aviationWeather);
 
     quakeLayer?.setMinMagnitude(layerStore.filters.quakes.minMagnitude);
     firmsLayer?.setMinFrp(layerStore.filters.firms.minFrp);
@@ -260,6 +276,9 @@
       cableLayer = new CableLayerController({ viewer: globe.viewer });
       satelliteLayer = new SatelliteLayerController({ viewer: globe.viewer });
       collabLayer = new CollabLayerController({ viewer: globe.viewer });
+      solarLayer = new SolarContextLayerController({ viewer: globe.viewer });
+      nwsAlertLayer = new NwsAlertLayerController({ viewer: globe.viewer });
+      aviationWeatherLayer = new AviationWeatherLayerController({ viewer: globe.viewer });
 
       setupToolExecutors();
 
@@ -277,6 +296,9 @@
           weather: weatherLayer,
           cables: cableLayer,
           satellites: satelliteLayer,
+          solar: solarLayer,
+          alerts: nwsAlertLayer,
+          aviationWeather: aviationWeatherLayer,
         },
         {
           frameMonitor,
@@ -334,6 +356,9 @@
     cableLayer?.destroy();
     satelliteLayer?.destroy();
     collabLayer?.destroy();
+    solarLayer?.destroy();
+    nwsAlertLayer?.destroy();
+    aviationWeatherLayer?.destroy();
     globe?.destroy();
   });
 </script>
@@ -347,6 +372,7 @@
     <CollabBar />
   </div>
   <LayerControlPanel />
+  <OperationalAwarenessPanel />
   <EntityInfoCard />
   <VirtualizedTelemetryTable />
   <VoiceControlOrb />

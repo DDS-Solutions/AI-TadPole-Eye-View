@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "task": "5.2.3",
-  "adr": "0034",
+  "task": "5.3.2",
+  "adr": "0046",
   "wallClock": [
     {
       "path": "packages/cesium-kit/src/frameBudget.ts",
@@ -73,10 +73,10 @@
     },
     {
       "path": "packages/cesium-kit/src/designTokens.ts",
-      "occurrences": 23,
-      "fingerprint": "ce5ca4bfb1ebc3170a49a002430aed888802a8f72aa92edaf75a2e4783ef9688",
+      "occurrences": 29,
+      "fingerprint": "8319fff75423586ed0ae1af1d5d8f0fd2a0fdaffafb079628338ef68f0126c7e",
       "classification": "fixed",
-      "reason": "Task 5.2.3 extended the centralized Cesium channel and outline map with the accepted orbital-estimate tokens."
+      "reason": "Task 5.3.2 reuses the accepted governance, text, weather, and mobility values for centralized NWS severity and solar-boundary semantics under ADR 0046."
     }
   ],
   "cesiumDirect": [
@@ -106,7 +106,7 @@
     }
   ],
   "cesiumImports": {
-    "cesium": 20,
+    "cesium": 25,
     "@cesium/engine": 0
   },
   "stackPackages": {

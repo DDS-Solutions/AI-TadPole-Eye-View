@@ -1,0 +1,62 @@
+{
+  "type": "FeatureCollection",
+  "fixture_metadata": {
+    "id": "nws-alerts-synthetic-v1",
+    "license": "MIT",
+    "generated_by": "GEV",
+    "reference_time": "2024-08-25T10:00:00.000Z",
+    "notice": "Synthetic schema-shaped alert examples; not issued by NWS and not operational guidance."
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "id": "urn:gev:synthetic:nws-alert:co-001",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[-105.8, 39.2], [-104.7, 39.2], [-104.7, 40.0], [-105.8, 40.0], [-105.8, 39.2]]]
+      },
+      "properties": {
+        "id": "urn:gev:synthetic:nws-alert:co-001",
+        "event": "Severe Thunderstorm Warning",
+        "headline": "Synthetic severe thunderstorm warning for deterministic testing",
+        "areaDesc": "Synthetic Colorado test area",
+        "severity": "Severe",
+        "certainty": "Likely",
+        "urgency": "Immediate",
+        "status": "Test",
+        "messageType": "Alert",
+        "sent": "2024-08-25T09:59:45.000Z",
+        "effective": "2024-08-25T09:59:45.000Z",
+        "onset": "2024-08-25T10:00:00.000Z",
+        "expires": "2024-08-25T12:00:00.000Z",
+        "ends": "2024-08-25T11:30:00.000Z",
+        "references": []
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "urn:gev:synthetic:nws-alert:fl-001",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[-82.9, 27.4], [-81.8, 27.4], [-81.8, 28.3], [-82.9, 28.3], [-82.9, 27.4]]]
+      },
+      "properties": {
+        "id": "urn:gev:synthetic:nws-alert:fl-001",
+        "event": "Flood Advisory",
+        "headline": "Synthetic flood advisory for deterministic testing",
+        "areaDesc": "Synthetic Florida test area",
+        "severity": "Moderate",
+        "certainty": "Possible",
+        "urgency": "Expected",
+        "status": "Test",
+        "messageType": "Update",
+        "sent": "2024-08-25T09:59:30.000Z",
+        "effective": "2024-08-25T09:59:30.000Z",
+        "onset": null,
+        "expires": "2024-08-25T14:00:00.000Z",
+        "ends": null,
+        "references": [{"sender": "gev", "identifier": "urn:gev:synthetic:nws-alert:fl-000", "sent": "2024-08-25T09:30:00.000Z"}]
+      }
+    }
+  ]
+}

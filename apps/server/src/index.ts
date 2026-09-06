@@ -56,6 +56,7 @@ import { createFlightsRouter } from './routes/flights.js';
 import { createGbfsRouter } from './routes/gbfs.js';
 import { createFeedHealthRouter } from './routes/health.js';
 import { createLaunchRouter } from './routes/launches.js';
+import { createOperationalAwarenessRouter } from './routes/operationalAwareness.js';
 import { createOverpassRouter } from './routes/overpass.js';
 import { createQuakesRouter } from './routes/quakes.js';
 import { createRadioRouter } from './routes/radio.js';
@@ -64,6 +65,7 @@ import { createSeedReloadRouter } from './routes/seedReload.js';
 import { createShipsRouter } from './routes/ships.js';
 import { createVoiceRouter } from './routes/voice.js';
 import { createWeatherRouter } from './routes/weather.js';
+import { resolveServerClockFromEnvironment } from './serverClock.js';
 import { ServerTelemetryManager } from './telemetry/index.js';
 import { attachWebSocketCollabServer } from './websocketCollab.js';
 
@@ -217,7 +219,6 @@ export function createApp(options: CreateAppOptions = {}) {
     }
   });
 
-  // Global Middleware
   app.use(
     '*',
     cors({
@@ -226,10 +227,8 @@ export function createApp(options: CreateAppOptions = {}) {
     })
   );
 
-  // Register the control-plane guard before every /ops/* route.
   app.use('/ops/*', opsAuth);
 
-  // Health and provider status
   app.get('/api/health', async (c) => {
     const govState = budgetGovernor.state();
     telemetry.trackEvent('system.health_check');
@@ -252,12 +251,24 @@ export function createApp(options: CreateAppOptions = {}) {
     );
   });
 
-  // Telemetry Metrics Endpoint (PLAN.md §7.1 & §10)
   app.get('/api/telemetry/metrics', async (c) => {
     return c.json(telemetry.getMetrics());
   });
 
-  // Diagnostic Feed Health Endpoint
+  const operationalAwarenessRouter = createOperationalAwarenessRouter({
+    clock,
+    auth,
+    costGovernor,
+    rateLimiter,
+    resolveClientId,
+    seedMode: providerRegistry.requested_mode === 'seed',
+    stasisActive: () => budgetGovernor.state().stasis_active,
+    onHealthChange: (providerId, health) => {
+      providerRegistry = withProviderHealth(providerRegistry, providerId, health);
+    },
+  });
+  app.route('/api/operational', operationalAwarenessRouter);
+
   app.route(
     '/api/feeds',
     createFeedHealthRouter({
@@ -268,7 +279,6 @@ export function createApp(options: CreateAppOptions = {}) {
     })
   );
 
-  // Telemetry Feed Routes with Cost Governor Middleware
   app.use('/api/flights/*', costGovernor.middleware('flights'));
   app.route('/api/flights', createFlightsRouter(openSkyAdapter));
 
@@ -317,7 +327,6 @@ export function createApp(options: CreateAppOptions = {}) {
   );
   app.route('/api/satellites', createSatellitesRouter(satelliteAdapter, satellitePropagator));
 
-  // Voice Ephemeral Token Provisioning
   app.route(
     '/api/voice',
     createVoiceRouter({
@@ -329,13 +338,11 @@ export function createApp(options: CreateAppOptions = {}) {
     })
   );
 
-  // T2 Collaborative Intent Rooms Route
   app.route(
     '/api/collab',
     createCollabRouter(collabRoomManager, { auth, rateLimiter, resolveClientId })
   );
 
-  // M1 Observer Real-Time Audit SSE Stream
   app.route('/ops/audit', createAuditIntegrityRouter(auditSink));
   app.route('/ops/audit', createAuditStreamRouter(auditSink, clock));
   app.route('/ops/budget', createBudgetReconciliationRouter({ clock, budgetLedger }));
@@ -353,7 +360,6 @@ export function createApp(options: CreateAppOptions = {}) {
     createSeedReloadRouter({ clock, budgetLedger, approvalGate, openSkyAdapter })
   );
 
-  // Ops Audit Log Query
   app.get('/ops/audit', async (c) => {
     const taskRef = c.req.query('task_ref');
     const limitParam = c.req.query('limit');
@@ -366,7 +372,6 @@ export function createApp(options: CreateAppOptions = {}) {
     return c.json({ entries });
   });
 
-  // Ops Governor Status
   app.get('/ops/status', async (c) => {
     return c.json(budgetGovernor.state());
   });
@@ -478,7 +483,9 @@ export function createApp(options: CreateAppOptions = {}) {
 }
 
 if (process.env.NODE_ENV !== 'test') {
-  const { app, collabRoomManager, rateLimiter } = createApp();
+  const { app, collabRoomManager, rateLimiter } = createApp({
+    clock: resolveServerClockFromEnvironment(),
+  });
   const port = Number(process.env.PORT) || 3000;
   const hostname = process.env.GEV_HOST || '127.0.0.1';
   const server = serve({

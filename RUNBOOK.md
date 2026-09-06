@@ -194,6 +194,24 @@ and [ADR 0036](./docs/adr/0036-cable-fixture-and-licensed-pack-policy.md).
 See [Satellites & Orbital Mechanics](./docs/data-sources/satellites.md) and
 [ADR 0034](./docs/adr/0034-celestrak-gp-omm-satellite-source-policy.md).
 
+### Operational-awareness source controls
+
+- Solar context uses only the shared `SimClock`; it never contacts a provider or substitutes
+  browser/server wall-clock time. `GEV_SOLAR_CONTEXT_ENABLED=0` disables the calculation.
+- NWS and AWC seed mode reads only the four `*-synthetic-v1.geojson` fixtures. Live access is
+  unavailable until both the source-specific live-access and terms-approval gates are recorded.
+- Every alerts/aviation request is authenticated, AOI-bounded, cached, request-limited,
+  budget-governed, contract-validated, and stopped by shared STASIS before cache or provider use.
+- A CAP alert more than five minutes behind the shared clock is unavailable. METARs older than
+  two hours and expired TAF/SIGMET products are removed, never rolled forward.
+- For deterministic browser replay only, set `GEV_SEED_MODE=1` and
+  `GEV_SEED_SIM_TIME_MS=<fixture epoch milliseconds>`. The server rejects that clock override in
+  live provider mode; do not use it for production monitoring.
+
+See [Solar Context](./docs/data-sources/solar-context.md),
+[NWS Alerts](./docs/data-sources/nws-alerts.md), and
+[Aviation Weather](./docs/data-sources/aviation-weather.md).
+
 ---
 
 ## 3. Keyless Cesium 3D Globe Baseline & Fallbacks

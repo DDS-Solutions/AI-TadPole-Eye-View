@@ -1,8 +1,12 @@
 import {
+  type AviationWeatherItem,
   type CableRoute,
   type DataProvenance,
+  type NwsAlert,
+  type OperationalAoi,
   SATELLITE_USAGE_NOTICE,
   type SatellitePropagatedState,
+  type SolarContextResponse,
 } from '@gev/contracts';
 import { type UnifiedEntityCollections, buildUnifiedTelemetryItems } from '../unifiedTelemetry.js';
 
@@ -20,6 +24,9 @@ export interface LayerVisibility {
   weather: boolean;
   cables: boolean;
   satellites: boolean;
+  solar: boolean;
+  alerts: boolean;
+  aviationWeather: boolean;
 }
 
 export interface ProvenanceSummary {
@@ -51,7 +58,10 @@ export interface EntitySelection {
     | 'launch'
     | 'weather'
     | 'cable'
-    | 'satellite';
+    | 'satellite'
+    | 'solar-context'
+    | 'nws-alert'
+    | 'aviation-weather';
   id: string;
   name: string;
   data: Record<string, unknown>;
@@ -71,6 +81,9 @@ class LayerStore {
     weather: true,
     cables: true,
     satellites: true,
+    solar: true,
+    alerts: true,
+    aviationWeather: true,
   });
 
   // Layer filter settings
@@ -96,6 +109,9 @@ class LayerStore {
     weather: 0,
     cables: 0,
     satellites: 0,
+    solar: 0,
+    alerts: 0,
+    aviationWeather: 0,
   });
 
   // Last validated provenance envelope for each visible telemetry layer.
@@ -144,6 +160,18 @@ class LayerStore {
     satellites: [],
   });
 
+  operationalAoi = $state<OperationalAoi>({
+    min_lat: 24,
+    max_lat: 50,
+    min_lon: -125,
+    max_lon: -66,
+  });
+  operationalEntities = $state<{
+    solar: SolarContextResponse | null;
+    alerts: NwsAlert[];
+    aviationWeather: AviationWeatherItem[];
+  }>({ solar: null, alerts: [], aviationWeather: [] });
+
   // High-Density Telemetry Table UI state
   isTableOpen = $state(false);
   tableQuery = $state('');
@@ -173,7 +201,10 @@ class LayerStore {
       (this.visibility.launches ? this.counts.launches : 0) +
       (this.visibility.weather ? this.counts.weather : 0) +
       (this.visibility.cables ? this.counts.cables : 0) +
-      (this.visibility.satellites ? this.counts.satellites : 0)
+      (this.visibility.satellites ? this.counts.satellites : 0) +
+      (this.visibility.solar ? this.counts.solar : 0) +
+      (this.visibility.alerts ? this.counts.alerts : 0) +
+      (this.visibility.aviationWeather ? this.counts.aviationWeather : 0)
   );
 
   // Global console status
@@ -191,6 +222,9 @@ class LayerStore {
     weather: null,
     cables: null,
     satellites: null,
+    solar: null,
+    alerts: null,
+    aviationWeather: null,
   });
   satelliteAccessLock = $state<string | null>(null);
   satelliteAccessLockCode = $state<string | null>(null);

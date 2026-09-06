@@ -1,0 +1,11 @@
+{
+  "type": "FeatureCollection",
+  "fixture_metadata": {"id": "awc-sigmet-synthetic-v1", "license": "MIT", "generated_by": "GEV", "reference_time": "2024-08-25T10:00:00.000Z"},
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "Polygon", "coordinates": [[[-101, 32], [-94, 32], [-94, 37], [-101, 37], [-101, 32]]]},
+      "properties": {"id": "GEV-SIGMET-001", "hazard": "CONVECTIVE", "issueTime": "2024-08-25T09:45:00.000Z", "validTimeFrom": "2024-08-25T10:00:00.000Z", "validTimeTo": "2024-08-25T13:00:00.000Z", "rawAirSigmet": "SYNTHETIC SIGMET FOR DETERMINISTIC TESTING ONLY"}
+    }
+  ]
+}

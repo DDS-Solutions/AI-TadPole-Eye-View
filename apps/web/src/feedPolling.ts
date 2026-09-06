@@ -1,4 +1,5 @@
 import type {
+  AviationWeatherLayerController,
   CableLayerController,
   CctvLayerController,
   FirmsLayerController,
@@ -6,12 +7,15 @@ import type {
   GbfsLayerController,
   LaunchLayerController,
   MarineLayerController,
+  NwsAlertLayerController,
   QuakeLayerController,
   RadioLayerController,
   SatelliteLayerController,
+  SolarContextLayerController,
   WeatherLayerController,
 } from '@gev/cesium-kit';
 import {
+  AviationWeatherResponseSchema,
   BikeStationBatch,
   CableCatalogResponseSchema,
   CctvCatalog,
@@ -19,9 +23,11 @@ import {
   EarthquakeCollection,
   FlightBatch,
   LaunchCatalog,
+  NwsAlertCollectionSchema,
   RadioCatalog,
   SatellitePropagationBatchSchema,
   ShipBatch,
+  SolarContextResponseSchema,
   ThermalHotspotBatch,
   WeatherCollection,
 } from '@gev/contracts';
@@ -39,6 +45,9 @@ interface FeedLayerBindings {
   weather: WeatherLayerController | null;
   cables: CableLayerController | null;
   satellites: SatelliteLayerController | null;
+  solar: SolarContextLayerController | null;
+  alerts: NwsAlertLayerController | null;
+  aviationWeather: AviationWeatherLayerController | null;
 }
 
 interface ProvenanceCarrier {
@@ -77,7 +86,8 @@ async function loadFeed<T extends ProvenanceCarrier>(
   url: string,
   schema: { parse(input: unknown): T },
   signal: AbortSignal,
-  consume: (data: T) => void
+  consume: (data: T) => void,
+  clear?: () => void
 ): Promise<void> {
   try {
     const response = await fetch(url, { signal });
@@ -94,6 +104,7 @@ async function loadFeed<T extends ProvenanceCarrier>(
       return;
     }
     layerStore.activeErrors[layer] = error instanceof Error ? error.message : String(error);
+    clear?.();
     if (
       layer === 'satellites' &&
       error instanceof FeedHttpError &&
@@ -110,6 +121,13 @@ export async function pollVisibleFeeds(
   signal: AbortSignal
 ): Promise<void> {
   const tasks: Promise<void>[] = [];
+  const aoi = layerStore.operationalAoi;
+  const aoiQuery = new URLSearchParams({
+    min_lat: String(aoi.min_lat),
+    max_lat: String(aoi.max_lat),
+    min_lon: String(aoi.min_lon),
+    max_lon: String(aoi.max_lon),
+  }).toString();
 
   if (layerStore.visibility.flights && bindings.flights) {
     tasks.push(
@@ -223,6 +241,63 @@ export async function pollVisibleFeeds(
         layerStore.rawEntities.satellites = data.states;
         layerStore.refreshSelectedSatellite(data.states);
       })
+    );
+  }
+
+  if (layerStore.visibility.solar && bindings.solar) {
+    tasks.push(
+      loadFeed('solar', '/api/operational/solar', SolarContextResponseSchema, signal, (data) => {
+        bindings.solar?.enqueueContext(data);
+        layerStore.counts.solar = bindings.solar?.getEntityCount() ?? 0;
+        layerStore.operationalEntities.solar = data;
+      })
+    );
+  }
+
+  if (layerStore.visibility.alerts && bindings.alerts) {
+    tasks.push(
+      loadFeed(
+        'alerts',
+        `/api/operational/alerts?${aoiQuery}`,
+        NwsAlertCollectionSchema,
+        signal,
+        (data) => {
+          bindings.alerts?.enqueueCollection(data);
+          layerStore.counts.alerts = data.alerts.length;
+          layerStore.operationalEntities.alerts = data.alerts;
+        },
+        () => {
+          bindings.alerts?.clear();
+          layerStore.counts.alerts = 0;
+          layerStore.operationalEntities.alerts = [];
+        }
+      )
+    );
+  }
+
+  if (layerStore.visibility.aviationWeather && bindings.aviationWeather) {
+    tasks.push(
+      loadFeed(
+        'aviationWeather',
+        `/api/operational/aviation?${aoiQuery}`,
+        AviationWeatherResponseSchema,
+        signal,
+        (data) => {
+          bindings.aviationWeather?.enqueueWeather(data);
+          const items = [
+            ...data.metars.items.map((item) => ({ ...item, product: 'metar' as const })),
+            ...data.tafs.items.map((item) => ({ ...item, product: 'taf' as const })),
+            ...data.sigmets.items.map((item) => ({ ...item, product: 'sigmet' as const })),
+          ];
+          layerStore.counts.aviationWeather = items.length;
+          layerStore.operationalEntities.aviationWeather = items;
+        },
+        () => {
+          bindings.aviationWeather?.clear();
+          layerStore.counts.aviationWeather = 0;
+          layerStore.operationalEntities.aviationWeather = [];
+        }
+      )
     );
   }
 

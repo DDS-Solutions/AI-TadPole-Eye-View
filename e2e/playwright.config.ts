@@ -41,6 +41,10 @@ export default defineConfig({
       url: 'http://localhost:3000/api/health',
       reuseExistingServer: false,
       timeout: 20000,
+      env: {
+        GEV_SEED_MODE: '1',
+        GEV_SEED_SIM_TIME_MS: String(Date.parse('2024-08-25T10:00:00.000Z')),
+      },
     },
     {
       command: 'pnpm --filter @gev/web preview --port 5180',
