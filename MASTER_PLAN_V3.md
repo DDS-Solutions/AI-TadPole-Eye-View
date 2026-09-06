@@ -2507,7 +2507,7 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
 - Final clean aggregate performance evidence passed: 100 concurrent server requests measured 13.89 ms
   p95 under 300 ms; NHC 256-item and CO-OPS 100-station/10,000-record parser replays measured
   4.89 ms and 35.73 ms p95 under 50 ms; the combined 2,056-entity operational snapshot measured
-  12.76 ms p95 under the 16.6 ms Cesium ingestion budget.
+  7.54 ms p95 under the 16.6 ms Cesium ingestion budget.
 - Canonical Playwright passed all three scenarios in 3.0 minutes. Manually inspected screenshots
   prove track/cone/watch-warning rendering; advisory, observation, prediction, datum, units, and
   time-zone inspection; explicit `NOT REPORTED` currents; and populated, empty, stale,

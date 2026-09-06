@@ -1,7 +1,10 @@
 import type { CoastalConditionsResponse, CoastalStation, CoastalValue } from '@gev/contracts';
-import { Cartesian3, Color, ConstantPositionProperty, NearFarScalar } from 'cesium';
-import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
+import { Cartesian3, Color, NearFarScalar } from 'cesium';
+import { BaseLayerController, type BaseLayerOptions, setEntityPosition } from './baseLayer.js';
 import { CESIUM_DESIGN_TOKENS } from './designTokens.js';
+
+const MARITIME_COLOR = Color.fromCssColorString(CESIUM_DESIGN_TOKENS.channels.maritime);
+const MARITIME_OUTLINE = Color.fromCssColorString(CESIUM_DESIGN_TOKENS.outlines.maritime);
 
 function available(value: CoastalValue | undefined): number | null {
   return value?.status === 'available' ? value.value : null;
@@ -57,7 +60,7 @@ export class CoastalConditionsLayerController extends BaseLayerController<
     };
     const existing = this.entityMap.get(id);
     if (existing) {
-      existing.position = new ConstantPositionProperty(position);
+      setEntityPosition(existing, position);
       existing.properties?.merge(properties);
       return;
     }
@@ -67,8 +70,8 @@ export class CoastalConditionsLayerController extends BaseLayerController<
       position,
       point: {
         pixelSize: 8,
-        color: Color.fromCssColorString(CESIUM_DESIGN_TOKENS.channels.maritime),
-        outlineColor: Color.fromCssColorString(CESIUM_DESIGN_TOKENS.outlines.maritime),
+        color: MARITIME_COLOR,
+        outlineColor: MARITIME_OUTLINE,
         outlineWidth: 1,
         scaleByDistance: new NearFarScalar(150, 1.7, 8_000_000, 0.65),
       },

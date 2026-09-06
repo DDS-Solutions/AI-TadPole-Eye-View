@@ -3,15 +3,19 @@ import type {
   TropicalCycloneAdvisory,
   TropicalCycloneResponse,
 } from '@gev/contracts';
+import { Cartesian3, Color, PolygonHierarchy } from 'cesium';
 import {
-  Cartesian3,
-  Color,
-  ConstantPositionProperty,
-  ConstantProperty,
-  PolygonHierarchy,
-} from 'cesium';
-import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
+  BaseLayerController,
+  type BaseLayerOptions,
+  setEntityPosition,
+  setPolygonHierarchy,
+  setPolylinePositions,
+} from './baseLayer.js';
 import { CESIUM_DESIGN_TOKENS } from './designTokens.js';
+
+const DANGER_COLOR = Color.fromCssColorString(CESIUM_DESIGN_TOKENS.governance.danger);
+const ATTENTION_COLOR = Color.fromCssColorString(CESIUM_DESIGN_TOKENS.governance.attention);
+const WEATHER_COLOR = Color.fromCssColorString(CESIUM_DESIGN_TOKENS.channels.weather);
 
 function outerRing(geometry: OperationalAreaGeometry): Array<[number, number]> {
   return geometry.type === 'Polygon'
@@ -20,13 +24,11 @@ function outerRing(geometry: OperationalAreaGeometry): Array<[number, number]> {
 }
 
 function colorFor(advisory: TropicalCycloneAdvisory): Color {
-  const value =
-    advisory.product === 'watch_warning'
-      ? CESIUM_DESIGN_TOKENS.governance.danger
-      : advisory.product === 'cone'
-        ? CESIUM_DESIGN_TOKENS.governance.attention
-        : CESIUM_DESIGN_TOKENS.channels.weather;
-  return Color.fromCssColorString(value);
+  return advisory.product === 'watch_warning'
+    ? DANGER_COLOR
+    : advisory.product === 'cone'
+      ? ATTENTION_COLOR
+      : WEATHER_COLOR;
 }
 
 export class TropicalCycloneLayerController extends BaseLayerController<
@@ -60,11 +62,9 @@ export class TropicalCycloneLayerController extends BaseLayerController<
     );
     const existing = this.entityMap.get(id);
     if (existing) {
-      existing.position = new ConstantPositionProperty(positions[0] as Cartesian3);
-      if (existing.polyline) existing.polyline.positions = new ConstantProperty(positions);
-      if (existing.polygon) {
-        existing.polygon.hierarchy = new ConstantProperty(new PolygonHierarchy(positions));
-      }
+      setEntityPosition(existing, positions[0] as Cartesian3);
+      if (existing.polyline) setPolylinePositions(existing, positions);
+      if (existing.polygon) setPolygonHierarchy(existing, new PolygonHierarchy(positions));
       existing.properties?.merge({ entityKind: 'tropical-cyclone', ...advisory });
       return;
     }
