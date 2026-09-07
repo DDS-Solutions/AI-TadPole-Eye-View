@@ -17,4 +17,5 @@ export * from './operationalHttp.js';
 export * from './cables.js';
 export * from './satellites.js';
 export * from './registry.js';
+export * from './layerAccessProjection.js';
 export * from './provenance.js';

@@ -7,6 +7,7 @@ const OPS_TOKEN = 'route-coverage-ops-token';
 const PROTECTED_OPS_ROUTES = [
   { method: 'GET', path: '/ops/audit/integrity' },
   { method: 'GET', path: '/ops/audit/stream' },
+  { method: 'GET', path: '/ops/layer-access' },
   { method: 'POST', path: '/ops/budget/reconcile' },
   { method: 'POST', path: '/ops/cables/packs/activate' },
   { method: 'POST', path: '/ops/seed/reload' },

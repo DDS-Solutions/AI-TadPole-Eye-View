@@ -42,6 +42,7 @@ export const OPERATIONAL_IMAGERY_PROVIDER_DEFINITIONS = [
       },
     ],
     source_access: {
+      domain: 'coastal',
       evidence_reviewed_on: '2026-09-06',
       decision_rank: 5,
       products: [
@@ -79,6 +80,10 @@ export const OPERATIONAL_IMAGERY_PROVIDER_DEFINITIONS = [
         attribution_url: 'https://tidesandcurrents.noaa.gov/web_services_info.html',
         allowed_live_environments: allLiveEnvironments,
       },
+      configuration: {
+        status: 'required',
+        description: 'A fixed non-secret application identifier is required for live requests.',
+      },
       operations: {
         refresh_seconds: 360,
         fresh_cache_seconds: 360,
@@ -92,9 +97,15 @@ export const OPERATIONAL_IMAGERY_PROVIDER_DEFINITIONS = [
         max_records: 10_000,
         max_concurrency: 4,
         kill_switch: 'GEV_COOPS_ENABLED',
+        kill_switch_owner: 'gev-platform-administrator',
         fallback:
           'Last-valid observations may remain stale for 30 minutes; predictions never extend past their valid time',
       },
+      setup_instructions: [
+        'Review NOAA CO-OPS disclaimers, attribution, station datum, and time-zone semantics.',
+        'Have the licensing owner record approved use before any live activation.',
+        'Configure the non-secret application identifier through the server authority.',
+      ],
     },
   },
   {
@@ -128,6 +139,7 @@ export const OPERATIONAL_IMAGERY_PROVIDER_DEFINITIONS = [
       },
     ],
     source_access: {
+      domain: 'weather-imagery',
       evidence_reviewed_on: '2026-09-06',
       decision_rank: 6,
       products: [
@@ -159,6 +171,10 @@ export const OPERATIONAL_IMAGERY_PROVIDER_DEFINITIONS = [
           'https://mapservices.weather.noaa.gov/eventdriven/rest/services/radar/radar_base_reflectivity_time/ImageServer',
         allowed_live_environments: allLiveEnvironments,
       },
+      configuration: {
+        status: 'required',
+        description: 'The fixed ImageServer root and identifiable User-Agent require review.',
+      },
       operations: {
         refresh_seconds: 300,
         fresh_cache_seconds: 300,
@@ -171,9 +187,14 @@ export const OPERATIONAL_IMAGERY_PROVIDER_DEFINITIONS = [
         max_records: 1,
         max_concurrency: 2,
         kill_switch: 'GEV_NOWCOAST_RADAR_ENABLED',
+        kill_switch_owner: 'gev-platform-administrator',
         fallback:
           'Use a visibly stale image for at most 30 minutes; do not fall back to RainViewer',
       },
+      setup_instructions: [
+        'Review the bounded-spike rejection evidence before proposing another implementation.',
+        'Do not configure or activate this planned source without a new authorized envelope.',
+      ],
     },
   },
   {
@@ -208,6 +229,7 @@ export const OPERATIONAL_IMAGERY_PROVIDER_DEFINITIONS = [
       },
     ],
     source_access: {
+      domain: 'lightning',
       evidence_reviewed_on: '2026-09-06',
       decision_rank: 7,
       products: [
@@ -240,6 +262,10 @@ export const OPERATIONAL_IMAGERY_PROVIDER_DEFINITIONS = [
           'https://www.ncei.noaa.gov/metadata/geoportal/rest/metadata/item/gov.noaa.ncdc%3AC01527/html',
         allowed_live_environments: allLiveEnvironments,
       },
+      configuration: {
+        status: 'required',
+        description: 'An accepted bounded NetCDF4/HDF5 decoder and worker boundary are absent.',
+      },
       operations: {
         refresh_seconds: 20,
         fresh_cache_seconds: 20,
@@ -253,9 +279,14 @@ export const OPERATIONAL_IMAGERY_PROVIDER_DEFINITIONS = [
         max_records: 30,
         max_concurrency: 2,
         kill_switch: 'GEV_GOES_GLM_ENABLED',
+        kill_switch_owner: 'gev-platform-administrator',
         fallback:
           'No alternate lightning source; report unavailable after the two-minute stale limit',
       },
+      setup_instructions: [
+        'Review the bounded-spike rejection evidence and product definition before further work.',
+        'Do not configure or activate this planned source without a new authorized envelope.',
+      ],
     },
   },
 ] satisfies readonly PlannedOperationalProviderDefinition[];

@@ -123,12 +123,14 @@ current UI implements these behaviors.
 
 ---
 
-## 6. Planned Settings → Layer Access panel
+## 6. Settings → Layer Access panel
 
-Every provider/feed/layer accepted into the typed registry appears in one searchable Settings
-panel, grouped by domain and sorted consistently. Implemented, planned, incomplete, unavailable,
-and locked entries remain discoverable. The panel and layer picker consume the same registry
-projection; neither maintains a provider-name switch statement or duplicated list.
+The Phase 5.3.5 read-only baseline presents every provider/feed/layer accepted into the typed
+registry in one searchable Settings panel, grouped by domain and sorted consistently. Implemented,
+planned, incomplete, unavailable, and locked entries remain discoverable. The panel consumes the
+versioned Layer Access projection and existing locked layer controls navigate to the same exact
+entry; neither maintains a provider-name switch statement or duplicated list. Credential and terms
+administration described below remains a Phase 7 contract, not implemented behavior.
 
 ### 6.1 Layer picker behavior
 
@@ -161,7 +163,7 @@ Each entry presents registry-derived, non-secret fields:
 - concise numbered setup instructions generated from versioned registry metadata, with a link to
   the longer source-specific document. Instructions never contain real credentials.
 
-### 6.3 Unlock flow
+### 6.3 Unlock flow (Phase 7 administration contract)
 
 1. **Review requirements:** show credentials, terms, configuration, cost/quota, attribution, and
    supported-environment gates separately before accepting input.

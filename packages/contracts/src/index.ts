@@ -16,6 +16,7 @@ export * from './weather.js';
 export * from './collab.js';
 export * from './capabilities.js';
 export * from './providerRegistry.js';
+export * from './layerAccess.js';
 export * from './governance.js';
 export * from './ledger.js';
 export * from './auditIntegrity.js';

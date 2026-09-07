@@ -170,6 +170,10 @@
     font-family: 'JetBrains Mono', 'Fira Code', monospace;
   }
 
+  :global(body.layer-access-modal-open) .voice-widget-container {
+    visibility: hidden;
+  }
+
   .orb-wrapper {
     display: flex;
     align-items: center;

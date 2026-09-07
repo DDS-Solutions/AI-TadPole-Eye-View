@@ -1,11 +1,26 @@
 <script lang="ts">
   import { layerStore } from '../stores/layers.svelte.js';
   import LayerFilterControls from './LayerFilterControls.svelte';
+  import LayerAccessPanel from './LayerAccessPanel.svelte';
   import ProvenanceBadges from './ProvenanceBadges.svelte';
   import SatelliteLayerToggle from './SatelliteLayerToggle.svelte';
 
   let isCollapsed = $state(false);
   let activeTab = $state<'layers' | 'filters'>('layers');
+  let layerAccessOpen = $state(false);
+  let layerAccessTarget = $state<string | null>(null);
+  let returnFocus: HTMLElement | null = null;
+
+  function openLayerAccess(trigger: HTMLElement, providerId: string | null = null): void {
+    returnFocus = trigger;
+    layerAccessTarget = providerId;
+    layerAccessOpen = true;
+  }
+
+  function closeLayerAccess(): void {
+    layerAccessOpen = false;
+    queueMicrotask(() => returnFocus?.focus());
+  }
 </script>
 
 <aside class="layer-control-panel" class:collapsed={isCollapsed}>
@@ -15,6 +30,13 @@
       <h2 class="panel-title">Tactical Feeds & Filters</h2>
     </div>
     <div class="header-actions">
+      <button
+        id="open-layer-access"
+        class="tab-btn"
+        onclick={(event) => openLayerAccess(event.currentTarget)}
+      >
+        Access
+      </button>
       <button
         class="tab-btn"
         class:active={activeTab === 'layers'}
@@ -224,7 +246,7 @@
             </label>
           </div>
 
-          <SatelliteLayerToggle />
+          <SatelliteLayerToggle onsetup={(trigger) => openLayerAccess(trigger, 'celestrak')} />
 
           <!-- Submarine Cable Infrastructure -->
           <div class="layer-toggle-row cable-row">
@@ -256,6 +278,10 @@
     </div>
   {/if}
 </aside>
+
+{#if layerAccessOpen}
+  <LayerAccessPanel initialProviderId={layerAccessTarget} onclose={closeLayerAccess} />
+{/if}
 
 <style>
   .layer-control-panel {

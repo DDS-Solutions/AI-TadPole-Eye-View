@@ -27,6 +27,72 @@ export const ProviderSourceSchema = z.object({
 });
 export type ProviderSource = z.infer<typeof ProviderSourceSchema>;
 
+export const ProviderAccessProductSchema = z.object({
+  id: ProviderRegistryIdSchema,
+  name: z.string().min(1).max(200),
+  transport: z.enum(['internal', 'https', 'download_pack']),
+  endpoints: z.array(z.string().min(1).max(500)).min(1).max(12),
+  formats: z.array(z.string().min(1).max(100)).min(1).max(12),
+  coverage: z.string().min(1).max(1_000),
+  time_semantics: z.string().min(1).max(1_000),
+});
+export type ProviderAccessProduct = z.infer<typeof ProviderAccessProductSchema>;
+
+export const ProviderCredentialKindSchema = z.enum([
+  'none',
+  'api_key',
+  'oauth2_client_credentials',
+  'identified_user_agent',
+  'application_identifier',
+  'source_specific',
+  'operator_licensed_manifest',
+]);
+export type ProviderCredentialKind = z.infer<typeof ProviderCredentialKindSchema>;
+
+export const ProviderSourceAccessSchema = z.object({
+  domain: ProviderRegistryIdSchema,
+  evidence_reviewed_on: z.string().date(),
+  decision_rank: z.number().int().positive().nullable(),
+  products: z.array(ProviderAccessProductSchema).min(1).max(12),
+  credential: z.object({
+    kind: ProviderCredentialKindSchema,
+    setup_url: z.string().url(),
+    required_scopes: z.array(z.string().min(1).max(200)).max(20),
+    validation_method: z.string().min(1).max(1_000),
+  }),
+  approval: z.object({
+    owner: ProviderRegistryIdSchema,
+    status: z.enum(['not_required', 'record_required']),
+    terms_url: z.string().url(),
+    attribution_url: z.string().url(),
+    allowed_live_environments: z.array(z.enum(['development', 'staging', 'production'])).max(3),
+  }),
+  configuration: z.object({
+    status: z.enum(['not_required', 'required']),
+    description: z.string().min(1).max(1_000),
+  }),
+  operations: z.object({
+    refresh_seconds: z.number().int().nonnegative().max(604_800),
+    fresh_cache_seconds: z.number().int().nonnegative().max(604_800),
+    max_stale_seconds: z.number().int().nonnegative().max(2_592_000),
+    upstream_rate_limit: z.string().min(1).max(1_000),
+    budget_policy: z.string().min(1).max(1_000),
+    timeout_ms: z.number().int().positive().max(120_000),
+    max_response_bytes: z
+      .number()
+      .int()
+      .positive()
+      .max(100 * 1024 * 1024),
+    max_records: z.number().int().positive().max(100_000).nullable(),
+    max_concurrency: z.number().int().positive().max(32),
+    kill_switch: z.string().min(1).max(120),
+    kill_switch_owner: ProviderRegistryIdSchema,
+    fallback: z.string().min(1).max(1_000),
+  }),
+  setup_instructions: z.array(z.string().min(1).max(500)).min(1).max(8),
+});
+export type ProviderSourceAccess = z.infer<typeof ProviderSourceAccessSchema>;
+
 export const ProviderFreshnessPolicySchema = z.discriminatedUnion('status', [
   z.object({
     status: z.literal('defined'),
@@ -64,6 +130,7 @@ export const ProviderRegistryProviderSchema = z
     supported_modes: z.array(z.enum(['seed', 'live', 'download_pack'])),
     mode: ProviderRuntimeModeSchema,
     health: ProviderHealthSchema,
+    source_access: ProviderSourceAccessSchema,
     feeds: z.array(ProviderRegistryFeedSchema).min(1),
     layers: z.array(ProviderRegistryLayerSchema).min(1),
   })

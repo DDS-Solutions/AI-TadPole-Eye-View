@@ -430,6 +430,10 @@
     z-index: 10;
   }
 
+  :global(body.layer-access-modal-open) .collab-overlay {
+    visibility: hidden;
+  }
+
   .attribution-badge {
     position: absolute;
     bottom: 8px;
