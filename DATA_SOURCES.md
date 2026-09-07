@@ -84,8 +84,8 @@ Registry version 2; requested mode `seed`.
 | `tropical-cyclone-advisories` | Current NHC and CPHC GIS advisories | `noaa-national-hurricane-center` | yes | `implemented` | `seed` | `seed` | `healthy` | 300s |
 | `coastal-water-levels` | CO-OPS water-level observations and tide predictions | `noaa-coops` | yes | `implemented` | `seed` | `seed` | `healthy` | 360s |
 | `coastal-currents` | CO-OPS current observations and predictions | `noaa-coops` | yes | `implemented` | `seed` | `seed` | `healthy` | 360s |
-| `nowcoast-radar-reflectivity` | Time-enabled MRMS radar base reflectivity | `noaa-nowcoast` | no | `planned` | `seed` | `unavailable` | `unavailable` | unavailable: Bounded delivery and render spike is not complete |
-| `goes-glm-lightning` | GOES-18/19 GLM Level 2 flashes | `noaa-goes-glm` | no | `planned` | `seed` | `unavailable` | `unavailable` | unavailable: Bounded NetCDF delivery and render spike is not complete |
+| `nowcoast-radar-reflectivity` | Time-enabled MRMS radar base reflectivity | `noaa-nowcoast` | no | `planned` | `seed` | `unavailable` | `unavailable` | unavailable: The bounded 2026-09-06 spike did not establish browser decode, playback, and Cesium frame-cost gates |
+| `goes-glm-lightning` | GOES-18/19 GLM Level 2 flashes | `noaa-goes-glm` | no | `planned` | `seed` | `unavailable` | `unavailable` | unavailable: The bounded 2026-09-06 spike found no accepted NetCDF4/HDF5 decode and rendering path |
 
 #### Layers
 

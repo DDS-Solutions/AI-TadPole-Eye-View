@@ -35,3 +35,4 @@ This directory records all significant architectural and structural decisions ma
 | [0045](./0045-operational-awareness-source-and-access-policy.md) | Operational-awareness source and access policy | Accepted | 2026-09-05 |
 | [0046](./0046-operational-awareness-rendering-and-architecture-baseline.md) | Operational-awareness rendering and architecture baseline | Accepted | 2026-09-05 |
 | [0047](./0047-coastal-and-tropical-operational-awareness-baseline.md) | Coastal and tropical operational-awareness baseline | Accepted | 2026-09-06 |
+| [0048](./0048-bounded-operational-imagery-spike.md) | Bounded operational-imagery spike | Accepted | 2026-09-06 |

@@ -2,8 +2,9 @@
 
 **Layer:** Geostationary Lightning Mapper flashes
 **Registry provider:** `noaa-goes-glm`
-**Status:** Planned and unavailable; bounded NetCDF delivery/render spike not started
-**Decision:** [ADR 0045](../adr/0045-operational-awareness-source-and-access-policy.md)
+**Status:** Planned and unavailable; bounded NetCDF delivery/render spike rejected on 2026-09-06
+**Decision:** [ADR 0045](../adr/0045-operational-awareness-source-and-access-policy.md),
+[ADR 0048](../adr/0048-bounded-operational-imagery-spike.md)
 
 ## Product and provenance
 
@@ -31,3 +32,18 @@ NOAA National Centers for Environmental Information.”
 - Failure: no alternate lightning source; report unavailable after two minutes.
 
 This operational layer is not a strike-level safety, forensic, or person-tracking service.
+
+## Bounded spike evidence
+
+The accepted 2026-09-06 trial made two listings and fetched 30 immutable granules at maximum
+concurrency two from prefix `GLM-L2-LCFA/2026/249/20/`. The 30 payloads totaled 10,766,774 bytes
+(10.268 MiB); individual objects ranged from 218,715 to 529,118 bytes. Listing fetch p50/p95/max
+was 125.760/140.195/140.195 ms. Granule fetch p50/p95/max was
+219.447/255.056/255.815 ms. Peak per-fetch deltas were 2,170,736 bytes heap and 4,792,320 bytes
+RSS, and immutable-cache replay made zero additional upstream requests.
+
+Transport bounds passed and every object had the NetCDF4/HDF5 signature. The official product
+guide confirms that GLM LCFA does not conform to the classic NetCDF model, while this repository
+has no accepted NetCDF4/HDF5 decoder. Decode timing, normalized flash count, playback cost,
+Cesium ingestion/update p95, and steady-frame p95 were therefore unmeasurable. The candidate
+remains planned/unavailable; no decoder, fixture, live route, renderer, or HUD control was added.

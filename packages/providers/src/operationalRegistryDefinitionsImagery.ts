@@ -114,7 +114,9 @@ export const OPERATIONAL_IMAGERY_PROVIDER_DEFINITIONS = [
         id: 'nowcoast-radar-reflectivity',
         name: 'Time-enabled MRMS radar base reflectivity',
         implementation: 'planned',
-        freshness: noFreshness('Bounded delivery and render spike is not complete'),
+        freshness: noFreshness(
+          'The bounded 2026-09-06 spike did not establish browser decode, playback, and Cesium frame-cost gates'
+        ),
       },
     ],
     layers: [
@@ -126,7 +128,7 @@ export const OPERATIONAL_IMAGERY_PROVIDER_DEFINITIONS = [
       },
     ],
     source_access: {
-      evidence_reviewed_on: '2026-09-05',
+      evidence_reviewed_on: '2026-09-06',
       decision_rank: 6,
       products: [
         {
@@ -139,7 +141,7 @@ export const OPERATIONAL_IMAGERY_PROVIDER_DEFINITIONS = [
           formats: ['ArcGIS ImageServer export image', 'OGC WMS 1.3.0'],
           coverage: 'CONUS, Alaska, Caribbean, Guam, and Hawaii',
           time_semantics:
-            'UTC time slices within a moving four-hour service window; latest is not wall-clock truth',
+            'Use the service timeInfo UTC extent for every request; the advertised four-hour window measured 120.6 minutes during the bounded spike, and latest is not wall-clock truth',
         },
       ],
       credential: {
@@ -192,7 +194,9 @@ export const OPERATIONAL_IMAGERY_PROVIDER_DEFINITIONS = [
         id: 'goes-glm-lightning',
         name: 'GOES-18/19 GLM Level 2 flashes',
         implementation: 'planned',
-        freshness: noFreshness('Bounded NetCDF delivery and render spike is not complete'),
+        freshness: noFreshness(
+          'The bounded 2026-09-06 spike found no accepted NetCDF4/HDF5 decode and rendering path'
+        ),
       },
     ],
     layers: [
@@ -204,7 +208,7 @@ export const OPERATIONAL_IMAGERY_PROVIDER_DEFINITIONS = [
       },
     ],
     source_access: {
-      evidence_reviewed_on: '2026-09-05',
+      evidence_reviewed_on: '2026-09-06',
       decision_rank: 7,
       products: [
         {

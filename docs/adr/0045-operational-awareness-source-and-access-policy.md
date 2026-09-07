@@ -66,7 +66,7 @@ planning evidence only and must not be counted or presented as executable layers
 | `noaa-aviation-weather-center` | `/api/data/metar`, `/api/data/taf`, `/api/data/airsigmet` at `aviationweather.gov`; GeoJSON only | Worldwide reporting/SIGMET coverage exposed by AWC. Observation, issue, valid-from/to, retrieval, and cache times remain distinct. |
 | `noaa-national-hurricane-center` | `gis-at.xml`, `gis-ep.xml`, `gis-cp.xml` plus same-origin KMZ/KML advisory assets | Atlantic, Eastern Pacific, Central Pacific. Preserve advisory number, issue, observation, and forecast-valid time; archive data is never current. |
 | `noaa-coops` | CO-OPS `datagetter` and `mdapi/.../stations.json`; JSON water levels, tide predictions, currents, and current predictions | Active U.S. coastal, territorial, and Great Lakes stations. Preserve datum, units, zone, observation/prediction time, and metadata retrieval separately. |
-| `noaa-nowcoast` | NWS `radar_base_reflectivity_time/ImageServer`; bounded ImageServer export or WMS 1.3.0 image | CONUS, Alaska, Caribbean, Guam, Hawaii. UTC slices in a moving four-hour window, about five-minute updates; “latest” is not observation time. |
+| `noaa-nowcoast` | NWS `radar_base_reflectivity_time/ImageServer`; bounded ImageServer export or WMS 1.3.0 image | CONUS, Alaska, Caribbean, Guam, Hawaii. Use the current service `timeInfo` UTC extent; the advertised four-hour window measured 120.6 minutes in task 5.3.4. Updates are about five minutes, and “latest” is not observation time. |
 | `noaa-goes-glm` | GOES-18/19 public bucket roots under `GLM-L2-LCFA/`; NetCDF4 20-second granules | Americas and adjacent oceans in GOES-East/West fields of view. Preserve granule start/end/creation, flash, and retrieval times independently. |
 
 ### Credential, approval, and operating policy
@@ -100,5 +100,8 @@ switch. Provider text and advisory content remain untrusted data and may not bec
   either imagery path.
 - A current first-party recheck is required again before implementation or live activation because
   endpoints, quotas, product status, terms, and attribution can change.
+- Task 5.3.4 accepted ADR 0048 without activating either spike candidate. Its bounded live trial
+  corrected the radar-window assumption above and recorded unmeasurable decode/playback/Cesium
+  gates for radar plus the absence of an accepted non-classic NetCDF4/HDF5 GLM decode path.
 - Deferred candidates need a separate ADR or explicit amendment before entering executable registry
   truth.

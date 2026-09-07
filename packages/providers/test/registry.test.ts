@@ -173,6 +173,36 @@ describe('typed provider registry', () => {
 
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(nowSpy).not.toHaveBeenCalled();
+
+    const nowcoast = operationalDefinitions.find((definition) => definition.id === 'noaa-nowcoast');
+    const goesGlm = operationalDefinitions.find((definition) => definition.id === 'noaa-goes-glm');
+    expect(nowcoast).toMatchObject({
+      implementation: 'planned',
+      source_access: { evidence_reviewed_on: '2026-09-06' },
+      feeds: [
+        {
+          freshness: {
+            status: 'unavailable',
+            reason: expect.stringContaining('did not establish browser decode'),
+          },
+        },
+      ],
+    });
+    expect(nowcoast?.source_access.products[0]?.time_semantics).toContain(
+      'advertised four-hour window measured 120.6 minutes'
+    );
+    expect(goesGlm).toMatchObject({
+      implementation: 'planned',
+      source_access: { evidence_reviewed_on: '2026-09-06' },
+      feeds: [
+        {
+          freshness: {
+            status: 'unavailable',
+            reason: expect.stringContaining('no accepted NetCDF4/HDF5 decode'),
+          },
+        },
+      ],
+    });
     fetchSpy.mockRestore();
     nowSpy.mockRestore();
   });
