@@ -4,9 +4,10 @@ import type {
   ProviderRegistryLayer,
   ProviderRuntimeMode,
   ProviderSource,
+  ProviderSourceAccess,
 } from '@gev/contracts';
+import { getBaseProviderAccess } from './baseRegistryAccess.js';
 import { OPERATIONAL_AWARENESS_PROVIDER_DEFINITIONS } from './operationalRegistryDefinitions.js';
-import type { OperationalAccessDecision } from './operationalRegistryDefinitions.js';
 import { OPERATIONAL_IMAGERY_PROVIDER_DEFINITIONS } from './operationalRegistryDefinitionsImagery.js';
 
 type SupportedProviderMode = Exclude<ProviderRuntimeMode, 'unavailable'>;
@@ -17,7 +18,7 @@ export interface ProviderDefinition {
   source: ProviderSource;
   mode_sources?: Partial<Record<SupportedProviderMode, ProviderSource>>;
   implementation: ProviderImplementationState;
-  source_access?: OperationalAccessDecision;
+  source_access: ProviderSourceAccess;
   supported_modes: SupportedProviderMode[];
   feeds: ProviderRegistryFeed[];
   layers: ProviderRegistryLayer[];
@@ -37,7 +38,9 @@ const definedFreshness = (freshForSeconds: number) => ({
   fresh_for_seconds: freshForSeconds,
 });
 
-export const PROVIDER_DEFINITIONS: readonly ProviderDefinition[] = [
+type BaseProviderDefinition = Omit<ProviderDefinition, 'source_access'>;
+
+const BASE_PROVIDER_DEFINITIONS: readonly BaseProviderDefinition[] = [
   {
     id: 'opensky',
     name: 'OpenSky Network',
@@ -406,6 +409,13 @@ export const PROVIDER_DEFINITIONS: readonly ProviderDefinition[] = [
       },
     ],
   },
+];
+
+export const PROVIDER_DEFINITIONS: readonly ProviderDefinition[] = [
+  ...BASE_PROVIDER_DEFINITIONS.map((definition) => ({
+    ...definition,
+    source_access: getBaseProviderAccess(definition.id),
+  })),
   ...OPERATIONAL_AWARENESS_PROVIDER_DEFINITIONS,
   ...OPERATIONAL_IMAGERY_PROVIDER_DEFINITIONS,
 ];

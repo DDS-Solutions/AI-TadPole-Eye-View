@@ -1,12 +1,21 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { OperationalAoi } from '@gev/contracts';
+import {
+  LayerAccessReadModelSchema,
+  type LayerAccessRuntimeSnapshot,
+  type OperationalAoi,
+  type ProviderRegistry,
+  ProviderRegistrySchema,
+  filterLayerAccessEntries,
+} from '@gev/contracts';
 import { FrozenClock } from '@gev/core';
 import { describe, expect, it } from 'vitest';
 import { parseAviationWeather } from '../src/aviationWeather.js';
 import { parseCoastalConditions } from '../src/coastalConditions.js';
+import { createLayerAccessReadModel } from '../src/layerAccessProjection.js';
 import { parseNwsAlerts } from '../src/nwsAlerts.js';
+import { createProviderRegistry } from '../src/registry.js';
 import { parseNhcGisIndex } from '../src/tropicalCyclones.js';
 
 const referenceMs = Date.parse('2024-08-25T10:00:00.000Z');
@@ -162,5 +171,59 @@ describe('operational-awareness parser performance', () => {
     expect(awcP95).toBeLessThan(50);
     expect(nhcP95).toBeLessThan(50);
     expect(coopsP95).toBeLessThan(50);
+  });
+
+  it('projects and filters 2,000 Layer Access entries below 16.6 ms p95', () => {
+    const template = createProviderRegistry({ requestedMode: 'seed' }).providers[0];
+    if (!template) throw new Error('Provider template unavailable');
+    const registry = ProviderRegistrySchema.parse({
+      version: 2,
+      requested_mode: 'seed',
+      providers: Array.from({ length: 2_000 }, (_, index) => ({
+        ...template,
+        id: `synthetic-${index}`,
+        name: `Synthetic Provider ${index.toString().padStart(4, '0')}`,
+        feeds: template.feeds.map((feed) => ({ ...feed, id: `synthetic-feed-${index}` })),
+        layers: template.layers.map((layer) => ({
+          ...layer,
+          id: `synthetic-layer-${index}`,
+          documentation_path: `docs/data-sources/synthetic-${index}.md`,
+        })),
+      })),
+    }) as ProviderRegistry;
+    const runtime: LayerAccessRuntimeSnapshot = {
+      version: 1,
+      observed_at: '2026-09-06T20:00:00.000Z',
+      stasis_active: false,
+      budget_remaining_usd: 10,
+      authority: {
+        kind: 'local_seed',
+        credential_status_access: 'unavailable',
+        reason: 'Authenticated local credential status is unavailable',
+      },
+      providers: [],
+    };
+    for (let index = 0; index < 5; index += 1) createLayerAccessReadModel(registry, runtime);
+    const projectionSamples: number[] = [];
+    let model = createLayerAccessReadModel(registry, runtime);
+    for (let index = 0; index < 50; index += 1) {
+      const startedAt = performance.now();
+      model = createLayerAccessReadModel(registry, runtime);
+      projectionSamples.push(performance.now() - startedAt);
+    }
+    const filterSamples: number[] = [];
+    for (let index = 0; index < 50; index += 1) {
+      const startedAt = performance.now();
+      filterLayerAccessEntries(model.entries, 'synthetic provider 19', 'available');
+      filterSamples.push(performance.now() - startedAt);
+    }
+    const projectionP95 = p95(projectionSamples);
+    const filterP95 = p95(filterSamples);
+    console.log(
+      `[Benchmark Layer Access] N=2000 projection p95:${projectionP95.toFixed(2)}ms | filter p95:${filterP95.toFixed(2)}ms`
+    );
+    expect(projectionP95).toBeLessThan(16.6);
+    expect(filterP95).toBeLessThan(16.6);
+    expect(LayerAccessReadModelSchema.parse(model).entries).toHaveLength(2_000);
   });
 });

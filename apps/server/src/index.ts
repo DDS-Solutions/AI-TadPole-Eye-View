@@ -1,19 +1,16 @@
 import crypto from 'node:crypto';
 import {
   type Actor,
-  type CablePackManifest,
   GevEvents,
-  type ProviderRegistry,
   ProviderRegistrySchema,
   SystemHealthResponseSchema,
 } from '@gev/contracts';
-import { GovernedToolExecutor, type SimClock, SystemClock } from '@gev/core';
+import { GovernedToolExecutor, SystemClock } from '@gev/core';
 import { SatellitePropagator } from '@gev/core/satellite-propagation';
-import { type GovernanceRuntimeContext, createGovernanceRuntimeContext } from '@gev/governance';
+import { createGovernanceRuntimeContext } from '@gev/governance';
 import {
   AisAdapter,
   CableAdapter,
-  type CablePackFetcher,
   CablePackLoader,
   CctvAdapter,
   FirmsAdapter,
@@ -22,8 +19,6 @@ import {
   OpenSkyAdapter,
   RadioAdapter,
   SatelliteAdapter,
-  type SatelliteFetcher,
-  type SatelliteLiveGroup,
   UsgsQuakeAdapter,
   WeatherAdapter,
   activateProviderDownloadPack,
@@ -36,10 +31,10 @@ import { serve } from '@hono/node-server';
 import { getConnInfo } from '@hono/node-server/conninfo';
 import { type Context, Hono } from 'hono';
 import { cors } from 'hono/cors';
+import type { CreateAppOptions } from './appOptions.js';
 import { CostGovernor, DEFAULT_PROVIDER_TIERS } from './middleware/costGovernor.js';
 import {
   InMemoryRateLimiter,
-  type OpsAuthOptions,
   createOpsAuth,
   createRateLimitMiddleware,
 } from './middleware/opsAuth.js';
@@ -56,6 +51,7 @@ import { createFlightsRouter } from './routes/flights.js';
 import { createGbfsRouter } from './routes/gbfs.js';
 import { createFeedHealthRouter } from './routes/health.js';
 import { createLaunchRouter } from './routes/launches.js';
+import { createLayerAccessRouter } from './routes/layerAccess.js';
 import { createOperationalAwarenessRouter } from './routes/operationalAwareness.js';
 import { createOverpassRouter } from './routes/overpass.js';
 import { createQuakesRouter } from './routes/quakes.js';
@@ -70,26 +66,9 @@ import { ServerTelemetryManager } from './telemetry/index.js';
 import { attachWebSocketCollabServer } from './websocketCollab.js';
 
 export { attachWebSocketCollabServer } from './websocketCollab.js';
+export type { CreateAppOptions } from './appOptions.js';
 
 export const SATELLITE_REQUESTS_PER_MINUTE = 60;
-
-export interface CreateAppOptions {
-  opsAuth?: OpsAuthOptions;
-  providerRegistry?: ProviderRegistry;
-  clock?: SimClock;
-  governanceContext?: GovernanceRuntimeContext;
-  governanceDbPath?: string;
-  voiceApiKey?: string;
-  resolveClientId?: (c: Context) => string;
-  cablesEnabled?: boolean;
-  cablePackManifests?: readonly CablePackManifest[];
-  cablePackFetcher?: CablePackFetcher;
-  satellitesEnabled?: boolean;
-  satelliteLiveAccessEnabled?: boolean;
-  celestrakTermsApproved?: boolean;
-  satelliteGroups?: readonly SatelliteLiveGroup[];
-  satelliteFetcher?: SatelliteFetcher;
-}
 
 export function createApp(options: CreateAppOptions = {}) {
   const app = new Hono();
@@ -345,6 +324,18 @@ export function createApp(options: CreateAppOptions = {}) {
 
   app.route('/ops/audit', createAuditIntegrityRouter(auditSink));
   app.route('/ops/audit', createAuditStreamRouter(auditSink, clock));
+  app.route(
+    '/ops/layer-access',
+    createLayerAccessRouter({
+      clock,
+      auditSink,
+      budgetGovernor,
+      getProviderRegistry: () => providerRegistry,
+      ...(options.layerAccessAuthorizedLocalState
+        ? { getAuthorizedLocalState: () => options.layerAccessAuthorizedLocalState ?? [] }
+        : {}),
+    })
+  );
   app.route('/ops/budget', createBudgetReconciliationRouter({ clock, budgetLedger }));
   app.route(
     '/ops/cables',

@@ -1,5 +1,10 @@
 <script lang="ts">
   import { layerStore } from '../stores/layers.svelte.js';
+  let { onsetup }: { onsetup?: (trigger: HTMLElement) => void } = $props();
+
+  function openSetup(event: MouseEvent): void {
+    onsetup?.(event.currentTarget as HTMLElement);
+  }
 </script>
 
 <div
@@ -31,6 +36,9 @@
       {/if}
     </div>
   </div>
+  {#if layerStore.satelliteAccessLock}
+    <button class="setup-button" onclick={openSetup}>Set up</button>
+  {/if}
   <label class="switch">
     <input
       id="toggle-satellites"
@@ -104,4 +112,6 @@
   input:checked + .slider:before { transform: translateX(16px); }
   input:disabled,
   input:disabled + .slider { cursor: not-allowed; }
+  .setup-button { border: 1px solid var(--hud-border-solid-soft); border-radius: 4px; padding: 3px 6px; background: var(--hud-surface-dark-soft); color: var(--hud-warning); font-size: 0.63rem; cursor: pointer; }
+  .setup-button:focus-visible { outline: 2px solid var(--hud-accent); outline-offset: 2px; }
 </style>

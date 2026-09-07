@@ -227,6 +227,22 @@ See [Solar Context](./docs/data-sources/solar-context.md),
 [NWS Alerts](./docs/data-sources/nws-alerts.md), and
 [Aviation Weather](./docs/data-sources/aviation-weather.md).
 
+### Layer Access diagnostics
+
+- Settings → Layer Access reads `GET /ops/layer-access` through the existing operations-auth
+  boundary. The read is audited, never cached, capped at 2 MiB, and must not contact a provider.
+- Tokenless local seed use exposes the non-secret registry catalog but marks local credential,
+  terms, and configuration status unavailable. Do not interpret that state as missing, invalid,
+  approved, or configured.
+- Masked local status appears only when an authenticated human operator and an approved local
+  status authority are both present. Raw credentials have no response field and must never be
+  added to browser storage, logs, diagnostics, or screenshots.
+- The panel is read-only through Phase 6. Credential and terms administration remains reserved
+  for the tenant-scoped Phase 7 workflow; do not add a temporary write path or environment-value
+  display to unlock a layer.
+
+See [ADR 0049](./docs/adr/0049-registry-derived-layer-access-read-model.md).
+
 ---
 
 ## 3. Keyless Cesium 3D Globe Baseline & Fallbacks

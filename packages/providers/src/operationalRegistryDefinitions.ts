@@ -1,50 +1,9 @@
+import type { ProviderSourceAccess } from '@gev/contracts';
 import type { ProviderDefinition } from './registryDefinitions.js';
 
-type OperationalTransport = 'internal' | 'https';
-type CredentialKind = 'none' | 'identified_user_agent' | 'application_identifier';
 type LiveEnvironment = 'development' | 'staging' | 'production';
 
-export interface OperationalProductDecision {
-  id: string;
-  name: string;
-  transport: OperationalTransport;
-  endpoints: readonly string[];
-  formats: readonly string[];
-  coverage: string;
-  time_semantics: string;
-}
-
-export interface OperationalAccessDecision {
-  evidence_reviewed_on: '2026-09-05' | '2026-09-06';
-  decision_rank: number;
-  products: readonly OperationalProductDecision[];
-  credential: {
-    kind: CredentialKind;
-    setup_url: string;
-    required_scopes: readonly string[];
-    validation_method: string;
-  };
-  approval: {
-    owner: 'gev-data-licensing-owner';
-    status: 'not_required' | 'record_required';
-    terms_url: string;
-    attribution_url: string;
-    allowed_live_environments: readonly LiveEnvironment[];
-  };
-  operations: {
-    refresh_seconds: number;
-    fresh_cache_seconds: number;
-    max_stale_seconds: number;
-    upstream_rate_limit: string;
-    budget_policy: string;
-    timeout_ms: number;
-    max_response_bytes: number;
-    max_records: number | null;
-    max_concurrency: number;
-    kill_switch: string;
-    fallback: string;
-  };
-}
+export type OperationalAccessDecision = ProviderSourceAccess;
 
 export interface PlannedOperationalProviderDefinition extends ProviderDefinition {
   source_access: OperationalAccessDecision;
@@ -59,12 +18,8 @@ export const definedFreshness = (freshForSeconds: number) => ({
   fresh_for_seconds: freshForSeconds,
 });
 
-export const noScopes: readonly string[] = [];
-export const allLiveEnvironments: readonly LiveEnvironment[] = [
-  'development',
-  'staging',
-  'production',
-];
+export const noScopes: string[] = [];
+export const allLiveEnvironments: LiveEnvironment[] = ['development', 'staging', 'production'];
 
 export const OPERATIONAL_AWARENESS_PROVIDER_DEFINITIONS = [
   {
@@ -96,6 +51,7 @@ export const OPERATIONAL_AWARENESS_PROVIDER_DEFINITIONS = [
       },
     ],
     source_access: {
+      domain: 'environment',
       evidence_reviewed_on: '2026-09-05',
       decision_rank: 1,
       products: [
@@ -122,6 +78,10 @@ export const OPERATIONAL_AWARENESS_PROVIDER_DEFINITIONS = [
         attribution_url: 'https://aa.usno.navy.mil/faq/RST_defs',
         allowed_live_environments: allLiveEnvironments,
       },
+      configuration: {
+        status: 'not_required',
+        description: 'No provider endpoint or credential configuration is required.',
+      },
       operations: {
         refresh_seconds: 1,
         fresh_cache_seconds: 1,
@@ -134,8 +94,13 @@ export const OPERATIONAL_AWARENESS_PROVIDER_DEFINITIONS = [
         max_records: 1,
         max_concurrency: 1,
         kill_switch: 'GEV_SOLAR_CONTEXT_ENABLED',
+        kill_switch_owner: 'gev-platform-administrator',
         fallback: 'Hide the overlay and report unavailable; never substitute wall-clock time',
       },
+      setup_instructions: [
+        'Review the deterministic calculation and twilight definitions.',
+        'Confirm the platform policy enables the solar context layer.',
+      ],
     },
   },
   {
@@ -167,6 +132,7 @@ export const OPERATIONAL_AWARENESS_PROVIDER_DEFINITIONS = [
       },
     ],
     source_access: {
+      domain: 'alerts',
       evidence_reviewed_on: '2026-09-05',
       decision_rank: 2,
       products: [
@@ -196,6 +162,10 @@ export const OPERATIONAL_AWARENESS_PROVIDER_DEFINITIONS = [
         attribution_url: 'https://www.weather.gov/documentation/services-web-alerts',
         allowed_live_environments: allLiveEnvironments,
       },
+      configuration: {
+        status: 'required',
+        description: 'A stable contact-bearing User-Agent is required for live requests.',
+      },
       operations: {
         refresh_seconds: 30,
         fresh_cache_seconds: 30,
@@ -208,9 +178,15 @@ export const OPERATIONAL_AWARENESS_PROVIDER_DEFINITIONS = [
         max_records: 500,
         max_concurrency: 2,
         kill_switch: 'GEV_NWS_ALERTS_ENABLED',
+        kill_switch_owner: 'gev-platform-administrator',
         fallback:
           'Use visibly stale last-valid alerts for at most 5 minutes; then report unavailable',
       },
+      setup_instructions: [
+        'Review the NWS service guidance, disclaimer, attribution, and CAP limitations.',
+        'Have the licensing owner record approved use before any live activation.',
+        'Configure the required contact-bearing User-Agent through the server authority.',
+      ],
     },
   },
   {
@@ -255,6 +231,7 @@ export const OPERATIONAL_AWARENESS_PROVIDER_DEFINITIONS = [
       },
     ],
     source_access: {
+      domain: 'aviation-weather',
       evidence_reviewed_on: '2026-09-05',
       decision_rank: 3,
       products: [
@@ -300,6 +277,10 @@ export const OPERATIONAL_AWARENESS_PROVIDER_DEFINITIONS = [
         attribution_url: 'https://aviationweather.gov/data/api/',
         allowed_live_environments: allLiveEnvironments,
       },
+      configuration: {
+        status: 'required',
+        description: 'A stable descriptive User-Agent is required for live requests.',
+      },
       operations: {
         refresh_seconds: 60,
         fresh_cache_seconds: 60,
@@ -313,9 +294,15 @@ export const OPERATIONAL_AWARENESS_PROVIDER_DEFINITIONS = [
         max_records: 400,
         max_concurrency: 2,
         kill_switch: 'GEV_AWC_WEATHER_ENABLED',
+        kill_switch_owner: 'gev-platform-administrator',
         fallback:
           'Retain last-valid data only inside source validity; expired products disappear, never roll forward',
       },
+      setup_instructions: [
+        'Review the AWC Data API restrictions, attribution, and product validity semantics.',
+        'Have the licensing owner record approved use before any live activation.',
+        'Configure the required descriptive User-Agent through the server authority.',
+      ],
     },
   },
   {
@@ -347,6 +334,7 @@ export const OPERATIONAL_AWARENESS_PROVIDER_DEFINITIONS = [
       },
     ],
     source_access: {
+      domain: 'tropical-weather',
       evidence_reviewed_on: '2026-09-06',
       decision_rank: 4,
       products: [
@@ -379,6 +367,10 @@ export const OPERATIONAL_AWARENESS_PROVIDER_DEFINITIONS = [
         attribution_url: 'https://www.nhc.noaa.gov/gis/rss.php',
         allowed_live_environments: allLiveEnvironments,
       },
+      configuration: {
+        status: 'required',
+        description: 'An identifiable User-Agent and fixed basin allowlist are required.',
+      },
       operations: {
         refresh_seconds: 300,
         fresh_cache_seconds: 300,
@@ -392,9 +384,15 @@ export const OPERATIONAL_AWARENESS_PROVIDER_DEFINITIONS = [
         max_records: 256,
         max_concurrency: 2,
         kill_switch: 'GEV_NHC_TROPICAL_CYCLONES_ENABLED',
+        kill_switch_owner: 'gev-platform-administrator',
         fallback:
           'Archive data is never substituted as current; stale advisories remain labeled and expire by source validity',
       },
+      setup_instructions: [
+        'Review NHC GIS availability, disclaimer, attribution, and advisory validity semantics.',
+        'Have the licensing owner record approved use before any live activation.',
+        'Configure the identifiable User-Agent and retain the fixed basin allowlist.',
+      ],
     },
   },
 ] satisfies readonly PlannedOperationalProviderDefinition[];

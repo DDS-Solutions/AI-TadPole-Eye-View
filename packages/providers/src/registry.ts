@@ -332,13 +332,13 @@ export function renderProviderRegistryMarkdown(
     '',
     `${subheading}# Providers`,
     '',
-    '| Provider | Name | Active | Implementation | Requested mode | Runtime mode | Health | Source | License ID | License / terms | Attribution |',
-    '|---|---|---|---|---|---|---|---|---|---|---|',
+    '| Provider | Name | Domain | Active | Implementation | Requested mode | Runtime mode | Health | Credential | Terms record | Configuration | Kill switch | Source | License ID | License / terms | Attribution |',
+    '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
   ];
 
   for (const provider of registry.providers) {
     lines.push(
-      `| \`${provider.id}\` | ${escapeMarkdownText(provider.name)} | ${isActiveProvider(provider) ? 'yes' : 'no'} | \`${provider.implementation}\` | \`${registry.requested_mode}\` | \`${provider.mode}\` | \`${provider.health}\` | [${escapeMarkdownText(provider.source.name)}](${provider.source.url}) | \`${provider.source.license_id}\` | ${escapeMarkdownText(provider.source.license)} | ${escapeMarkdownText(provider.source.attribution)} |`
+      `| \`${provider.id}\` | ${escapeMarkdownText(provider.name)} | \`${provider.source_access.domain}\` | ${isActiveProvider(provider) ? 'yes' : 'no'} | \`${provider.implementation}\` | \`${registry.requested_mode}\` | \`${provider.mode}\` | \`${provider.health}\` | \`${provider.source_access.credential.kind}\` | \`${provider.source_access.approval.status}\` | \`${provider.source_access.configuration.status}\` | \`${escapeMarkdownText(provider.source_access.operations.kill_switch)}\` | [${escapeMarkdownText(provider.source.name)}](${provider.source.url}) | \`${provider.source.license_id}\` | ${escapeMarkdownText(provider.source.license)} | ${escapeMarkdownText(provider.source.attribution)} |`
     );
   }
 
