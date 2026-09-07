@@ -152,7 +152,8 @@ export function validatePlanAndClaims(root, errors) {
     );
   }
   if (firstUnchecked && currentPhase) {
-    const taskPhase = firstUnchecked.match(/^\d+\.\d+/)?.[0];
+    const parts = firstUnchecked.replace(/\s+exit$/, '').split('.');
+    const taskPhase = parts.length > 2 ? `${parts[0]}.${parts[1]}` : parts[0];
     if (taskPhase && taskPhase !== currentPhase) {
       addError(
         errors,
