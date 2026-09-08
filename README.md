@@ -38,7 +38,7 @@ Most agent demos show swarm diagrams. This one shows a working product and the r
 | 🚀 Orbital Launches | Launch Dashboard Feeds | ACTIVE | `launches.ts` provider, server route, launch Cesium layer, fixture. |
 | 🌦️ Weather Radar | RainViewer, NOAA | ACTIVE | `weather.ts` provider, server route, weather Cesium layer, fixture. |
 | 🗺️ Overpass / OSM | OpenStreetMap Overpass API | ACTIVE | Overpass QL sanitizer in `@gev/security`, server proxy route, query endpoint. |
-| 🌐 Submarine Cables | TeleGeography NC Download Pack | PARTIAL | `cables.ts` provider and contract schemas exist. Server route and Cesium layer NOT wired into the app. Data ships as optional download pack (NC license gate at runtime, never bundled). |
+| 🌐 Submarine Cables | Synthetic seed / operator-supplied TeleGeography NC Download Pack | ACTIVE (SEED) | Validated provider, server route, store, Cesium layer, UI wiring, and synthetic fixture are implemented. The optional NC download pack is separately supplied, license- and integrity-gated, and never bundled. |
 | 🛰️ Satellites | CelesTrak standard GP JSON/OMM | ACTIVE (SEED) / LIVE LOCKED | Synthetic seed → server SGP4 → Cesium layer is implemented. Production retrieval remains terms-locked under ADR 0034; raw catalog mirroring and live-position claims are prohibited. |
 | 🎙️ AI Voice Copilot | OpenAI Realtime, Seed/Mock Driver | ACTIVE | `voiceMachine.ts` (XState v5), `VoiceControlOrb.svelte`, `voice.svelte.ts`, `MockAgentAdapter` + `OpenAIRealtimeAdapter` in `core/`, voice token route on server. Mock driver works without API keys. |
 | 👥 T2 Live Co-Op | Custom CRDT Rooms + Presence | PARTIAL | Yjs dependency installed. `CollabRoomManager` (native CRDT via `CollabIntentDoc`), JWT-signed room tokens, `CollabBar.svelte` UI, `collab.ts` store. Custom WebSocket synchronization protocol (not standard `y-websocket` server). |
@@ -113,13 +113,12 @@ node scripts/adg.mjs  # run Active Documentation Guard
 - **`packages/cli`:** `gev` command surface for status, demo, audit, feeds, scenes, resume, development, tests, and QA.
 - **`apps/server`:** Hono provider proxies, media/voice/collaboration routes, audit SSE, feed health, telemetry, cost governor, and operations auth.
 - **`apps/web`:** Svelte 5 SPA and tactical HUD backed by Cesium layer controllers.
-- **`e2e/smoke.spec.ts`:** condition-wait Playwright smoke coverage exists; its current teardown timeout is tracked by task 5.0.5.
+- **`e2e/smoke.spec.ts`:** condition-wait Playwright smoke coverage exercises implemented layers, including cable and satellite toggles and locked satellite setup.
 - **`fixtures/` (9 datasets):** Recorded fixtures for implemented providers (including 1.25 MB OpenSky replay).
-- **Architecture Decisions & Documentation:** ADRs 0014–0030 and 0039–0044 (23 decision records), DESIGN.md, SECURITY.md, RUNBOOK.md, DATA_SOURCES.md, AGENTS.md, PLAN.md.
+- **Architecture Decisions & Documentation:** ADRs 0014–0030, 0034–0036, and 0039–0049 (31 decision records), DESIGN.md, SECURITY.md, RUNBOOK.md, DATA_SOURCES.md, AGENTS.md, PLAN.md.
 
 ### Partially built
 
-- **Submarine cables UI:** `packages/providers/src/cables.ts` + contract schemas complete. Server route and `cesium-kit` layer not created; cables are not visible in the app.
 - **T2 Collab:** Custom CRDT room manager with JWT tokens + WebSocket broadcast works. Yjs is a listed dependency but `y-websocket` server is not used; the CRDT sync is a custom protocol over raw WS.
 
 ### Not yet built (WIP Roadmap)
@@ -138,7 +137,7 @@ node scripts/adg.mjs  # run Active Documentation Guard
 - [DATA_SOURCES.md](./DATA_SOURCES.md) — dataset provenance, rate limits, and honest labeling
 - [docs/LICENSES.md](./docs/LICENSES.md) — software, asset, and NC download pack licenses
 - [RUNBOOK.md](./RUNBOOK.md) — operational procedures including STASIS recovery
-- [docs/adr/INDEX.md](./docs/adr/INDEX.md) — Architecture Decision Records (ADRs 0014–0030, 0039)
+- [docs/adr/INDEX.md](./docs/adr/INDEX.md) — Architecture Decision Records (ADRs 0014–0030, 0034–0036, and 0039–0049; 31 records)
 
 ## Ethics
 
