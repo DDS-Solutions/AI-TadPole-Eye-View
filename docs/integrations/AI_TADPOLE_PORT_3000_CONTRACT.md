@@ -55,33 +55,45 @@ make an outbound client connection to port 3000; GEV will not discover or poll p
 | Test token audience/resource | Exact canonical resource URI above |
 | Stdio fallback command | `pnpm --filter @gev/ops-mcp start`, launched from the GEV repository root |
 
-## Required configuration shape
+## Exact Tadpole configuration shape
 
-The Rust field names may differ, but the configuration must express these values independently:
+The current Tadpole parser reads JSON from `.agent/mcp_config.json`, under `mcpServers`. The target
+entry is:
 
-```toml
-[mcp.gev]
-mode = "prefer_http"
-
-[mcp.gev.http]
-url = "http://127.0.0.1:3000/mcp"
-protocol_versions = ["2026-07-28"]
-resource = "http://127.0.0.1:3000/mcp"
-bearer_token_source = "injected"
-
-[mcp.gev.stdio_fallback]
-command = "pnpm"
-args = ["--filter", "@gev/ops-mcp", "start"]
-cwd = "<GEV_REPOSITORY_ROOT>"
+```json
+{
+  "mcpServers": {
+    "gev": {
+      "mode": "prefer_http",
+      "http": {
+        "url": "http://127.0.0.1:3000/mcp",
+        "protocol_versions": ["2026-07-28"],
+        "resource": "http://127.0.0.1:3000/mcp",
+        "headers": {
+          "Authorization": "${GEV_MCP_AUTHORIZATION}"
+        }
+      },
+      "stdio_fallback": {
+        "command": "pnpm",
+        "args": ["--filter", "@gev/ops-mcp", "start"],
+        "cwd": "G:/AI-TadPole-Eye-View"
+      }
+    }
+  }
+}
 ```
 
-The HTTP URL and stdio command MUST coexist in one configuration. `mode = "prefer_http"` MUST be
-an explicit enum/state, not a side effect of whichever field was parsed last. The client must not
-copy the example placeholder path literally.
+`GEV_MCP_AUTHORIZATION` is an injected process secret whose value is the complete
+`Bearer <test-token>` header value. The current resolver expands only a value that is exactly
+`${NAME}`; `"Bearer ${NAME}"` does not work and MUST NOT be documented as working. The config file
+must never contain the literal token. A future typed secret-provider field may replace this exact
+placeholder only after tests prove equivalent redaction and wire behavior.
 
-Recommended configurable timeouts are 5 seconds for the pre-tool discovery attempt and 30 seconds
-for an individual tool request. A discovery timeout is deliberately **not** an approved fallback
-trigger; it fails closed. Tool-specific server limits remain authoritative if advertised.
+The GEV entry MUST explicitly use `prefer_http`; Tadpole's `auto` mode is not acceptable. The URL,
+protocol list, resource, fallback command, arguments, and working directory must be validated as
+the exact GEV profile rather than merely parsed. Use the actual GEV checkout path if it differs.
+Discovery and tool timeouts must be finite and configurable. A discovery timeout is **not** an
+approved fallback trigger; it fails closed. Tool-specific server limits remain authoritative.
 
 ## Connection and negotiation state machine
 
@@ -143,21 +155,8 @@ and it MUST NOT probe `/mcp/sse`.
 ### Standard metadata on every request
 
 `params._meta` must contain the protocol version, stable client build identity, and truthful client
-capabilities. Empty capabilities are valid and preferred until AI-Tadpole implements a capability
-needed by GEV.
-
-```json
-{
-  "io.modelcontextprotocol/protocolVersion": "2026-07-28",
-  "io.modelcontextprotocol/clientInfo": {
-    "name": "ai-tadpole-os",
-    "version": "<immutable-build-version>"
-  },
-  "io.modelcontextprotocol/clientCapabilities": {}
-}
-```
-
-The protocol version in `_meta` and `MCP-Protocol-Version` MUST agree byte-for-byte.
+capabilities, as shown below. Empty capabilities are preferred until Tadpole implements one GEV
+needs. The protocol version in `_meta` and `MCP-Protocol-Version` MUST agree byte-for-byte.
 
 ### Discovery request
 
@@ -196,27 +195,10 @@ roots, sampling, logging, tasks, or subscriptions.
 
 ### Tool-list request
 
-```json
-{
-  "jsonrpc": "2.0",
-  "id": "tools-list-1",
-  "method": "tools/list",
-  "params": {
-    "_meta": {
-      "io.modelcontextprotocol/protocolVersion": "2026-07-28",
-      "io.modelcontextprotocol/clientInfo": {
-        "name": "ai-tadpole-os",
-        "version": "<immutable-build-version>"
-      },
-      "io.modelcontextprotocol/clientCapabilities": {}
-    }
-  }
-}
-```
-
-Send `Mcp-Method: tools/list` and no `Mcp-Name`. The returned list is ordered and
-capability-filtered. AI-Tadpole MUST treat it as the active catalog and validate each input schema.
-Do not hardcode a tool count or assume that the stdio and HTTP projections are identical.
+Send `tools/list` with the same `_meta` envelope, `Mcp-Method: tools/list`, and no `Mcp-Name`.
+The returned list is ordered and capability-filtered. AI-Tadpole MUST treat it as the active
+catalog, validate each input schema, and reject calls absent from that catalog. Do not hardcode a
+tool count or assume that the stdio and HTTP projections are identical.
 
 ### Tool-call request
 
@@ -341,7 +323,6 @@ MUST be disabled or wrapped so it cannot broaden these rules.
 | TCP connection refused before any HTTP response | Close HTTP attempt; start configured stdio transport | Yes |
 | Host unreachable before any HTTP response | Close HTTP attempt; start configured stdio transport | Yes |
 | Structured `-32022` and `data.supported` has no `2026-07-28` intersection | Preserve error; close HTTP; start configured stdio | Yes |
-| Structured `-32022` advertises `2026-07-28` after client requested another allowed version | Retry discovery once with exact `2026-07-28` | No |
 | Structured `-32022` rejects an already exact `2026-07-28` request while advertising it | Report protocol inconsistency | No |
 | 400 / `-32020` header mismatch or other recognized modern error | Correct the client defect or surface it | No |
 | 401 invalid/missing/expired token | Surface authorization failure | No |
@@ -370,29 +351,64 @@ Only an approved pre-tool discovery cause may launch the configured command. Onc
 Do not run HTTP and stdio tool calls concurrently, do not duplicate an operation across them, and
 do not infer stdio trust or permissions from an HTTP bearer token.
 
-## Required AI-Tadpole client corrections
+## Audit of the referenced Tadpole checkout
 
-The successor to reviewed candidate revision `5afe7ed` must, at minimum:
+Audited 2026-09-08 at `D:/TadpoleOS-Dev`. Passing tests are useful but do not establish contract
+completion when the asserted behaviors are narrower than their gate names.
 
-- preserve structured HTTP/JSON-RPC errors so `-32022`, `data.supported`, and `data.requested` are
-  available to the negotiation logic;
-- select only an actual supported-version intersection and reject arbitrary first-advertised values;
-- represent primary HTTP, fallback stdio, and `prefer_http` simultaneously and explicitly;
-- apply the exact fallback matrix above instead of falling back after every discovery error;
-- send per-request metadata and mirrored headers on every modern HTTP request;
-- support JSON and request-scoped SSE with cancellation and per-request isolation;
-- never send a legacy initialization request to `/mcp`; and
-- add deterministic mock-server coverage before the GEV endpoint implementation starts.
+| Check | Observed evidence | Status |
+|---|---|---|
+| Repository identity | `main` at `f3b53231bd1928b737e65cdbd210907d534246b6`; port work is uncommitted | Blocked |
+| Prior evidence base | `git cat-file -t 5afe7ed` fails in the supplied object database | Unverifiable |
+| Walkthrough identity | Says `HEAD (develop)` without a full fix SHA; checkout is `main` | Incorrect |
+| Active connection | `.agent/mcp_config.json` contains no `gev` entry | Missing |
+| Automated suites | Port gates 12/12, config 14/14, MCP 49/49, parity guard zero errors | Passing but incomplete |
+| Formatting | `cargo fmt --check --manifest-path server-rs/Cargo.toml` reports diffs | Failing |
+| Strict Clippy | Fails four warnings, including MCP large-enum and manual-map findings | Failing |
+
+### Required corrections before claiming alignment
+
+- Make GEV config validation enforce the exact URL, resource, sole version, `prefer_http`, and both
+  transports. `config.rs` currently accepts non-GEV URLs/versions and its `bearer_token_source` is
+  unused; use the exact header placeholder above or implement and test a real injected provider.
+- Store a typed connection failure cause. `http.rs` currently classifies every reqwest
+  `is_connect()` error as connection-refused, which can incorrectly permit fallback for timeout,
+  reset, proxy, or TLS failures. Permit only proven OS connection-refused/host-unreachable cases.
+- Validate successful HTTP `Content-Type`, JSON-RPC `"2.0"`, matching response ID, and exactly one
+  of result/error. Reject missing/wrong content types instead of treating every non-SSE success as
+  JSON. Validate discovery `resultType`, `supportedVersions`, and `capabilities`.
+- Bound total JSON/SSE response bytes, event count, line length, and notification count. Do not log
+  raw untrusted SSE notification bodies. Prove two concurrent requests cannot exchange events.
+- Implement the complete `x-mcp-header` algorithm. Current code is root-only, accepts forbidden
+  `number`, omits nested property paths, conditionals/`not`, safe-integer checks, and full HTTP
+  `tchar` syntax. Test null/absent arguments and exact sentinel encoding.
+- Enforce the last successful `tools/list` catalog and schemas before dispatch. Preserve
+  `structuredContent`, text content, `isError`, and `_meta.execution` through `McpHost`; the current
+  host reduces successful results to concatenated text and loses retry/audit metadata.
+- Allow an approved retry to reuse the original UUID `operation_id`. The current `call_tool` always
+  creates a new UUID and provides no safe retry path.
+- Tighten stdio negotiation: do not select an arbitrary first advertised version or fall back to
+  legacy initialization after every error. Failures while spawning/initializing fallback must move
+  the adaptive client to `FailedClosed`.
+- Expand tests for host-unreachable, connect timeout, reset, TLS, malformed/wrong-ID/wrong-version
+  JSON-RPC, wrong/missing content type, `-32020`, governed denials, real two-request isolation,
+  response limits, catalog enforcement, stable operation IDs, and structured-result preservation.
+- Format the Rust changes and make `cargo clippy --bin server-rs --tests -- -D warnings` pass before
+  producing immutable evidence.
 
 ## Evidence required to open Task 6.2
 
 The AI-Tadpole-OS Rust/MCP maintainer must provide an immutable commit SHA descending from
-`5afe7ed`. The joint integration owner must record the repository URL, base SHA, fix SHA, exact test
-command, and passing output. A branch name or screenshot alone is not sufficient.
+`5afe7ed`. That object is absent from the supplied checkout, so evidence must include a repository
+URL where the full base SHA resolves plus an ancestry proof. Otherwise the developer must first
+authorize ADR 0032 and synchronized-plan correction to a verifiable base; `f3b53231` cannot be
+silently substituted. Record the base/fix SHAs, exact commands, and output. A branch, dirty tree,
+walkthrough assertion, or screenshot is not sufficient.
 
 Minimum automated evidence:
 
 - [ ] Both transports coexist in one parsed configuration with explicit `prefer_http`.
+- [ ] The active `gev` JSON entry exists without a literal secret; near-miss profile values fail.
 - [ ] Discovery sends the exact URL, version metadata, `Accept`, `Mcp-Method`, Host, and no Origin.
 - [ ] A valid discovery selects only `2026-07-28`.
 - [ ] A JSON response and a fragmented SSE response both complete correctly.
@@ -405,6 +421,9 @@ Minimum automated evidence:
 - [ ] A tool is never dispatched twice or across both transports.
 - [ ] Bearer tokens are sent only in `Authorization` and are redacted from all test logs.
 - [ ] Invalid `x-mcp-header` definitions are excluded; valid values are mirrored and safely encoded.
+- [ ] JSON-RPC identity/content-type/discovery fields and bounded JSON/SSE responses are tested.
+- [ ] Catalog enforcement, stable retry operation IDs, and end-to-end structured results are tested.
+- [ ] Rust formatting and the repository's required strict Clippy command pass.
 
 Suggested evidence record:
 
@@ -447,9 +466,9 @@ Do not perform a mutating or live-provider call merely to demonstrate transport 
 - [ ] The immutable successor commit and evidence record are supplied.
 - [ ] Joint AI-Tadpole-to-GEV smoke evidence is recorded after the endpoint exists.
 
-The first seven items satisfy the OQ-1 documentation/client-evidence gate and allow the previously
-authorized Task 6.2 implementation to begin. The final item is subsequent Phase 6 conformance
-evidence; it cannot exist before GEV implements the endpoint.
+All items except the final joint smoke check satisfy the OQ-1 documentation/client-evidence gate
+and allow the previously authorized Task 6.2 implementation to begin. The final item is subsequent
+Phase 6 conformance evidence; it cannot exist before GEV implements the endpoint.
 
 ## Normative references
 
@@ -459,4 +478,3 @@ evidence; it cannot exist before GEV implements the endpoint.
 - [MCP 2026-07-28 tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools)
 - [MCP 2026-07-28 authorization](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization)
 - [MCP TypeScript SDK v2 modern protocol guidance](https://ts.sdk.modelcontextprotocol.io/v2/migration/support-2026-07-28)
-
