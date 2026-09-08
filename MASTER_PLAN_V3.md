@@ -2794,7 +2794,6 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 6.1. Authorize the embedded
   4-Pillar brief exactly; do not advance into later tasks.`
 
-
 ### Task 6.1 MCP SDK/protocol decision checkpoint — 2026-09-08
 
 - The developer authorized the exact embedded task 6.1 4-Pillar brief. Work remained
@@ -2861,6 +2860,10 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   passed. The first architecture scan correctly detected the temporary external-repository clone;
   after that inspected copy was removed, the canonical scan returned zero oversized files and the
   existing three bounded follow-ups.
-
+- PR 43 conflict resolution merged `origin/main` at `9dace4a`, preserving its task 5.3.5, README,
+  and architecture work while retaining the newer task 6.1 decision, Tadpole refresh, and blocked
+  task 6.2 checkpoint identically in both plan copies. Post-merge ADG checked 67 documents, 512
+  paths, and 18 module-qualified symbols with zero errors; documentation tests passed 16/16;
+  architecture drift returned zero oversized files and the existing three bounded follow-ups.
 
 No later task is authorized merely because it appears in this plan.
