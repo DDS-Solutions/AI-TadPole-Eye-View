@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-08
-**Status:** IN PROGRESS — Phase 6; task 6.2 is blocked on the remaining OQ-1 deployment/auth facts
+**Status:** IN PROGRESS — Phase 6; task 6.2 is blocked on remaining OQ-1 integration facts
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -307,15 +307,16 @@ M4 may not rely on an auto-generated production signing key, `approve_all`, an i
 ### 7.1 MCP transport target
 
 As reverified on 2026-09-08 and decided by ADR 0032, the current stable protocol is
-`2026-07-28`. The only currently implemented GEV/AI-Tadpole-OS intersection is local stdio at
-`2024-11-05`. The developer-directed migration target is dual transport: AI-Tadpole-OS will prefer
-modern `2026-07-28` Streamable HTTP and retain `2024-11-05` stdio as a fallback. The inspected
-AI-Tadpole-OS revision does not yet contain that HTTP client, so current HTTP compatibility must
-not be claimed.
+`2026-07-28`. GEV currently implements only local `2024-11-05` stdio. AI-Tadpole-OS head
+`5afe7ed` now implements both a hand-written modern `2026-07-28` HTTP client and a stdio client
+that probes modern discovery before falling back to the `2024-11-05` handshake. This establishes
+the intended dual-transport source boundary, but not joint HTTP compatibility: GEV has no HTTP
+endpoint yet, and the Tadpole client's fail-closed negotiation and cross-transport fallback still
+require correction and end-to-end evidence.
 
 - Preserve byte- and behavior-compatible `2024-11-05` stdio for local operators and Tadpole
-  fallback. Authentication, authorization, STASIS, approval, budget, or other governed denials
-  must fail closed and must never trigger a downgrade.
+  fallback. HTTP 401/403/5xx, authentication, authorization, STASIS, approval, budget, or other
+  governed denials must fail closed and must never trigger a downgrade.
 - Expose one modern HTTP MCP endpoint, `/mcp`, supporting POST. Under `2026-07-28`, GET and DELETE
   return 405; do not create a legacy `/mcp/sse` endpoint.
 - Implement required `Accept`, `Content-Type`, Host, `Origin`, per-request `_meta`,
@@ -327,6 +328,9 @@ not be claimed.
 - Never broadcast one response or notification across unrelated client streams.
 - Use the exact official SDK v2 boundary accepted in ADR 0032 for HTTP after OQ-1 is resolved.
   Keep the hand-written stdio boundary and prove it with golden compatibility tests.
+- Do not treat a `2024-11-05` initialize request sent to modern `/mcp` as legacy HTTP support.
+  The deprecated `2024-11-05` HTTP+SSE binding is out of scope; unsupported version intersections
+  fail explicitly, and an actual HTTP-to-stdio fallback requires a separately configured stdio leg.
 - Advertise `listChanged: true` only when the server actually emits `notifications/tools/list_changed`.
 - Derive `readOnlyHint`, `destructiveHint`, `idempotentHint`, and `openWorldHint` from explicit semantics; “dangerous” is not equivalent to “destructive.”
 - Add output schemas and validated structured content. Preserve GEV governance detail in MCP `_meta`, not non-standard annotation fields.
@@ -403,7 +407,7 @@ Economic results are decision-support signals, not guarantees, appraisals, legal
 
 | ID | Decision | Must be answered before |
 |---|---|---|
-| OQ-1 | **PARTIALLY RESOLVED by ADR 0032 and developer direction:** current Tadpole revision `f2c5447` supports `2024-11-05` stdio; its approved target is `2026-07-28` HTTP with fail-closed stdio fallback. Still required: the implementing Tadpole client revision, deployment scheme/Host/Origin allowlist, canonical MCP resource URI, auth issuer/audience, scopes, and cross-repo owner/evidence. | Task 6.2 |
+| OQ-1 | **PARTIALLY RESOLVED by ADR 0032 and Tadpole revision `5afe7ed`:** AI-Tadpole-OS now contains `2026-07-28` HTTP and modern-probe/`2024-11-05` stdio clients. Still required: deployment scheme/Host/Origin allowlist, canonical MCP resource URI, auth issuer/audience/scopes, exact HTTP-to-stdio trigger/configuration, fail-closed negotiation corrections, and cross-repository owners/evidence. | Task 6.2 |
 | OQ-2 | **RESOLVED by ADR 0042:** M2 signed-approval format, signer/key trust and lifecycle, durable nonce replay protection, and time profile | Task 5.1.3 |
 | OQ-3 | **RESOLVED by ADR 0043:** M3 ledger reservation, settlement, refund, idempotency, ambiguity, reconciliation, and outage policy | Task 5.1.4 |
 | OQ-4 | Production identity provider, tenant model, roles, retention, export, and deletion requirements | Phase 7 |
@@ -1415,10 +1419,11 @@ record LOGIC_BLOCKER with exact evidence and two or three bounded alternatives.
 
 #### Blocked ready-to-authorize 4-Pillar brief for NEXT_TASK 6.2
 
-Do not authorize or begin this brief until OQ-1 supplies the implementing AI-Tadpole-OS HTTP
-client revision, deployment scheme/Host/Origin allowlist, canonical MCP resource URI, auth
-issuer/audience, scopes, and cross-repository owner/evidence. The developer has already selected
-the transport direction: prefer modern `2026-07-28` HTTP and retain `2024-11-05` stdio as the
+Do not authorize or begin this brief until OQ-1 supplies the deployment scheme/Host/Origin
+allowlist, canonical MCP resource URI, auth issuer/audience/scopes, exact HTTP-to-stdio fallback
+trigger/configuration, and owners/evidence for correcting and testing the AI-Tadpole-OS client at
+revision `5afe7ed`. The developer has already selected and Tadpole now represents the transport
+direction in source: prefer modern `2026-07-28` HTTP and retain `2024-11-05` stdio as the
 fail-closed fallback.
 
 ```text
@@ -1466,8 +1471,11 @@ authorization, accept missing/mismatched protocol headers, add legacy sessions/G
 let SDK registration become a second tool registry, import SDK packages into browser/domain
 packages, migrate GEV Zod schemas to v4, broadcast across response streams, buffer an unbounded
 body/SSE queue, swallow cancellation, or weaken stdio. Never fall back to stdio after HTTP
-401/403, insufficient scope, STASIS, approval/budget denial, or another governed rejection; only
-transport unavailability or proven era incompatibility may select fallback. If the exact SDK
+401/403/5xx, insufficient scope, STASIS, approval/budget denial, or another governed rejection;
+only transport unavailability or proven era incompatibility may select fallback. Do not send a
+legacy `2024-11-05` initialize request to modern `/mcp`, accept an arbitrary unsupported discovery
+version, or infer HTTP-to-stdio fallback from a configuration that selects only one transport.
+If the exact SDK
 cannot adapt registry JSON Schema plus executor validation without a schema fork, if the Hono
 adapter cannot compose behind existing middleware safely, or if stdio golden tests change, stop
 with DOC_BLOCKER and amend ADR 0032 with exact evidence and two or three bounded alternatives.
@@ -2828,8 +2836,31 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   modern MCP HTTP endpoint**, currently blocked on the remaining OQ-1 facts. Its exact conditional
   4-Pillar brief is in §10 and is not authorized.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 6.2. First resolve the remaining
-  OQ-1 deployment/auth/client-revision facts in ADR 0032; then request authorization of the
+  OQ-1 deployment/auth/client-interoperability facts in ADR 0032; then request authorization of the
   embedded 4-Pillar brief. Do not advance into implementation while NEXT_TASK_STATUS=BLOCKED.`
+
+### Task 6.1 AI-Tadpole-OS MCP refresh checkpoint — 2026-09-08
+
+- At the developer's request, authoritative AI-Tadpole-OS `main` was fetched again at exact
+  revision `5afe7ed478972d4e27121556ef91d5d242986525` (`Public Release v1.1.462`). This supersedes
+  task 6.1's earlier same-day client snapshot at `f2c5447`; no GEV runtime or task 6.2 work began.
+- The refreshed Rust client now has one HTTP/stdio facade. Its HTTP leg defaults to modern
+  `2026-07-28`, sends the required protocol/method/name headers and namespaced request metadata,
+  and accepts JSON or SSE. Its stdio leg probes `server/discover` and falls back to the existing
+  `2024-11-05` initialize/initialized handshake, matching the developer-approved direction.
+- Source inspection does not yet establish joint conformance. Every HTTP discovery error can
+  currently lead to legacy retries; `2024-11-05` initialize is attempted on the same modern URL;
+  recognized `-32022` negotiation detail is flattened; an unsupported first advertised version
+  can be accepted; and URL-vs-command selection is not automatic HTTP-to-stdio fallback. No
+  cross-repository wire/auth/cancellation/failure-mode test was present in the inspected source.
+- ADR 0032, §7.1, OQ-1, and the conditional task 6.2 brief now record the implemented candidate
+  and the remaining fail-closed corrections, deployment/auth facts, explicit fallback
+  configuration, ownership, and interop evidence. Task 6.2 remains blocked and unauthorized.
+- Verification passed: ADG checked 67 documents, 513 paths, and 18 module-qualified symbols with
+  zero errors; documentation tests passed 16/16; synchronized-plan and `git diff --check` checks
+  passed. The first architecture scan correctly detected the temporary external-repository clone;
+  after that inspected copy was removed, the canonical scan returned zero oversized files and the
+  existing three bounded follow-ups.
 
 
 No later task is authorized merely because it appears in this plan.

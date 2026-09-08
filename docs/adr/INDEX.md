@@ -23,7 +23,7 @@ This directory records all significant architectural and structural decisions ma
 | [0028](./0028-yjs-collaborative-intent-rooms-and-co-user-presence-architecture.md) | Yjs Collaborative Intent Rooms & Co-User Presence Architecture | Accepted | 2026-08-26 |
 | [0029](./0029-phase-4-hygiene-telemetry-licensing-and-m2-showcase.md) | Phase 4 Hygiene, Licensing Download Packs, Telemetry & Tadpole M2 Showcase | Accepted | 2026-08-26 |
 | [0030](./0030-plan-v3-canonical-resume-and-mirror.md) | V3 canonical plan and deterministic resume checkpoint | Accepted | 2026-08-27 |
-| [0032](./0032-mcp-sdk-transport-protocol-session-design.md) | Incremental official MCP SDK adoption with preserved stdio compatibility | Accepted; HTTP implementation blocked on OQ-1 | 2026-09-08 |
+| [0032](./0032-mcp-sdk-transport-protocol-session-design.md) | Incremental official MCP SDK adoption with preserved stdio compatibility | Accepted; HTTP implementation blocked on remaining OQ-1 integration facts | 2026-09-08 |
 | [0034](./0034-celestrak-gp-omm-satellite-source-policy.md) | CelesTrak GP/OMM satellite source and access policy | Accepted | 2026-09-04 |
 | [0035](./0035-provenance-contract-and-freshness-policy.md) | Versioned provenance contract and registry-owned freshness policy | Accepted | 2026-08-29 |
 | [0036](./0036-cable-fixture-and-licensed-pack-policy.md) | Cable fixture and operator-licensed pack policy | Accepted | 2026-08-30 |
