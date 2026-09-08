@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-08
-**Status:** IN PROGRESS — Phase 6; task 6.2 is blocked on remaining OQ-1 integration facts
+**Status:** IN PROGRESS — Phase 6; task 6.2 is blocked on required Tadpole client-fix evidence
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -22,6 +22,8 @@ PLAN_VERSION=3.0
 CURRENT_PHASE=6
 NEXT_TASK=6.2
 NEXT_TASK_STATUS=BLOCKED
+OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
+TADPOLE_CLIENT_FIX_EVIDENCE=PENDING
 LAST_VERIFIED_UTC=2026-09-08
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
 IMPLEMENTATION_STARTED=YES
@@ -407,7 +409,7 @@ Economic results are decision-support signals, not guarantees, appraisals, legal
 
 | ID | Decision | Must be answered before |
 |---|---|---|
-| OQ-1 | **PARTIALLY RESOLVED by ADR 0032 and Tadpole revision `5afe7ed`:** AI-Tadpole-OS now contains `2026-07-28` HTTP and modern-probe/`2024-11-05` stdio clients. Still required: deployment scheme/Host/Origin allowlist, canonical MCP resource URI, auth issuer/audience/scopes, exact HTTP-to-stdio trigger/configuration, fail-closed negotiation corrections, and cross-repository owners/evidence. | Task 6.2 |
+| OQ-1 | **POLICY RESOLVED by ADR 0032; EVIDENCE GATE OPEN:** local-only `2026-07-28` HTTP at `127.0.0.1:3000/mcp`, empty Origin allowlist, exact resource/audience, injected test issuer, existing capability scopes, explicit fail-closed stdio fallback, and role owners are accepted. Task 6.2 remains blocked until an immutable Tadpole client-fix commit and its required tests are supplied. | Task 6.2 |
 | OQ-2 | **RESOLVED by ADR 0042:** M2 signed-approval format, signer/key trust and lifecycle, durable nonce replay protection, and time profile | Task 5.1.3 |
 | OQ-3 | **RESOLVED by ADR 0043:** M3 ledger reservation, settlement, refund, idempotency, ambiguity, reconciliation, and outage policy | Task 5.1.4 |
 | OQ-4 | Production identity provider, tenant model, roles, retention, export, and deletion requirements | Phase 7 |
@@ -416,6 +418,33 @@ Economic results are decision-support signals, not guarantees, appraisals, legal
 | OQ-7 | **RESOLVED by ADR 0034:** CelesTrak standard GP JSON/OMM, synthetic fixture, derived-display-only redistribution, two-hour cache/rate policy, terms-locked production, and GEV platform-administrator kill switch | Task 5.2.3 |
 
 Unanswered questions do not block earlier independent safety work.
+
+### 9.3 Accepted OQ-1 Phase 6 profile
+
+- Bind only `127.0.0.1:3000`; serve modern-only `POST /mcp`; keep
+  `GEV_MCP_HTTP_ENABLED=0` by default. The exact Host allowlist is `127.0.0.1:3000`.
+  The Origin allowlist is empty: absent is allowed for the non-browser Tadpole client and every
+  present Origin is rejected. Remote deployment remains prohibited until authenticated and
+  conformant Phase 6 evidence exists; any later remote endpoint requires HTTPS and a separately
+  approved hostname.
+- The canonical resource and token audience are `http://127.0.0.1:3000/mcp`. Task 6.2 may use only
+  injected non-production authority `https://auth.gev.test/` with subject `svc:tadpole-test`.
+  Production issuer remains unset and fail-closed; the existing bearer compatibility token is not
+  treated as issuer/audience/scope-aware MCP authorization.
+- Use existing capability scopes directly: `read.telemetry` for telemetry/budget/AOI reads,
+  `read.audit` for audit reads, both for diagnostics, `write.scenes` for scene load/save,
+  `write.flags` for feature flags, and `operate.cesium` for globe operations. `agent.voice` grants
+  no MCP operator tool. All mutations still traverse shared governance.
+- Tadpole explicitly configures primary HTTP `http://127.0.0.1:3000/mcp`, fallback
+  `pnpm --filter @gev/ops-mcp start`, and mode `prefer_http`. Fallback is allowed only before any
+  tool dispatch on connection-refused/host-unreachable transport failure or a recognized `-32022`
+  proving no modern intersection. Any HTTP response, governed denial, TLS failure, malformed data,
+  cancellation, or ambiguous execution fails closed; legacy initialization is never sent to
+  modern `/mcp`.
+- The AI-Tadpole-OS Rust/MCP maintainer owns client corrections, the GEV Phase 6 implementer owns
+  the endpoint, and the joint DDS-Solutions integration owner owns cross-repository evidence.
+  Immutable Tadpole client-fix and mock-server test evidence must exist before implementation;
+  actual cross-repository conformance remains a Phase 6 obligation.
 
 ---
 
@@ -1417,14 +1446,13 @@ the write/read expansion. After three genuine bounded projection or rendering ap
 record LOGIC_BLOCKER with exact evidence and two or three bounded alternatives.
 ```
 
-#### Blocked ready-to-authorize 4-Pillar brief for NEXT_TASK 6.2
+#### Conditionally authorized but blocked 4-Pillar brief for NEXT_TASK 6.2
 
-Do not authorize or begin this brief until OQ-1 supplies the deployment scheme/Host/Origin
-allowlist, canonical MCP resource URI, auth issuer/audience/scopes, exact HTTP-to-stdio fallback
-trigger/configuration, and owners/evidence for correcting and testing the AI-Tadpole-OS client at
-revision `5afe7ed`. The developer has already selected and Tadpole now represents the transport
-direction in source: prefer modern `2026-07-28` HTTP and retain `2024-11-05` stdio as the
-fail-closed fallback.
+The developer accepted the local-only OQ-1 policy in §9.3 and conditionally authorized this exact
+brief on 2026-09-08. Do not begin implementation until an immutable AI-Tadpole-OS client-fix commit
+descending from `5afe7ed` and its required mock-server tests prove the fail-closed negotiation and
+explicit dual-transport behavior recorded in ADR 0032. After that evidence is recorded, the
+authorization becomes effective without changing this brief.
 
 ```text
 [SCOPE_CONTRACT] Install only `@modelcontextprotocol/server@2.0.0` in packages/ops-mcp and
@@ -2865,5 +2893,23 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   task 6.2 checkpoint identically in both plan copies. Post-merge ADG checked 67 documents, 512
   paths, and 18 module-qualified symbols with zero errors; documentation tests passed 16/16;
   architecture drift returned zero oversized files and the existing three bounded follow-ups.
+
+### Task 6.2 OQ-1 policy decision checkpoint — 2026-09-08
+
+- The developer accepted the recommended local-only OQ-1 profile: modern-only
+  `http://127.0.0.1:3000/mcp`, exact Host `127.0.0.1:3000`, empty Origin allowlist, default-off
+  `GEV_MCP_HTTP_ENABLED`, canonical matching resource/audience, injected non-production issuer,
+  direct existing capability-scope mapping, explicit fail-closed HTTP-first/stdio-fallback
+  configuration, and role-based cross-repository ownership. ADR 0032 and §9.3 contain the exact
+  accepted values and boundaries.
+- The developer conditionally authorized the embedded task 6.2 4-Pillar brief once the OQ-1
+  documentation gate and required Tadpole client-fix evidence are satisfied. The documentation
+  decision is recorded, but no immutable successor commit to Tadpole `5afe7ed` or passing
+  mock-server evidence was supplied in this checkpoint. `NEXT_TASK_STATUS` therefore remains
+  `BLOCKED`; no SDK dependency, `/mcp` implementation, or runtime configuration change began.
+- Documentation work is isolated on branch `codex/task-6.2-oq1-decision`. Verification passed:
+  the plan copies are byte-identical; ADG checked 67 documents, 512 paths, and 18 module-qualified
+  symbols with zero errors; documentation tests passed 16/16; architecture drift reported zero
+  oversized files and the existing three bounded follow-ups; and `git diff --check` passed.
 
 No later task is authorized merely because it appears in this plan.

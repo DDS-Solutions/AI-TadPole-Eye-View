@@ -1,6 +1,6 @@
 # ADR 0032: Incremental official MCP SDK adoption with preserved stdio compatibility
 
-- **Status:** Accepted; HTTP implementation blocked on remaining OQ-1 integration facts
+- **Status:** Accepted; OQ-1 policy resolved, HTTP implementation blocked on required Tadpole client-fix evidence
 - **Date:** 2026-09-08
 - **Task:** PLAN.md 6.1
 - **Extends:** [ADR 0017](./0017-mcp-server-and-cli-architecture.md),
@@ -218,29 +218,68 @@ dependencies and their lock entries. The hand-written stdio server, shared contr
 governance database, and scene data are unchanged, so rollback needs no data migration and does
 not break the current Tadpole path.
 
-## OQ-1 blocker and bounded choices
+## OQ-1 accepted Phase 6 profile and remaining evidence gate
 
-Task 6.2 remains `DOC_BLOCKER` until the developer provides or approves all of the following:
+On 2026-09-08, the developer accepted the following local-first OQ-1 integration profile and
+role-based ownership. This resolves the deployment, resource, authorization-shape, scope-mapping,
+fallback-policy, and ownership decisions without inventing production identity or reachability.
 
-- deployment scheme, Host, exact Origin allowlist, and whether the endpoint is local-only or
-  remotely reachable;
-- canonical MCP resource URI, authorization issuer, token audience/resource, and scope mapping;
-- ownership and evidence for correcting AI-Tadpole-OS revision `5afe7ed` so HTTP 401/403/5xx and
-  governed denials fail closed, recognized modern negotiation errors do not trigger era fallback,
-  unsupported intersections fail explicitly, and no `2024-11-05` initialize is sent to modern
-  `/mcp`;
-- the exact HTTP-to-stdio fallback trigger/configuration and cross-repository stdio/HTTP,
-  cancellation, auth, negotiation, and failure-mode tests.
+### Deployment, Host, and Origin
 
-The developer selected the dual-transport direction: modern HTTP first, legacy stdio fallback.
-The remaining bounded choices concern when that direction can be implemented:
+- Phase 6 HTTP MCP is local-only. The server binds `127.0.0.1:3000`; the sole modern endpoint is
+  `POST http://127.0.0.1:3000/mcp` and supports only `2026-07-28`.
+- `GEV_MCP_HTTP_ENABLED` is the explicit kill switch and defaults to disabled. Remote reachability
+  remains prohibited until tasks 6.3 and 6.5 supply authenticated, conformant evidence. Any later
+  remote deployment requires HTTPS and an exact separately approved deployment hostname.
+- The exact Host allowlist is `127.0.0.1:3000`. Missing or different Host values are rejected before
+  body dispatch; forwarded Host headers are not trusted in this local profile.
+- The Origin allowlist is empty. An absent Origin is permitted for the non-browser Tadpole client;
+  every present Origin is rejected with 403. The web SPA is not authorized to call MCP directly.
 
-1. Harden the implemented Tadpole modern client and supply the deployment and authorization values
-   above; keep GEV HTTP modern-only and stdio as the fail-closed fallback.
-2. Until those facts, corrections, and tests are ready, keep the proven `2024-11-05` stdio integration;
-   Phase 6 remains blocked rather than exposing an unauthenticated endpoint.
-3. If a real client instead requires legacy Streamable HTTP, provide its exact supported version and
-   authorize an ADR amendment for dual-era serving. Do not add deprecated `2024-11-05` HTTP+SSE.
+### Resource, non-production authority, and scopes
+
+- The canonical MCP resource URI and exact token audience/resource are
+  `http://127.0.0.1:3000/mcp`.
+- Task 6.2 uses only an injected deterministic non-production authority with issuer
+  `https://auth.gev.test/` and subject `svc:tadpole-test`. Production issuer configuration remains
+  unset and therefore fail-closed; `GEV_OPS_TOKEN` is not represented as issuer/audience-aware MCP
+  authorization.
+- OAuth scope strings map directly to the existing `CapabilityScope` vocabulary: `read.telemetry`
+  permits `get_feed_health`, `get_budget`, `inspect_telemetry`, and `query_aoi`; `read.audit` permits
+  `tail_logs`; `run_diagnostics` requires both; `write.scenes` permits `load_scene` and `save_scene`;
+  `write.flags` permits `set_flag`; and `operate.cesium` permits `fly_to_location`, `toggle_layer`,
+  `select_entity`, and `set_sim_time`. `agent.voice` grants no MCP operator tool. Scope possession
+  never bypasses audit, approval, budget, reservation, STASIS, or path confinement.
+
+### Explicit dual-transport fallback
+
+- Tadpole must configure both transports explicitly: primary
+  `http://127.0.0.1:3000/mcp`, fallback `pnpm --filter @gev/ops-mcp start`, and mode
+  `prefer_http`. URL/command presence alone must not infer fallback.
+- Fallback may be selected only during pre-tool discovery after a connection-refused or
+  host-unreachable failure before any HTTP response, or after a recognized `-32022` discovery
+  response proves no `2026-07-28` intersection. No tool may already have been dispatched.
+- Fallback is forbidden after any HTTP response; authentication, authorization, scope, STASIS,
+  approval, budget, rate, or other governed denial; TLS validation failure; malformed protocol
+  data; cancellation; or ambiguous execution. Tadpole never sends a legacy `2024-11-05`
+  `initialize` request to modern `/mcp`.
+
+### Ownership and evidence
+
+- The AI-Tadpole-OS Rust/MCP maintainer owns client corrections; the GEV Phase 6 implementer owns
+  the HTTP adapter; and the joint DDS-Solutions integration owner owns cross-repository evidence.
+  Evidence is pinned to immutable commit SHAs, not floating branches.
+- Before task 6.2 implementation begins, a Tadpole commit descending from `5afe7ed` must prove with
+  mock-server tests that 401/403/5xx and governed denials do not fall back, `-32022` detail is
+  preserved, only a supported intersection is selected, unsupported intersections fail, legacy
+  initialization is never sent to `/mcp`, and both transports can be configured simultaneously.
+- Actual Tadpole-to-GEV HTTP/stdio, cancellation, auth, negotiation, concurrency, and failure-mode
+  evidence remains a Phase 6 conformance obligation once the GEV endpoint exists.
+
+The developer conditionally authorized the embedded task 6.2 4-Pillar brief once this decision is
+recorded and the required Tadpole client-fix evidence is supplied. This ADR records the decision,
+but the external immutable fix commit and passing evidence are still absent; task 6.2 therefore
+remains `DOC_BLOCKER`, the HTTP kill switch remains off, and implementation must not begin.
 
 ## Consequences
 
@@ -250,7 +289,7 @@ The remaining bounded choices concern when that direction can be implemented:
   cost is accepted only at the isolated adapter boundary and must be remeasured after install.
 - The stale Phase 6 assumptions about HTTP GET, protocol sessions, and event-ID reconnect are
   removed for the modern target rather than silently implemented as legacy behavior.
-- Tadpole HTTP source now exists, but source inspection cannot manufacture deployment identity or
-  joint conformance evidence. Phase 6 implementation is therefore honestly blocked on the
-  remaining OQ-1 facts and client-interoperability evidence even though this decision task is
-  complete.
+- Tadpole HTTP source now exists and the local Phase 6 integration policy is accepted, but source
+  inspection cannot manufacture the required immutable client-fix commit or passing evidence.
+  Phase 6 implementation remains blocked on that evidence even though the policy decision is
+  complete and the task 6.2 brief is conditionally authorized.
