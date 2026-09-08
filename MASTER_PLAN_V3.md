@@ -2911,5 +2911,16 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   the plan copies are byte-identical; ADG checked 67 documents, 512 paths, and 18 module-qualified
   symbols with zero errors; documentation tests passed 16/16; architecture drift reported zero
   oversized files and the existing three bounded follow-ups; and `git diff --check` passed.
+- CI then exposed a fresh-checkout prerequisite defect in the root `test:performance` command:
+  the performance scripts ran outside Turbo's dependency graph and could not resolve the
+  unbuilt `@gev/contracts` `dist` entry. The root command now performs one targeted Turbo build of
+  the server, providers, cesium-kit, and their transitive workspace dependencies before preserving
+  the three sequential single-worker benchmarks. A clean-entry check temporarily withheld the
+  generated contracts entry file and proved the targeted build restored it before resolution.
+  The unrestricted performance rerun passed all 8 tests: server load p95 19.85 ms under 300 ms,
+  provider bounds under 50 ms, and Cesium/operational ingestion bounds under 16.6 ms. Root lint
+  checked 282 files with no findings and `git diff --check` passed. The first restricted Vitest
+  attempt reached the benchmark stage but hit the known local `spawn EPERM` sandbox boundary; it
+  was not a product or test failure.
 
 No later task is authorized merely because it appears in this plan.
