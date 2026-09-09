@@ -1,6 +1,13 @@
 import { performance } from 'node:perf_hooks';
+import { FrozenClock } from '@gev/core';
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../src/index.js';
+import {
+  MCP_HTTP_HOST,
+  MCP_HTTP_RESOURCE,
+  MCP_TEST_ISSUER,
+  MCP_TEST_SUBJECT,
+} from '../src/routes/mcp.js';
 
 describe('Server Proxy High-Concurrency Load Verification (PLAN.md §10 Phase 4 & §13)', () => {
   it('serves 100 concurrent requests across proxy endpoints with p95 < 300ms and 0% errors', async () => {
@@ -63,5 +70,78 @@ describe('Server Proxy High-Concurrency Load Verification (PLAN.md §10 Phase 4 
     expect(p95).toBeLessThan(300);
 
     auditSink.close();
+  });
+
+  it('serves 100 bounded modern MCP discovery/list requests with p95 < 300ms', async () => {
+    const now = 1_700_000_000_000;
+    const authorization = 'Bearer deterministic-load-test-token';
+    const { app, mcpHttp, governanceContext } = createApp({
+      clock: new FrozenClock(now),
+      mcpHttpEnabled: true,
+      mcpHttpResponseMode: 'json',
+      mcpHttpMaxActiveRequests: 16,
+      mcpHttpTestAuthority: {
+        authorization,
+        issuer: MCP_TEST_ISSUER,
+        subject: MCP_TEST_SUBJECT,
+        audience: MCP_HTTP_RESOURCE,
+        scopes: ['read.telemetry'],
+        issuedAtEpochSeconds: now / 1000 - 60,
+        expiresAtEpochSeconds: now / 1000 + 60,
+      },
+    });
+    const durations: number[] = [];
+    const workerCount = 10;
+    const requestsPerWorker = 10;
+
+    const workers = Array.from({ length: workerCount }, async (_, workerId) => {
+      for (let index = 0; index < requestsPerWorker; index++) {
+        const method = index % 2 === 0 ? 'server/discover' : 'tools/list';
+        const id = `load-${workerId}-${index}`;
+        const start = performance.now();
+        const response = await app.request(MCP_HTTP_RESOURCE, {
+          method: 'POST',
+          headers: {
+            accept: 'application/json, text/event-stream',
+            authorization,
+            'content-type': 'application/json',
+            host: MCP_HTTP_HOST,
+            'mcp-method': method,
+            'mcp-protocol-version': '2026-07-28',
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id,
+            method,
+            params: {
+              _meta: {
+                'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+                'io.modelcontextprotocol/clientInfo': {
+                  name: 'ai-tadpole-os',
+                  version: 'load-test',
+                },
+                'io.modelcontextprotocol/clientCapabilities': {},
+              },
+            },
+          }),
+        });
+        expect(response.status).toBe(200);
+        await response.json();
+        durations.push(performance.now() - start);
+      }
+    });
+
+    await Promise.all(workers);
+    durations.sort((a, b) => a - b);
+    const p95 = durations[Math.floor(durations.length * 0.95)];
+    console.log(
+      `[MCP Load Benchmark] N=${durations.length} | p95: ${p95?.toFixed(2)}ms | peak active: ${mcpHttp?.peakActiveRequestCount()}`
+    );
+
+    expect(p95).toBeLessThan(300);
+    expect(mcpHttp?.peakActiveRequestCount()).toBeLessThanOrEqual(16);
+    expect(mcpHttp?.activeRequestCount()).toBe(0);
+    await mcpHttp?.close();
+    governanceContext.close();
   });
 });

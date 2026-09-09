@@ -8,6 +8,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./http": {
+      "types": "./dist/httpAdapter.d.ts",
+      "import": "./dist/httpAdapter.js"
     }
   },
   "scripts": {
@@ -23,6 +27,7 @@
     "@gev/governance": "workspace:*",
     "@gev/providers": "workspace:*",
     "@gev/security": "workspace:*",
+    "@modelcontextprotocol/server": "2.0.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
