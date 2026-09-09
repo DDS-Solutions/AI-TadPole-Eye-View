@@ -2,8 +2,8 @@
 
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
-**Verified against repository:** 2026-09-08
-**Status:** IN PROGRESS — Phase 6; task 6.2 is blocked on required Tadpole client-fix evidence
+**Verified against repository:** 2026-09-09
+**Status:** IN PROGRESS — Phase 6; task 6.2 is authorized and not yet implemented
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -21,10 +21,10 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 PLAN_VERSION=3.0
 CURRENT_PHASE=6
 NEXT_TASK=6.2
-NEXT_TASK_STATUS=BLOCKED
+NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
-TADPOLE_CLIENT_FIX_EVIDENCE=PENDING
-LAST_VERIFIED_UTC=2026-09-08
+TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
+LAST_VERIFIED_UTC=2026-09-09
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
 IMPLEMENTATION_STARTED=YES
 ```
@@ -308,13 +308,13 @@ M4 may not rely on an auto-generated production signing key, `approve_all`, an i
 
 ### 7.1 MCP transport target
 
-As reverified on 2026-09-08 and decided by ADR 0032, the current stable protocol is
-`2026-07-28`. GEV currently implements only local `2024-11-05` stdio. AI-Tadpole-OS head
-`5afe7ed` now implements both a hand-written modern `2026-07-28` HTTP client and a stdio client
-that probes modern discovery before falling back to the `2024-11-05` handshake. This establishes
-the intended dual-transport source boundary, but not joint HTTP compatibility: GEV has no HTTP
-endpoint yet, and the Tadpole client's fail-closed negotiation and cross-transport fallback still
-require correction and end-to-end evidence.
+As reverified on 2026-09-09 and decided by ADR 0032, the current stable protocol is
+`2026-07-28`. GEV currently implements only local `2024-11-05` stdio. The published Tadpole
+implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0` implements the exact modern HTTP-first and
+legacy-stdio-fallback profile, and evidence commit `2dcde21f537cde6885950c5091078e83a2d1bd3c`
+proves its fail-closed negotiation and no-replay behavior against deterministic mock servers.
+This establishes the intended dual-transport client boundary, but not joint runtime compatibility:
+GEV still has no HTTP endpoint, so the live cross-repository smoke remains Task 6.2/6.5 evidence.
 
 - Preserve byte- and behavior-compatible `2024-11-05` stdio for local operators and Tadpole
   fallback. HTTP 401/403/5xx, authentication, authorization, STASIS, approval, budget, or other
@@ -409,7 +409,7 @@ Economic results are decision-support signals, not guarantees, appraisals, legal
 
 | ID | Decision | Must be answered before |
 |---|---|---|
-| OQ-1 | **POLICY RESOLVED by ADR 0032; EVIDENCE GATE OPEN:** local-only `2026-07-28` HTTP at `127.0.0.1:3000/mcp`, empty Origin allowlist, exact resource/audience, injected test issuer, existing capability scopes, explicit fail-closed stdio fallback, and role owners are accepted. Task 6.2 remains blocked until an immutable Tadpole client-fix commit and its required tests are supplied. | Task 6.2 |
+| OQ-1 | **RESOLVED by ADR 0032; CLIENT-EVIDENCE GATE SATISFIED:** local-only `2026-07-28` HTTP at `127.0.0.1:3000/mcp`, empty Origin allowlist, exact resource/audience, injected test issuer, existing capability scopes, explicit fail-closed stdio fallback, and role owners are accepted. Published Tadpole implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0` and evidence `2dcde21f537cde6885950c5091078e83a2d1bd3c` make the developer's Task 6.2 authorization effective. | Task 6.2 |
 | OQ-2 | **RESOLVED by ADR 0042:** M2 signed-approval format, signer/key trust and lifecycle, durable nonce replay protection, and time profile | Task 5.1.3 |
 | OQ-3 | **RESOLVED by ADR 0043:** M3 ledger reservation, settlement, refund, idempotency, ambiguity, reconciliation, and outage policy | Task 5.1.4 |
 | OQ-4 | Production identity provider, tenant model, roles, retention, export, and deletion requirements | Phase 7 |
@@ -443,8 +443,9 @@ Unanswered questions do not block earlier independent safety work.
   modern `/mcp`.
 - The AI-Tadpole-OS Rust/MCP maintainer owns client corrections, the GEV Phase 6 implementer owns
   the endpoint, and the joint DDS-Solutions integration owner owns cross-repository evidence.
-  Immutable Tadpole client-fix and mock-server test evidence must exist before implementation;
-  actual cross-repository conformance remains a Phase 6 obligation.
+  Published Tadpole implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0` and evidence
+  `2dcde21f537cde6885950c5091078e83a2d1bd3c` satisfy the pre-implementation gate; actual
+  cross-repository conformance remains a Phase 6 obligation.
 
 ---
 
@@ -1446,13 +1447,15 @@ the write/read expansion. After three genuine bounded projection or rendering ap
 record LOGIC_BLOCKER with exact evidence and two or three bounded alternatives.
 ```
 
-#### Conditionally authorized but blocked 4-Pillar brief for NEXT_TASK 6.2
+#### Authorized 4-Pillar brief for NEXT_TASK 6.2
 
 The developer accepted the local-only OQ-1 policy in §9.3 and conditionally authorized this exact
-brief on 2026-09-08. Do not begin implementation until an immutable AI-Tadpole-OS client-fix commit
-descending from `5afe7ed` and its required mock-server tests prove the fail-closed negotiation and
-explicit dual-transport behavior recorded in ADR 0032. After that evidence is recorded, the
-authorization becomes effective without changing this brief.
+brief on 2026-09-08. Published Tadpole implementation
+`329d32d6d3940ff4564d94c1797f540065dbc6a0`, descending from the corrected audited base
+`f3b53231bd1928b737e65cdbd210907d534246b6`, and evidence commit
+`2dcde21f537cde6885950c5091078e83a2d1bd3c` now prove the required fail-closed negotiation and
+explicit dual-transport behavior. The authorization is therefore effective as of 2026-09-09;
+implementation must remain within the unchanged brief below.
 
 ```text
 [SCOPE_CONTRACT] Install only `@modelcontextprotocol/server@2.0.0` in packages/ops-mcp and
@@ -2922,5 +2925,31 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   checked 282 files with no findings and `git diff --check` passed. The first restricted Vitest
   attempt reached the benchmark stage but hit the known local `spawn EPERM` sandbox boundary; it
   was not a product or test failure.
+
+### Task 6.2 Tadpole Port 3000 client-evidence checkpoint — 2026-09-09
+
+- The developer-supplied Tadpole checkout was re-audited at inspectable base
+  `f3b53231bd1928b737e65cdbd210907d534246b6`. The formerly recorded
+  `5afe7ed478972d4e27121556ef91d5d242986525` object no longer resolves in either configured
+  non-shallow history. After that discrepancy and the concrete gaps were reported, the developer
+  directed completion of the Port 3000 contract, authorizing an explicit ADR/plan correction to
+  the verifiable base rather than a silent substitution.
+- Tadpole client-fix `d9b29513f742f6f386ebddbe5174a26c7da8231c`, final verified implementation
+  `329d32d6d3940ff4564d94c1797f540065dbc6a0`, and evidence commit
+  `2dcde21f537cde6885950c5091078e83a2d1bd3c` are published on
+  `DDS-Solutions/TadPole-OS` branch `codex/port-3000-contract`. The implementation is a verified
+  descendant of the audited base, and the tracked evidence artifact is named
+  `GEV_PORT_3000_EVIDENCE.md` in that repository's documentation directory.
+- Exact Tadpole verification passed: Port 3000 conformance 21/21; focused HTTP tests 15/15;
+  broader MCP tests 86/86; strict Clippy with warnings denied; Rust formatting; parity guard with
+  zero errors; AI-context guard
+  1,069/1,069; and HTTP-client graph blast-radius guard. The implementation covers exact
+  secret-free configuration, modern discovery, bounded/correlated JSON and SSE, safe cancellation,
+  typed fallback, JSON-RPC identity, recursive safe header projection, last-catalog enforcement,
+  stable retry operation identity, structured governance results, secret redaction, and no replay.
+- ADR 0032, its index, the Port 3000 contract, §7.1, §9.2–§9.3, this four-pillar preamble, and the
+  machine-readable checkpoint now record the satisfied gate. The developer's previously
+  conditional Task 6.2 authorization is effective; Task 6.2 remains unchecked and the HTTP kill
+  switch remains off until the GEV implementation and its own exit evidence are complete.
 
 No later task is authorized merely because it appears in this plan.

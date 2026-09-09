@@ -1,6 +1,6 @@
 # ADR 0032: Incremental official MCP SDK adoption with preserved stdio compatibility
 
-- **Status:** Accepted; OQ-1 policy resolved, HTTP implementation blocked on required Tadpole client-fix evidence
+- **Status:** Accepted; OQ-1 policy and Tadpole client-evidence gate satisfied; Task 6.2 authorized
 - **Date:** 2026-09-08
 - **Task:** PLAN.md 6.1
 - **Extends:** [ADR 0017](./0017-mcp-server-and-cli-architecture.md),
@@ -92,6 +92,36 @@ and retain `2024-11-05` stdio as fallback. Fallback is permitted only for transp
 or proven era incompatibility; HTTP 401/403/5xx, insufficient scope, STASIS, approval denial,
 budget denial, or another governed rejection must fail closed and must never trigger a downgrade.
 
+### 2026-09-09 client-fix re-audit
+
+The developer-supplied working repository at `D:/TadpoleOS-Dev` was re-audited before accepting
+the client gate. Its two configured non-shallow histories no longer resolve the previously
+recorded `5afe7ed478972d4e27121556ef91d5d242986525` object, so ancestry from that historical
+snapshot cannot be reproduced. After this discrepancy and the concrete client gaps were reported,
+the developer explicitly directed completion of the Port 3000 contract. That authorization
+permits a documented correction to the inspectable base; it does not permit silently substituting
+one revision for another.
+
+The corrected evidence chain is:
+
+- developer-supplied implementation repository:
+  `https://github.com/DDS-Solutions/TadPole-OS`;
+- audited base: `f3b53231bd1928b737e65cdbd210907d534246b6`;
+- published client-fix commit: `d9b29513f742f6f386ebddbe5174a26c7da8231c`;
+- published structural decomposition: `1efba443ded024754c0b3b48a56b039eee085393`;
+- published final verified implementation: `329d32d6d3940ff4564d94c1797f540065dbc6a0`;
+- published evidence commit: `2dcde21f537cde6885950c5091078e83a2d1bd3c`;
+- evidence artifact: `GEV_PORT_3000_EVIDENCE.md` in that repository's documentation directory.
+
+The final implementation is a verified descendant of the audited base. Its exact conformance
+suite passes 21/21, the focused HTTP surface passes 15/15, and the broader MCP surface passes
+86/86; strict Clippy, Rust formatting, repository parity, AI-context, and graph blast-radius
+checks pass. The client now implements the exact secret-free `prefer_http`
+profile, modern-only discovery, bounded and correlated JSON/SSE handling, typed fallback causes,
+strict catalog/header validation, stable retry operation identity, structured-result preservation,
+and fail-closed behavior for every non-allowlisted failure. The cross-repository live smoke remains
+Task 6.2/6.5 exit evidence because no GEV HTTP endpoint exists yet.
+
 ### Current official protocol and SDK
 
 Primary sources were rechecked on 2026-09-08:
@@ -149,9 +179,9 @@ installed and no manifest or lockfile changed in task 6.1.
 
 | Surface | Floor | Ceiling | Policy |
 |---|---:|---:|---|
-| Current GEV ↔ current Tadpole local stdio | `2024-11-05` | `2024-11-05` | Preserve byte- and behavior-compatible hand-written GEV stdio through Phase 6. Tadpole revision `5afe7ed` now probes modern discovery before its legacy handshake; source inspection indicates compatibility, and 6.5 must freeze the refreshed transcript. |
+| Current GEV ↔ current Tadpole local stdio | `2024-11-05` | `2024-11-05` | Preserve byte- and behavior-compatible hand-written GEV stdio through Phase 6. Tadpole implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0` probes modern discovery and uses legacy initialization only after a preserved `-32601`; 6.5 must freeze the joint transcript. |
 | New GEV HTTP endpoint | `2026-07-28` | `2026-07-28` | Modern-only. Use `createMcpHandler(..., { legacy: 'reject' })`; reject unsupported versions with the specified supported-version error. Do not silently fall back. |
-| Current Tadpole ↔ new GEV HTTP endpoint | `2026-07-28` candidate | `2026-07-28` candidate | Tadpole revision `5afe7ed` implements the matching modern request shape. Joint support is not yet proven because GEV has no endpoint and the client still needs fail-closed negotiation corrections plus cross-repository interop evidence. GEV will not serve legacy HTTP. |
+| Current Tadpole ↔ new GEV HTTP endpoint | `2026-07-28` | `2026-07-28` | Tadpole implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0` proves the matching request shape and fail-closed negotiation against deterministic mock servers. Joint runtime support remains Task 6.2/6.5 exit evidence because GEV has no endpoint yet. GEV will not serve legacy HTTP. |
 
 GEV will not add the deprecated `2024-11-05` HTTP+SSE transport. GEV will not add the stateful
 `2025-11-25` Streamable HTTP era merely to satisfy stale session/GET/replay wording. Supporting a
@@ -192,16 +222,16 @@ paths.
 | Shared governance | Convert authenticated principal/scopes to one explicit executor capability set, then call the shared `GovernedToolExecutor` exactly once. Preserve audit intent/outcome, approval, reservation/settlement, STASIS, timeout, and replay rules. | 6.3, 6.5 |
 | Filesystem authority | Keep scene identifiers as root-level bounded `.json` names under the configured root with canonical path, symlink, size, and atomic-write checks. Never accept remote absolute or caller-selected roots. | 6.3, 6.5 |
 | Tool annotations and GEV metadata | Derive standard hints from explicit registry semantics; `dangerous` is not `destructive`. Put governance outcome detail in GEV `_meta`, not invented standard annotations. | 6.4, 6.5 |
-| Compatibility | Freeze the modern-probe-to-legacy-stdio transcript against Tadpole revision `5afe7ed`; run official inspector/conformance and cross-repository coverage against HTTP; prove direct/stdio/HTTP executor parity and exactly one audit pair. | 6.5 |
+| Compatibility | Freeze the modern-probe-to-legacy-stdio transcript against Tadpole implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0`; run official inspector/conformance and cross-repository coverage against HTTP; prove direct/stdio/HTTP executor parity and exactly one audit pair. | 6.5 |
 | Limits and shutdown | Bound body size, headers, concurrency, active response streams, tool duration, and notification queues. `handler.close()` must drain/abort on server shutdown. | 6.2, 6.5 |
 
 ## Migration and rollback
 
 1. **6.1 (this ADR):** record the stable source evidence and preserve the existing runtime.
-2. **OQ-1 gate:** treat Tadpole revision `5afe7ed` as the implementation candidate; obtain exact
-   deployment origin/Host values, canonical MCP resource URI, authorization issuer/audience, and
-   scope ownership, and assign the client negotiation/fallback corrections plus cross-repository
-   test evidence. No `/mcp` implementation starts before this is accepted.
+2. **OQ-1 gate (complete):** use the accepted local deployment, Host/Origin, resource, injected
+   authority, scope, and ownership profile plus Tadpole client-fix
+   implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0` and evidence
+   `2dcde21f537cde6885950c5091078e83a2d1bd3c`.
 3. **6.2:** add the two exact dependencies, one isolated modern HTTP adapter, explicit feature
    kill-switch defaulting off, request/stream limits, Origin/Host guards, and protocol tests. Keep
    the stdio entry and CLI imports untouched.
@@ -218,7 +248,7 @@ dependencies and their lock entries. The hand-written stdio server, shared contr
 governance database, and scene data are unchanged, so rollback needs no data migration and does
 not break the current Tadpole path.
 
-## OQ-1 accepted Phase 6 profile and remaining evidence gate
+## OQ-1 accepted Phase 6 profile and satisfied client-evidence gate
 
 On 2026-09-08, the developer accepted the following local-first OQ-1 integration profile and
 role-based ownership. This resolves the deployment, resource, authorization-shape, scope-mapping,
@@ -269,17 +299,19 @@ fallback-policy, and ownership decisions without inventing production identity o
 - The AI-Tadpole-OS Rust/MCP maintainer owns client corrections; the GEV Phase 6 implementer owns
   the HTTP adapter; and the joint DDS-Solutions integration owner owns cross-repository evidence.
   Evidence is pinned to immutable commit SHAs, not floating branches.
-- Before task 6.2 implementation begins, a Tadpole commit descending from `5afe7ed` must prove with
-  mock-server tests that 401/403/5xx and governed denials do not fall back, `-32022` detail is
-  preserved, only a supported intersection is selected, unsupported intersections fail, legacy
-  initialization is never sent to `/mcp`, and both transports can be configured simultaneously.
+- Tadpole implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0`, descending from corrected
+  audited base `f3b53231bd1928b737e65cdbd210907d534246b6`, proves with mock-server tests
+  that 401/403/5xx and governed denials do not fall back, `-32022` detail is preserved, only a
+  supported intersection is selected, unsupported intersections fail, legacy initialization is
+  never sent to `/mcp`, and both transports can be configured simultaneously. Evidence commit
+  `2dcde21f537cde6885950c5091078e83a2d1bd3c` records exact commands and results.
 - Actual Tadpole-to-GEV HTTP/stdio, cancellation, auth, negotiation, concurrency, and failure-mode
   evidence remains a Phase 6 conformance obligation once the GEV endpoint exists.
 
-The developer conditionally authorized the embedded task 6.2 4-Pillar brief once this decision is
-recorded and the required Tadpole client-fix evidence is supplied. This ADR records the decision,
-but the external immutable fix commit and passing evidence are still absent; task 6.2 therefore
-remains `DOC_BLOCKER`, the HTTP kill switch remains off, and implementation must not begin.
+The developer conditionally authorized the embedded Task 6.2 four-pillar brief once this decision
+and the required Tadpole client-fix evidence were recorded. Both conditions are now satisfied, so
+that authorization is effective as of 2026-09-09. Task 6.2 remains unchecked until implementation
+and exit evidence are complete; the HTTP kill switch remains off throughout Task 6.2.
 
 ## Consequences
 
@@ -289,7 +321,6 @@ remains `DOC_BLOCKER`, the HTTP kill switch remains off, and implementation must
   cost is accepted only at the isolated adapter boundary and must be remeasured after install.
 - The stale Phase 6 assumptions about HTTP GET, protocol sessions, and event-ID reconnect are
   removed for the modern target rather than silently implemented as legacy behavior.
-- Tadpole HTTP source now exists and the local Phase 6 integration policy is accepted, but source
-  inspection cannot manufacture the required immutable client-fix commit or passing evidence.
-  Phase 6 implementation remains blocked on that evidence even though the policy decision is
-  complete and the task 6.2 brief is conditionally authorized.
+- Tadpole client-fix and deterministic evidence now exist as published immutable commits. This
+  closes the documentation/client-evidence prerequisite while leaving the joint live smoke,
+  official inspector, server authentication, and Phase 6 exit evidence in their assigned tasks.

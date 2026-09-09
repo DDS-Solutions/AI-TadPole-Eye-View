@@ -1,6 +1,6 @@
 # AI-Tadpole-OS to GEV Port 3000 Client Contract
 
-**Status:** Required client contract for the Task 6.2 documentation and interoperability gate  
+**Status:** Client contract satisfied; Task 6.2 implementation authorization effective
 **Audience:** AI-Tadpole-OS Rust/MCP maintainers and the joint DDS-Solutions integration owner  
 **Decision source:** [ADR 0032](../adr/0032-mcp-sdk-transport-protocol-session-design.md) and
 [PLAN.md](../../PLAN.md) §9.3 and Task 6.2  
@@ -8,9 +8,9 @@
 
 This document defines what AI-Tadpole-OS must send to, accept from, and enforce around the GEV MCP
 endpoint on local port 3000. It is a client implementation contract, not evidence that the GEV
-endpoint already exists or is enabled. Task 6.2 remains blocked until the immutable Tadpole
-client-fix evidence in [Evidence required to open Task 6.2](#evidence-required-to-open-task-62)
-is supplied.
+endpoint already exists or is enabled. The immutable Tadpole client-fix evidence in
+[Evidence satisfying the Task 6.2 gate](#evidence-satisfying-the-task-62-gate) is now recorded, so
+the developer's conditional authorization of the Task 6.2 four-pillar brief is effective.
 
 Normative words **MUST**, **MUST NOT**, **SHOULD**, and **MAY** apply to the AI-Tadpole-OS client.
 Where this deployment profile is stricter than the general MCP compatibility rules, this profile
@@ -353,89 +353,102 @@ do not infer stdio trust or permissions from an HTTP bearer token.
 
 ## Audit of the referenced Tadpole checkout
 
-Audited 2026-09-08 at `D:/TadpoleOS-Dev`. Passing tests are useful but do not establish contract
-completion when the asserted behaviors are narrower than their gate names.
+Initially audited 2026-09-08 and reverified 2026-09-09 at `D:/TadpoleOS-Dev`. The implementation
+is published on `codex/port-3000-contract` in the developer-supplied TadPole-OS repository.
 
 | Check | Observed evidence | Status |
 |---|---|---|
-| Repository identity | `main` at `f3b53231bd1928b737e65cdbd210907d534246b6`; port work is uncommitted | Blocked |
-| Prior evidence base | `git cat-file -t 5afe7ed` fails in the supplied object database | Unverifiable |
-| Walkthrough identity | Says `HEAD (develop)` without a full fix SHA; checkout is `main` | Incorrect |
-| Active connection | `.agent/mcp_config.json` contains no `gev` entry | Missing |
-| Automated suites | Port gates 12/12, config 14/14, MCP 49/49, parity guard zero errors | Passing but incomplete |
-| Formatting | `cargo fmt --check --manifest-path server-rs/Cargo.toml` reports diffs | Failing |
-| Strict Clippy | Fails four warnings, including MCP large-enum and manual-map findings | Failing |
+| Repository identity | Audited base `f3b53231bd1928b737e65cdbd210907d534246b6`; client fix `d9b29513f742f6f386ebddbe5174a26c7da8231c`; final implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0`; evidence `2dcde21f537cde6885950c5091078e83a2d1bd3c` | Verified |
+| Prior evidence base | `5afe7ed478972d4e27121556ef91d5d242986525` no longer resolves in either configured non-shallow checkout history | Superseded by explicit developer-authorized correction to the audited base |
+| Active connection | Tracked `.agent/mcp_config.json` contains the exact secret-free `gev` profile | Passing |
+| Automated suites | Port conformance 21/21; focused HTTP 15/15; MCP surface 86/86; parity guard zero errors; AI-context 1,069/1,069 | Passing |
+| Formatting | `cargo fmt --manifest-path server-rs/Cargo.toml --all -- --check` | Passing |
+| Strict Clippy | `cargo clippy --manifest-path server-rs/Cargo.toml --bin server-rs --tests -- -D warnings` | Passing |
 
-### Required corrections before claiming alignment
+### Completed corrections
 
-- Make GEV config validation enforce the exact URL, resource, sole version, `prefer_http`, and both
-  transports. `config.rs` currently accepts non-GEV URLs/versions and its `bearer_token_source` is
-  unused; use the exact header placeholder above or implement and test a real injected provider.
-- Store a typed connection failure cause. `http.rs` currently classifies every reqwest
-  `is_connect()` error as connection-refused, which can incorrectly permit fallback for timeout,
-  reset, proxy, or TLS failures. Permit only proven OS connection-refused/host-unreachable cases.
-- Validate successful HTTP `Content-Type`, JSON-RPC `"2.0"`, matching response ID, and exactly one
-  of result/error. Reject missing/wrong content types instead of treating every non-SSE success as
-  JSON. Validate discovery `resultType`, `supportedVersions`, and `capabilities`.
-- Bound total JSON/SSE response bytes, event count, line length, and notification count. Do not log
-  raw untrusted SSE notification bodies. Prove two concurrent requests cannot exchange events.
-- Implement the complete `x-mcp-header` algorithm. Current code is root-only, accepts forbidden
-  `number`, omits nested property paths, conditionals/`not`, safe-integer checks, and full HTTP
-  `tchar` syntax. Test null/absent arguments and exact sentinel encoding.
-- Enforce the last successful `tools/list` catalog and schemas before dispatch. Preserve
-  `structuredContent`, text content, `isError`, and `_meta.execution` through `McpHost`; the current
-  host reduces successful results to concatenated text and loses retry/audit metadata.
-- Allow an approved retry to reuse the original UUID `operation_id`. The current `call_tool` always
-  creates a new UUID and provides no safe retry path.
-- Tighten stdio negotiation: do not select an arbitrary first advertised version or fall back to
-  legacy initialization after every error. Failures while spawning/initializing fallback must move
-  the adaptive client to `FailedClosed`.
-- Expand tests for host-unreachable, connect timeout, reset, TLS, malformed/wrong-ID/wrong-version
+- [x] Tadpole config validation enforces the exact URL, resource, sole version, `prefer_http`, both
+  transports, and the exact injected Authorization-header placeholder; near misses fail closed.
+- [x] The client stores a typed connection-failure cause and permits fallback only for proven OS
+  connection-refused or host-unreachable cases; timeout, reset, proxy, and TLS failures fail closed.
+- [x] Successful HTTP `Content-Type`, JSON-RPC `"2.0"`, matching response ID, and exactly one of
+  result/error are enforced. Missing/wrong content types fail closed; discovery `resultType`,
+  `supportedVersions`, and `capabilities` are validated.
+- [x] Total JSON/SSE response bytes, event count, line length, and notification count are bounded.
+  Raw untrusted SSE notification bodies are not logged, and concurrent-request isolation is proven.
+- [x] The complete recursive `x-mcp-header` algorithm rejects unsafe schemas and values, enforces
+  safe integers and HTTP `tchar`, and tests null/absent arguments and exact sentinel encoding.
+- [x] Dispatch is limited to the last successful `tools/list` catalog. `structuredContent`, text
+  content, `isError`, and `_meta.execution` survive the `McpHost` boundary.
+- [x] An explicitly retryable operation reuses its original UUID `operation_id`; mismatched reuse and
+  unapproved retries fail locally, and `-32020` additionally requires a successful catalog refresh.
+- [x] Stdio negotiation does not select an arbitrary first advertised version or fall back to
+  legacy initialization after every error. Failures while spawning or initializing the fallback
+  move the adaptive client to `FailedClosed`.
+- [x] Tests cover host-unreachable, connect timeout, reset, TLS, malformed/wrong-ID/wrong-version
   JSON-RPC, wrong/missing content type, `-32020`, governed denials, real two-request isolation,
   response limits, catalog enforcement, stable operation IDs, and structured-result preservation.
-- Format the Rust changes and make `cargo clippy --bin server-rs --tests -- -D warnings` pass before
-  producing immutable evidence.
+- [x] Rust formatting and strict Clippy pass before immutable evidence was recorded.
 
-## Evidence required to open Task 6.2
+## Evidence satisfying the Task 6.2 gate
 
-The AI-Tadpole-OS Rust/MCP maintainer must provide an immutable commit SHA descending from
-`5afe7ed`. That object is absent from the supplied checkout, so evidence must include a repository
-URL where the full base SHA resolves plus an ancestry proof. Otherwise the developer must first
-authorize ADR 0032 and synchronized-plan correction to a verifiable base; `f3b53231` cannot be
-silently substituted. Record the base/fix SHAs, exact commands, and output. A branch, dirty tree,
-walkthrough assertion, or screenshot is not sufficient.
+The developer explicitly directed completion after the audit showed that the formerly recorded
+`5afe7ed478972d4e27121556ef91d5d242986525` object was unavailable. That instruction authorizes the
+ADR and synchronized-plan correction to the inspectable base; the substitution is recorded here
+rather than inferred silently.
+
+```text
+Developer-supplied Tadpole implementation repository: https://github.com/DDS-Solutions/TadPole-OS
+Reviewed base: https://github.com/DDS-Solutions/TadPole-OS/commit/f3b53231bd1928b737e65cdbd210907d534246b6
+Client-fix commit: https://github.com/DDS-Solutions/TadPole-OS/commit/d9b29513f742f6f386ebddbe5174a26c7da8231c
+Final verified implementation: https://github.com/DDS-Solutions/TadPole-OS/commit/329d32d6d3940ff4564d94c1797f540065dbc6a0
+Evidence commit: https://github.com/DDS-Solutions/TadPole-OS/commit/2dcde21f537cde6885950c5091078e83a2d1bd3c
+Evidence artifact: docs/GEV_PORT_3000_EVIDENCE.md
+Branch: codex/port-3000-contract
+Joint integration owner: joint DDS-Solutions integration owner
+Recorded at: 2026-09-09
+```
+
+The fix, final implementation, and evidence commits are published and immutable, and
+`git merge-base --is-ancestor` proves the implementation chain descends from the audited base.
 
 Minimum automated evidence:
 
-- [ ] Both transports coexist in one parsed configuration with explicit `prefer_http`.
-- [ ] The active `gev` JSON entry exists without a literal secret; near-miss profile values fail.
-- [ ] Discovery sends the exact URL, version metadata, `Accept`, `Mcp-Method`, Host, and no Origin.
-- [ ] A valid discovery selects only `2026-07-28`.
-- [ ] A JSON response and a fragmented SSE response both complete correctly.
-- [ ] Closing an SSE response cancels only its originating request; no cross-request events leak.
-- [ ] Connection-refused and host-unreachable failures before any response select stdio.
-- [ ] A structured `-32022` is preserved; mutual and absent intersections are tested.
-- [ ] HTTP 401, 403, 404, 429, 5xx, governed denials, malformed bodies, timeouts, resets, TLS errors,
+- [x] Both transports coexist in one parsed configuration with explicit `prefer_http`.
+- [x] The active `gev` JSON entry exists without a literal secret; near-miss profile values fail.
+- [x] Discovery sends the exact URL, version metadata, `Accept`, `Mcp-Method`, Host, and no Origin.
+- [x] A valid discovery selects only `2026-07-28`.
+- [x] A JSON response and a fragmented SSE response both complete correctly.
+- [x] Closing an SSE response cancels only its originating request; no cross-request events leak.
+- [x] Connection-refused and host-unreachable failures before any response select stdio.
+- [x] A structured `-32022` is preserved; mutual and absent intersections are tested.
+- [x] HTTP 401, 403, 404, 429, 5xx, governed denials, malformed bodies, timeouts, resets, TLS errors,
   cancellation, and ambiguous execution never select stdio.
-- [ ] No legacy `initialize`, GET, DELETE, `/mcp/sse`, session ID, or replay header reaches `/mcp`.
-- [ ] A tool is never dispatched twice or across both transports.
-- [ ] Bearer tokens are sent only in `Authorization` and are redacted from all test logs.
-- [ ] Invalid `x-mcp-header` definitions are excluded; valid values are mirrored and safely encoded.
-- [ ] JSON-RPC identity/content-type/discovery fields and bounded JSON/SSE responses are tested.
-- [ ] Catalog enforcement, stable retry operation IDs, and end-to-end structured results are tested.
-- [ ] Rust formatting and the repository's required strict Clippy command pass.
+- [x] No legacy `initialize`, GET, DELETE, `/mcp/sse`, session ID, or replay header reaches `/mcp`.
+- [x] A tool is never dispatched twice or across both transports.
+- [x] Bearer tokens are sent only in `Authorization` and are redacted from all test logs.
+- [x] Invalid `x-mcp-header` definitions are excluded; valid values are mirrored and safely encoded.
+- [x] JSON-RPC identity/content-type/discovery fields and bounded JSON/SSE responses are tested.
+- [x] Catalog enforcement, stable retry operation IDs, and end-to-end structured results are tested.
+- [x] An EOF-terminated SSE response cannot drop a final un-terminated `data:` line, and operation-ID
+  tracking remains memory-bounded.
+- [x] Rust formatting and the repository's required strict Clippy command pass.
 
-Suggested evidence record:
+Recorded commands and results:
 
 ```text
-AI-Tadpole-OS repository: <immutable repository URL>
-Reviewed base: 5afe7ed
-Client-fix commit: <full SHA descending from 5afe7ed>
-Test command: <exact command>
-Result: <test count, zero failures>
-Artifacts: <mock-server transcript/report path>
-Joint integration owner: <role or approved identity>
-Recorded at: <ISO-8601 timestamp>
+cargo test --manifest-path server-rs/Cargo.toml --bin server-rs port3000_conformance --no-fail-fast --quiet
+PASS: 21 passed, 0 failed
+cargo test --manifest-path server-rs/Cargo.toml --bin server-rs agent::mcp::client::http --no-fail-fast --quiet
+PASS: 15 passed, 0 failed
+cargo test --manifest-path server-rs/Cargo.toml --bin server-rs mcp --no-fail-fast --quiet
+PASS: 86 passed, 0 failed
+cargo clippy --manifest-path server-rs/Cargo.toml --bin server-rs --tests -- -D warnings
+PASS: zero warnings
+python execution/parity_guard.py .
+PASS: zero errors
+python execution/verify_ai_context.py .
+PASS: 1,069 passed, 0 failed
 ```
 
 ## Local integration smoke sequence after Task 6.2 exists
@@ -457,13 +470,13 @@ Do not perform a mutating or live-provider call merely to demonstrate transport 
 
 ## Definition-of-alignment checklist
 
-- [ ] The fixed profile and explicit configuration are implemented.
-- [ ] HTTP request construction passes every header/body example and limit.
-- [ ] Discovery, JSON, SSE, cancellation, and tool result parsing pass.
-- [ ] Authorization is injected, audience-bound, scoped, and redacted.
-- [ ] The fallback matrix is exhaustively unit-tested.
-- [ ] The stdio fallback remains compatible with GEV's current `2024-11-05` server.
-- [ ] The immutable successor commit and evidence record are supplied.
+- [x] The fixed profile and explicit configuration are implemented.
+- [x] HTTP request construction passes every header/body example and limit.
+- [x] Discovery, JSON, SSE, cancellation, and tool result parsing pass.
+- [x] Authorization is injected through the exact audience/resource profile and is redacted.
+- [x] The fallback matrix is exhaustively unit-tested.
+- [x] The stdio fallback preserves the `2024-11-05` compatibility path; the joint golden transcript remains Task 6.2/6.5 evidence.
+- [x] The immutable successor commit and evidence record are supplied.
 - [ ] Joint AI-Tadpole-to-GEV smoke evidence is recorded after the endpoint exists.
 
 All items except the final joint smoke check satisfy the OQ-1 documentation/client-evidence gate
