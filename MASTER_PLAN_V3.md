@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=6
-NEXT_TASK=6.4
+NEXT_TASK=6.5
 NEXT_TASK_STATUS=BLOCKED
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
@@ -1632,6 +1632,63 @@ designs. If three bounded designs fail, record LOGIC_BLOCKER rather than emittin
 claims.
 ```
 
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 6.5
+
+```text
+[SCOPE_CONTRACT] Add deterministic Phase 6 conformance evidence around the existing default-off
+modern HTTP endpoint and preserved legacy stdio server. Cover protocol/version/header negotiation,
+malformed and oversized payloads, scoped authentication/authorization, disconnect/cancellation,
+stable-operation replay, STASIS/approval/budget denials, concurrent request isolation, truthful
+capabilities/notifications, and exact modern-probe-to-legacy-stdio compatibility with the pinned
+Tadpole implementation. Run the current official MCP inspector/conformance surface against a
+loopback seed-mode server and record the exact tool/version/license; a dev/test-only pin is allowed
+only if primary-source revalidation shows it is required, with no runtime or browser dependency.
+In scope: packages/ops-mcp and apps/server test/harness code, narrowly required e2e or scripts,
+the pinned AI-Tadpole Port 3000 integration evidence, ADR 0032 evidence correction, and
+synchronized plans. Out of scope: enabling production or remote MCP; adding a legacy HTTP
+transport; changing the seven-tool catalog, Task 6.4 semantics, auth/scopes, governance policy,
+scene authority, or stdio product behavior; implementing notifications/subscriptions; Phase 7
+identity/tenancy; provider/UI/economic work; and later tasks. A product-code correction is allowed
+only when a new conformance test proves the existing in-scope behavior wrong and the fix stays
+inside the established SDK adapter/shared-executor boundary.
+
+[PERFORMANCE_THRESHOLD] The current official inspector/conformance checks pass for modern
+`2026-07-28` HTTP, and the pinned Tadpole modern-probe/legacy-`2024-11-05` stdio transcript is
+byte- and behavior-compatible. Table-driven failure coverage proves: 401/403/5xx, malformed
+protocol data, STASIS, approval, budget, cancellation, or ambiguous execution never triggers
+fallback or redispatch; retained operation IDs replay without a second handler call, audit pair,
+or charge; unrelated concurrent principals/tenants/streams never observe each other's tools,
+identity, results, or notifications; response close aborts only its request; and unsupported or
+oversized inputs fail before domain dispatch. The HTTP load gate remains below 300 ms p95 with
+active work under 16, seed tests open zero provider-network sockets, stdio golden tests remain
+unchanged, and no unsupported capability or notification is advertised/emitted. Root lint; full
+typecheck/unit/performance/build; focused conformance matrices; seed network denial; ADG/tests;
+architecture drift; bundle budgets; dependency/license inventory; git diff; and synchronized-plan
+checks pass. Any dev-only conformance dependency is exactly pinned and justified; runtime
+dependency count and browser bundle delta remain zero.
+
+[ARCHITECTURE_MODE] PLAN.md §2 rules 1–3, 7–11, and 13–15; §3
+contracts/core/governance/MCP boundaries; §5–§7; ADRs 0017, 0027, 0032, and 0041–0044; the
+official `2026-07-28` discovery, transport, authorization, tools, cancellation, and error
+specifications; and the pinned Tadpole Port 3000 implementation/evidence commits. The official SDK
+continues to own modern HTTP protocol mechanics, while GEV owns pre-body security, registry
+projection, request-local authority, the single GovernedToolExecutor lifecycle, and bounded
+filesystem policy. Stdio remains the hand-written compatibility leg. Use SimClock and deterministic
+fixtures; any loopback process harness is bounded, secret-free, seed-only, and reliably cleaned up.
+
+[FAILURE_MODES] Do not weaken assertions to match SDK quirks; treat inspector success as proof of
+authorization or governance; fetch floating Tadpole branches or unpinned tooling; send live
+provider requests; enable remote/production MCP; retry or downgrade after a governed or ambiguous
+HTTP response; mint a new operation ID after non-success; share mutable authority or response
+streams; broadcast notifications; claim unsupported capabilities; change stdio bytes; add fixed
+sleeps; leak tokens/private claims; bypass scene confinement; add a runtime dependency; or absorb
+Phase 7/later scope. If current official tooling cannot target `2026-07-28`, the pinned Tadpole
+revision cannot be reproduced, or joint loopback evidence requires an unavailable external
+contract, stop with DOC_BLOCKER and amend ADR 0032 with exact evidence plus two or three bounded
+options. After three genuine bounded approaches fail, record LOGIC_BLOCKER rather than inventing
+conformance or enabling a fail-open fallback.
+```
+
 ### Phase 6 — Standards-compliant MCP HTTP
 
 - [x] 6.1 Write an ADR comparing the official SDK with the existing hand-written server and pin the jointly supported stable protocol.
@@ -1640,7 +1697,7 @@ claims.
   stream-close cancellation, and explicit 405 responses for unsupported GET/DELETE. Keep it
   disabled and fail-closed until OQ-1 and task 6.3 auth requirements are satisfied.
 - [x] 6.3 Apply scoped auth, tenant/capability context, shared governance, and path confinement to every remote tool.
-- [ ] 6.4 Correct tool annotations/capabilities; add output schemas and validated structured content; emit only truthful notifications.
+- [x] 6.4 Correct tool annotations/capabilities; add output schemas and validated structured content; emit only truthful notifications.
 - [ ] 6.5 Add protocol, auth, disconnect, replay, STASIS, concurrency, malformed-payload, and inspector/conformance tests.
 - [ ] 6 exit: stdio remains compatible; unrelated sessions never receive each other’s messages; remote mutation cannot bypass audit/approval/budget/STASIS.
 
@@ -3172,5 +3229,56 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   above and awaits developer authorization. No Task 6.4 implementation has started.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 6.4. Review and authorize the
   embedded 4-Pillar brief exactly; do not advance into task 6.5.`
+
+No later task is authorized merely because it appears in this plan.
+
+### Task 6.4 truthful MCP presentation implementation checkpoint — 2026-09-10
+
+- The developer authorized the embedded Task 6.4 4-Pillar brief exactly. Implementation commit
+  `9d31ed4` adds `@gev/contracts/mcp-presentation` as a server-only subpath and leaves the root
+  contracts export, legacy stdio projection, Task 6.3 auth/scopes, governance lifecycle, provider
+  surfaces, UI, and production/remote posture unchanged.
+- The presentation policy is exhaustive for all thirteen registry tools. `readOnlyHint` derives
+  only from canonical mutation truth; destructive, idempotent, and open-world semantics are
+  explicit. `set_flag` is dangerous but non-destructive, while `save_scene` is destructive but
+  not dangerous, so approval policy cannot masquerade as destructive behavior.
+- Only the seven implemented, request-authorized HTTP handlers receive standard annotations and
+  registry-derived input/output schemas. Successful `structuredContent` comes only from the shared
+  executor's validated success result, compatibility text parses to the same JSON value, and
+  governed execution evidence remains in result `_meta`. Invalid handler output returns
+  `OUTPUT_VALIDATION_FAILED` without successful structured content.
+- Authenticated request-local MCP servers advertise only `tools` with `listChanged: false`.
+  This explicitly overrides the SDK registration helper's otherwise untruthful `true` default.
+  Unauthenticated requests still register no tools capability; no notification, subscription,
+  prompt, resource, root, sampling, logging, or task feature was added.
+- Focused tests pass: contracts 81/81 including the 13-entry policy table, ops-mcp 48/48 including
+  exact seven-tool projection/result/notification coverage and preserved stdio 14/14, and server
+  137/137 including mounted-route capability/schema/annotation/result evidence. The invalid-output
+  case proves fail-closed result validation, while existing scope, concurrency, audit, scene, and
+  governance tests remain green.
+- Final verification passes lint across 294 files, strict typecheck across 17/17 tasks, the full
+  499-test unit gate, all nine performance cases, and the production build. One hundred
+  authenticated MCP discovery/list requests measured 60.18 ms p95 with peak active work 10 below
+  cap 16. Seed zero-network guards, ADG over 68 documents/514 paths, documentation tests 16/16,
+  generated provider parity, architecture drift, bundle budgets, dependency inventory, and
+  `git diff --check` pass.
+- No dependency or lock entry changed. The installed inventory remains 93 packages across 12
+  projects. The web entry remains the exact `index-BuL6GLP-.js` hash at 105.78 KiB gzip and the
+  total remains 1,247.15 KiB gzip, proving zero browser-bundle delta.
+- An optional `pnpm install --frozen-lockfile --offline` probe stopped before mutation with
+  `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY` because the current non-interactive environment
+  requested a module-directory purge. The authoritative manifest/lock diff, installed inventory,
+  full build, and all gates show zero dependency change, so no purge was performed.
+- Final local status remains server-offline and therefore non-authoritative:
+  `STASIS_INACTIVE`, seed mode, $10.00/$10.00 remaining, 17/19 providers, 20/22 feeds, and
+  16/19 layers active. No governance state was resumed, deleted, or rewritten.
+- Branch: `codex/task-6.4-mcp-presentation`; implementation commit `9d31ed4`. GitHub CLI
+  authentication remains unavailable, so open-PR inspection and PR creation through that CLI
+  could not be completed.
+- Next task: **6.5 Add Phase 6 protocol, security, isolation, replay, failure, and official
+  inspector/Tadpole conformance evidence.** Its exact ready-to-authorize 4-Pillar brief is embedded
+  above and awaits developer authorization. No Task 6.5 implementation has started.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 6.5. Review and authorize the
+  embedded 4-Pillar brief exactly; do not advance into Phase 7.`
 
 No later task is authorized merely because it appears in this plan.
