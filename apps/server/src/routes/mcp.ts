@@ -1,9 +1,18 @@
-import crypto from 'node:crypto';
-import type { createGevMcpHttpHandler } from '@gev/ops-mcp/http';
+import { getMissingOperatorToolScopes, isOperatorToolName } from '@gev/contracts';
+import type { McpAuthorizationContext, McpBearerVerifier } from '@gev/contracts/mcp-authorization';
+import { isMcpOperatorToolName } from '@gev/ops-mcp';
+import {
+  type createGevMcpHttpHandler,
+  mcpBearerChallengeResponse,
+  toGevMcpAuthInfo,
+  verifyMcpBearerAuthorization,
+} from '@gev/ops-mcp/http';
 import { originValidation } from '@modelcontextprotocol/hono';
 import { Hono } from 'hono';
 
 export const MCP_HTTP_RESOURCE = 'http://127.0.0.1:3000/mcp';
+export const MCP_HTTP_RESOURCE_METADATA =
+  'http://127.0.0.1:3000/.well-known/oauth-protected-resource/mcp';
 export const MCP_HTTP_HOST = '127.0.0.1:3000';
 export const MCP_HTTP_MAX_BODY_BYTES = 1024 * 1024;
 export const MCP_HTTP_MAX_HEADER_BYTES = 16 * 1024;
@@ -13,20 +22,10 @@ export const MCP_TEST_SUBJECT = 'svc:tadpole-test';
 
 type GevMcpHttpHandler = ReturnType<typeof createGevMcpHttpHandler>;
 
-export interface McpHttpTestAuthority {
-  authorization: string;
-  issuer: typeof MCP_TEST_ISSUER;
-  subject: typeof MCP_TEST_SUBJECT;
-  audience: typeof MCP_HTTP_RESOURCE;
-  scopes: readonly string[];
-  issuedAtEpochSeconds: number;
-  expiresAtEpochSeconds: number;
-}
-
 export interface McpHttpRouterOptions {
   handler: GevMcpHttpHandler;
   now: () => number;
-  testAuthority?: McpHttpTestAuthority;
+  bearerVerifier?: McpBearerVerifier;
   maxActiveRequests?: number;
 }
 
@@ -112,16 +111,6 @@ function jsonRpcHttpError(status: number, code: number, message: string): Respon
   });
 }
 
-function secureHeaderEquals(actual: string | undefined, expected: string): boolean {
-  if (actual === undefined) return false;
-  const actualBytes = Buffer.from(actual);
-  const expectedBytes = Buffer.from(expected);
-  return (
-    actualBytes.byteLength === expectedBytes.byteLength &&
-    crypto.timingSafeEqual(actualBytes, expectedBytes)
-  );
-}
-
 function explicitlyAccepts(header: string | undefined, mediaType: string): boolean {
   if (header === undefined) return false;
   return header.split(',').some((entry) => {
@@ -142,41 +131,13 @@ function headerBytes(headers: Headers): number {
   return total;
 }
 
-function validateTestAuthority(authority: McpHttpTestAuthority): void {
-  if (
-    authority.issuer !== MCP_TEST_ISSUER ||
-    authority.subject !== MCP_TEST_SUBJECT ||
-    authority.audience !== MCP_HTTP_RESOURCE
-  ) {
-    throw new Error('MCP test authority does not match the accepted local profile');
+function hasQueryBearer(request: Request): boolean {
+  for (const [name] of new URL(request.url).searchParams) {
+    if (name.toLowerCase() === 'access_token' || name.toLowerCase() === 'bearer_token') {
+      return true;
+    }
   }
-  if (!authority.authorization.startsWith('Bearer ') || authority.authorization.length <= 7) {
-    throw new Error('MCP test authority must provide a complete bearer authorization value');
-  }
-  if (/\r|\n/.test(authority.authorization)) {
-    throw new Error('MCP test authority contains an invalid authorization value');
-  }
-  if (
-    !Number.isFinite(authority.issuedAtEpochSeconds) ||
-    !Number.isFinite(authority.expiresAtEpochSeconds) ||
-    authority.issuedAtEpochSeconds >= authority.expiresAtEpochSeconds
-  ) {
-    throw new Error('MCP test authority has an invalid issuance window');
-  }
-}
-
-function toAuthInfo(authority: McpHttpTestAuthority) {
-  return {
-    token: authority.authorization.slice('Bearer '.length),
-    clientId: authority.subject,
-    scopes: [...authority.scopes],
-    expiresAt: authority.expiresAtEpochSeconds,
-    resource: new URL(authority.audience),
-    extra: {
-      issuer: authority.issuer,
-      subject: authority.subject,
-    },
-  };
+  return false;
 }
 
 async function readBoundedRequest(
@@ -288,8 +249,6 @@ export function createMcpHttpRouter(options: McpHttpRouterOptions): McpHttpRoute
   if (!Number.isSafeInteger(maximum) || maximum < 1 || maximum > 1_000) {
     throw new Error('MCP maximum active request count must be an integer from 1 to 1000');
   }
-  if (options.testAuthority) validateTestAuthority(options.testAuthority);
-
   const router = new Hono();
   const gate = new ExchangeGate(maximum);
   let closePromise: Promise<void> | undefined;
@@ -313,17 +272,8 @@ export function createMcpHttpRouter(options: McpHttpRouterOptions): McpHttpRoute
       return jsonRpcHttpError(400, -32020, 'Legacy MCP session headers are not supported');
     }
 
-    const authority = options.testAuthority;
-    if (!authority) {
+    if (!options.bearerVerifier) {
       return jsonRpcHttpError(503, -32003, 'MCP HTTP authorization is not configured');
-    }
-    const nowEpochSeconds = Math.floor(options.now() / 1000);
-    if (
-      authority.issuedAtEpochSeconds > nowEpochSeconds ||
-      authority.expiresAtEpochSeconds <= nowEpochSeconds ||
-      !secureHeaderEquals(c.req.header('authorization'), authority.authorization)
-    ) {
-      return jsonRpcHttpError(401, -32001, 'Unauthorized');
     }
     const protocolVersion = c.req.header('mcp-protocol-version');
     const method = c.req.header('mcp-method');
@@ -360,6 +310,47 @@ export function createMcpHttpRouter(options: McpHttpRouterOptions): McpHttpRoute
         : jsonRpcHttpError(429, -32003, 'MCP HTTP concurrency limit reached');
     }
 
+    const verifier = options.bearerVerifier;
+    if (!verifier) {
+      lease.release();
+      return jsonRpcHttpError(503, -32003, 'MCP HTTP authorization is not configured');
+    }
+    if (hasQueryBearer(c.req.raw)) {
+      lease.release();
+      return mcpBearerChallengeResponse('invalid_token', MCP_HTTP_RESOURCE_METADATA);
+    }
+
+    const authorizationHeader = c.req.header('authorization');
+    let authorization: McpAuthorizationContext;
+    try {
+      authorization = await verifyMcpBearerAuthorization(authorizationHeader, verifier, {
+        audience: MCP_HTTP_RESOURCE,
+        resource: MCP_HTTP_RESOURCE,
+        nowEpochSeconds: Math.floor(options.now() / 1000),
+      });
+    } catch {
+      lease.release();
+      return mcpBearerChallengeResponse('invalid_token', MCP_HTTP_RESOURCE_METADATA);
+    }
+
+    const requestedToolName = c.req.header('mcp-name');
+    if (
+      c.req.header('mcp-method') === 'tools/call' &&
+      requestedToolName &&
+      isOperatorToolName(requestedToolName) &&
+      isMcpOperatorToolName(requestedToolName)
+    ) {
+      const missingScopes = getMissingOperatorToolScopes(requestedToolName, authorization.scopes);
+      if (missingScopes.length > 0) {
+        lease.release();
+        return mcpBearerChallengeResponse(
+          'insufficient_scope',
+          MCP_HTTP_RESOURCE_METADATA,
+          missingScopes
+        );
+      }
+    }
+
     let boundedRequest: Request;
     try {
       boundedRequest = await readBoundedRequest(c.req.raw, lease.signal, MCP_HTTP_MAX_BODY_BYTES);
@@ -374,14 +365,14 @@ export function createMcpHttpRouter(options: McpHttpRouterOptions): McpHttpRoute
       return jsonRpcHttpError(400, -32700, 'Unable to read MCP request body');
     }
 
-    const authority = options.testAuthority;
-    if (!authority) {
-      lease.release();
-      return jsonRpcHttpError(503, -32003, 'MCP HTTP authorization is not configured');
-    }
     try {
+      const accessToken = authorizationHeader?.slice('Bearer '.length);
+      if (!accessToken) {
+        lease.release();
+        return mcpBearerChallengeResponse('invalid_token', MCP_HTTP_RESOURCE_METADATA);
+      }
       const response = await options.handler.fetch(boundedRequest, {
-        authInfo: toAuthInfo(authority),
+        authInfo: toGevMcpAuthInfo(accessToken, authorization),
       });
       return responseWithLease(response, lease);
     } catch {

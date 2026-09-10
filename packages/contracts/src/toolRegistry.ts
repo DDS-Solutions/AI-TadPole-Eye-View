@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CostEstimate } from './ports.js';
+import { type CapabilityScope, CostEstimate } from './ports.js';
 import {
   FlyToLocationInputSchema,
   FlyToLocationOutputSchema,
@@ -201,6 +201,23 @@ export const OPERATOR_TOOLS = {
 } as const satisfies Record<string, OperatorToolDefinition<string, z.ZodTypeAny, z.ZodTypeAny>>;
 
 export type OperatorToolName = keyof typeof OPERATOR_TOOLS;
+
+/** Canonical authorization policy kept beside the shared tool registry. */
+export const OPERATOR_TOOL_REQUIRED_SCOPES = {
+  get_feed_health: ['read.telemetry'],
+  get_budget: ['read.telemetry'],
+  run_diagnostics: ['read.telemetry', 'read.audit'],
+  load_scene: ['write.scenes'],
+  save_scene: ['write.scenes'],
+  tail_logs: ['read.audit'],
+  set_flag: ['write.flags'],
+  fly_to_location: ['operate.cesium'],
+  toggle_layer: ['operate.cesium'],
+  select_entity: ['operate.cesium'],
+  inspect_telemetry: ['read.telemetry'],
+  query_aoi: ['read.telemetry'],
+  set_sim_time: ['operate.cesium'],
+} as const satisfies Record<OperatorToolName, readonly CapabilityScope[]>;
 
 const OPERATOR_TOOL_NAME_SET: ReadonlySet<string> = new Set(Object.keys(OPERATOR_TOOLS));
 

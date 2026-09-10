@@ -1,9 +1,28 @@
+import type { McpAuthorizationContext } from '@gev/contracts/mcp-authorization';
 import { FrozenClock } from '@gev/core';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { type OperatorContext, createOperatorContext } from '../src/context.js';
-import { MCP_HTTP_PROTOCOL_VERSION, createGevMcpHttpHandler } from '../src/httpAdapter.js';
+import {
+  MCP_HTTP_PROTOCOL_VERSION,
+  createGevMcpHttpHandler,
+  toGevMcpAuthInfo,
+} from '../src/httpAdapter.js';
 
 const CLIENT_INFO = { name: 'ai-tadpole-os', version: 'test-build' };
+const RESOURCE = 'http://127.0.0.1:3000/mcp';
+const AUTHORIZATION: McpAuthorizationContext = {
+  actor: 'ai',
+  principal: 'svc:tadpole-test',
+  tenant_id: 'tenant-test',
+  task_ref: 'task-6.3-http-adapter',
+  issuer: 'https://auth.gev.test/',
+  audience: RESOURCE,
+  resource: RESOURCE,
+  scopes: ['read.telemetry', 'read.audit', 'write.scenes', 'write.flags'],
+  issued_at_epoch_seconds: 1_699_999_900,
+  not_before_epoch_seconds: 1_699_999_900,
+  expires_at_epoch_seconds: 1_700_000_100,
+};
 const contexts: OperatorContext[] = [];
 const handlers: Array<ReturnType<typeof createGevMcpHttpHandler>> = [];
 
@@ -17,6 +36,16 @@ function createHandler(responseMode: 'auto' | 'json' | 'sse' = 'auto') {
   const handler = createGevMcpHttpHandler({ context: createContext(), responseMode });
   handlers.push(handler);
   return handler;
+}
+
+function authorizedFetch(
+  handler: ReturnType<typeof createGevMcpHttpHandler>,
+  request: Request,
+  authorization: McpAuthorizationContext = AUTHORIZATION
+) {
+  return handler.fetch(request, {
+    authInfo: toGevMcpAuthInfo('signed-test-token', authorization),
+  });
 }
 
 function modernRequest(
@@ -70,7 +99,10 @@ afterEach(async () => {
 
 describe('modern MCP HTTP SDK adapter', () => {
   it('discovers only the modern protocol and advertises truthful tool capability', async () => {
-    const response = await createHandler().fetch(modernRequest('server/discover', 'discover-1'));
+    const response = await authorizedFetch(
+      createHandler(),
+      modernRequest('server/discover', 'discover-1')
+    );
     const body = await readJson(response);
 
     expect(response.status).toBe(200);
@@ -86,7 +118,7 @@ describe('modern MCP HTTP SDK adapter', () => {
   });
 
   it('lists the registry-projected tools in their canonical order', async () => {
-    const response = await createHandler().fetch(modernRequest('tools/list', 'list-1'));
+    const response = await authorizedFetch(createHandler(), modernRequest('tools/list', 'list-1'));
     const body = await readJson(response);
     const result = body.result as { tools: Array<{ name: string }> };
 
@@ -104,7 +136,8 @@ describe('modern MCP HTTP SDK adapter', () => {
 
   it('calls through the governed executor and returns structured execution evidence', async () => {
     const handler = createHandler('json');
-    const response = await handler.fetch(
+    const response = await authorizedFetch(
+      handler,
       modernRequest(
         'tools/call',
         'call-1',
@@ -136,10 +169,12 @@ describe('modern MCP HTTP SDK adapter', () => {
 
   it('returns SDK protocol errors for unsupported versions and mirrored-header mismatch', async () => {
     const handler = createHandler();
-    const unsupported = await handler.fetch(
+    const unsupported = await authorizedFetch(
+      handler,
       modernRequest('server/discover', 'unsupported-1', {}, { version: '2099-01-01' })
     );
-    const mismatched = await handler.fetch(
+    const mismatched = await authorizedFetch(
+      handler,
       modernRequest('tools/list', 'mismatch-1', {}, { headerMethod: 'server/discover' })
     );
 
@@ -164,7 +199,7 @@ describe('modern MCP HTTP SDK adapter', () => {
     mismatchedVersion.headers.set('mcp-protocol-version', '2099-01-01');
 
     for (const request of [missingMethod, missingName, mismatchedVersion]) {
-      const response = await handler.fetch(request);
+      const response = await authorizedFetch(handler, request);
       expect(response.status).toBe(400);
       expect(await readJson(response)).toMatchObject({ error: { code: -32020 } });
     }
@@ -175,14 +210,14 @@ describe('modern MCP HTTP SDK adapter', () => {
     const wrongType = modernRequest('tools/list', 'type-1');
     wrongType.headers.set('content-type', 'text/plain');
 
-    const typeResponse = await handler.fetch(wrongType);
+    const typeResponse = await authorizedFetch(handler, wrongType);
     expect(typeResponse.status).toBe(415);
   });
 
   it('serves request-scoped SSE without leaking one response into another', async () => {
     const handler = createHandler('sse');
-    const first = await handler.fetch(modernRequest('tools/list', 'sse-1'));
-    const second = await handler.fetch(modernRequest('server/discover', 'sse-2'));
+    const first = await authorizedFetch(handler, modernRequest('tools/list', 'sse-1'));
+    const second = await authorizedFetch(handler, modernRequest('server/discover', 'sse-2'));
 
     expect(first.headers.get('content-type')).toContain('text/event-stream');
     expect(second.headers.get('content-type')).toContain('text/event-stream');
@@ -198,12 +233,102 @@ describe('modern MCP HTTP SDK adapter', () => {
 
   it('closes one request stream without cancelling another and shuts down cleanly', async () => {
     const handler = createHandler('sse');
-    const cancelled = await handler.fetch(modernRequest('tools/list', 'cancel-1'));
-    const retained = await handler.fetch(modernRequest('tools/list', 'retain-1'));
+    const cancelled = await authorizedFetch(handler, modernRequest('tools/list', 'cancel-1'));
+    const retained = await authorizedFetch(handler, modernRequest('tools/list', 'retain-1'));
 
     await cancelled.body?.cancel('client disconnected');
     const retainedMessages = await readSseMessages(retained);
     expect(retainedMessages.some((message) => message.id === 'retain-1')).toBe(true);
     await expect(handler.close()).resolves.toBeUndefined();
+  });
+
+  it('projects per-request scopes and fails closed without validated request authority', async () => {
+    const handler = createHandler('json');
+    const telemetryOnly = {
+      ...AUTHORIZATION,
+      principal: 'svc:telemetry-reader',
+      tenant_id: 'tenant-reader',
+      scopes: ['read.telemetry'] as const,
+    };
+    const authorized = await authorizedFetch(
+      handler,
+      modernRequest('tools/list', 'scoped-list'),
+      telemetryOnly
+    );
+    const unauthorized = await handler.fetch(modernRequest('tools/list', 'unscoped-list'));
+
+    expect(
+      ((await readJson(authorized)).result as { tools: Array<{ name: string }> }).tools.map(
+        (tool) => tool.name
+      )
+    ).toEqual(['get_feed_health', 'get_budget']);
+    expect(await readJson(unauthorized)).toMatchObject({ error: { code: -32601 } });
+  });
+
+  it('keeps concurrent principal, tenant, task, and operation context request-local', async () => {
+    const context = createOperatorContext({ clock: new FrozenClock(1_700_000_000_000) });
+    contexts.push(context);
+    const execute = vi.spyOn(context.toolExecutor, 'execute');
+    const handler = createGevMcpHttpHandler({ context, responseMode: 'json' });
+    handlers.push(handler);
+    const firstOperation = '00000000-0000-4000-8000-000000000063';
+    const secondOperation = '00000000-0000-4000-8000-000000000064';
+    const secondAuthorization: McpAuthorizationContext = {
+      ...AUTHORIZATION,
+      principal: 'svc:audit-reader',
+      tenant_id: 'tenant-audit',
+      task_ref: 'task-6.3-audit-reader',
+      scopes: ['read.audit'],
+    };
+
+    const [first, second] = await Promise.all([
+      authorizedFetch(
+        handler,
+        modernRequest(
+          'tools/call',
+          'identity-1',
+          {
+            name: 'get_budget',
+            arguments: {},
+            _meta: { operation_id: firstOperation },
+          },
+          { name: 'get_budget' }
+        )
+      ),
+      authorizedFetch(
+        handler,
+        modernRequest(
+          'tools/call',
+          'identity-2',
+          {
+            name: 'tail_logs',
+            arguments: { limit: 10 },
+            _meta: { operation_id: secondOperation },
+          },
+          { name: 'tail_logs' }
+        ),
+        secondAuthorization
+      ),
+    ]);
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(execute).toHaveBeenCalledTimes(2);
+    expect(execute.mock.calls.map((call) => call[2])).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          principal: 'svc:tadpole-test',
+          tenant_id: 'tenant-test',
+          task_ref: 'task-6.3-http-adapter',
+          operation_id: firstOperation,
+        }),
+        expect.objectContaining({
+          principal: 'svc:audit-reader',
+          tenant_id: 'tenant-audit',
+          task_ref: 'task-6.3-audit-reader',
+          operation_id: secondOperation,
+        }),
+      ])
+    );
   });
 });

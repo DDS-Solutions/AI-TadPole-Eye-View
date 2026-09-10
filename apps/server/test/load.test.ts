@@ -2,12 +2,8 @@ import { performance } from 'node:perf_hooks';
 import { FrozenClock } from '@gev/core';
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../src/index.js';
-import {
-  MCP_HTTP_HOST,
-  MCP_HTTP_RESOURCE,
-  MCP_TEST_ISSUER,
-  MCP_TEST_SUBJECT,
-} from '../src/routes/mcp.js';
+import { MCP_HTTP_HOST, MCP_HTTP_RESOURCE } from '../src/routes/mcp.js';
+import { issueSignedMcpToken, joseMcpBearerVerifier } from './mcpTestAuth.js';
 
 describe('Server Proxy High-Concurrency Load Verification (PLAN.md §10 Phase 4 & §13)', () => {
   it('serves 100 concurrent requests across proxy endpoints with p95 < 300ms and 0% errors', async () => {
@@ -74,21 +70,16 @@ describe('Server Proxy High-Concurrency Load Verification (PLAN.md §10 Phase 4 
 
   it('serves 100 bounded modern MCP discovery/list requests with p95 < 300ms', async () => {
     const now = 1_700_000_000_000;
-    const authorization = 'Bearer deterministic-load-test-token';
+    const authorization = `Bearer ${await issueSignedMcpToken({
+      taskRef: 'task-6.3-load-test',
+      scopes: ['read.telemetry'],
+    })}`;
     const { app, mcpHttp, governanceContext } = createApp({
       clock: new FrozenClock(now),
       mcpHttpEnabled: true,
       mcpHttpResponseMode: 'json',
       mcpHttpMaxActiveRequests: 16,
-      mcpHttpTestAuthority: {
-        authorization,
-        issuer: MCP_TEST_ISSUER,
-        subject: MCP_TEST_SUBJECT,
-        audience: MCP_HTTP_RESOURCE,
-        scopes: ['read.telemetry'],
-        issuedAtEpochSeconds: now / 1000 - 60,
-        expiresAtEpochSeconds: now / 1000 + 60,
-      },
+      mcpHttpBearerVerifier: joseMcpBearerVerifier(),
     });
     const durations: number[] = [];
     const workerCount = 10;

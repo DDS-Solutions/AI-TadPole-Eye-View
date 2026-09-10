@@ -377,4 +377,39 @@ describe('GovernedToolExecutor unified lifecycle', () => {
     expect(result).toMatchObject({ success: false, code: 'TOOL_UNAVAILABLE' });
     expect(auditSink.entries).toEqual([]);
   });
+
+  it('carries immutable remote identity context through one governed dispatch', async () => {
+    const auditSink = createAuditSink();
+    const executor = createExecutor({ auditSink });
+    const handler = vi.fn((input, context) => ({ ...input, updated: true, context }));
+    executor.register('set_flag', handler);
+    const operationId = '00000000-0000-4000-8000-000000000063';
+
+    const result = await executor.execute(
+      'set_flag',
+      { flag: 'opensky.enabled', enabled: false },
+      {
+        actor: 'ai',
+        principal: 'svc:tadpole-test',
+        tenant_id: 'tenant-test',
+        task_ref: 'task-6.3-test',
+        operation_id: operationId,
+      }
+    );
+
+    expect(result.success).toBe(true);
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(handler.mock.calls[0]?.[1]).toEqual({
+      actor: 'ai',
+      principal: 'svc:tadpole-test',
+      tenant_id: 'tenant-test',
+      task_ref: 'task-6.3-test',
+      operation_id: operationId,
+    });
+    expect(auditSink.entries).toHaveLength(2);
+    expect(auditSink.entries[0]).toMatchObject({
+      actor: 'ai',
+      task_ref: 'task-6.3-test',
+    });
+  });
 });

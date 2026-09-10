@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { OPERATOR_TOOLS, type OperatorToolName, type ToolMetadata } from './toolRegistry.js';
+import type { CapabilityScope } from './ports.js';
+import {
+  OPERATOR_TOOLS,
+  OPERATOR_TOOL_REQUIRED_SCOPES,
+  type OperatorToolName,
+  type ToolMetadata,
+} from './toolRegistry.js';
 
 export interface OpenAIToolDefinition {
   type: 'function';
@@ -62,6 +68,25 @@ export function getMcpToolDefinitions(
       },
     };
   });
+}
+
+/** Returns the canonical registry-ordered tool subset authorized by every required scope. */
+export function getAuthorizedOperatorToolNames(
+  grantedScopes: readonly CapabilityScope[],
+  toolNames?: readonly OperatorToolName[]
+): OperatorToolName[] {
+  const granted = new Set<CapabilityScope>(grantedScopes);
+  return selectToolNames(toolNames).filter((name) =>
+    OPERATOR_TOOL_REQUIRED_SCOPES[name].every((scope) => granted.has(scope))
+  );
+}
+
+export function getMissingOperatorToolScopes(
+  name: OperatorToolName,
+  grantedScopes: readonly CapabilityScope[]
+): CapabilityScope[] {
+  const granted = new Set<CapabilityScope>(grantedScopes);
+  return OPERATOR_TOOL_REQUIRED_SCOPES[name].filter((scope) => !granted.has(scope));
 }
 
 function selectToolNames(toolNames?: readonly OperatorToolName[]): OperatorToolName[] {

@@ -3,6 +3,7 @@ import {
   FlyToLocationInputSchema,
   InspectTelemetryInputSchema,
   OPERATOR_TOOLS,
+  OPERATOR_TOOL_REQUIRED_SCOPES,
   QueryAoiInputSchema,
   RoomIntentStateSchema,
   RoomJoinRequestSchema,
@@ -11,6 +12,7 @@ import {
   SetSimTimeInputSchema,
   ToggleLayerInputSchema,
   UserPresenceSchema,
+  getAuthorizedOperatorToolNames,
   getMcpToolDefinitions,
   getOpenAIToolDefinitions,
 } from '../src/index.js';
@@ -136,6 +138,39 @@ describe('Phase 3 Tool & Collab Contracts (@gev/contracts)', () => {
           is_cacheable: false,
         },
       });
+    });
+
+    it('projects canonical tool visibility from registry-owned required scopes', () => {
+      expect(getAuthorizedOperatorToolNames(['read.telemetry'])).toEqual([
+        'get_feed_health',
+        'get_budget',
+        'inspect_telemetry',
+        'query_aoi',
+      ]);
+      expect(getAuthorizedOperatorToolNames(['read.audit'])).toEqual(['tail_logs']);
+      expect(getAuthorizedOperatorToolNames(['read.telemetry', 'read.audit'])).toEqual([
+        'get_feed_health',
+        'get_budget',
+        'run_diagnostics',
+        'tail_logs',
+        'inspect_telemetry',
+        'query_aoi',
+      ]);
+      expect(getAuthorizedOperatorToolNames(['agent.voice'])).toEqual([]);
+      expect(
+        getAuthorizedOperatorToolNames(
+          ['read.telemetry', 'write.flags'],
+          ['set_flag', 'run_diagnostics', 'get_budget']
+        )
+      ).toEqual(['set_flag', 'get_budget']);
+
+      expect(OPERATOR_TOOL_REQUIRED_SCOPES.run_diagnostics).toEqual([
+        'read.telemetry',
+        'read.audit',
+      ]);
+      expect(OPERATOR_TOOL_REQUIRED_SCOPES.load_scene).toEqual(['write.scenes']);
+      expect(OPERATOR_TOOL_REQUIRED_SCOPES.set_flag).toEqual(['write.flags']);
+      expect(OPERATOR_TOOL_REQUIRED_SCOPES.fly_to_location).toEqual(['operate.cesium']);
     });
   });
 

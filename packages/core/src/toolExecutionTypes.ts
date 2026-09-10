@@ -5,6 +5,7 @@ export const MICRO_USD_PER_USD = 1_000_000;
 
 export interface ToolExecutionContext {
   actor?: 'ai' | 'human' | 'system';
+  principal?: string;
   task_ref?: string;
   tenant_id?: string | null;
   operation_id?: string;

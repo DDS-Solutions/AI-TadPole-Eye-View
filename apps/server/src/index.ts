@@ -68,7 +68,6 @@ import { attachWebSocketCollabServer } from './websocketCollab.js';
 
 export { attachWebSocketCollabServer } from './websocketCollab.js';
 export type { CreateAppOptions } from './appOptions.js';
-export type { McpHttpTestAuthority } from './routes/mcp.js';
 
 export const SATELLITE_REQUESTS_PER_MINUTE = 60;
 
