@@ -1,8 +1,8 @@
 # ADR 0032: Incremental official MCP SDK adoption with preserved stdio compatibility
 
-- **Status:** Accepted; OQ-1 policy and Tadpole client-evidence gate satisfied; Task 6.2 authorized
+- **Status:** Accepted; OQ-1/Tadpole gate satisfied; Task 6.2 implemented and default-off
 - **Date:** 2026-09-08
-- **Task:** PLAN.md 6.1
+- **Task:** PLAN.md 6.1–6.2
 - **Extends:** [ADR 0017](./0017-mcp-server-and-cli-architecture.md),
   [ADR 0020](./0020-server-proxies-and-cost-governor-architecture.md),
   [ADR 0027](./0027-shared-tool-registry-contracts-and-governed-actuators-architecture.md),
@@ -10,10 +10,10 @@
 
 ## Context
 
-GEV has a working hand-written MCP server over newline-delimited stdio, but no HTTP MCP
-transport and no official MCP SDK dependency. Phase 6 needs a standards-compliant remote endpoint
-without changing the local AI-Tadpole integration, duplicating the tool registry or governance
-lifecycle, or adopting a protocol revision from memory.
+At the task 6.1 decision point, GEV had a working hand-written MCP server over newline-delimited
+stdio, but no HTTP MCP transport and no official MCP SDK dependency. Phase 6 needed a
+standards-compliant remote endpoint without changing the local AI-Tadpole integration, duplicating
+the tool registry or governance lifecycle, or adopting a protocol revision from memory.
 
 The protocol changed materially after PLAN.md was written. The current stable revision,
 `2026-07-28`, removes the initialization handshake, protocol sessions, the HTTP GET stream,
@@ -181,7 +181,7 @@ installed and no manifest or lockfile changed in task 6.1.
 |---|---:|---:|---|
 | Current GEV ↔ current Tadpole local stdio | `2024-11-05` | `2024-11-05` | Preserve byte- and behavior-compatible hand-written GEV stdio through Phase 6. Tadpole implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0` probes modern discovery and uses legacy initialization only after a preserved `-32601`; 6.5 must freeze the joint transcript. |
 | New GEV HTTP endpoint | `2026-07-28` | `2026-07-28` | Modern-only. Use `createMcpHandler(..., { legacy: 'reject' })`; reject unsupported versions with the specified supported-version error. Do not silently fall back. |
-| Current Tadpole ↔ new GEV HTTP endpoint | `2026-07-28` | `2026-07-28` | Tadpole implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0` proves the matching request shape and fail-closed negotiation against deterministic mock servers. Joint runtime support remains Task 6.2/6.5 exit evidence because GEV has no endpoint yet. GEV will not serve legacy HTTP. |
+| Current Tadpole ↔ new GEV HTTP endpoint | `2026-07-28` | `2026-07-28` | Tadpole implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0` proves the matching request shape and fail-closed negotiation against deterministic mock servers. GEV implementation `115586a` supplies the matching endpoint; joint live/runtime conformance remains task 6.5 evidence. GEV does not serve legacy HTTP. |
 
 GEV will not add the deprecated `2024-11-05` HTTP+SSE transport. GEV will not add the stateful
 `2025-11-25` Streamable HTTP era merely to satisfy stale session/GET/replay wording. Supporting a
@@ -190,7 +190,7 @@ reintroduces session ownership, GET/DELETE, resume tokens, and more cross-client
 
 ### Dependency and ownership boundary
 
-After OQ-1 is resolved, task 6.2 may add only these exact runtime dependencies:
+Task 6.2 added only these exact external runtime dependencies:
 
 - `@modelcontextprotocol/server@2.0.0` to `packages/ops-mcp/package.json`;
 - `@modelcontextprotocol/hono@2.0.0` to `apps/server/package.json`.
@@ -232,9 +232,9 @@ paths.
    authority, scope, and ownership profile plus Tadpole client-fix
    implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0` and evidence
    `2dcde21f537cde6885950c5091078e83a2d1bd3c`.
-3. **6.2:** add the two exact dependencies, one isolated modern HTTP adapter, explicit feature
-   kill-switch defaulting off, request/stream limits, Origin/Host guards, and protocol tests. Keep
-   the stdio entry and CLI imports untouched.
+3. **6.2 (complete at `115586a`):** added the two exact dependencies, one isolated modern HTTP
+   adapter, explicit feature kill-switch defaulting off, request/stream limits, Origin/Host guards,
+   and protocol tests. The stdio implementation and its wire behavior remain unchanged.
 4. **6.3:** add authenticated principal/capability context and route every call through the shared
    executor and existing scene confinement. Production remains fail-closed.
 5. **6.4:** make schemas, annotations, result metadata, and capabilities truthful; notifications
@@ -309,9 +309,49 @@ fallback-policy, and ownership decisions without inventing production identity o
   evidence remains a Phase 6 conformance obligation once the GEV endpoint exists.
 
 The developer conditionally authorized the embedded Task 6.2 four-pillar brief once this decision
-and the required Tadpole client-fix evidence were recorded. Both conditions are now satisfied, so
-that authorization is effective as of 2026-09-09. Task 6.2 remains unchecked until implementation
-and exit evidence are complete; the HTTP kill switch remains off throughout Task 6.2.
+and the required Tadpole client-fix evidence were recorded. Both conditions were satisfied, so
+that authorization became effective on 2026-09-09. Task 6.2 implementation `115586a` now satisfies
+its own exit gate; the HTTP kill switch remains default-off and production remains fail-closed
+pending task 6.3.
+
+## Task 6.2 implementation evidence
+
+Implementation commit `115586a` adds a single isolated SDK-backed HTTP face without replacing the
+existing stdio implementation:
+
+- `@modelcontextprotocol/server@2.0.0` is direct only in `@gev/ops-mcp`, and
+  `@modelcontextprotocol/hono@2.0.0` is direct only in `@gev/server`. The lock resolves
+  `@modelcontextprotocol/core@2.0.0` and Zod `4.6.0` transitively; GEV's Zod `3.25.76` contracts
+  remain authoritative. The adapter is exported only through the explicit `@gev/ops-mcp/http`
+  subpath; no direct MCP SDK declaration/import enters the web, contracts, core, governance,
+  provider, or CLI packages, and the root stdio/CLI entry does not load the HTTP adapter.
+- Installed package files measure 6,299,914 bytes for server, 1,313,025 bytes for core, 48,917
+  bytes for Hono, and 6,090,747 bytes for Zod 4.6.0: 13,752,603 bytes (13.12 MiB) total before pnpm
+  store metadata. All four packages declare MIT. `pnpm audit --prod` reported no known
+  vulnerabilities on 2026-09-09.
+- The one exact `POST /mcp` route accepts only modern `2026-07-28`; `legacy: 'reject'` owns protocol
+  era rejection. It validates empty-Origin policy, exact Host, bounded headers/body/concurrency,
+  required mirrored headers and Accept values before SDK body dispatch; rejects legacy session and
+  replay headers; isolates JSON/SSE responses; propagates stream cancellation; and aborts active
+  work on idempotent shutdown. GET/DELETE return 405 with `Allow: POST`, and `/mcp/sse` is absent.
+- `GEV_MCP_HTTP_ENABLED` defaults off. Only an injected non-production authority can reach the
+  handler in task 6.2, and production deliberately ignores that authority and returns 503. The SDK
+  callback registers the existing registry projection and invokes the shared governed executor;
+  its verified call writes exactly one audit intent/outcome pair.
+- Five fresh-process cold-start samples measured medians of 956.76 ms with the route disabled and
+  974.56 ms enabled, a 17.80 ms observed route-construction impact on the benchmark host. The web
+  build remains byte-identical to the recorded pre-6.2 baseline: the same entry and vendor hashes,
+  105.78 KiB gzip app entry, and 1,247.15 KiB gzip total, so browser bundle delta is zero.
+- The final focused server suite passes 126/126 and the MCP adapter suite passes 8/8 within the
+  full 458-test unit gate. The final focused benchmark serves 100 MCP discovery/list requests at
+  78.19 ms p95 under 300 ms with peak active work 10 under the configured cap of 16. The complete
+  performance gate, strict typecheck, production build, lint, architecture, bundle, lockfile, and
+  diff checks pass. Existing stdio coverage remains green at 14/14, including its golden wire
+  behavior and stdout hygiene.
+
+Task 6.2 does not claim the task 6.5 joint Tadpole-to-GEV live smoke or official inspector suite,
+and does not claim task 6.3 production authentication, tenant, or capability enforcement. Those
+remain fail-closed obligations at their assigned gates.
 
 ## Consequences
 
