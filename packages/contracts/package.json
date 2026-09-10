@@ -12,6 +12,10 @@
     "./mcp-authorization": {
       "types": "./dist/mcpAuthorization.d.ts",
       "import": "./dist/mcpAuthorization.js"
+    },
+    "./mcp-presentation": {
+      "types": "./dist/mcpPresentation.d.ts",
+      "import": "./dist/mcpPresentation.js"
     }
   },
   "scripts": {

@@ -1,4 +1,9 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { OPERATOR_TOOLS, type OperatorToolName } from '@gev/contracts';
 import type { McpAuthorizationContext } from '@gev/contracts/mcp-authorization';
+import { getMcpHttpToolDefinitions } from '@gev/contracts/mcp-presentation';
 import { FrozenClock } from '@gev/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { type OperatorContext, createOperatorContext } from '../src/context.js';
@@ -7,6 +12,7 @@ import {
   createGevMcpHttpHandler,
   toGevMcpAuthInfo,
 } from '../src/httpAdapter.js';
+import { MCP_OPERATOR_TOOL_NAMES } from '../src/tools.js';
 
 const CLIENT_INFO = { name: 'ai-tadpole-os', version: 'test-build' };
 const RESOURCE = 'http://127.0.0.1:3000/mcp';
@@ -25,9 +31,13 @@ const AUTHORIZATION: McpAuthorizationContext = {
 };
 const contexts: OperatorContext[] = [];
 const handlers: Array<ReturnType<typeof createGevMcpHttpHandler>> = [];
+const temporaryPaths: string[] = [];
 
-function createContext(): OperatorContext {
-  const context = createOperatorContext({ clock: new FrozenClock(1_700_000_000_000) });
+function createContext(customContext: Partial<OperatorContext> = {}): OperatorContext {
+  const context = createOperatorContext({
+    clock: new FrozenClock(1_700_000_000_000),
+    ...customContext,
+  });
   contexts.push(context);
   return context;
 }
@@ -95,6 +105,11 @@ async function readSseMessages(response: Response): Promise<Array<Record<string,
 afterEach(async () => {
   await Promise.all(handlers.splice(0).map((handler) => handler.close()));
   while (contexts.length > 0) contexts.pop()?.governanceContext.close();
+  await Promise.all(
+    temporaryPaths
+      .splice(0)
+      .map((temporaryPath) => fs.promises.rm(temporaryPath, { recursive: true, force: true }))
+  );
 });
 
 describe('modern MCP HTTP SDK adapter', () => {
@@ -112,15 +127,18 @@ describe('modern MCP HTTP SDK adapter', () => {
       result: {
         resultType: 'complete',
         supportedVersions: [MCP_HTTP_PROTOCOL_VERSION],
-        capabilities: { tools: {} },
+        capabilities: { tools: { listChanged: false } },
       },
     });
+    const capabilities = (body.result as { capabilities: Record<string, unknown> }).capabilities;
+    expect(Object.keys(capabilities)).toEqual(['tools']);
+    expect(capabilities.tools).toEqual({ listChanged: false });
   });
 
-  it('lists the registry-projected tools in their canonical order', async () => {
+  it('lists exact registry schemas and annotations in canonical order', async () => {
     const response = await authorizedFetch(createHandler(), modernRequest('tools/list', 'list-1'));
     const body = await readJson(response);
-    const result = body.result as { tools: Array<{ name: string }> };
+    const result = body.result as { tools: Array<Record<string, unknown> & { name: string }> };
 
     expect(response.status).toBe(200);
     expect(result.tools.map((tool) => tool.name)).toEqual([
@@ -132,6 +150,85 @@ describe('modern MCP HTTP SDK adapter', () => {
       'tail_logs',
       'set_flag',
     ]);
+    expect(result.tools).toEqual(getMcpHttpToolDefinitions(MCP_OPERATOR_TOOL_NAMES));
+  });
+
+  it('returns schema-valid structured content and equivalent JSON text for every HTTP tool', async () => {
+    const sceneRoot = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'gev-task-6-4-scenes-'));
+    temporaryPaths.push(sceneRoot);
+    const context = createContext({ sceneRoot });
+    const handler = createGevMcpHttpHandler({ context, responseMode: 'json' });
+    handlers.push(handler);
+    const calls: Array<[OperatorToolName, Record<string, unknown>]> = [
+      ['get_feed_health', {}],
+      ['get_budget', {}],
+      ['run_diagnostics', { scope: 'memory' }],
+      ['load_scene', { scene_json: JSON.stringify(context.sceneState) }],
+      ['save_scene', { save_path: 'task-6-4-scene.json' }],
+      ['tail_logs', { limit: 50 }],
+      ['set_flag', { flag: 'opensky.enabled', enabled: false }],
+    ];
+
+    for (const [index, [name, args]] of calls.entries()) {
+      const response = await authorizedFetch(
+        handler,
+        modernRequest(
+          'tools/call',
+          `structured-${name}`,
+          {
+            name,
+            arguments: args,
+            _meta: {
+              operation_id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+            },
+          },
+          { name }
+        )
+      );
+      const body = await readJson(response);
+      const result = body.result as {
+        content: Array<{ type: string; text?: string }>;
+        structuredContent?: unknown;
+        isError?: boolean;
+        _meta?: Record<string, unknown>;
+      };
+      const text = result.content.find((item) => item.type === 'text')?.text;
+
+      expect(response.status, name).toBe(200);
+      expect(result.isError, name).not.toBe(true);
+      expect(OPERATOR_TOOLS[name].outputSchema.safeParse(result.structuredContent).success).toBe(
+        true
+      );
+      expect(text, name).toBeDefined();
+      expect(JSON.parse(text as string), name).toEqual(result.structuredContent);
+      expect(result._meta, name).toMatchObject({ execution: { status: 'ok' } });
+      expect(result, name).not.toHaveProperty('execution');
+    }
+  });
+
+  it('fails closed before presenting invalid handler output as structured content', async () => {
+    const context = createContext();
+    context.toolExecutor.register('get_budget', async () => ({ invalid: true }) as never);
+    const handler = createGevMcpHttpHandler({ context, responseMode: 'json' });
+    handlers.push(handler);
+    const response = await authorizedFetch(
+      handler,
+      modernRequest(
+        'tools/call',
+        'invalid-output',
+        { name: 'get_budget', arguments: {} },
+        { name: 'get_budget' }
+      )
+    );
+    const body = await readJson(response);
+    const result = body.result as Record<string, unknown>;
+
+    expect(response.status).toBe(200);
+    expect(result).toMatchObject({
+      isError: true,
+      _meta: { execution: { status: 'error', code: 'OUTPUT_VALIDATION_FAILED' } },
+    });
+    expect(result).not.toHaveProperty('structuredContent');
   });
 
   it('calls through the governed executor and returns structured execution evidence', async () => {
@@ -229,6 +326,11 @@ describe('modern MCP HTTP SDK adapter', () => {
     expect(firstMessages.some((message) => message.id === 'sse-2')).toBe(false);
     expect(secondMessages.some((message) => message.id === 'sse-2')).toBe(true);
     expect(secondMessages.some((message) => message.id === 'sse-1')).toBe(false);
+    expect(
+      [...firstMessages, ...secondMessages].some(
+        (message) => message.method === 'notifications/tools/list_changed'
+      )
+    ).toBe(false);
   });
 
   it('closes one request stream without cancelling another and shuts down cleanly', async () => {

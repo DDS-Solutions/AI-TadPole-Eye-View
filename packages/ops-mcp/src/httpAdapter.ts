@@ -1,8 +1,9 @@
-import { getAuthorizedOperatorToolNames, getMcpToolDefinitions } from '@gev/contracts';
+import { getAuthorizedOperatorToolNames } from '@gev/contracts';
 import {
   type McpAuthorizationContext,
   McpAuthorizationContextSchema,
 } from '@gev/contracts/mcp-authorization';
+import { getMcpHttpToolDefinitions } from '@gev/contracts/mcp-presentation';
 import type { ToolExecutionResult } from '@gev/core';
 import {
   type AuthInfo,
@@ -142,12 +143,15 @@ function toCallToolResult(execution: ToolExecutionResult): CallToolResult {
 export function createGevMcpHttpHandler(options: GevMcpHttpHandlerOptions): McpHttpHandler {
   return createMcpHandler(
     (requestContext) => {
-      const server = new McpServer({ name: '@gev/ops-mcp', version: '0.1.0' });
       const authorization = readAuthorizationContext(requestContext.authInfo);
+      const server = new McpServer(
+        { name: '@gev/ops-mcp', version: '0.1.0' },
+        authorization ? { capabilities: { tools: { listChanged: false } } } : undefined
+      );
       const authorizedToolNames = authorization
         ? getAuthorizedOperatorToolNames(authorization.scopes, MCP_OPERATOR_TOOL_NAMES)
         : [];
-      const definitions = getMcpToolDefinitions(authorizedToolNames);
+      const definitions = getMcpHttpToolDefinitions(authorizedToolNames);
 
       for (const definition of definitions) {
         const inputSchema = fromJsonSchema<Record<string, unknown>>(
@@ -163,6 +167,7 @@ export function createGevMcpHttpHandler(options: GevMcpHttpHandlerOptions): McpH
             description: definition.description,
             inputSchema,
             outputSchema,
+            annotations: definition.annotations,
           },
           async (args, requestContext) => {
             const execution = await executeOperatorTool(options.context, definition.name, args, {

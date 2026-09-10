@@ -237,18 +237,39 @@ describe('local modern MCP HTTP route', () => {
 
     expect(discovery.status).toBe(200);
     expect(await json(discovery)).toMatchObject({
-      result: { supportedVersions: ['2026-07-28'] },
+      result: {
+        supportedVersions: ['2026-07-28'],
+        capabilities: { tools: { listChanged: false } },
+      },
     });
     expect(list.status).toBe(200);
-    expect((await json(list)).result).toMatchObject({ tools: expect.any(Array) });
+    const listedTools = ((await json(list)).result as { tools: Array<Record<string, unknown>> })
+      .tools;
+    expect(listedTools).toHaveLength(7);
+    expect(listedTools.find((tool) => tool.name === 'get_budget')).toMatchObject({
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+      inputSchema: { type: 'object' },
+      outputSchema: { type: 'object' },
+    });
     expect(call.status).toBe(200);
-    expect(await json(call)).toMatchObject({
+    const callBody = await json(call);
+    expect(callBody).toMatchObject({
       result: {
         resultType: 'complete',
         structuredContent: { stasis_active: false },
         _meta: { execution: { status: 'ok' } },
       },
     });
+    const callResult = callBody.result as {
+      content: Array<{ type: string; text?: string }>;
+      structuredContent: unknown;
+    };
+    expect(JSON.parse(callResult.content[0]?.text ?? '{}')).toEqual(callResult.structuredContent);
     expect(auditSink.tail({ limit: 10 }).map((entry) => entry.kind)).toEqual([
       'audit.intent',
       'audit.outcome',

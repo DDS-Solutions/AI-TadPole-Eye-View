@@ -17,7 +17,7 @@ export interface OpenAIToolDefinition {
 }
 
 export interface McpToolDefinition {
-  name: string;
+  name: OperatorToolName;
   description: string;
   inputSchema: Record<string, unknown>;
   outputSchema: Record<string, unknown>;
