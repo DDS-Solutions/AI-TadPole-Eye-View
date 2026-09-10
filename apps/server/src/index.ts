@@ -32,6 +32,7 @@ import { getConnInfo } from '@hono/node-server/conninfo';
 import { type Context, Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { CreateAppOptions } from './appOptions.js';
+import { bindMcpHttpShutdown, mountMcpHttpRuntime } from './mcpRuntime.js';
 import { CostGovernor, DEFAULT_PROVIDER_TIERS } from './middleware/costGovernor.js';
 import {
   InMemoryRateLimiter,
@@ -67,6 +68,7 @@ import { attachWebSocketCollabServer } from './websocketCollab.js';
 
 export { attachWebSocketCollabServer } from './websocketCollab.js';
 export type { CreateAppOptions } from './appOptions.js';
+export type { McpHttpTestAuthority } from './routes/mcp.js';
 
 export const SATELLITE_REQUESTS_PER_MINUTE = 60;
 
@@ -196,6 +198,13 @@ export function createApp(options: CreateAppOptions = {}) {
       );
       return { flag: input.flag, enabled: true, updated: false };
     }
+  });
+
+  const mcpHttp = mountMcpHttpRuntime(app, options, {
+    clock,
+    governanceContext,
+    openSkyAdapter,
+    providerRegistry,
   });
 
   app.use(
@@ -459,6 +468,7 @@ export function createApp(options: CreateAppOptions = {}) {
       return providerRegistry;
     },
     governanceContext,
+    mcpHttp,
     adapters: {
       openSky: openSkyAdapter,
       ais: aisAdapter,
@@ -474,7 +484,7 @@ export function createApp(options: CreateAppOptions = {}) {
 }
 
 if (process.env.NODE_ENV !== 'test') {
-  const { app, collabRoomManager, rateLimiter } = createApp({
+  const { app, collabRoomManager, rateLimiter, mcpHttp } = createApp({
     clock: resolveServerClockFromEnvironment(),
   });
   const port = Number(process.env.PORT) || 3000;
@@ -486,4 +496,5 @@ if (process.env.NODE_ENV !== 'test') {
   });
 
   attachWebSocketCollabServer(server, collabRoomManager, rateLimiter);
+  bindMcpHttpShutdown(mcpHttp, server);
 }

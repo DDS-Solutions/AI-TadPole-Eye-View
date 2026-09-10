@@ -16,9 +16,11 @@
     "@gev/contracts": "workspace:*",
     "@gev/core": "workspace:*",
     "@gev/governance": "workspace:*",
+    "@gev/ops-mcp": "workspace:*",
     "@gev/providers": "workspace:*",
     "@gev/security": "workspace:*",
     "@hono/node-server": "^1.13.8",
+    "@modelcontextprotocol/hono": "2.0.0",
     "hono": "^4.7.2",
     "jose": "^6.2.10",
     "ws": "^8.21.3"

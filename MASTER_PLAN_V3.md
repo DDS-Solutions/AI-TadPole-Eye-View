@@ -2,8 +2,8 @@
 
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
-**Verified against repository:** 2026-09-08
-**Status:** IN PROGRESS — Phase 6; task 6.2 is blocked on remaining OQ-1 integration facts
+**Verified against repository:** 2026-09-09
+**Status:** IN PROGRESS — Phase 6; task 6.2 complete; task 6.3 awaits authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,11 +20,13 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=6
-NEXT_TASK=6.2
+NEXT_TASK=6.3
 NEXT_TASK_STATUS=BLOCKED
-LAST_VERIFIED_UTC=2026-09-08
+OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
+TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
+LAST_VERIFIED_UTC=2026-09-09
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
-IMPLEMENTATION_STARTED=YES
+IMPLEMENTATION_STARTED=NO
 ```
 
 The value of `NEXT_TASK` must always equal the first unchecked task in §10. A task may be checked only after its exit evidence is recorded in §17 and both plan files are synchronized.
@@ -306,13 +308,13 @@ M4 may not rely on an auto-generated production signing key, `approve_all`, an i
 
 ### 7.1 MCP transport target
 
-As reverified on 2026-09-08 and decided by ADR 0032, the current stable protocol is
-`2026-07-28`. GEV currently implements only local `2024-11-05` stdio. AI-Tadpole-OS head
-`5afe7ed` now implements both a hand-written modern `2026-07-28` HTTP client and a stdio client
-that probes modern discovery before falling back to the `2024-11-05` handshake. This establishes
-the intended dual-transport source boundary, but not joint HTTP compatibility: GEV has no HTTP
-endpoint yet, and the Tadpole client's fail-closed negotiation and cross-transport fallback still
-require correction and end-to-end evidence.
+As reverified on 2026-09-09 and decided by ADR 0032, the current stable protocol is
+`2026-07-28`. GEV currently implements only local `2024-11-05` stdio. The published Tadpole
+implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0` implements the exact modern HTTP-first and
+legacy-stdio-fallback profile, and evidence commit `2dcde21f537cde6885950c5091078e83a2d1bd3c`
+proves its fail-closed negotiation and no-replay behavior against deterministic mock servers.
+This establishes the intended dual-transport client boundary, but not joint runtime compatibility:
+GEV still has no HTTP endpoint, so the live cross-repository smoke remains Task 6.2/6.5 evidence.
 
 - Preserve byte- and behavior-compatible `2024-11-05` stdio for local operators and Tadpole
   fallback. HTTP 401/403/5xx, authentication, authorization, STASIS, approval, budget, or other
@@ -407,7 +409,7 @@ Economic results are decision-support signals, not guarantees, appraisals, legal
 
 | ID | Decision | Must be answered before |
 |---|---|---|
-| OQ-1 | **PARTIALLY RESOLVED by ADR 0032 and Tadpole revision `5afe7ed`:** AI-Tadpole-OS now contains `2026-07-28` HTTP and modern-probe/`2024-11-05` stdio clients. Still required: deployment scheme/Host/Origin allowlist, canonical MCP resource URI, auth issuer/audience/scopes, exact HTTP-to-stdio trigger/configuration, fail-closed negotiation corrections, and cross-repository owners/evidence. | Task 6.2 |
+| OQ-1 | **RESOLVED by ADR 0032; CLIENT-EVIDENCE GATE SATISFIED:** local-only `2026-07-28` HTTP at `127.0.0.1:3000/mcp`, empty Origin allowlist, exact resource/audience, injected test issuer, existing capability scopes, explicit fail-closed stdio fallback, and role owners are accepted. Published Tadpole implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0` and evidence `2dcde21f537cde6885950c5091078e83a2d1bd3c` make the developer's Task 6.2 authorization effective. | Task 6.2 |
 | OQ-2 | **RESOLVED by ADR 0042:** M2 signed-approval format, signer/key trust and lifecycle, durable nonce replay protection, and time profile | Task 5.1.3 |
 | OQ-3 | **RESOLVED by ADR 0043:** M3 ledger reservation, settlement, refund, idempotency, ambiguity, reconciliation, and outage policy | Task 5.1.4 |
 | OQ-4 | Production identity provider, tenant model, roles, retention, export, and deletion requirements | Phase 7 |
@@ -416,6 +418,34 @@ Economic results are decision-support signals, not guarantees, appraisals, legal
 | OQ-7 | **RESOLVED by ADR 0034:** CelesTrak standard GP JSON/OMM, synthetic fixture, derived-display-only redistribution, two-hour cache/rate policy, terms-locked production, and GEV platform-administrator kill switch | Task 5.2.3 |
 
 Unanswered questions do not block earlier independent safety work.
+
+### 9.3 Accepted OQ-1 Phase 6 profile
+
+- Bind only `127.0.0.1:3000`; serve modern-only `POST /mcp`; keep
+  `GEV_MCP_HTTP_ENABLED=0` by default. The exact Host allowlist is `127.0.0.1:3000`.
+  The Origin allowlist is empty: absent is allowed for the non-browser Tadpole client and every
+  present Origin is rejected. Remote deployment remains prohibited until authenticated and
+  conformant Phase 6 evidence exists; any later remote endpoint requires HTTPS and a separately
+  approved hostname.
+- The canonical resource and token audience are `http://127.0.0.1:3000/mcp`. Task 6.2 may use only
+  injected non-production authority `https://auth.gev.test/` with subject `svc:tadpole-test`.
+  Production issuer remains unset and fail-closed; the existing bearer compatibility token is not
+  treated as issuer/audience/scope-aware MCP authorization.
+- Use existing capability scopes directly: `read.telemetry` for telemetry/budget/AOI reads,
+  `read.audit` for audit reads, both for diagnostics, `write.scenes` for scene load/save,
+  `write.flags` for feature flags, and `operate.cesium` for globe operations. `agent.voice` grants
+  no MCP operator tool. All mutations still traverse shared governance.
+- Tadpole explicitly configures primary HTTP `http://127.0.0.1:3000/mcp`, fallback
+  `pnpm --filter @gev/ops-mcp start`, and mode `prefer_http`. Fallback is allowed only before any
+  tool dispatch on connection-refused/host-unreachable transport failure or a recognized `-32022`
+  proving no modern intersection. Any HTTP response, governed denial, TLS failure, malformed data,
+  cancellation, or ambiguous execution fails closed; legacy initialization is never sent to
+  modern `/mcp`.
+- The AI-Tadpole-OS Rust/MCP maintainer owns client corrections, the GEV Phase 6 implementer owns
+  the endpoint, and the joint DDS-Solutions integration owner owns cross-repository evidence.
+  Published Tadpole implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0` and evidence
+  `2dcde21f537cde6885950c5091078e83a2d1bd3c` satisfy the pre-implementation gate; actual
+  cross-repository conformance remains a Phase 6 obligation.
 
 ---
 
@@ -1417,14 +1447,15 @@ the write/read expansion. After three genuine bounded projection or rendering ap
 record LOGIC_BLOCKER with exact evidence and two or three bounded alternatives.
 ```
 
-#### Blocked ready-to-authorize 4-Pillar brief for NEXT_TASK 6.2
+#### Authorized 4-Pillar brief for completed task 6.2
 
-Do not authorize or begin this brief until OQ-1 supplies the deployment scheme/Host/Origin
-allowlist, canonical MCP resource URI, auth issuer/audience/scopes, exact HTTP-to-stdio fallback
-trigger/configuration, and owners/evidence for correcting and testing the AI-Tadpole-OS client at
-revision `5afe7ed`. The developer has already selected and Tadpole now represents the transport
-direction in source: prefer modern `2026-07-28` HTTP and retain `2024-11-05` stdio as the
-fail-closed fallback.
+The developer accepted the local-only OQ-1 policy in §9.3 and conditionally authorized this exact
+brief on 2026-09-08. Published Tadpole implementation
+`329d32d6d3940ff4564d94c1797f540065dbc6a0`, descending from the corrected audited base
+`f3b53231bd1928b737e65cdbd210907d534246b6`, and evidence commit
+`2dcde21f537cde6885950c5091078e83a2d1bd3c` now prove the required fail-closed negotiation and
+explicit dual-transport behavior. The authorization is therefore effective as of 2026-09-09;
+implementation must remain within the unchanged brief below.
 
 ```text
 [SCOPE_CONTRACT] Install only `@modelcontextprotocol/server@2.0.0` in packages/ops-mcp and
@@ -1483,10 +1514,74 @@ After three genuine approaches fail, record LOGIC_BLOCKER rather than adding an 
 dependency or handwritten protocol bypass.
 ```
 
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 6.3
+
+```text
+[SCOPE_CONTRACT] Replace task 6.2's exact-token test authority with one injected,
+transport-independent MCP bearer-verifier boundary that returns a validated principal, bounded
+tenant ID, exact audience/resource, and CapabilityScope set. Use the already-installed `jose`
+only in deterministic tests of signed issuer/audience/expiry/not-before/signature behavior; do not
+add a dependency or invent a production identity provider. Add registry-owned required-scope
+metadata from the accepted OQ-1 mapping and derive each request's visible subset from the
+intersection of authenticated scopes and the seven implemented MCP handlers. `run_diagnostics`
+requires both `read.telemetry` and `read.audit`. Pass authenticated AI actor, task reference,
+tenant ID, and stable operation ID through the shared GovernedToolExecutor exactly once. Apply
+the same authority to discovery/list/call; preserve the existing scene-root canonicalization,
+root-level `.json` naming, 1 MiB cap, symlink denial, and atomic writes for remote scene calls.
+In scope: the narrow contracts tool-policy metadata/projection, ops-mcp request context/execution
+adapter, server MCP verifier/middleware/composition, focused contract/core/MCP/server/path/audit
+tests, ADR 0032 evidence correction, and synchronized plans. Out of scope: changing stdio trust or
+wire behavior; implementing the six registry tools without MCP handlers; SDK-local tool truth;
+task 6.4 annotations/output/capability/notification changes; task 6.5 Tadpole/inspector
+conformance; a production issuer/JWKS/introspection endpoint; Phase 7 OQ-4 human identity, roles,
+tenant persistence/ownership, or business data; remote enablement; provider/UI/economic work; and
+later tasks.
+
+[PERFORMANCE_THRESHOLD] Table-driven tests prove valid signed test claims and reject missing,
+malformed, query-string, invalid-signature, wrong-issuer, wrong-audience/resource, future,
+expired, unknown-scope, and overlong principal/tenant tokens before SDK body dispatch with no
+audit action. Invalid authentication returns 401 plus a standards-correct WWW-Authenticate
+challenge; authenticated insufficient scope fails 403 without fallback or audit intent.
+Discovery/list expose only authorized implemented tools in canonical registry order; direct calls
+to hidden tools fail closed. Every allowed call carries the authenticated principal/tenant and
+stable operation ID into exactly one audit intent/outcome and, where applicable, one reservation/
+approval/settlement lifecycle. Cross-principal and cross-tenant concurrent requests never share
+tool visibility, state, messages, or identity. Existing 16 scene-confinement cases pass through
+HTTP as well as direct/stdio use. One hundred authenticated discovery/list requests stay below
+300 ms p95 and the configured active-work cap. Root lint; full typecheck/unit/performance/build;
+focused auth/MCP/path tests; seed network denial; ADG/tests; architecture drift; bundle budgets;
+git diff; dependency inventory; and synchronized-plan checks pass with zero new dependency and
+zero browser-bundle delta.
+
+[ARCHITECTURE_MODE] PLAN.md §2 rules 1–3, 7–12, and 14–15; §3
+contracts/core/governance/MCP/security boundaries; §5–§7; §8.1–§8.3; the accepted OQ-1 profile;
+ADRs 0017, 0020, 0027, 0032, and 0041–0044; and the official `2026-07-28` authorization,
+transport, and tools specifications. Authentication runs before body parsing and SDK dispatch.
+The verifier is an injected resource-server port: it returns data, never handler authority, and
+production stays fail-closed while no approved issuer is configured. Required scopes live beside
+the shared registry metadata and deterministically project visibility; the SDK never owns policy.
+Per-request auth context is immutable and never keyed to a connection. GovernedToolExecutor
+remains the only execution lifecycle, and filesystem authorization remains beneath the existing
+scene root. This task propagates a bounded Phase 6 service tenant only; it does not decide OQ-4 or
+create Phase 7 tenant persistence.
+
+[FAILURE_MODES] Do not reuse `GEV_OPS_TOKEN` as issuer-aware MCP authorization; accept unsigned
+or algorithm-confused tokens; fetch caller-selected JWKS/introspection URLs; accept query tokens
+or token passthrough; log tokens/private claims; trust forwarded Host; parse the body before auth;
+derive capability from tool arguments; expose a tool missing any required scope; let list and call
+use different policy; mutate a shared SDK server with one caller's scopes; use connection identity;
+set an arbitrary production tenant; bypass audit/approval/budget/STASIS; weaken scene confinement;
+enable production/remote MCP; change stdio; or absorb task 6.4/6.5/Phase 7. If the official handler
+cannot receive immutable request auth context for both visibility and call execution without
+cross-request state, stop with DOC_BLOCKER and amend ADR 0032 with exact evidence and two or three
+bounded designs. If three bounded designs fail, record LOGIC_BLOCKER rather than adding a parallel
+executor or fail-open policy.
+```
+
 ### Phase 6 — Standards-compliant MCP HTTP
 
 - [x] 6.1 Write an ADR comparing the official SDK with the existing hand-written server and pin the jointly supported stable protocol.
-- [ ] 6.2 Add one modern `2026-07-28` `/mcp` POST endpoint with Host/Origin validation,
+- [x] 6.2 Add one modern `2026-07-28` `/mcp` POST endpoint with Host/Origin validation,
   per-request version/header negotiation, JSON/SSE response handling, bounded limits, graceful
   stream-close cancellation, and explicit 405 responses for unsupported GET/DELETE. Keep it
   disabled and fail-closed until OQ-1 and task 6.3 auth requirements are satisfied.
@@ -2865,5 +2960,107 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   task 6.2 checkpoint identically in both plan copies. Post-merge ADG checked 67 documents, 512
   paths, and 18 module-qualified symbols with zero errors; documentation tests passed 16/16;
   architecture drift returned zero oversized files and the existing three bounded follow-ups.
+
+### Task 6.2 OQ-1 policy decision checkpoint — 2026-09-08
+
+- The developer accepted the recommended local-only OQ-1 profile: modern-only
+  `http://127.0.0.1:3000/mcp`, exact Host `127.0.0.1:3000`, empty Origin allowlist, default-off
+  `GEV_MCP_HTTP_ENABLED`, canonical matching resource/audience, injected non-production issuer,
+  direct existing capability-scope mapping, explicit fail-closed HTTP-first/stdio-fallback
+  configuration, and role-based cross-repository ownership. ADR 0032 and §9.3 contain the exact
+  accepted values and boundaries.
+- The developer conditionally authorized the embedded task 6.2 4-Pillar brief once the OQ-1
+  documentation gate and required Tadpole client-fix evidence are satisfied. The documentation
+  decision is recorded, but no immutable successor commit to Tadpole `5afe7ed` or passing
+  mock-server evidence was supplied in this checkpoint. `NEXT_TASK_STATUS` therefore remains
+  `BLOCKED`; no SDK dependency, `/mcp` implementation, or runtime configuration change began.
+- Documentation work is isolated on branch `codex/task-6.2-oq1-decision`. Verification passed:
+  the plan copies are byte-identical; ADG checked 67 documents, 512 paths, and 18 module-qualified
+  symbols with zero errors; documentation tests passed 16/16; architecture drift reported zero
+  oversized files and the existing three bounded follow-ups; and `git diff --check` passed.
+- CI then exposed a fresh-checkout prerequisite defect in the root `test:performance` command:
+  the performance scripts ran outside Turbo's dependency graph and could not resolve the
+  unbuilt `@gev/contracts` `dist` entry. The root command now performs one targeted Turbo build of
+  the server, providers, cesium-kit, and their transitive workspace dependencies before preserving
+  the three sequential single-worker benchmarks. A clean-entry check temporarily withheld the
+  generated contracts entry file and proved the targeted build restored it before resolution.
+  The unrestricted performance rerun passed all 8 tests: server load p95 19.85 ms under 300 ms,
+  provider bounds under 50 ms, and Cesium/operational ingestion bounds under 16.6 ms. Root lint
+  checked 282 files with no findings and `git diff --check` passed. The first restricted Vitest
+  attempt reached the benchmark stage but hit the known local `spawn EPERM` sandbox boundary; it
+  was not a product or test failure.
+
+### Task 6.2 Tadpole Port 3000 client-evidence checkpoint — 2026-09-09
+
+- The developer-supplied Tadpole checkout was re-audited at inspectable base
+  `f3b53231bd1928b737e65cdbd210907d534246b6`. The formerly recorded
+  `5afe7ed478972d4e27121556ef91d5d242986525` object no longer resolves in either configured
+  non-shallow history. After that discrepancy and the concrete gaps were reported, the developer
+  directed completion of the Port 3000 contract, authorizing an explicit ADR/plan correction to
+  the verifiable base rather than a silent substitution.
+- Tadpole client-fix `d9b29513f742f6f386ebddbe5174a26c7da8231c`, final verified implementation
+  `329d32d6d3940ff4564d94c1797f540065dbc6a0`, and evidence commit
+  `2dcde21f537cde6885950c5091078e83a2d1bd3c` are published on
+  `DDS-Solutions/TadPole-OS` branch `codex/port-3000-contract`. The implementation is a verified
+  descendant of the audited base, and the tracked evidence artifact is named
+  `GEV_PORT_3000_EVIDENCE.md` in that repository's documentation directory.
+- Exact Tadpole verification passed: Port 3000 conformance 21/21; focused HTTP tests 15/15;
+  broader MCP tests 86/86; strict Clippy with warnings denied; Rust formatting; parity guard with
+  zero errors; AI-context guard
+  1,069/1,069; and HTTP-client graph blast-radius guard. The implementation covers exact
+  secret-free configuration, modern discovery, bounded/correlated JSON and SSE, safe cancellation,
+  typed fallback, JSON-RPC identity, recursive safe header projection, last-catalog enforcement,
+  stable retry operation identity, structured governance results, secret redaction, and no replay.
+- ADR 0032, its index, the Port 3000 contract, §7.1, §9.2–§9.3, this four-pillar preamble, and the
+  machine-readable checkpoint now record the satisfied gate. The developer's previously
+  conditional Task 6.2 authorization is effective; Task 6.2 remains unchecked and the HTTP kill
+  switch remains off until the GEV implementation and its own exit evidence are complete.
+
+### Task 6.2 modern MCP HTTP implementation checkpoint — 2026-09-09
+
+- The developer's conditional task 6.2 authorization became effective after the OQ-1
+  documentation and Tadpole evidence gates closed. GEV implementation commit `115586a` adds the
+  authorized modern-only endpoint without changing the local stdio wire behavior.
+- The endpoint is exactly `POST http://127.0.0.1:3000/mcp`, accepts only `2026-07-28`, and is
+  absent unless `GEV_MCP_HTTP_ENABLED=1` or a test injects the equivalent option. It uses the
+  official SDK with `legacy: 'reject'`, a fresh request-local server adapter, the existing
+  registry projection, and the shared GovernedToolExecutor. The HTTP adapter is isolated behind
+  `@gev/ops-mcp/http`; the stdio/CLI root does not load it.
+- The server boundary enforces the empty Origin allowlist, exact Host `127.0.0.1:3000`, 16 KiB
+  aggregate header and 1 MiB streaming body limits, required mirrored headers, exact header/body
+  agreement, explicit JSON+SSE Accept support, bounded active responses, request-local
+  cancellation, idempotent shutdown, and modern SDK error mapping before domain dispatch. It
+  rejects legacy session/replay headers, exposes no `/mcp/sse`, and returns 405 plus `Allow:
+  POST` for unsupported methods.
+- Task 6.2 accepts only an injected deterministic non-production authority. Production ignores
+  that authority and returns 503, so no production or remote tool invocation is possible before
+  task 6.3. One governed HTTP call writes exactly one audit intent/outcome pair; schema and
+  execution truth remain in the existing registry and executor.
+- The lock adds only the approved external direct packages:
+  `@modelcontextprotocol/server@2.0.0` in ops-mcp and
+  `@modelcontextprotocol/hono@2.0.0` in server. Core 2.0.0 and Zod 4.6.0 are transitive; Zod
+  3.25.76 remains GEV contract truth. Installed package files total 13,752,603 bytes (13.12 MiB),
+  all declare MIT, the frozen offline lock check passes, and `pnpm audit --prod` reports no known
+  vulnerabilities.
+- Browser bundle delta is zero: the final build has the same entry/vendor hashes as the recorded
+  pre-6.2 baseline, with the app entry at 105.78 KiB gzip and total footprint at 1,247.15 KiB gzip.
+  Five fresh-process measurements recorded 956.76 ms median cold start with the route disabled and
+  974.56 ms enabled, a 17.80 ms observed construction impact on this Windows benchmark host.
+- Verification passes: root lint checks 287 files; full strict typecheck completes 17/17 tasks;
+  the full unit gate passes 458 tests across 16 Turbo tasks, including ops-mcp 44/44, server
+  126/126, CLI 16/16, and preserved stdio 14/14. The full performance gate passes all nine cases;
+  the final focused MCP run serves 100 bounded discovery/list requests at 78.19 ms p95 under
+  300 ms with peak active work 10 under cap 16. Production build, bundle budgets, architecture
+  drift with zero oversized files, seed zero-network guards, diff/lock/dependency checks, ADG,
+  documentation tests, and synchronized-plan checks pass.
+- Branch: `codex/task-6.2-oq1-decision`; implementation commit `115586a`. GitHub CLI
+  authentication remains unavailable, so PR inspection/creation through that CLI could not be
+  completed. Task 6.5 still owns official inspector and live Tadpole-to-GEV HTTP/stdio conformance;
+  no joint-live claim is made here.
+- Next task: **6.3 Apply scoped authentication, tenant/capability context, shared governance, and
+  path confinement to every remotely executable tool.** The recommended exact 4-Pillar brief is
+  embedded above and awaits developer authorization. No task 6.3 implementation has started.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 6.3. Review and authorize the
+  embedded 4-Pillar brief exactly; do not advance into task 6.4.`
 
 No later task is authorized merely because it appears in this plan.

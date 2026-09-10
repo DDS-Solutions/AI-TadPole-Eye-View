@@ -8,6 +8,7 @@ import type { GovernanceRuntimeContext } from '@gev/governance';
 import type { CablePackFetcher, SatelliteFetcher, SatelliteLiveGroup } from '@gev/providers';
 import type { Context } from 'hono';
 import type { OpsAuthOptions } from './middleware/opsAuth.js';
+import type { McpHttpTestAuthority } from './routes/mcp.js';
 
 export interface CreateAppOptions {
   opsAuth?: OpsAuthOptions;
@@ -26,4 +27,8 @@ export interface CreateAppOptions {
   satelliteGroups?: readonly SatelliteLiveGroup[];
   satelliteFetcher?: SatelliteFetcher;
   layerAccessAuthorizedLocalState?: readonly LayerAccessProviderRuntimeInput[];
+  mcpHttpEnabled?: boolean;
+  mcpHttpTestAuthority?: McpHttpTestAuthority;
+  mcpHttpMaxActiveRequests?: number;
+  mcpHttpResponseMode?: 'auto' | 'json' | 'sse';
 }
