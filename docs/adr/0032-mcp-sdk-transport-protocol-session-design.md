@@ -1,8 +1,8 @@
 # ADR 0032: Incremental official MCP SDK adoption with preserved stdio compatibility
 
-- **Status:** Accepted; OQ-1/Tadpole gate satisfied; Tasks 6.2–6.3 implemented and default-off
+- **Status:** Accepted; OQ-1/Tadpole gate satisfied; Tasks 6.2–6.4 implemented and default-off
 - **Date:** 2026-09-08
-- **Task:** PLAN.md 6.1–6.3
+- **Task:** PLAN.md 6.1–6.4
 - **Extends:** [ADR 0017](./0017-mcp-server-and-cli-architecture.md),
   [ADR 0020](./0020-server-proxies-and-cost-governor-architecture.md),
   [ADR 0027](./0027-shared-tool-registry-contracts-and-governed-actuators-architecture.md),
@@ -239,8 +239,10 @@ paths.
    per-request registry-derived visibility, shared-executor identity propagation, standard bearer
    challenges, and HTTP coverage of the existing scene confinement. Production remains
    fail-closed.
-5. **6.4:** make schemas, annotations, result metadata, and capabilities truthful; notifications
-   remain absent unless an isolated subscription implementation is proven.
+5. **6.4 (complete at `9d31ed4`):** schemas, annotations, result metadata, and capabilities are
+   truthful; notifications remain absent. The authenticated request-local server declares
+   `tools.listChanged: false` explicitly because the SDK registration helper otherwise defaults
+   the flag to true.
 6. **6.5:** run official inspector/conformance, malformed-input, cancellation, disconnect,
    concurrency, replay, auth, STASIS, path, and three-consumer parity tests before enabling the
    feature in any reviewed environment.
@@ -394,6 +396,47 @@ transport-independent resource-server boundary while preserving the default-off 
 
 Task 6.3 does not approve a production issuer, remote enablement, Phase 7 tenant persistence, task
 6.4 protocol-truth work, or task 6.5 joint conformance.
+
+## Task 6.4 implementation evidence
+
+Implementation commit `9d31ed4` adds a server-only MCP presentation subpath without changing the
+legacy stdio projection or adding a runtime dependency:
+
+- `@gev/contracts/mcp-presentation` owns an exhaustive policy for all thirteen registry tools.
+  `readOnlyHint` is derived from canonical mutation truth; destructive, idempotent, and open-world
+  semantics are explicit. The policy deliberately records `set_flag` as dangerous but
+  non-destructive and `save_scene` as destructive but not dangerous, proving that approval risk is
+  not used as a destructive-behavior proxy. All current tools are explicit idempotent operations
+  over GEV's bounded local domain rather than open-world calls.
+- The modern HTTP adapter projects annotations only after intersecting authenticated request
+  scopes with the seven implemented MCP handlers. Input and output JSON Schemas remain generated
+  from the registry; SDK-local or hand-authored tool schemas were not introduced.
+- Authenticated request-local servers declare only `tools` with `listChanged: false`. This corrects
+  the official SDK helper's truthful-but-overbroad default of `true` for dynamically registered
+  tools. Unauthenticated requests still register no tools capability, and no list-change or
+  subscription notification path was added or invoked.
+- Successful calls expose executor-validated `structuredContent`, equivalent serialized JSON text,
+  and governed execution evidence only in result `_meta`. An invalid handler output becomes the
+  existing `OUTPUT_VALIDATION_FAILED` error result and is never presented as successful structured
+  content. The SDK's own output-schema check remains defense in depth after the shared executor.
+- Table-driven contract coverage proves all thirteen policies. Focused MCP coverage proves exact
+  schemas and annotations for the seven HTTP definitions, every implemented tool's successful
+  structured result, invalid-output failure, static capabilities, absence of list notifications,
+  preserved request scope isolation, and the unchanged 14-test stdio surface. Server route coverage
+  proves the same capability, schemas, annotations, compatibility text, and governance metadata at
+  the mounted endpoint.
+- Final verification passes lint across 294 files, strict typecheck across 17/17 tasks, and the full
+  499-test unit gate, including contracts 81/81, ops-mcp 48/48, server 137/137, and core 63/63. All
+  nine performance cases pass; 100 authenticated MCP discovery/list requests measured 60.18 ms p95
+  with peak active work 10 under cap 16. The production build, seed zero-network guards, ADG,
+  documentation/provider-registry tests, architecture drift, bundle budgets, dependency inventory,
+  diff, and synchronized-plan checks pass.
+- No dependency or lock entry changed. The browser entry remains the exact
+  `index-BuL6GLP-.js` hash at 105.78 KiB gzip and total bundle remains 1,247.15 KiB gzip, proving
+  zero browser-bundle delta. The installed inventory remains 93 packages across 12 projects.
+
+Task 6.4 does not approve production or remote MCP, notifications/subscriptions, task 6.5
+conformance, Phase 7 identity/tenancy, provider work, UI work, or economic work.
 
 ## Consequences
 
