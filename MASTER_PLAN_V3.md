@@ -2,8 +2,8 @@
 
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
-**Verified against repository:** 2026-09-09
-**Status:** IN PROGRESS — Phase 6; task 6.2 complete; task 6.3 awaits authorization
+**Verified against repository:** 2026-09-10
+**Status:** IN PROGRESS — Phase 6; task 6.3 complete; task 6.4 awaits authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,11 +20,11 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=6
-NEXT_TASK=6.3
+NEXT_TASK=6.4
 NEXT_TASK_STATUS=BLOCKED
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
-LAST_VERIFIED_UTC=2026-09-09
+LAST_VERIFIED_UTC=2026-09-10
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
 IMPLEMENTATION_STARTED=NO
 ```
@@ -1578,6 +1578,60 @@ bounded designs. If three bounded designs fail, record LOGIC_BLOCKER rather than
 executor or fail-open policy.
 ```
 
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 6.4
+
+```text
+[SCOPE_CONTRACT] Add one registry-owned, server-only MCP presentation policy for standard tool
+annotations. Derive `readOnlyHint` from existing mutation truth, but represent destructive,
+idempotent, and open-world semantics explicitly for every registry tool; never infer destructive
+from `is_dangerous`. Project annotations only for the seven implemented, request-authorized HTTP
+handlers. Ensure those definitions carry the existing registry-derived input and output JSON
+schemas, successful `structuredContent` has passed the shared executor's output validation, the
+compatibility text remains equivalent JSON, and governance details remain only in GEV `_meta`.
+Keep discovery capabilities truthful: advertise tools only, omit/false `listChanged`, and emit no
+tool-list notification or subscription claim because the visible catalog is request-static. In
+scope: narrow contracts presentation-policy/projection code, the ops-mcp HTTP adapter, focused
+contract/MCP/server tests, ADR 0032 evidence correction, and synchronized plans. Out of scope:
+changing Task 6.3 authentication/scopes or stdio wire behavior; implementing the six registry
+tools without MCP handlers; adding prompts/resources/roots/sampling/logging/tasks/subscriptions;
+building notification infrastructure; task 6.5 Tadpole/inspector conformance; production or remote
+enablement; Phase 7 identity/tenancy; provider/UI/economic work; and later tasks.
+
+[PERFORMANCE_THRESHOLD] Table-driven tests cover all thirteen registry policy entries and prove
+the seven HTTP definitions expose exact canonical annotations, input schemas, and output schemas
+without treating dangerous as destructive. Each successful implemented HTTP tool returns
+schema-valid `structuredContent`, equivalent JSON text, and existing governed execution `_meta`;
+an invalid handler output fails closed through the shared executor and is never presented as
+successful structured content. Discovery advertises exactly the implemented capability set and
+never claims list changes or unsupported features. No notification is emitted, no unauthorized
+tool becomes visible, and existing scoped list/call, stdio golden, audit, scene-confinement, and
+concurrency tests remain green. Root lint; full typecheck/unit/performance/build; focused MCP
+projection/result tests; seed network denial; ADG/tests; architecture drift; bundle budgets; git
+diff; dependency inventory; and synchronized-plan checks pass with zero new dependency and zero
+browser-bundle delta.
+
+[ARCHITECTURE_MODE] PLAN.md §2 rules 1–3, 7–12, and 14–15; §3
+contracts/core/governance/MCP boundaries; §5–§7; §8.1–§8.3; ADRs 0017, 0027, 0032, and 0042–0044;
+and the official `2026-07-28` discovery and tools specifications. Registry/domain semantics remain
+the sole policy truth and the SDK remains a transport/presentation adapter. GovernedToolExecutor
+remains the only input/output validation and execution lifecycle. Standard annotations are
+untrusted client hints, not authorization or approval. Request-static scoped visibility means
+`listChanged` and list-change notifications remain absent. Keep the presentation policy behind a
+server-only contracts subpath so the browser surface and bundle stay unchanged.
+
+[FAILURE_MODES] Do not equate `is_dangerous` with destructive; rely on SDK annotation defaults;
+hand-author tool schemas or duplicate registry truth; return unvalidated successful
+`structuredContent`; move governance results into invented standard fields; advertise an
+unimplemented capability; claim `listChanged` without an authenticated subscription and actual
+emission path; broadcast notifications; let annotations grant authority; mutate shared
+request-scoped state; weaken Task 6.3 auth/governance/path controls; change stdio; add a dependency;
+or absorb task 6.5/Phase 7. If the SDK cannot express exact annotations, output schemas,
+structured content, and truthful capabilities from the shared projection without a second tool
+registry, stop with DOC_BLOCKER and amend ADR 0032 with exact evidence and two or three bounded
+designs. If three bounded designs fail, record LOGIC_BLOCKER rather than emitting false protocol
+claims.
+```
+
 ### Phase 6 — Standards-compliant MCP HTTP
 
 - [x] 6.1 Write an ADR comparing the official SDK with the existing hand-written server and pin the jointly supported stable protocol.
@@ -1585,7 +1639,7 @@ executor or fail-open policy.
   per-request version/header negotiation, JSON/SSE response handling, bounded limits, graceful
   stream-close cancellation, and explicit 405 responses for unsupported GET/DELETE. Keep it
   disabled and fail-closed until OQ-1 and task 6.3 auth requirements are satisfied.
-- [ ] 6.3 Apply scoped auth, tenant/capability context, shared governance, and path confinement to every remote tool.
+- [x] 6.3 Apply scoped auth, tenant/capability context, shared governance, and path confinement to every remote tool.
 - [ ] 6.4 Correct tool annotations/capabilities; add output schemas and validated structured content; emit only truthful notifications.
 - [ ] 6.5 Add protocol, auth, disconnect, replay, STASIS, concurrency, malformed-payload, and inspector/conformance tests.
 - [ ] 6 exit: stdio remains compatible; unrelated sessions never receive each other’s messages; remote mutation cannot bypass audit/approval/budget/STASIS.
@@ -3062,5 +3116,50 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
   embedded above and awaits developer authorization. No task 6.3 implementation has started.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 6.3. Review and authorize the
   embedded 4-Pillar brief exactly; do not advance into task 6.4.`
+
+### Task 6.3 scoped MCP authorization implementation checkpoint — 2026-09-10
+
+- The developer authorized the embedded Task 6.3 4-Pillar brief exactly. Implementation commit
+  `7a46876` replaces Task 6.2's exact-token test authority with a transport-independent injected
+  bearer-verifier boundary and a strict, bounded authorization context. No production issuer,
+  JWKS/introspection path, remote enablement, Phase 7 tenant persistence, or Task 6.4/6.5 work was
+  added.
+- The verifier result carries one validated AI principal, bounded service tenant and task
+  reference, exact matching audience/resource, recognized unique capability scopes, and a valid
+  issued/not-before/expiry window. Authentication runs before body parsing and SDK dispatch;
+  query tokens are rejected. Production ignores injected test verifiers and stays fail-closed.
+- `OPERATOR_TOOL_REQUIRED_SCOPES` is the registry-owned scope policy. Discovery/list/call use the
+  canonical ordered intersection of request scopes and the seven implemented MCP handlers;
+  `run_diagnostics` requires both telemetry and audit scope. Missing/invalid credentials return
+  standards-based 401 Bearer challenges, insufficient scope returns 403 with the missing scope,
+  and neither path writes an audit entry.
+- Immutable per-request authority carries principal, tenant, task reference, AI actor, and stable
+  operation ID through exactly one shared `GovernedToolExecutor` call. Concurrent distinct
+  principal/tenant tests prove separate tool projections and execution identities. Successful
+  calls retain one audit intent/outcome and the existing approval, budget, reservation,
+  settlement, replay, timeout, and STASIS lifecycle.
+- Signed issuer/audience/resource/time/signature tests use the already-installed `jose` only in
+  test code. All 16 scene-confinement cases pass over HTTP as well as the preserved direct/stdio
+  suites. No dependency or lock entry changed, and the frozen offline install check passes.
+- Final verification passes: lint checks 292 files; strict typecheck completes 17/17 tasks; the
+  full unit gate passes 482 tests across 16 Turbo tasks, including contracts 66/66, core 63/63,
+  ops-mcp 46/46, server 137/137, and stdio 14/14. All nine performance cases pass; 100 signed MCP
+  requests measured 83.52 ms p95 with peak active work 10 under cap 16. The production build,
+  seed zero-network guards, ADG, documentation/provider-registry tests, architecture drift, bundle
+  budgets, dependency inventory, diff, and synchronized-plan checks pass. The web entry retains
+  the exact pre-task `index-BuL6GLP-.js` hash at 105.78 KiB gzip and total 1,247.15 KiB gzip: zero
+  browser-bundle delta. One earlier contention-heavy run put the existing CO-OPS parser at 56.36
+  ms p95; its immediate isolated rerun passed at 42.92 ms and the final clean full gate passed at
+  31.97 ms without product changes.
+- Final local status is server-offline and therefore non-authoritative: `STASIS_INACTIVE`, seed
+  mode, $10.00/$10.00 remaining, 17/19 providers, 20/22 feeds, and 16/19 layers active.
+- Branch: `codex/task-6.3-scoped-mcp-auth`; implementation commit `7a46876`. GitHub CLI
+  authentication remains unavailable, so open-PR inspection and PR creation through that CLI
+  could not be completed.
+- Next task: **6.4 Correct tool annotations/capabilities, preserve validated structured content,
+  and emit only truthful notifications.** Its exact ready-to-authorize 4-Pillar brief is embedded
+  above and awaits developer authorization. No Task 6.4 implementation has started.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 6.4. Review and authorize the
+  embedded 4-Pillar brief exactly; do not advance into task 6.5.`
 
 No later task is authorized merely because it appears in this plan.

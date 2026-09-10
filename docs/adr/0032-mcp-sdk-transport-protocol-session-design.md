@@ -1,8 +1,8 @@
 # ADR 0032: Incremental official MCP SDK adoption with preserved stdio compatibility
 
-- **Status:** Accepted; OQ-1/Tadpole gate satisfied; Task 6.2 implemented and default-off
+- **Status:** Accepted; OQ-1/Tadpole gate satisfied; Tasks 6.2–6.3 implemented and default-off
 - **Date:** 2026-09-08
-- **Task:** PLAN.md 6.1–6.2
+- **Task:** PLAN.md 6.1–6.3
 - **Extends:** [ADR 0017](./0017-mcp-server-and-cli-architecture.md),
   [ADR 0020](./0020-server-proxies-and-cost-governor-architecture.md),
   [ADR 0027](./0027-shared-tool-registry-contracts-and-governed-actuators-architecture.md),
@@ -235,8 +235,10 @@ paths.
 3. **6.2 (complete at `115586a`):** added the two exact dependencies, one isolated modern HTTP
    adapter, explicit feature kill-switch defaulting off, request/stream limits, Origin/Host guards,
    and protocol tests. The stdio implementation and its wire behavior remain unchanged.
-4. **6.3:** add authenticated principal/capability context and route every call through the shared
-   executor and existing scene confinement. Production remains fail-closed.
+4. **6.3 (complete at `7a46876`):** added immutable authenticated principal/capability context,
+   per-request registry-derived visibility, shared-executor identity propagation, standard bearer
+   challenges, and HTTP coverage of the existing scene confinement. Production remains
+   fail-closed.
 5. **6.4:** make schemas, annotations, result metadata, and capabilities truthful; notifications
    remain absent unless an isolated subscription implementation is proven.
 6. **6.5:** run official inspector/conformance, malformed-input, cancellation, disconnect,
@@ -311,8 +313,9 @@ fallback-policy, and ownership decisions without inventing production identity o
 The developer conditionally authorized the embedded Task 6.2 four-pillar brief once this decision
 and the required Tadpole client-fix evidence were recorded. Both conditions were satisfied, so
 that authorization became effective on 2026-09-09. Task 6.2 implementation `115586a` now satisfies
-its own exit gate; the HTTP kill switch remains default-off and production remains fail-closed
-pending task 6.3.
+its own exit gate. Task 6.3 implementation `7a46876` now supplies the scoped resource-server
+boundary; the HTTP kill switch remains default-off and production remains fail-closed because no
+production issuer is approved or configured.
 
 ## Task 6.2 implementation evidence
 
@@ -349,9 +352,48 @@ existing stdio implementation:
   diff checks pass. Existing stdio coverage remains green at 14/14, including its golden wire
   behavior and stdout hygiene.
 
-Task 6.2 does not claim the task 6.5 joint Tadpole-to-GEV live smoke or official inspector suite,
-and does not claim task 6.3 production authentication, tenant, or capability enforcement. Those
-remain fail-closed obligations at their assigned gates.
+Task 6.2 did not claim the task 6.5 joint Tadpole-to-GEV live smoke or official inspector suite.
+Those remain fail-closed obligations at their assigned gate.
+
+## Task 6.3 implementation evidence
+
+Implementation commit `7a46876` replaces the exact-token test authority with a scoped,
+transport-independent resource-server boundary while preserving the default-off deployment:
+
+- `@gev/contracts/mcp-authorization` defines the injected verifier request and the strict,
+  bounded authorization context. It requires an AI service principal, tenant and task reference,
+  exact matching audience/resource, recognized unique `CapabilityScope` values, and a valid
+  issued/not-before/expiry window. The production composition ignores injected test verifiers and
+  therefore remains fail-closed without inventing an issuer, JWKS, or introspection path.
+- `OPERATOR_TOOL_REQUIRED_SCOPES` is the registry-owned policy. HTTP visibility is the canonical
+  ordered intersection of authenticated scopes and `MCP_OPERATOR_TOOL_NAMES`; all required scopes
+  must be present and `run_diagnostics` requires both `read.telemetry` and `read.audit`. The SDK
+  owns no authorization policy and a fresh request-local server prevents cross-request mutation.
+- Authentication completes before body parsing and SDK dispatch. Missing, malformed,
+  query-string, invalid-signature, algorithm-confused, wrong-issuer, wrong-audience/resource,
+  future, expired, unknown-scope, and overlong principal/tenant credentials return HTTP 401 with a
+  Bearer challenge and write no audit entry. Authenticated insufficient scope returns HTTP 403
+  with the missing scope and likewise never reaches the executor or audit trail.
+- The immutable request context carries principal, tenant, task reference, AI actor, and stable
+  operation ID through the one `GovernedToolExecutor` call. Concurrent distinct principals and
+  tenants retain separate tool projections and execution identities. Successful calls keep the
+  existing single audit intent/outcome and reservation/approval/settlement rules.
+- All 16 existing scene-confinement cases now pass through HTTP in addition to direct/stdio
+  coverage, preserving the configured root, root-level `.json` rule, 1 MiB cap, symlink denial,
+  and atomic writes.
+- Deterministic signed-token tests use the already-installed `jose` only from server test files.
+  No dependency or lock entry changed; `pnpm install --frozen-lockfile --offline` passes. The MCP
+  adapter suite passes 46/46, server passes 137/137, contracts 66/66, core 63/63, preserved stdio
+  14/14, and the full unit gate passes 482 tests.
+- Root lint checks 292 files; strict typecheck passes 17/17 tasks; all nine performance cases and
+  the production build pass. One hundred authenticated discovery/list requests measured 83.52 ms
+  p95 with peak active work 10 under cap 16. ADG, documentation tests, provider-registry drift,
+  architecture drift, bundle budgets, dependency, diff, and synchronized-plan checks pass. The
+  browser entry remains the exact pre-task `index-BuL6GLP-.js` hash at 105.78 KiB gzip and the
+  total remains 1,247.15 KiB gzip, so browser bundle delta is zero.
+
+Task 6.3 does not approve a production issuer, remote enablement, Phase 7 tenant persistence, task
+6.4 protocol-truth work, or task 6.5 joint conformance.
 
 ## Consequences
 
@@ -362,5 +404,6 @@ remain fail-closed obligations at their assigned gates.
 - The stale Phase 6 assumptions about HTTP GET, protocol sessions, and event-ID reconnect are
   removed for the modern target rather than silently implemented as legacy behavior.
 - Tadpole client-fix and deterministic evidence now exist as published immutable commits. This
-  closes the documentation/client-evidence prerequisite while leaving the joint live smoke,
-  official inspector, server authentication, and Phase 6 exit evidence in their assigned tasks.
+  closes the documentation/client-evidence prerequisite. Scoped server authorization is now
+  implemented and default-off; the joint live smoke, official inspector, and Phase 6 exit evidence
+  remain in task 6.5.
