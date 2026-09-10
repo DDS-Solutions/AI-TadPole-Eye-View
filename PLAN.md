@@ -3156,6 +3156,17 @@ External terms, schemas, quotas, and protocol versions are time-sensitive. The a
 - Branch: `codex/task-6.3-scoped-mcp-auth`; implementation commit `7a46876`. GitHub CLI
   authentication remains unavailable, so open-PR inspection and PR creation through that CLI
   could not be completed.
+- PR 45 conflict resolution: fetched `origin/main` at `2e2e4ec` and proved its tree is
+  byte-identical to Task 6.3's `1bda950` base. Merge commit `cbc1990` therefore resolves the
+  squash-ancestry conflicts while retaining the exact verified Task 6.3 tree at `2c1df99`; no
+  unresolved entry, conflict marker, or Task 6.4 change remains.
+- Post-merge verification passes lint (292 files), strict typecheck (17/17 tasks), the full
+  482-test unit gate, server load (general 40.00 ms p95; 100 signed MCP requests 146.68 ms p95;
+  peak active work 10 under cap 16), Cesium performance (all five tests under 16.6 ms p95), the
+  provider performance gate, and the production build. The provider gate first measured the
+  unchanged CO-OPS parser at 58.77 ms under the full suite and 73.60 ms in isolation while an
+  unrelated `rustc` process consumed more than 2 GiB; after that workload cleared, the same
+  isolated gate passed at 47.94 ms p95 without repository changes.
 - Next task: **6.4 Correct tool annotations/capabilities, preserve validated structured content,
   and emit only truthful notifications.** Its exact ready-to-authorize 4-Pillar brief is embedded
   above and awaits developer authorization. No Task 6.4 implementation has started.
