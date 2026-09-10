@@ -367,11 +367,11 @@ export async function executeOperatorTool(
   ctx: OperatorContext,
   name: string,
   args: unknown = {},
-  context: Pick<ToolExecutionContext, 'operation_id'> = {}
+  context: Omit<ToolExecutionContext, 'actor'> = {}
 ): Promise<ToolExecutionResult> {
   return ctx.toolExecutor.execute(name, args, {
     actor: 'ai',
-    task_ref: 'mcp-tool-call',
     ...context,
+    task_ref: context.task_ref ?? 'mcp-tool-call',
   });
 }

@@ -8,6 +8,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./mcp-authorization": {
+      "types": "./dist/mcpAuthorization.d.ts",
+      "import": "./dist/mcpAuthorization.js"
     }
   },
   "scripts": {

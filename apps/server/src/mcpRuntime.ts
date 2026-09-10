@@ -1,4 +1,5 @@
 import type { ProviderRegistry } from '@gev/contracts';
+import type { McpBearerVerifier } from '@gev/contracts/mcp-authorization';
 import type { SimClock } from '@gev/core';
 import type { GovernanceRuntimeContext } from '@gev/governance';
 import { createOperatorContext } from '@gev/ops-mcp';
@@ -6,11 +7,7 @@ import { createGevMcpHttpHandler } from '@gev/ops-mcp/http';
 import type { OpenSkyAdapter } from '@gev/providers';
 import type { Hono } from 'hono';
 import type { CreateAppOptions } from './appOptions.js';
-import {
-  type McpHttpRouteLifecycle,
-  type McpHttpTestAuthority,
-  createMcpHttpRouter,
-} from './routes/mcp.js';
+import { type McpHttpRouteLifecycle, createMcpHttpRouter } from './routes/mcp.js';
 
 export interface McpHttpRuntimeOptions {
   clock: SimClock;
@@ -18,14 +15,19 @@ export interface McpHttpRuntimeOptions {
   openSkyAdapter: OpenSkyAdapter;
   providerRegistry: ProviderRegistry;
   enabled?: boolean;
-  testAuthority?: McpHttpTestAuthority;
+  bearerVerifier?: McpBearerVerifier;
   maxActiveRequests?: number;
   responseMode?: 'auto' | 'json' | 'sse';
+  sceneRoot?: string;
 }
 
 type McpHttpConfiguration = Pick<
   CreateAppOptions,
-  'mcpHttpEnabled' | 'mcpHttpTestAuthority' | 'mcpHttpMaxActiveRequests' | 'mcpHttpResponseMode'
+  | 'mcpHttpEnabled'
+  | 'mcpHttpBearerVerifier'
+  | 'mcpHttpMaxActiveRequests'
+  | 'mcpHttpResponseMode'
+  | 'mcpSceneRoot'
 >;
 
 export function createMcpHttpRuntime(
@@ -41,11 +43,12 @@ export function createMcpHttpRuntime(
         clock: options.clock,
         openSkyAdapter: options.openSkyAdapter,
         providerRegistry: options.providerRegistry,
+        sceneRoot: options.sceneRoot,
       }),
       responseMode: options.responseMode,
     }),
     now: () => options.clock.now(),
-    testAuthority: process.env.NODE_ENV === 'production' ? undefined : options.testAuthority,
+    bearerVerifier: process.env.NODE_ENV === 'production' ? undefined : options.bearerVerifier,
     maxActiveRequests: options.maxActiveRequests,
   });
 }
@@ -55,15 +58,16 @@ export function mountMcpHttpRuntime(
   configuration: McpHttpConfiguration,
   infrastructure: Omit<
     McpHttpRuntimeOptions,
-    'enabled' | 'testAuthority' | 'maxActiveRequests' | 'responseMode'
+    'enabled' | 'bearerVerifier' | 'maxActiveRequests' | 'responseMode' | 'sceneRoot'
   >
 ): McpHttpRouteLifecycle | undefined {
   const runtime = createMcpHttpRuntime({
     ...infrastructure,
     enabled: configuration.mcpHttpEnabled,
-    testAuthority: configuration.mcpHttpTestAuthority,
+    bearerVerifier: configuration.mcpHttpBearerVerifier,
     maxActiveRequests: configuration.mcpHttpMaxActiveRequests,
     responseMode: configuration.mcpHttpResponseMode,
+    sceneRoot: configuration.mcpSceneRoot,
   });
   if (runtime) app.route('/mcp', runtime.router);
   return runtime;

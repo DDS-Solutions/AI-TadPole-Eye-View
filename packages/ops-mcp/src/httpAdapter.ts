@@ -1,6 +1,11 @@
-import { getMcpToolDefinitions } from '@gev/contracts';
+import { getAuthorizedOperatorToolNames, getMcpToolDefinitions } from '@gev/contracts';
+import {
+  type McpAuthorizationContext,
+  McpAuthorizationContextSchema,
+} from '@gev/contracts/mcp-authorization';
 import type { ToolExecutionResult } from '@gev/core';
 import {
+  type AuthInfo,
   type CallToolResult,
   type JsonSchemaType,
   type McpHttpHandler,
@@ -11,6 +16,12 @@ import {
 import type { OperatorContext } from './context.js';
 import { MCP_OPERATOR_TOOL_NAMES, executeOperatorTool } from './tools.js';
 
+export {
+  McpBearerAuthenticationError,
+  mcpBearerChallengeResponse,
+  verifyMcpBearerAuthorization,
+} from './authorization.js';
+
 export const MCP_HTTP_PROTOCOL_VERSION = '2026-07-28';
 
 export interface GevMcpHttpHandlerOptions {
@@ -19,6 +30,44 @@ export interface GevMcpHttpHandlerOptions {
   maxSubscriptions?: number;
   keepAliveMs?: number;
   onerror?: (error: Error) => void;
+}
+
+const GEV_AUTHORIZATION_CONTEXT_KEY = 'gev.authorization_context';
+
+export function toGevMcpAuthInfo(accessToken: string, context: McpAuthorizationContext): AuthInfo {
+  const parsed = McpAuthorizationContextSchema.parse(context);
+  const authorization = Object.freeze({
+    ...parsed,
+    scopes: Object.freeze([...parsed.scopes]),
+  }) as McpAuthorizationContext;
+  return {
+    token: accessToken,
+    clientId: authorization.principal,
+    scopes: [...authorization.scopes],
+    expiresAt: authorization.expires_at_epoch_seconds,
+    resource: new URL(authorization.resource),
+    extra: { [GEV_AUTHORIZATION_CONTEXT_KEY]: authorization },
+  };
+}
+
+function readAuthorizationContext(authInfo: AuthInfo | undefined): McpAuthorizationContext | null {
+  const parsed = McpAuthorizationContextSchema.safeParse(
+    authInfo?.extra?.[GEV_AUTHORIZATION_CONTEXT_KEY]
+  );
+  if (
+    !parsed.success ||
+    authInfo?.clientId !== parsed.data.principal ||
+    authInfo.resource?.href !== parsed.data.resource ||
+    authInfo.expiresAt !== parsed.data.expires_at_epoch_seconds ||
+    authInfo.scopes.length !== parsed.data.scopes.length ||
+    !authInfo.scopes.every((scope, index) => scope === parsed.data.scopes[index])
+  ) {
+    return null;
+  }
+  return Object.freeze({
+    ...parsed.data,
+    scopes: Object.freeze([...parsed.data.scopes]),
+  }) as McpAuthorizationContext;
 }
 
 function readOperationId(metadata: unknown): string | undefined {
@@ -91,11 +140,14 @@ function toCallToolResult(execution: ToolExecutionResult): CallToolResult {
  * Domain execution remains exclusively in the shared governed executor.
  */
 export function createGevMcpHttpHandler(options: GevMcpHttpHandlerOptions): McpHttpHandler {
-  const definitions = getMcpToolDefinitions(MCP_OPERATOR_TOOL_NAMES);
-
   return createMcpHandler(
-    () => {
+    (requestContext) => {
       const server = new McpServer({ name: '@gev/ops-mcp', version: '0.1.0' });
+      const authorization = readAuthorizationContext(requestContext.authInfo);
+      const authorizedToolNames = authorization
+        ? getAuthorizedOperatorToolNames(authorization.scopes, MCP_OPERATOR_TOOL_NAMES)
+        : [];
+      const definitions = getMcpToolDefinitions(authorizedToolNames);
 
       for (const definition of definitions) {
         const inputSchema = fromJsonSchema<Record<string, unknown>>(
@@ -114,6 +166,9 @@ export function createGevMcpHttpHandler(options: GevMcpHttpHandlerOptions): McpH
           },
           async (args, requestContext) => {
             const execution = await executeOperatorTool(options.context, definition.name, args, {
+              principal: authorization?.principal,
+              tenant_id: authorization?.tenant_id,
+              task_ref: authorization?.task_ref,
               operation_id: readOperationId(requestContext.mcpReq._meta),
             });
             return toCallToolResult(execution);

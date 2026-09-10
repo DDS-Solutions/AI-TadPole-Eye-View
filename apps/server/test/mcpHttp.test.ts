@@ -1,34 +1,25 @@
+import type { McpBearerVerifier } from '@gev/contracts/mcp-authorization';
 import { FrozenClock } from '@gev/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { type McpHttpTestAuthority, createApp } from '../src/index.js';
+import { createApp } from '../src/index.js';
 import {
   MCP_HTTP_HOST,
   MCP_HTTP_MAX_BODY_BYTES,
   MCP_HTTP_MAX_HEADER_BYTES,
   MCP_HTTP_RESOURCE,
-  MCP_TEST_ISSUER,
-  MCP_TEST_SUBJECT,
 } from '../src/routes/mcp.js';
+import {
+  MCP_TEST_AUTHORIZATION as AUTHORIZATION,
+  MCP_TEST_NOW as NOW,
+  fixedMcpBearerVerifier,
+  testMcpAuthorization,
+} from './mcpTestAuth.js';
 
-const NOW = 1_700_000_000_000;
-const AUTHORIZATION = 'Bearer deterministic-task-6-2-token';
 const lifecycles: Array<ReturnType<typeof createApp>> = [];
-
-function testAuthority(): McpHttpTestAuthority {
-  return {
-    authorization: AUTHORIZATION,
-    issuer: MCP_TEST_ISSUER,
-    subject: MCP_TEST_SUBJECT,
-    audience: MCP_HTTP_RESOURCE,
-    scopes: ['read.telemetry', 'read.audit', 'write.scenes', 'write.flags'],
-    issuedAtEpochSeconds: NOW / 1000 - 60,
-    expiresAtEpochSeconds: NOW / 1000 + 60,
-  };
-}
 
 function createMcpApp(
   options: {
-    authority?: McpHttpTestAuthority;
+    verifier?: McpBearerVerifier;
     maxActiveRequests?: number;
     responseMode?: 'auto' | 'json' | 'sse';
   } = {}
@@ -36,7 +27,7 @@ function createMcpApp(
   const created = createApp({
     clock: new FrozenClock(NOW),
     mcpHttpEnabled: true,
-    mcpHttpTestAuthority: options.authority,
+    mcpHttpBearerVerifier: options.verifier,
     mcpHttpMaxActiveRequests: options.maxActiveRequests,
     mcpHttpResponseMode: options.responseMode,
   });
@@ -98,7 +89,7 @@ afterEach(async () => {
 });
 
 describe('local modern MCP HTTP route', () => {
-  it('is absent by default and fails closed without injected test authority', async () => {
+  it('is absent by default and fails closed without an injected bearer verifier', async () => {
     const disabled = createApp({ clock: new FrozenClock(NOW), mcpHttpEnabled: false });
     lifecycles.push(disabled);
     const disabledResponse = await disabled.app.request(
@@ -115,9 +106,9 @@ describe('local modern MCP HTTP route', () => {
     expect(unconfiguredResponse.status).toBe(503);
   });
 
-  it('ignores injected test authority in production mode', async () => {
+  it('ignores an injected bearer verifier in production mode', async () => {
     vi.stubEnv('NODE_ENV', 'production');
-    const { app } = createMcpApp({ authority: testAuthority() });
+    const { app } = createMcpApp({ verifier: fixedMcpBearerVerifier() });
     const response = await app.request(
       MCP_HTTP_RESOURCE,
       requestInit('server/discover', 'production-1')
@@ -127,7 +118,7 @@ describe('local modern MCP HTTP route', () => {
   });
 
   it('rejects invalid Origin, Host, token, and issuance window before dispatch', async () => {
-    const { app } = createMcpApp({ authority: testAuthority() });
+    const { app } = createMcpApp({ verifier: fixedMcpBearerVerifier() });
     const origin = await app.request(
       MCP_HTTP_RESOURCE,
       requestInit('server/discover', 'origin-1', {}, { origin: 'http://localhost:5173' })
@@ -146,7 +137,11 @@ describe('local modern MCP HTTP route', () => {
     expect(token.status).toBe(401);
 
     const expired = createMcpApp({
-      authority: { ...testAuthority(), expiresAtEpochSeconds: NOW / 1000 },
+      verifier: fixedMcpBearerVerifier({
+        'deterministic-task-6-3-token': testMcpAuthorization({
+          expires_at_epoch_seconds: NOW / 1000,
+        }),
+      }),
     });
     const expiredResponse = await expired.app.request(
       MCP_HTTP_RESOURCE,
@@ -156,7 +151,7 @@ describe('local modern MCP HTTP route', () => {
   });
 
   it('returns 405 for unsupported methods and requires both response media types', async () => {
-    const { app } = createMcpApp({ authority: testAuthority() });
+    const { app } = createMcpApp({ verifier: fixedMcpBearerVerifier() });
     for (const method of ['GET', 'DELETE']) {
       const response = await app.request(MCP_HTTP_RESOURCE, {
         method,
@@ -176,7 +171,7 @@ describe('local modern MCP HTTP route', () => {
   });
 
   it('requires protocol, method, and tool-name mirrored headers before dispatch', async () => {
-    const { app, auditSink } = createMcpApp({ authority: testAuthority() });
+    const { app, auditSink } = createMcpApp({ verifier: fixedMcpBearerVerifier() });
     const missingVersion = requestInit('tools/list', 'missing-version');
     (missingVersion.headers as Headers).delete('mcp-protocol-version');
     const missingMethod = requestInit('tools/list', 'missing-method');
@@ -196,7 +191,7 @@ describe('local modern MCP HTTP route', () => {
   });
 
   it('rejects oversized headers and legacy session/replay headers', async () => {
-    const { app, auditSink } = createMcpApp({ authority: testAuthority() });
+    const { app, auditSink } = createMcpApp({ verifier: fixedMcpBearerVerifier() });
     const oversized = await app.request(
       MCP_HTTP_RESOURCE,
       requestInit(
@@ -223,7 +218,7 @@ describe('local modern MCP HTTP route', () => {
 
   it('serves discovery, list, and a governed structured call over JSON', async () => {
     const { app, auditSink } = createMcpApp({
-      authority: testAuthority(),
+      verifier: fixedMcpBearerVerifier(),
       responseMode: 'json',
     });
     const discovery = await app.request(
@@ -261,7 +256,7 @@ describe('local modern MCP HTTP route', () => {
   });
 
   it('preserves official protocol and media-type errors', async () => {
-    const { app } = createMcpApp({ authority: testAuthority() });
+    const { app } = createMcpApp({ verifier: fixedMcpBearerVerifier() });
     const mismatch = await app.request(
       MCP_HTTP_RESOURCE,
       requestInit('tools/list', 'mismatch-1', {}, { 'mcp-method': 'server/discover' })
@@ -277,7 +272,7 @@ describe('local modern MCP HTTP route', () => {
   });
 
   it('preserves the SDK parse error for malformed bounded JSON', async () => {
-    const { app, auditSink } = createMcpApp({ authority: testAuthority() });
+    const { app, auditSink } = createMcpApp({ verifier: fixedMcpBearerVerifier() });
     const init = requestInit('tools/list', 'malformed-1');
     init.body = '{';
     const response = await app.request(MCP_HTTP_RESOURCE, init);
@@ -288,7 +283,7 @@ describe('local modern MCP HTTP route', () => {
   });
 
   it('rejects a body above 1 MiB without dispatching it', async () => {
-    const { app, auditSink } = createMcpApp({ authority: testAuthority() });
+    const { app, auditSink } = createMcpApp({ verifier: fixedMcpBearerVerifier() });
     const response = await app.request(MCP_HTTP_RESOURCE, {
       method: 'POST',
       headers: {
@@ -308,7 +303,7 @@ describe('local modern MCP HTTP route', () => {
 
   it('bounds active response streams and releases only the cancelled request', async () => {
     const created = createMcpApp({
-      authority: testAuthority(),
+      verifier: fixedMcpBearerVerifier(),
       maxActiveRequests: 1,
       responseMode: 'sse',
     });
@@ -336,7 +331,7 @@ describe('local modern MCP HTTP route', () => {
   });
 
   it('aborts active streams on shutdown and rejects subsequent work', async () => {
-    const created = createMcpApp({ authority: testAuthority(), responseMode: 'sse' });
+    const created = createMcpApp({ verifier: fixedMcpBearerVerifier(), responseMode: 'sse' });
     const active = await created.app.request(
       MCP_HTTP_RESOURCE,
       requestInit('tools/list', 'shutdown-1')
