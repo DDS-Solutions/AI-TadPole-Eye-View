@@ -2,8 +2,8 @@
 
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
-**Verified against repository:** 2026-09-10
-**Status:** IN PROGRESS — Phase 6; task 6.3 complete; task 6.4 awaits authorization
+**Verified against repository:** 2026-09-11
+**Status:** IN PROGRESS — Phase 6; task 6.5 complete; Phase 6 exit awaits authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,11 +20,11 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=6
-NEXT_TASK=6.5
+NEXT_TASK=6_EXIT
 NEXT_TASK_STATUS=BLOCKED
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
-LAST_VERIFIED_UTC=2026-09-10
+LAST_VERIFIED_UTC=2026-09-11
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
 IMPLEMENTATION_STARTED=NO
 ```
@@ -1689,6 +1689,46 @@ options. After three genuine bounded approaches fail, record LOGIC_BLOCKER rathe
 conformance or enabling a fail-open fallback.
 ```
 
+
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 6 exit
+
+```text
+[SCOPE_CONTRACT] Perform a review-only Phase 6 exit certification against the exact merged or
+review-approved implementations for tasks 6.1–6.5. Reconcile ADR 0032, executable MCP capability
+truth, pinned Tadpole evidence, and the §17 checkpoints; rerun the canonical local/seed gates and
+mark the Phase 6 exit checkbox only when every exit claim is supported. Product-code changes are
+out of scope except a trivial fix-forward for directly observed documentation drift; any behavior
+change requires its own authorized task. In scope: narrow verification commands, ADR/plan evidence
+correction, and synchronized PLAN.md/MASTER_PLAN_V3.md handoff. Out of scope: enabling HTTP MCP by
+default, production/remote identity or reachability, new tools/capabilities/transports,
+subscriptions/notifications, provider/UI/economic work, every Phase 7 task, and later scope.
+
+[PERFORMANCE_THRESHOLD] Prove the legacy stdio golden and pinned Tadpole transcript remain byte-
+and behavior-compatible; unrelated authenticated principals, tenants, and response streams remain
+isolated; every remote mutation still passes through one audit/approval/budget/STASIS lifecycle;
+and the official 2026-07-28 advertised-surface harness remains green. Root lint, full strict
+typecheck/unit/performance/build, seed zero-network guards, ADG/tests, provider-registry parity,
+architecture drift, bundle budgets, dependency/license inventory, git diff, and synchronized-plan
+checks pass on the reviewed tree. The MCP load benchmark remains below 300 ms p95 and peak active
+work below 16; browser bundle delta from Task 6.5 remains zero. Record exact commands, counts,
+versions, commit(s), and any unavailable PR tooling before checking the exit gate.
+
+[ARCHITECTURE_MODE] PLAN.md §0, §2 rules 1–3 and 7–15, §3 contracts/core/governance/MCP
+boundaries, §5–§7, ADRs 0017, 0027, 0032, and 0041–0044, official MCP 2026-07-28 sources, and the
+immutable Tadpole implementation/evidence pins. Treat this as certification, not implementation.
+The SDK remains the modern HTTP transport adapter, the hand-written stdio leg remains unchanged,
+and GovernedToolExecutor remains the sole domain/governance lifecycle. Preserve default-off,
+local-only, SimClock, seed-only, scoped-authority, and bounded-cleanup constraints.
+
+[FAILURE_MODES] Do not infer merge/review status; hide a failing or flaky gate; certify the frozen
+everything-server profile as applicable to GEV; enable MCP or production identity; weaken auth,
+limits, replay, approval, budget, STASIS, path, or isolation assertions; modify stdio bytes; add a
+dependency; or begin Phase 7. If any Phase 6 claim is not reproducible from the reviewed tree, stop
+with DOC_BLOCKER and cite the exact missing evidence. If a non-document behavior correction is
+needed, leave the exit unchecked and request a new bounded 4-Pillar authorization rather than
+absorbing implementation into the exit review.
+```
+
 ### Phase 6 — Standards-compliant MCP HTTP
 
 - [x] 6.1 Write an ADR comparing the official SDK with the existing hand-written server and pin the jointly supported stable protocol.
@@ -1698,7 +1738,7 @@ conformance or enabling a fail-open fallback.
   disabled and fail-closed until OQ-1 and task 6.3 auth requirements are satisfied.
 - [x] 6.3 Apply scoped auth, tenant/capability context, shared governance, and path confinement to every remote tool.
 - [x] 6.4 Correct tool annotations/capabilities; add output schemas and validated structured content; emit only truthful notifications.
-- [ ] 6.5 Add protocol, auth, disconnect, replay, STASIS, concurrency, malformed-payload, and inspector/conformance tests.
+- [x] 6.5 Add protocol, auth, disconnect, replay, STASIS, concurrency, malformed-payload, and inspector/conformance tests.
 - [ ] 6 exit: stdio remains compatible; unrelated sessions never receive each other’s messages; remote mutation cannot bypass audit/approval/budget/STASIS.
 
 ### Phase 7 — Identity, tenancy, and intelligence routing
@@ -3280,5 +3320,63 @@ No later task is authorized merely because it appears in this plan.
   above and awaits developer authorization. No Task 6.5 implementation has started.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 6.5. Review and authorize the
   embedded 4-Pillar brief exactly; do not advance into Phase 7.`
+
+
+### Task 6.5 MCP conformance checkpoint — 2026-09-11
+
+- The developer authorized the exact embedded Task 6.5 4-Pillar brief with no Phase 7 work.
+  Implementation commit `6f70aca` adds deterministic conformance evidence only: no HTTP adapter,
+  shared-executor, tool-catalog, auth/scope, governance, scene, stdio product behavior, provider,
+  UI, production, remote, or Phase 7 implementation changed.
+- Root dev tooling now exactly pins `@modelcontextprotocol/inspector@2.5.0` and
+  `@modelcontextprotocol/conformance@0.2.0-alpha.11`, both MIT. The alpha conformance pin is the
+  current line containing the official `2026-07-28` scenarios; the older stable line is
+  insufficient. Published unpacked sizes are 4,242,950 and 861,032 bytes. They are declared only
+  at the root as dev dependencies; runtime dependency declarations remain unchanged.
+- The bounded loopback harness uses an explicit modern Inspector session and deterministic
+  test-only bearer. Inspector strict mode discovers all seven authorized tools with zero schema
+  errors and one advisory finding. Official `tools-list` and `http-header-validation` scenarios
+  pass at `2026-07-28`; a process-level fetch guard proves zero non-loopback/provider fetches.
+  The harness intentionally does not claim the frozen everything-server requirements profile,
+  which requires diagnostic `test_*` tools and unadvertised prompts/resources/sampling/logging/
+  tasks/subscriptions. Child output, runtime, body, and time are bounded; temporary auth/results,
+  HTTP servers, and overridden fetch state are cleaned on success or failure.
+- New HTTP matrix tests prove stable success replay, approval-denial replay, durable STASIS/
+  `BUDGET_DENIED`, and durable ambiguous `IN_DOUBT` behavior with no second handler, approval,
+  audit pair, or charge. Existing route/adapter tests retain 401/403, malformed/oversized,
+  version/header, path, cancellation/shutdown, stream and principal/tenant isolation, truthful
+  capability, and no-notification coverage.
+- The exact Tadpole `1.1.462` modern-probe → GEV `-32601` → legacy `2024-11-05` initialize
+  transcript is frozen byte-for-byte against implementation
+  `329d32d6d3940ff4564d94c1797f540065dbc6a0`, evidence
+  `2dcde21f537cde6885950c5091078e83a2d1bd3c`, and six immutable source blobs. A clean archive of
+  that implementation commit independently passed the offline Port 3000 suite 21/21, with 787
+  unrelated tests filtered out; the newer dirty Tadpole working tree supplied no evidence.
+- Final verification passes root lint across 297 files; strict typecheck across 17/17 tasks;
+  the canonical 504-test unit gate; all nine performance cases; and the 10/10 production build.
+  The first highly parallel unit attempt caused two unchanged five-second governance process
+  tests to time out under contention; both passed in isolation in 3.77 seconds, and the canonical
+  rerun then passed all 16/16 test tasks. MCP load measured 66.87 ms p95 for 100 requests with
+  peak active work 10, below the 300 ms and 16 limits.
+- ADG passes over 68 documents, 515 paths, and 18 module-qualified symbols; documentation tests
+  pass 17/17; provider-registry parity, architecture drift, bundle budgets, dependency/license
+  inventory, and `git diff --check` pass. The web asset hashes remain unchanged; the app entry is
+  105.78 KiB gzip and total bundle footprint is 1,247.15 KiB gzip, proving zero browser delta.
+- Handoff initially exposed that ADG skipped integer-numbered phase-exit checkboxes and therefore
+  selected Phase 7 prematurely. Follow-up commit `fe5cae0` now maps `N exit` to checkpoint
+  `N_EXIT`; its regression test keeps the mandatory Phase 6 exit review ahead of every Phase 7 task.
+- Final local status remains server-offline and therefore non-authoritative:
+  `STASIS_INACTIVE`, seed mode, $10.00/$10.00 remaining, 17/19 providers, 20/22 feeds, and
+  16/19 layers active. No governance state was resumed, deleted, or rewritten.
+- PR #47 uses branch `codex/task-6.5-mcp-conformance`; implementation commits `6f70aca` and
+  `fe5cae0`. Its first push inherited the unsquashed Task 6.4 branch history while `main` contained
+  squash commit `2571628`, so GitHub reported conflicts in the shared plan/ADR files. The branch
+  was rebuilt by replaying only the three Task 6.5 commits directly onto that current `main`;
+  GitHub CLI authentication remains unavailable, but the Git remote accepts authenticated pushes.
+- Next task: **Phase 6 exit certification**. Its exact review-only 4-Pillar brief is embedded
+  above and awaits developer authorization. The exit gate remains unchecked, and no Phase 7
+  task has been started or authorized.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 6_EXIT. Review and authorize
+  the embedded Phase 6 exit 4-Pillar brief exactly; do not advance into Phase 7.`
 
 No later task is authorized merely because it appears in this plan.

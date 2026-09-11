@@ -10,6 +10,7 @@
     "typecheck": "turbo run typecheck",
     "test": "pnpm test:unit && pnpm test:performance",
     "test:unit": "turbo run test",
+    "test:mcp:official": "pnpm turbo run build --filter=@gev/server... && node scripts/run-mcp-conformance.mjs",
     "test:performance": "turbo run build --filter=@gev/server... --filter=@gev/providers... --filter=@gev/cesium-kit... && pnpm --filter @gev/server test:load && pnpm --filter @gev/providers test:performance && pnpm --filter @gev/cesium-kit test:performance",
     "docs:check": "node scripts/adg.mjs",
     "docs:test": "node --test --test-isolation=none scripts/adg.test.mjs scripts/generate-provider-registry.test.mjs scripts/operational-imagery-spike.test.mjs",
@@ -23,6 +24,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
+    "@modelcontextprotocol/conformance": "0.2.0-alpha.11",
+    "@modelcontextprotocol/inspector": "2.5.0",
     "@playwright/test": "^1.50.1",
     "@types/node": "^24.1.0",
     "fast-check": "^3.23.2",

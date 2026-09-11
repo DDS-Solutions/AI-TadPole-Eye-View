@@ -1,8 +1,8 @@
 # ADR 0032: Incremental official MCP SDK adoption with preserved stdio compatibility
 
-- **Status:** Accepted; OQ-1/Tadpole gate satisfied; Tasks 6.2–6.4 implemented and default-off
+- **Status:** Accepted; OQ-1/Tadpole gate satisfied; Tasks 6.2–6.5 implemented and default-off
 - **Date:** 2026-09-08
-- **Task:** PLAN.md 6.1–6.4
+- **Task:** PLAN.md 6.1–6.5
 - **Extends:** [ADR 0017](./0017-mcp-server-and-cli-architecture.md),
   [ADR 0020](./0020-server-proxies-and-cost-governor-architecture.md),
   [ADR 0027](./0027-shared-tool-registry-contracts-and-governed-actuators-architecture.md),
@@ -179,9 +179,9 @@ installed and no manifest or lockfile changed in task 6.1.
 
 | Surface | Floor | Ceiling | Policy |
 |---|---:|---:|---|
-| Current GEV ↔ current Tadpole local stdio | `2024-11-05` | `2024-11-05` | Preserve byte- and behavior-compatible hand-written GEV stdio through Phase 6. Tadpole implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0` probes modern discovery and uses legacy initialization only after a preserved `-32601`; 6.5 must freeze the joint transcript. |
+| Current GEV ↔ current Tadpole local stdio | `2024-11-05` | `2024-11-05` | Preserve byte- and behavior-compatible hand-written GEV stdio through Phase 6. Task 6.5 freezes the exact modern discovery probe, preserved `-32601`, legacy initialization, and initialized notification from Tadpole implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0`. |
 | New GEV HTTP endpoint | `2026-07-28` | `2026-07-28` | Modern-only. Use `createMcpHandler(..., { legacy: 'reject' })`; reject unsupported versions with the specified supported-version error. Do not silently fall back. |
-| Current Tadpole ↔ new GEV HTTP endpoint | `2026-07-28` | `2026-07-28` | Tadpole implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0` proves the matching request shape and fail-closed negotiation against deterministic mock servers. GEV implementation `115586a` supplies the matching endpoint; joint live/runtime conformance remains task 6.5 evidence. GEV does not serve legacy HTTP. |
+| Current Tadpole ↔ new GEV HTTP endpoint | `2026-07-28` | `2026-07-28` | Tadpole implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0` and GEV Task 6.5 fixtures prove matching headers, namespaced metadata, client identity, stable operation identity, and fail-closed outcomes. The GEV loopback endpoint also passes the applicable current official Inspector and conformance scenarios. GEV does not serve legacy HTTP. |
 
 GEV will not add the deprecated `2024-11-05` HTTP+SSE transport. GEV will not add the stateful
 `2025-11-25` Streamable HTTP era merely to satisfy stale session/GET/replay wording. Supporting a
@@ -243,9 +243,9 @@ paths.
    truthful; notifications remain absent. The authenticated request-local server declares
    `tools.listChanged: false` explicitly because the SDK registration helper otherwise defaults
    the flag to true.
-6. **6.5:** run official inspector/conformance, malformed-input, cancellation, disconnect,
-   concurrency, replay, auth, STASIS, path, and three-consumer parity tests before enabling the
-   feature in any reviewed environment.
+6. **6.5 (complete):** exact-pinned official Inspector/conformance, immutable Tadpole source,
+   malformed-input, cancellation, disconnect, concurrency, replay, auth, STASIS, path, and
+   three-consumer parity tests pass. The HTTP feature remains default-off and local-only.
 
 Rollback is bounded: disable the HTTP kill-switch, unmount `/mcp`, then remove the two direct SDK
 dependencies and their lock entries. The hand-written stdio server, shared contracts, executor,
@@ -438,6 +438,49 @@ legacy stdio projection or adding a runtime dependency:
 Task 6.4 does not approve production or remote MCP, notifications/subscriptions, task 6.5
 conformance, Phase 7 identity/tenancy, provider work, UI work, or economic work.
 
+## Task 6.5 conformance evidence
+
+Task 6.5 adds test and harness evidence only; it does not change the HTTP adapter, shared executor,
+tool catalog, authorization policy, governance policy, scene authority, or stdio product code:
+
+- Root dev tooling pins `@modelcontextprotocol/inspector@2.5.0` and
+  `@modelcontextprotocol/conformance@0.2.0-alpha.11`, both MIT. The conformance alpha is required
+  because the older stable package line does not contain the current `2026-07-28` scenarios. npm
+  metadata reports published unpacked sizes of 4,242,950 and 861,032 bytes respectively. They are
+  test-only dependencies; runtime dependency declarations and the browser import graph are
+  unchanged.
+- `scripts/run-mcp-conformance.mjs` builds the server, starts a bounded seed-only GEV server on the
+  accepted `127.0.0.1:3000/mcp` resource, and uses a loopback-only proxy solely to inject a
+  deterministic test bearer and canonical Host that the official conformance CLI cannot supply.
+  The Inspector uses an explicit `protocolEra: "modern"` session, discovers all seven authorized
+  tools in strict mode, and reports zero schema errors. The official `tools-list` and
+  `http-header-validation` scenarios pass at `2026-07-28`.
+- This is deliberately not represented as a pass of the frozen everything-server requirements
+  profile. That profile invokes diagnostic `test_*` tools and prompts, resources, sampling,
+  logging, tasks, and subscriptions irrespective of GEV's advertised tools-only capability. GEV
+  runs only the official scenarios applicable to its advertised surface rather than adding false
+  capabilities or weakening expected failures. The loopback process, bounded captured output,
+  temporary authorization config, and generated reports are cleaned on both success and failure.
+- The HTTP matrix proves that an accepted operation ID returns the same settled result with one
+  handler call, one audit pair, and no second charge. Approval denial replays without a second
+  approval or dispatch; STASIS produces a durable `BUDGET_DENIED` before approval/dispatch; and an
+  ambiguous post-dispatch failure becomes durable `IN_DOUBT` and can never redispatch. Existing
+  route tests retain the 401/403, malformed/oversized, header/version, cancellation/shutdown,
+  active-request, request-local authorization, stream isolation, path, and no-notification gates.
+- The stdio interop test pins Tadpole version `1.1.462`, implementation commit
+  `329d32d6d3940ff4564d94c1797f540065dbc6a0`, evidence commit
+  `2dcde21f537cde6885950c5091078e83a2d1bd3c`, and the six relevant source blob IDs. Its literal
+  newline transcript proves byte-exact modern `server/discover` → GEV `-32601` → legacy
+  `2024-11-05` initialize behavior without changing GEV stdio bytes. Independently, a clean archive
+  of that exact implementation commit passed its offline Port 3000 suite 21/21 with 787 unrelated
+  tests filtered out; no floating branch or dirty working tree supplied evidence.
+- Handoff exposed an ADG parser defect that skipped integer-numbered phase-exit checkboxes and
+  incorrectly selected Phase 7. Follow-up `fe5cae0` recognizes `N exit` as checkpoint `N_EXIT` and
+  adds a regression test, preserving the mandatory exit review and the no-Phase-7 boundary.
+
+Task 6.5 does not enable production or remote MCP, add legacy HTTP, approve subscriptions or
+notifications, complete the Phase 6 exit gate, or authorize any Phase 7 work.
+
 ## Consequences
 
 - GEV avoids reimplementing a security-sensitive modern protocol while retaining a known-good
@@ -446,7 +489,7 @@ conformance, Phase 7 identity/tenancy, provider work, UI work, or economic work.
   cost is accepted only at the isolated adapter boundary and must be remeasured after install.
 - The stale Phase 6 assumptions about HTTP GET, protocol sessions, and event-ID reconnect are
   removed for the modern target rather than silently implemented as legacy behavior.
-- Tadpole client-fix and deterministic evidence now exist as published immutable commits. This
-  closes the documentation/client-evidence prerequisite. Scoped server authorization is now
-  implemented and default-off; the joint live smoke, official inspector, and Phase 6 exit evidence
-  remain in task 6.5.
+- Tadpole client-fix and deterministic evidence now exist as published immutable commits. Task 6.5
+  freezes the joint request/response contract and official loopback evidence while scoped server
+  authorization remains default-off. The separate Phase 6 exit gate remains pending explicit
+  authorization.
