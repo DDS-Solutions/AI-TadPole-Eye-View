@@ -311,3 +311,16 @@ pnpm gev demo
 # Run high-concurrency proxy load verification benchmark
 pnpm --filter @gev/server test
 ```
+
+---
+
+## 8. Pull Request Branches with Squash Merges
+
+After a pull request is squash-merged, refresh `origin/main` and create the next task branch from
+that exact commit. Do not continue the next task from the merged feature branch: its original
+commits do not share ancestry with GitHub's squash commit, so frequently edited files such as
+`PLAN.md`, `MASTER_PLAN_V3.md`, and architecture ADRs will conflict again.
+
+If an already-published task branch inherited that history, preserve a recovery ref and replay only
+the current task's commits onto current `origin/main`. Update the remote with `--force-with-lease`,
+never an unconditional force push, then verify the pull request diff contains only the current task.

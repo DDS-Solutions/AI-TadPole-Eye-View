@@ -475,7 +475,7 @@ tool catalog, authorization policy, governance policy, scene authority, or stdio
   of that exact implementation commit passed its offline Port 3000 suite 21/21 with 787 unrelated
   tests filtered out; no floating branch or dirty working tree supplied evidence.
 - Handoff exposed an ADG parser defect that skipped integer-numbered phase-exit checkboxes and
-  incorrectly selected Phase 7. Follow-up `b46df20` recognizes `N exit` as checkpoint `N_EXIT` and
+  incorrectly selected Phase 7. Follow-up `fe5cae0` recognizes `N exit` as checkpoint `N_EXIT` and
   adds a regression test, preserving the mandatory exit review and the no-Phase-7 boundary.
 
 Task 6.5 does not enable production or remote MCP, add legacy HTTP, approve subscriptions or

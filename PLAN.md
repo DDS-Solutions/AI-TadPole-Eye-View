@@ -3325,7 +3325,7 @@ No later task is authorized merely because it appears in this plan.
 ### Task 6.5 MCP conformance checkpoint — 2026-09-11
 
 - The developer authorized the exact embedded Task 6.5 4-Pillar brief with no Phase 7 work.
-  Implementation commit `a546963` adds deterministic conformance evidence only: no HTTP adapter,
+  Implementation commit `6f70aca` adds deterministic conformance evidence only: no HTTP adapter,
   shared-executor, tool-catalog, auth/scope, governance, scene, stdio product behavior, provider,
   UI, production, remote, or Phase 7 implementation changed.
 - Root dev tooling now exactly pins `@modelcontextprotocol/inspector@2.5.0` and
@@ -3363,15 +3363,16 @@ No later task is authorized merely because it appears in this plan.
   inventory, and `git diff --check` pass. The web asset hashes remain unchanged; the app entry is
   105.78 KiB gzip and total bundle footprint is 1,247.15 KiB gzip, proving zero browser delta.
 - Handoff initially exposed that ADG skipped integer-numbered phase-exit checkboxes and therefore
-  selected Phase 7 prematurely. Follow-up commit `b46df20` now maps `N exit` to checkpoint
+  selected Phase 7 prematurely. Follow-up commit `fe5cae0` now maps `N exit` to checkpoint
   `N_EXIT`; its regression test keeps the mandatory Phase 6 exit review ahead of every Phase 7 task.
 - Final local status remains server-offline and therefore non-authoritative:
   `STASIS_INACTIVE`, seed mode, $10.00/$10.00 remaining, 17/19 providers, 20/22 feeds, and
   16/19 layers active. No governance state was resumed, deleted, or rewritten.
-- Branch: `codex/task-6.5-mcp-conformance`; implementation commits `a546963` and `b46df20`.
-  GitHub CLI
-  authentication remains unavailable, so open-PR inspection and PR creation through that CLI
-  could not be completed.
+- PR #47 uses branch `codex/task-6.5-mcp-conformance`; implementation commits `6f70aca` and
+  `fe5cae0`. Its first push inherited the unsquashed Task 6.4 branch history while `main` contained
+  squash commit `2571628`, so GitHub reported conflicts in the shared plan/ADR files. The branch
+  was rebuilt by replaying only the three Task 6.5 commits directly onto that current `main`;
+  GitHub CLI authentication remains unavailable, but the Git remote accepts authenticated pushes.
 - Next task: **Phase 6 exit certification**. Its exact review-only 4-Pillar brief is embedded
   above and awaits developer authorization. The exit gate remains unchecked, and no Phase 7
   task has been started or authorized.
