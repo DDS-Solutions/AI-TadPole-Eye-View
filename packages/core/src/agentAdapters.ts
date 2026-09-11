@@ -12,6 +12,7 @@ export interface AgentAdapterEvents {
   onTextDelta?: (delta: string) => void;
   onAudioDelta?: (chunk: Uint8Array) => void;
   onToolCall?: (toolCall: ToolCallItem) => void;
+  onResponseComplete?: () => void;
   onStatusChange?: (status: AgentStatus) => void;
   onError?: (error: Error) => void;
   onSpeechStarted?: () => void;
@@ -39,7 +40,13 @@ export interface OpenAIRealtimeAdapterOptions {
   model?: string;
   voice?: string;
   tools?: OpenAIToolDefinition[];
+  connectionTimeoutMs?: number;
+  webSocketFactory?: (url: string, protocols: string[]) => WebSocket;
 }
+
+const DEFAULT_REALTIME_CONNECTION_TIMEOUT_MS = 10_000;
+const MAX_REALTIME_EVENT_CHARS = 256 * 1024;
+const MAX_REALTIME_TOOL_ARGUMENT_CHARS = 32 * 1024;
 
 /**
  * OpenAI Realtime GA WebSocket Client Adapter.
@@ -49,6 +56,7 @@ export class OpenAIRealtimeAdapter implements AgentProviderAdapter {
   private ws: WebSocket | null = null;
   private events: AgentAdapterEvents = {};
   private options: OpenAIRealtimeAdapterOptions;
+  private disconnectRequested = false;
 
   constructor(options: OpenAIRealtimeAdapterOptions) {
     this.options = options;
@@ -59,61 +67,123 @@ export class OpenAIRealtimeAdapter implements AgentProviderAdapter {
   }
 
   async connect(): Promise<void> {
+    if (this.ws) {
+      await this.disconnect();
+    }
+
+    this.disconnectRequested = false;
     this.updateStatus('connecting');
     const wsUrl = this.options.wsUrl || 'wss://api.openai.com/v1/realtime';
     const model = this.options.model || 'gpt-4o-realtime-preview';
     const url = `${wsUrl}?model=${encodeURIComponent(model)}`;
 
     try {
-      // In browser/Node environment, construct WebSocket with Bearer auth in headers or subprotocol
-      if (typeof WebSocket === 'undefined') {
+      const createWebSocket =
+        this.options.webSocketFactory ??
+        ((socketUrl: string, protocols: string[]) => new WebSocket(socketUrl, protocols));
+      if (!this.options.webSocketFactory && typeof WebSocket === 'undefined') {
         throw new Error('WebSocket is not supported in this runtime environment');
       }
 
-      this.ws = new WebSocket(url, [
+      const socket = createWebSocket(url, [
         'realtime',
         `openai-insecure-api-key.${this.options.clientSecret}`,
         'openai-beta.realtime-v1',
       ]);
+      this.ws = socket;
 
-      this.ws.binaryType = 'arraybuffer';
+      socket.binaryType = 'arraybuffer';
 
-      this.ws.onopen = () => {
-        this.updateStatus('connected');
-        this.sendSessionConfig();
-      };
+      await new Promise<void>((resolve, reject) => {
+        let settled = false;
+        const timeoutMs =
+          this.options.connectionTimeoutMs ?? DEFAULT_REALTIME_CONNECTION_TIMEOUT_MS;
+        const timeout = setTimeout(() => {
+          fail(new Error(`Realtime WebSocket connection timed out after ${timeoutMs} ms`));
+        }, timeoutMs);
 
-      this.ws.onmessage = (event) => {
-        this.handleMessage(event.data);
-      };
+        const fail = (error: Error) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          if (this.ws === socket) this.ws = null;
+          try {
+            socket.close();
+          } catch {
+            // The socket may already be closed by the runtime.
+          }
+          if (this.disconnectRequested) {
+            this.updateStatus('idle');
+          } else {
+            this.updateStatus('error');
+            this.events.onError?.(error);
+          }
+          reject(error);
+        };
+        socket.onopen = () => {
+          if (this.ws !== socket || this.disconnectRequested) {
+            fail(new Error('Realtime WebSocket connection was cancelled'));
+            return;
+          }
+          try {
+            this.sendSessionConfig();
+            settled = true;
+            clearTimeout(timeout);
+            this.updateStatus('connected');
+            resolve();
+          } catch (error: unknown) {
+            fail(error instanceof Error ? error : new Error(String(error)));
+          }
+        };
 
-      this.ws.onerror = (e) => {
-        const err = new Error(`Realtime WebSocket error: ${JSON.stringify(e)}`);
-        this.events.onError?.(err);
-        this.updateStatus('error');
-      };
+        socket.onmessage = (event) => {
+          this.handleMessage(event.data);
+        };
 
-      this.ws.onclose = () => {
-        this.updateStatus('idle');
-      };
+        socket.onerror = () => {
+          const error = new Error('Realtime WebSocket connection error');
+          if (!settled) {
+            fail(error);
+            return;
+          }
+          if (this.ws === socket) {
+            this.updateStatus('error');
+            this.events.onError?.(error);
+          }
+        };
+
+        socket.onclose = () => {
+          if (!settled) {
+            fail(new Error('Realtime WebSocket closed before it became ready'));
+            return;
+          }
+          if (this.ws === socket) {
+            this.ws = null;
+            this.updateStatus('idle');
+          }
+        };
+      });
     } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error(String(err));
-      this.events.onError?.(error);
-      this.updateStatus('error');
+      if (this.status !== 'error' && !this.disconnectRequested) {
+        this.events.onError?.(error);
+        this.updateStatus('error');
+      }
       throw error;
     }
   }
 
   async disconnect(): Promise<void> {
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
+    this.disconnectRequested = true;
+    const socket = this.ws;
+    this.ws = null;
+    if (socket) {
+      socket.close();
     }
     this.updateStatus('idle');
   }
 
   async sendText(text: string): Promise<void> {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
     this.sendJson({
       type: 'conversation.item.create',
       item: {
@@ -126,7 +196,6 @@ export class OpenAIRealtimeAdapter implements AgentProviderAdapter {
   }
 
   async sendAudioChunk(chunk: ArrayBuffer | Uint8Array): Promise<void> {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
     const base64Audio = this.bufferToBase64(chunk);
     this.sendJson({
       type: 'input_audio_buffer.append',
@@ -135,12 +204,10 @@ export class OpenAIRealtimeAdapter implements AgentProviderAdapter {
   }
 
   async cancelResponse(): Promise<void> {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
     this.sendJson({ type: 'response.cancel' });
   }
 
   async submitToolResult(callId: string, result: unknown): Promise<void> {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
     this.sendJson({
       type: 'conversation.item.create',
       item: {
@@ -168,19 +235,27 @@ export class OpenAIRealtimeAdapter implements AgentProviderAdapter {
   }
 
   private sendJson(payload: Record<string, unknown>): void {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(payload));
+    if (!this.ws || this.ws.readyState !== 1) {
+      throw new Error('Realtime WebSocket is not ready');
     }
+    this.ws.send(JSON.stringify(payload));
   }
 
   private handleMessage(data: unknown): void {
     if (typeof data !== 'string') return;
+    if (data.length > MAX_REALTIME_EVENT_CHARS) {
+      this.events.onError?.(
+        new Error(`Realtime event exceeded ${MAX_REALTIME_EVENT_CHARS} character limit`)
+      );
+      return;
+    }
     try {
-      const msg = JSON.parse(data);
+      const msg = JSON.parse(data) as Record<string, unknown>;
+      if (!msg || typeof msg !== 'object' || typeof msg.type !== 'string') return;
       switch (msg.type) {
         case 'response.output_audio.delta':
         case 'response.audio.delta':
-          if (msg.delta) {
+          if (typeof msg.delta === 'string') {
             const bytes = this.base64ToBuffer(msg.delta);
             this.events.onAudioDelta?.(bytes);
           }
@@ -188,16 +263,50 @@ export class OpenAIRealtimeAdapter implements AgentProviderAdapter {
         case 'response.output_text.delta':
         case 'response.text.delta':
         case 'response.audio_transcript.delta':
-          if (msg.delta) {
+          if (typeof msg.delta === 'string') {
             this.events.onTextDelta?.(msg.delta);
           }
           break;
         case 'response.function_call_arguments.done':
-          this.events.onToolCall?.({
-            callId: msg.call_id,
-            name: msg.name,
-            arguments: JSON.parse(msg.arguments || '{}'),
-          });
+          if (
+            typeof msg.call_id !== 'string' ||
+            typeof msg.name !== 'string' ||
+            (msg.arguments !== undefined && typeof msg.arguments !== 'string')
+          ) {
+            this.events.onError?.(new Error('Realtime tool call metadata is invalid'));
+            break;
+          }
+          {
+            const serializedArguments = msg.arguments ?? '{}';
+            if (serializedArguments.length > MAX_REALTIME_TOOL_ARGUMENT_CHARS) {
+              this.events.onError?.(
+                new Error(
+                  `Realtime tool arguments exceeded ${MAX_REALTIME_TOOL_ARGUMENT_CHARS} character limit`
+                )
+              );
+              break;
+            }
+            let parsedArguments: unknown;
+            try {
+              parsedArguments = JSON.parse(serializedArguments) as unknown;
+            } catch {
+              this.events.onError?.(new Error('Realtime tool arguments are not valid JSON'));
+              break;
+            }
+            if (
+              parsedArguments === null ||
+              typeof parsedArguments !== 'object' ||
+              Array.isArray(parsedArguments)
+            ) {
+              this.events.onError?.(new Error('Realtime tool arguments must be an object'));
+              break;
+            }
+            this.events.onToolCall?.({
+              callId: msg.call_id,
+              name: msg.name,
+              arguments: parsedArguments as Record<string, unknown>,
+            });
+          }
           break;
         case 'input_audio_buffer.speech_started':
           this.events.onSpeechStarted?.();
@@ -207,8 +316,20 @@ export class OpenAIRealtimeAdapter implements AgentProviderAdapter {
           break;
         case 'response.done':
         case 'response.cancelled':
-          this.updateStatus('idle');
+          this.events.onResponseComplete?.();
           break;
+        case 'error': {
+          const errorPayload = msg.error;
+          const message =
+            errorPayload &&
+            typeof errorPayload === 'object' &&
+            'message' in errorPayload &&
+            typeof errorPayload.message === 'string'
+              ? errorPayload.message
+              : 'Realtime server reported an error';
+          this.events.onError?.(new Error(message));
+          break;
+        }
       }
     } catch {
       // Ignore unparseable frames
@@ -235,7 +356,7 @@ export class OpenAIRealtimeAdapter implements AgentProviderAdapter {
       const sub = bytes.subarray(i, i + chunkSize);
       binary += String.fromCharCode(...sub);
     }
-    return typeof btoa === 'function' ? btoa(binary) : '';
+    return btoa(binary);
   }
 
   private base64ToBuffer(base64: string): Uint8Array {
@@ -246,7 +367,7 @@ export class OpenAIRealtimeAdapter implements AgentProviderAdapter {
     }
 
     // Browser atob fallback
-    const binary = typeof atob === 'function' ? atob(base64) : '';
+    const binary = atob(base64);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) {
       bytes[i] = binary.charCodeAt(i);
@@ -319,6 +440,7 @@ export class MockAgentAdapter implements AgentProviderAdapter {
     }
 
     this.events.onTextDelta?.(`Acknowledged: "${text}". All tactical sensors operational.`);
+    this.events.onResponseComplete?.();
   }
 
   async sendAudioChunk(_chunk: ArrayBuffer | Uint8Array): Promise<void> {
@@ -341,5 +463,6 @@ export class MockAgentAdapter implements AgentProviderAdapter {
 
   async submitToolResult(callId: string, result: unknown): Promise<void> {
     this.events.onTextDelta?.(` [Tool ${callId} completed with result: ${JSON.stringify(result)}]`);
+    this.events.onResponseComplete?.();
   }
 }

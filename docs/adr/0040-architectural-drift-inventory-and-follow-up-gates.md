@@ -64,20 +64,25 @@ Cesium controller colors now come from one `packages/cesium-kit` token module. W
 chart/dynamic table channel colors come from one web token module, and the previously
 drifting CCTV, radio, and launch assignments now match DESIGN.md and ADR 0024.
 
-Eight existing Svelte files still contain component-scoped literal palettes. Replacing
-them blindly risks visual regressions and would invent collaboration/voice channel
-laws not present in DESIGN.md. Their exact value multisets are SHA-256 fingerprinted.
+Two existing Svelte files still contain component-scoped literal palettes. Replacing
+them blindly risks visual regressions and would invent collaboration channel laws not
+present in DESIGN.md. Their exact value multisets are SHA-256 fingerprinted.
 They are bounded follow-ups owned by the Web UI owner: migrate the core HUD literals
 to semantic CSS custom properties before task 7.3 or the next visual edit to each
-file, whichever comes first. `CollabBar.svelte` and `VoiceControlOrb.svelte` additionally
-require accepted collaboration and voice-state palettes in DESIGN.md. New literals,
+file, whichever comes first. `CollabBar.svelte` additionally requires an accepted
+collaboration palette in DESIGN.md. New literals,
 files, or count changes fail closed rather than falling under a broad ignore.
 
 Task 5.2.3 also resolved `DRIFT-COLOR-WEB-HUD` for the application shell, HUD header,
 entity card, and virtualized telemetry table when those files received satellite UI edits.
 Their existing rendered values are now semantic custom properties in `hudTokens.css`, along
-with the accepted Orbital Lavender channel. Collaboration, timeline-chart, and voice-state
-palettes remain independently bounded because task 5.2.3 did not visually edit those surfaces.
+with the accepted Orbital Lavender channel. Collaboration and timeline-chart palettes remain
+independently bounded because task 5.2.3 did not visually edit those surfaces.
+
+Task 6.6 resolved `DRIFT-COLOR-VOICE` before visually hardening `VoiceControlOrb.svelte`.
+DESIGN.md now defines the accepted voice-session state palette, all component literals moved to
+semantic `hudTokens.css` custom properties, and the machine inventory no longer carries a voice
+follow-up exception.
 
 ### Cesium dependency boundary
 

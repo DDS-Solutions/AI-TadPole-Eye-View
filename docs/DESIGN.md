@@ -44,6 +44,29 @@ Every telemetry domain is strictly mapped to a dedicated color channel across gl
 | **Orbital Estimates** | `#c084fc` | `Orbital Lavender` | Propagated satellite estimate points and inspection accents |
 | **Governance / STASIS** | `#eab308` / `#ef4444` | `Gold / Red` | Budget burn meter, approval prompts, STASIS lockdown |
 
+### 2.3 Voice session state palette
+
+Voice state is application status, not telemetry-domain identity. The Voice Copilot uses only the
+semantic custom properties in `apps/web/src/hudTokens.css`; those values must not be reused to
+relabel a telemetry channel.
+
+| State | Token | Value | Meaning |
+|---|---|---:|---|
+| Idle | `--voice-idle` | `#64748b` | Disconnected and ready to start |
+| Connecting | `--voice-connecting` | `#fbbf24` | Transport readiness is pending |
+| Listening | `--voice-listening` | `#38bdf8` | Connected and ready for an operator command |
+| Processing | `--voice-processing` | `#a78bfa` | A response or governed tool result is pending |
+| Speaking | `--voice-speaking` | `#22c55e` | Agent audio is active; orb activation performs barge-in |
+| STASIS | `--voice-stasis` | `#ef4444` | Governance lock; connection and transmission controls are disabled |
+| Error | `--voice-error` | `#ef4444` | Connection or active-session failure; retry is explicit |
+| Tool detail | `--voice-tool-text` | `#ddd6fe` | Bounded governed-tool argument preview text |
+
+The compact container preserves strict pointer pass-through while the orb, status controls, and
+drawer opt back into pointer input. The drawer grows above the bottom-anchored orb, remains within
+the viewport at `360x640` and `1366x768`, and restores keyboard focus to the command field when
+opened. Transcript updates follow only while the operator is already near the newest message; a
+visible new-message control replaces forced scrolling while history is being read.
+
 ---
 
 ## 3. Typography Hierarchy
