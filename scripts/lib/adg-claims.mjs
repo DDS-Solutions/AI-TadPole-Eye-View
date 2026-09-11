@@ -32,6 +32,11 @@ function firstMatchLine(lines, pattern) {
   return index < 0 ? 1 : index + 1;
 }
 
+function checkpointTaskId(taskLabel) {
+  const exit = taskLabel.match(/^(\d+)\s+exit$/i);
+  return exit ? `${exit[1]}_EXIT` : taskLabel;
+}
+
 function validateRootPhaseClaims(root, currentPhase, errors) {
   for (const claim of [
     { file: 'README.md', pattern: /badge\/phase-(\d+(?:\.\d+)?)/i },
@@ -132,15 +137,16 @@ export function validatePlanAndClaims(root, errors) {
   }
 
   const unchecked = planLines
-    .map((line) => line.match(/^- \[ \]\s+(?:\*\*)?(\d+(?:\.\d+){1,2}[a-z]?(?:\s+exit)?)(?:\b|:)/i))
+    .map((line) => line.match(/^- \[ \]\s+(?:\*\*)?(\d+(?:\.\d+){1,2}[a-z]?|\d+\s+exit)(?:\b|:)/i))
     .find(Boolean);
   const firstUnchecked = unchecked?.[1];
-  if (firstUnchecked && nextTask !== firstUnchecked) {
+  const expectedNextTask = firstUnchecked ? checkpointTaskId(firstUnchecked) : undefined;
+  if (firstUnchecked && nextTask !== expectedNextTask) {
     addError(
       errors,
       'PLAN.md',
       lineNumbers.get('NEXT_TASK') ?? 1,
-      `Stale NEXT_TASK claim: expected first unchecked task ${firstUnchecked}, found ${nextTask ?? 'missing'}`
+      `Stale NEXT_TASK claim: expected first unchecked task ${expectedNextTask}, found ${nextTask ?? 'missing'}`
     );
   }
   if (firstUnchecked && !['READY', 'BLOCKED'].includes(nextStatus)) {

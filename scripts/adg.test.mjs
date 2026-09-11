@@ -154,6 +154,31 @@ test('fails a completed checkpoint status while the next task is unchecked', (t)
   );
 });
 
+test('treats an unchecked phase exit as the next checkpoint before the next phase', (t) => {
+  const root = createFixture();
+  t.after(() => fs.rmSync(root, { force: true, recursive: true }));
+  const exitPlan = PLAN.replaceAll('Phase 5.0', 'Phase 6')
+    .replace('CURRENT_PHASE=5.0', 'CURRENT_PHASE=6')
+    .replace('NEXT_TASK=5.0.4', 'NEXT_TASK=6_EXIT')
+    .replace('- [ ] **5.0.4 Make ADG meaningful.**', '- [ ] 6 exit: certify Phase 6');
+  write(root, 'PLAN.md', exitPlan);
+  write(root, 'MASTER_PLAN_V3.md', exitPlan);
+  write(
+    root,
+    'README.md',
+    '# Test\n\n[![Phase](https://img.shields.io/badge/phase-6%20(Hardening)-blue)](./PLAN.md)\n'
+  );
+  write(root, 'SECURITY.md', '# Security\n\n**Status:** Phase 6 hardening\n');
+  write(
+    root,
+    'packages/cli/src/commands/status.ts',
+    "export const PROJECT_PHASE = 'Phase 6 — Standards-Compliant MCP HTTP';\n"
+  );
+
+  const report = run(root);
+  assert.equal(report.ok, true, formatAdgReport(report));
+});
+
 test('fails the latest CHANGELOG version when it differs from package.json', (t) => {
   const root = createFixture();
   t.after(() => fs.rmSync(root, { force: true, recursive: true }));
