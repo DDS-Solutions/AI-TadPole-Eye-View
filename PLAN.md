@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-11
-**Status:** IN PROGRESS — Phase 6; task 6.5 complete; Phase 6 exit awaits authorization
+**Status:** IN PROGRESS — Phase 6; task 6.6 complete; Phase 6 exit awaits authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -21,7 +21,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 PLAN_VERSION=3.0
 CURRENT_PHASE=6
 NEXT_TASK=6_EXIT
-NEXT_TASK_STATUS=BLOCKED
+NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
 LAST_VERIFIED_UTC=2026-09-11
@@ -1690,6 +1690,33 @@ conformance or enabling a fail-open fallback.
 ```
 
 
+#### Authorized 4-Pillar brief for NEXT_TASK 6.6
+
+```text
+[SCOPE_CONTRACT] Harden the existing voice session lifecycle and VoiceControlOrb UI in
+packages/core/src/agentAdapters.ts, apps/web/src/stores/voice.svelte.ts,
+apps/web/src/components/VoiceControlOrb.svelte, focused tests, hudTokens.css,
+docs/DESIGN.md, ADR 0026/0040, and synchronized plan evidence. Out of scope:
+server route redesign, live OpenAI calls, new providers, MCP behavior, Phase 7, and
+new dependencies.
+
+[PERFORMANCE_THRESHOLD] Zero frame-rate Svelte rune writes; no silently dropped first
+message; deterministic connection timeout/error/race tests; supported viewport content
+remains visible at 360x640 and 1366x768; barge-in remains under 100 ms; no unhandled
+promise rejection; no live network calls in tests; browser gzip delta no more than 2 KiB.
+
+[ARCHITECTURE_MODE] Preserve the XState lifecycle, provider-adapter boundary, SimClock,
+seed-mode behavior, governed shared governed executor, DESIGN.md tokens, pointer pass-through,
+and imperative per-frame rendering law. Local drawer state remains component-owned.
+
+[FAILURE_MODES] Do not report connected before transport readiness, silently drop or
+duplicate commands, allow stale attempts to win, force-scroll users reading history,
+write runes per animation frame, retain unbounded provider content, introduce arbitrary
+colors, weaken STASIS/governance, or enter Phase 7. If the adapter contract cannot be
+changed without affecting another consumer, stop with evidence and request a narrower
+contract decision.
+```
+
 #### Ready-to-authorize 4-Pillar brief for NEXT_TASK 6 exit
 
 ```text
@@ -1739,6 +1766,7 @@ absorbing implementation into the exit review.
 - [x] 6.3 Apply scoped auth, tenant/capability context, shared governance, and path confinement to every remote tool.
 - [x] 6.4 Correct tool annotations/capabilities; add output schemas and validated structured content; emit only truthful notifications.
 - [x] 6.5 Add protocol, auth, disconnect, replay, STASIS, concurrency, malformed-payload, and inspector/conformance tests.
+- [x] 6.6 Harden voice transport readiness, race handling, bounded HUD rendering, responsive layout, and accessibility.
 - [ ] 6 exit: stdio remains compatible; unrelated sessions never receive each other’s messages; remote mutation cannot bypass audit/approval/budget/STASIS.
 
 ### Phase 7 — Identity, tenancy, and intelligence routing
@@ -3378,5 +3406,36 @@ No later task is authorized merely because it appears in this plan.
   task has been started or authorized.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 6_EXIT. Review and authorize
   the embedded Phase 6 exit 4-Pillar brief exactly; do not advance into Phase 7.`
+
+### Task 6.6 voice lifecycle and HUD hardening checkpoint — 2026-09-11
+
+- The developer authorized the exact embedded Task 6.6 brief. Implementation commit 09f8eaa
+  makes Realtime connect wait for transport readiness and session configuration, rejects
+  pre-ready sends, applies a deterministic 10-second timeout, bounds provider frames and tool
+  arguments, and separates response completion from persistent transport status. No server
+  route, provider, MCP, dependency, live OpenAI, production, or Phase 7 behavior changed.
+- The voice store aborts superseded token requests, closes pending adapters, rejects stale
+  callbacks, validates token responses and bounded operator input, caps retained provider text
+  at 64 KiB, keeps STASIS fail-closed, and observes all async failures. Commands remain in the
+  draft until delivery succeeds; the animation-frame AudioContext/rune loop was removed.
+- The HUD has complete status/icon behavior, explicit orb actions, bounded tool previews,
+  keyboard/IME labels and focus handling, semantic tokens, reduced-motion support, pointer
+  pass-through, responsive upward layout, and reader-respecting transcript follow behavior.
+  Rendered 360x640 and 1366x768 screenshots were inspected and remain fully in-frame.
+- Seven fake-WebSocket tests cover readiness, timeout, error, completion, close, and bounds;
+  barge-in remains below 100 ms. All four seed-only voice Playwright cases pass twice. The full
+  16-task unit matrix passes on rerun, all nine performance cases pass, and isolated smoke is
+  2/2 green after one non-reproduced SwiftShader context loss during the complete matrix.
+- Root lint checks 299 files; strict typecheck is 17/17; docs tests are 17/17; ADG checks 68
+  documents, 516 paths, and 18 module-qualified symbols. Architecture drift, diff checks,
+  production build, and bundle budgets pass. The measured web-entry delta is 1,914 bytes gzip
+  (108,032 to 109,946), below the 2 KiB limit.
+- Final local status is server-offline and non-authoritative: STASIS_INACTIVE, seed mode,
+  $10.00/$10.00 remaining, 17/19 providers, 20/22 feeds, and 16/19 layers active.
+- Concurrent local review edits remain unstaged in VoiceControlOrb.svelte, agentAdapters.ts,
+  voiceMachine.ts, and phase3.test.ts. They were preserved but are not Task 6.6 commit evidence;
+  the state-machine source is outside the exact authorized file list.
+- Next task is the review-only Phase 6 exit certification. Its embedded 4-Pillar brief awaits
+  developer authorization. No Phase 7 task has started or been authorized.
 
 No later task is authorized merely because it appears in this plan.
