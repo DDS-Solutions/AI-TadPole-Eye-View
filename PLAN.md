@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-13
-**Status:** IN PROGRESS — Phase 6 telemetry hardening authorized after exit-gate recovery
+**Status:** IN PROGRESS — Phase 6 exit certification follows telemetry hardening
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=6
-NEXT_TASK=6.7
+NEXT_TASK=6_EXIT
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
@@ -1821,7 +1821,7 @@ or claim performance/accessibility without browser verification.
 - [x] 6.4 Correct tool annotations/capabilities; add output schemas and validated structured content; emit only truthful notifications.
 - [x] 6.5 Add protocol, auth, disconnect, replay, STASIS, concurrency, malformed-payload, and inspector/conformance tests.
 - [x] 6.6 Harden voice transport readiness, race handling, bounded HUD rendering, responsive layout, and accessibility.
-- [ ] 6.7 Correct virtualized telemetry reopen/filter scrolling, identity, keyboard semantics,
+- [x] 6.7 Correct virtualized telemetry reopen/filter scrolling, identity, keyboard semantics,
   accessible names, responsive layout, and browser-verified bounded windowing.
 - [ ] 6 exit: stdio remains compatible; unrelated sessions never receive each other’s messages; remote mutation cannot bypass audit/approval/budget/STASIS.
 
@@ -3563,5 +3563,48 @@ No later task is authorized merely because it appears in this plan.
 - The user-authorized telemetry hardening is now recorded as task 6.7 before the final Phase 6
   exit checkpoint. `NEXT_TASK=6.7`, status is `READY`, and no telemetry implementation or Phase 7
   work is included in this recovery checkpoint.
+
+### Task 6.7 telemetry hardening checkpoint — 2026-09-13
+
+- The developer authorized the exact embedded Task 6.7 brief. Implementation commit `3662f7f`
+  updates only the two telemetry components, focused Playwright coverage, and the existing
+  virtualization design/ADR records. The isolated `codex/task-6.7-telemetry-hardening` worktree
+  preserved every unstaged voice and Layer Access edit in the primary worktree.
+- Manual fixed-36px-row virtualization remains the measured fit. Six rows of overscan and direct
+  slice rendering avoid wrapper allocation while selection and keyed identity retain `kind + id`.
+  Reopen, channel, and search changes reset to the first result; a real browser condition-wait
+  across the next seed flight refresh proves passive item updates preserve the reading position.
+- Rows are native buttons with entity-specific accessible names and verified Enter/Space
+  operation. Search, clear, close, and channel filters expose explicit names and pressed state;
+  close returns focus to the table toggle. Pointer selection/fly-to behavior and store ownership
+  remain unchanged.
+- Fresh dedicated Chromium measurement at 1366x768 rendered 10,036 entities with at most 20 of
+  the allowed 21 DOM rows and 8.60 ms p95 scroll render/layout work, below the 16.6 ms frame
+  budget. The performance case runs alone through
+  `playwright.telemetry-performance.config.ts`, consistent with ADR 0025's isolated wall-clock
+  methodology.
+- Browser verification passes the full ordinary Playwright matrix 12/12 in 6.4 minutes and the
+  final focused telemetry rerun 2/2 in 1.5 minutes. Inspected 1366x768 and 360x640 screenshots
+  retain the full desktop columns and the in-frame compact mobile controls/four-column layout.
+  The focused cases also prove bounded row counts, filter/search/reopen resets, passive-refresh
+  stability, `kind + id` selection, accessible names, and keyboard/focus behavior.
+- Final gates pass: lint checks 302 files; uncached strict typecheck is 17/17; the full unit matrix
+  is 16/16 tasks and 511 tests; the uncached production build is 10/10; ADG checks 68 documents,
+  516 paths, and 18 symbols; documentation tests are 17/17; generated provider parity,
+  architecture drift, `git diff --check`, and bundle budgets pass. The two pre-existing
+  `VoiceControlOrb.svelte` binding warnings remain preserved and were not edited.
+- The recovery baseline was 1,249.33 KiB gzip and the final bundle is 1,249.72 KiB gzip, a
+  0.39 KiB increase below the 2 KiB limit. The app entry is 107.64 KiB gzip and total CSS is
+  9.56 KiB gzip. No dependency manifest or lockfile entry changed.
+- Task 6.7 changes no MCP, governance, provider, store, Cesium, production, remote, live-service,
+  or Phase 7 implementation. The Phase 6 exit nevertheless remains unchecked until its
+  review-only gate certifies this exact post-6.7 tree; earlier exit recovery evidence is retained
+  but is not silently promoted across a later product-code commit.
+- Final status is server-offline and therefore non-authoritative: `STASIS_INACTIVE`, seed mode,
+  $10.00/$10.00 remaining, 17/19 providers, 20/22 feeds, and 16/19 layers active. GitHub CLI
+  authentication remains unavailable, so open-PR inspection and PR creation were not claimed.
+- Next task: **Phase 6 exit certification** against implementation commit `3662f7f`. Its embedded
+  review-only 4-Pillar brief requires renewed developer authorization for the exact post-6.7 tree;
+  no Phase 7 implementation has started or been authorized.
 
 No later task is authorized merely because it appears in this plan.
