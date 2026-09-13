@@ -1,6 +1,6 @@
 # ADR 0032: Incremental official MCP SDK adoption with preserved stdio compatibility
 
-- **Status:** Accepted; OQ-1/Tadpole gate satisfied; Tasks 6.2–6.5 implemented and default-off
+- **Status:** Accepted; Tasks 6.2–6.5 implemented default-off; Phase 6 exit blocked by cancellation
 - **Date:** 2026-09-08
 - **Task:** PLAN.md 6.1–6.5
 - **Extends:** [ADR 0017](./0017-mcp-server-and-cli-architecture.md),
@@ -9,6 +9,10 @@
   [ADR 0040](./0040-architectural-drift-inventory-and-follow-up-gates.md)
 
 ## Context
+
+The 2026-09-13 exit review reproduced mutation dispatch after SSE cancellation while approval
+was pending. [Evidence and reproduction](../reviews/phase-6-exit-cancellation-2026-09-13.md)
+supersede any claim that existing stream tests prove cancellation of pending governed work.
 
 At the task 6.1 decision point, GEV had a working hand-written MCP server over newline-delimited
 stdio, but no HTTP MCP transport and no official MCP SDK dependency. Phase 6 needed a

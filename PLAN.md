@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-13
-**Status:** IN PROGRESS — Phase 6 exit certification follows telemetry hardening
+**Status:** IN PROGRESS — Phase 6 exit BLOCKED: cancelled HTTP mutation can dispatch after approval
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -21,7 +21,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 PLAN_VERSION=3.0
 CURRENT_PHASE=6
 NEXT_TASK=6_EXIT
-NEXT_TASK_STATUS=READY
+NEXT_TASK_STATUS=BLOCKED
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
 LAST_VERIFIED_UTC=2026-09-13
@@ -308,13 +308,16 @@ M4 may not rely on an auto-generated production signing key, `approve_all`, an i
 
 ### 7.1 MCP transport target
 
-As reverified on 2026-09-09 and decided by ADR 0032, the current stable protocol is
-`2026-07-28`. GEV currently implements only local `2024-11-05` stdio. The published Tadpole
+ADR 0032 pins modern HTTP to `2026-07-28`; GEV also preserves local `2024-11-05` stdio.
+Tasks 6.2–6.5 implement the single default-off `/mcp` POST endpoint, scoped authorization,
+truthful tool presentation, and bounded local conformance coverage. The published Tadpole
 implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0` implements the exact modern HTTP-first and
 legacy-stdio-fallback profile, and evidence commit `2dcde21f537cde6885950c5091078e83a2d1bd3c`
 proves its fail-closed negotiation and no-replay behavior against deterministic mock servers.
-This establishes the intended dual-transport client boundary, but not joint runtime compatibility:
-GEV still has no HTTP endpoint, so the live cross-repository smoke remains Task 6.2/6.5 evidence.
+Task 6.5 records the immutable client-source pins, byte-exact stdio transcript, independent
+Tadpole mock-server suite, and official GEV loopback harness. These are the accepted local
+evidence boundary; they do not establish production identity, remote enablement, or an actual
+Tadpole-process-to-GEV HTTP integration test.
 
 - Preserve byte- and behavior-compatible `2024-11-05` stdio for local operators and Tadpole
   fallback. HTTP 401/403/5xx, authentication, authorization, STASIS, approval, budget, or other
@@ -1717,11 +1720,13 @@ changed without affecting another consumer, stop with evidence and request a nar
 contract decision.
 ```
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 6 exit
+#### Authorized 4-Pillar brief for NEXT_TASK 6 exit
 
 ```text
 [SCOPE_CONTRACT] Perform a review-only Phase 6 exit certification against the exact merged or
-review-approved implementations for tasks 6.1–6.5. Reconcile ADR 0032, executable MCP capability
+review-approved implementations for tasks 6.1–6.5, with regression gates on the committed
+post-6.7 tree at `737ccb7`. Preserve the primary worktree's uncommitted edits outside this
+certification. Reconcile ADR 0032, executable MCP capability
 truth, pinned Tadpole evidence, and the §17 checkpoints; rerun the canonical local/seed gates and
 mark the Phase 6 exit checkbox only when every exit claim is supported. Product-code changes are
 out of scope except a trivial fix-forward for directly observed documentation drift; any behavior
@@ -1737,7 +1742,10 @@ and the official 2026-07-28 advertised-surface harness remains green. Root lint,
 typecheck/unit/performance/build, seed zero-network guards, ADG/tests, provider-registry parity,
 architecture drift, bundle budgets, dependency/license inventory, git diff, and synchronized-plan
 checks pass on the reviewed tree. The MCP load benchmark remains below 300 ms p95 and peak active
-work below 16; browser bundle delta from Task 6.5 remains zero. Record exact commands, counts,
+work below 16. Preserve Task 6.5's recorded zero MCP browser-bundle delta; account separately
+for Task 6.6's recorded 1,914-byte gzip web-entry increase and Task 6.7's recorded 0.39 KiB
+gzip total-bundle increase. This documentation-only exit review adds zero browser bytes to
+the committed post-6.7 baseline and preserves all existing bundle budgets. Record exact commands, counts,
 versions, commit(s), and any unavailable PR tooling before checking the exit gate.
 
 [ARCHITECTURE_MODE] PLAN.md §0, §2 rules 1–3 and 7–15, §3 contracts/core/governance/MCP
@@ -1756,7 +1764,48 @@ needed, leave the exit unchecked and request a new bounded 4-Pillar authorizatio
 absorbing implementation into the exit review.
 ```
 
-#### Ready-to-authorize 4-Pillar brief for blocked NEXT_TASK 6_EXIT option 2
+#### Ready-to-authorize 4-Pillar brief for blocked NEXT_TASK 6_EXIT cancellation repair
+
+```text
+[SCOPE_CONTRACT] Repair the reproduced HTTP cancellation gap in
+packages/ops-mcp/src/httpAdapter.ts, packages/core/src/toolExecutionTypes.ts,
+packages/core/src/toolExecutor.ts, packages/core/src/reservedToolExecution.ts,
+apps/server/src/routes/mcp.ts, narrowly required existing governance/contract boundaries,
+focused core/governance/MCP/server tests, ADR 0032 and existing governance ADR evidence,
+RUNBOOK.md, the cancellation review record, and synchronized plan handoff. Propagate
+request cancellation through the one executor and keep outstanding work bounded.
+Out of scope: other voice/telemetry/Layer Access edits, new transports or tools,
+production identity, remote enablement, provider calls, dependencies, and Phase 7.
+
+[PERFORMANCE_THRESHOLD] Reproduce the deferred-approval cancellation failure before fixing
+it. Condition-driven tests prove cancellation before approval completion prevents dispatch;
+cancellation during execution and shutdown preserves unrelated requests; outstanding work
+remains accounted for until safely terminated; repeated cancellation cannot evade the
+configured work bound; and replay never causes a second mutation, approval, charge, or
+audit pair. Pre-dispatch cancellation durably releases reservations with an accurate
+outcome; ambiguous post-dispatch outcomes remain non-replayable and require reconciliation.
+Preserve already completed operations without claiming rollback. Golden stdio, pinned
+Tadpole transcript, auth/isolation/denial/STASIS/path/zero-network tests stay green.
+Root lint, strict typecheck, full unit/performance/build, official advertised-surface
+conformance, Playwright smoke, ADG/tests, registry parity, architecture, bundle/license,
+diff, and synchronized-plan gates pass. Keep MCP below 300 ms p95 with peak active work
+below 16, all parser/frame budgets unchanged, and zero browser-bundle growth.
+
+[ARCHITECTURE_MODE] PLAN.md §2–§3 and §5–§7; ADRs 0017, 0027, 0032, and 0041–0044.
+The SDK remains transport-only; GovernedToolExecutor owns execution/governance and the
+durable ledger owns terminal/replay state. Preserve SimClock, local/seed scope, default-off
+HTTP, scoped authority, audit intent/outcome, budget and human-only STASIS resume. Any
+necessary cancellation-state choice must be documented before implementation proceeds.
+
+[FAILURE_MODES] Do not free capacity while unbounded work continues, dispatch after a
+pre-dispatch cancellation, report ambiguous work as refunded success, introduce automatic
+retry/fallback, weaken limits or governance, or touch primary-worktree edits. If the existing
+ledger cannot represent an accurate terminal cancellation outcome within its accepted
+semantics, document the exact contract decision needed and stop. Leave Phase 6 exit
+unchecked until the repaired committed tree passes renewed certification.
+```
+
+#### Historical authorized recovery brief for NEXT_TASK 6_EXIT option 2
 
 ```text
 [SCOPE_CONTRACT] Profile and optimize only the deterministic AWC and NOAA CO-OPS parser paths in
@@ -3606,5 +3655,48 @@ No later task is authorized merely because it appears in this plan.
 - Next task: **Phase 6 exit certification** against implementation commit `3662f7f`. Its embedded
   review-only 4-Pillar brief requires renewed developer authorization for the exact post-6.7 tree;
   no Phase 7 implementation has started or been authorized.
+
+### Phase 6 exit cancellation DOC_BLOCKER checkpoint — 2026-09-13
+
+- The developer authorized the exit review and bundle-baseline documentation correction.
+  Discovery found the later clean Task 6.7 handoff, so certification used its exact committed
+  tree `737ccb7` in `codex/phase-6-certification-20260913`. The primary worktree and the
+  Task 6.7 worktree remain untouched. The four primary unstaged files are
+  LayerAccessEntryDetail.svelte, VoiceControlOrb.svelte, voice.svelte.ts, and agentAdapters.ts.
+- Fetched `origin/main` remains `732c0f3`; the MCP/server/contracts/governance/shared-executor
+  paths under review are byte-identical to that merged tree. Task 6.6 and Task 6.7 remain
+  local commits; GitHub CLI is unauthenticated, so their PR/review status is not asserted.
+- Reproduced checks pass: root lint (302 files), uncached typecheck (17/17 tasks), uncached
+  unit suite (16/16 tasks, 511 tests), and canonical performance (9/9). General/MCP load
+  measured 19.64/71.97 ms p95; peak MCP active work was 10. Maximum NWS/AWC/NHC/CO-OPS
+  parsers measured 17.88/25.47/4.59/32.80 ms p95 under 50 ms. All Layer Access and Cesium
+  cases remained below 16.6 ms. Both immutable Tadpole commits resolve and all six pinned
+  source blobs match. Full details and the reproducible probe are in
+  [the cancellation review](docs/reviews/phase-6-exit-cancellation-2026-09-13.md).
+- A deterministic actual-router/SDK/executor probe pauses set_flag at approval, cancels
+  its SSE stream, then releases approval. The route reports zero active requests, yet the
+  flag changes from true to false and the ledger settles successfully with one audit pair.
+  The adapter omits cancellation from execution context; the executor has no signal or
+  pre-dispatch cancellation check. Existing cancellation tests exercise tools/list streams,
+  so their passing results do not establish cancellation of pending mutations.
+- DOC_BLOCKER: the required cancellation and bounded-cleanup claims cannot be certified.
+  No product correction is included. The full production build, official loopback rerun,
+  Playwright, and fresh bundle/license certification remain incomplete for this review;
+  earlier runs are retained as historical evidence, not promoted to a completed exit.
+- The authorized documentation correction separates Task 6.5's zero MCP browser delta,
+  Task 6.6's 1,914-byte gzip web-entry increase, and Task 6.7's 0.39 KiB total increase.
+  PLAN §7 and the ADR index now describe the existing default-off HTTP implementation.
+  No product code, dependency, manifest, lockfile, or browser asset changed in this review.
+- Handoff verification passes ADG (69 documents, 526 paths, 18 symbols), documentation tests
+  (17/17), generated provider-registry parity, architectural drift, and diff
+  checks. ADG's required IN PROGRESS phase label is retained while NEXT_TASK_STATUS carries
+  BLOCKED; synchronized plan copies and the cancellation evidence remain the resume source.
+- Final CLI status after its targeted build reports the non-authoritative offline snapshot:
+  STASIS_INACTIVE, seed mode, $10.00/$10.00 remaining, 17/19 providers, 20/22 feeds,
+  16/19 layers active, 20 healthy feeds, and two unavailable. No existing governance state
+  was resumed, deleted, or rewritten; the probe used isolated test governance.
+- NEXT_TASK remains 6_EXIT with status BLOCKED. The exact cancellation-repair brief above
+  awaits authorization. A completed repair must be followed by renewed exit certification;
+  no Phase 7 work has been started or authorized.
 
 No later task is authorized merely because it appears in this plan.

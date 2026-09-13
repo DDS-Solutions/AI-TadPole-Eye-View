@@ -324,3 +324,12 @@ commits do not share ancestry with GitHub's squash commit, so frequently edited 
 If an already-published task branch inherited that history, preserve a recovery ref and replay only
 the current task's commits onto current `origin/main`. Update the remote with `--force-with-lease`,
 never an unconditional force push, then verify the pull request diff contains only the current task.
+
+## 9. MCP Cancellation Verification
+
+A closed SSE stream and an active-request count of zero do not prove that governed work stopped.
+The Phase 6 exit review reproduced a mutation executing after stream cancellation while approval
+was pending. Keep HTTP default-off and follow the bounded repair brief in PLAN.md; do not treat
+stream-only tools/list tests as mutation-cancellation evidence. Verify approval/dispatch/shutdown
+races, durable outcomes, and actual outstanding work before certifying cleanup. See the
+[reproduction and evidence](docs/reviews/phase-6-exit-cancellation-2026-09-13.md).
