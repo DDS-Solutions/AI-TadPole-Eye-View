@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-13
-**Status:** IN PROGRESS — Phase 6 exit blocked on unreproducible performance evidence
+**Status:** IN PROGRESS — Phase 6 telemetry hardening authorized after exit-gate recovery
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,13 +20,13 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=6
-NEXT_TASK=6_EXIT
-NEXT_TASK_STATUS=BLOCKED
+NEXT_TASK=6.7
+NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
 LAST_VERIFIED_UTC=2026-09-13
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
-IMPLEMENTATION_STARTED=YES
+IMPLEMENTATION_STARTED=NO
 ```
 
 The value of `NEXT_TASK` must always equal the first unchecked task in §10. A task may be checked only after its exit evidence is recorded in §17 and both plan files are synchronized.
@@ -1788,6 +1788,28 @@ canonical gate still fails after three genuine approaches, record LOGIC_BLOCKER 
 request option 1 or 3 rather than fabricating a pass.
 ```
 
+#### Authorized 4-Pillar brief for NEXT_TASK 6.7
+
+```text
+[SCOPE_CONTRACT] After task 6.6 is completed, update VirtualizedTelemetryTable.svelte,
+TelemetryChannelFilters.svelte, focused Playwright coverage, and ADR 0025/0040 or
+DESIGN.md where the virtualization decision is documented. Preserve all current voice
+changes. No provider, store, Cesium, MCP, Phase 7, or dependency changes.
+
+[PERFORMANCE_THRESHOLD] Correct reopen/filter scroll behavior; complete keyboard and
+accessible-name coverage; verify 360x640 and 1366x768 layouts; retain bounded DOM rows
+and 60 FPS windowing; gzip growth <= 2 KiB; lint, typecheck, build, Playwright, bundle,
+and architecture checks pass.
+
+[ARCHITECTURE_MODE] Keep manual fixed-row virtualization unless measurement justifies
+the already-installed TanStack implementation. Preserve design tokens, store ownership,
+pointer behavior, and cesium-kit boundaries.
+
+[FAILURE_MODES] Do not mix this with the dirty voice task, drop kind from identity,
+force-scroll during passive live updates, add dependencies, introduce arbitrary colors,
+or claim performance/accessibility without browser verification.
+```
+
 ### Phase 6 — Standards-compliant MCP HTTP
 
 - [x] 6.1 Write an ADR comparing the official SDK with the existing hand-written server and pin the jointly supported stable protocol.
@@ -1799,6 +1821,8 @@ request option 1 or 3 rather than fabricating a pass.
 - [x] 6.4 Correct tool annotations/capabilities; add output schemas and validated structured content; emit only truthful notifications.
 - [x] 6.5 Add protocol, auth, disconnect, replay, STASIS, concurrency, malformed-payload, and inspector/conformance tests.
 - [x] 6.6 Harden voice transport readiness, race handling, bounded HUD rendering, responsive layout, and accessibility.
+- [ ] 6.7 Correct virtualized telemetry reopen/filter scrolling, identity, keyboard semantics,
+  accessible names, responsive layout, and browser-verified bounded windowing.
 - [ ] 6 exit: stdio remains compatible; unrelated sessions never receive each other’s messages; remote mutation cannot bypass audit/approval/budget/STASIS.
 
 ### Phase 7 — Identity, tenancy, and intelligence routing
@@ -3506,5 +3530,38 @@ No later task is authorized merely because it appears in this plan.
 - `NEXT_TASK` remains `6_EXIT` with status `BLOCKED`. No Phase 7 or telemetry-table implementation
   is authorized by this partial review. Recommended resume instruction: `Resume PLAN.md at blocked
   NEXT_TASK 6_EXIT; select one recorded performance-blocker option and do not enter Phase 7.`
+
+### Phase 6 exit parser-performance recovery checkpoint — 2026-09-13
+
+- The developer authorized the exact blocked-NEXT_TASK option 2 brief. Bounded V8 profiling of
+  the unchanged accepted workloads measured AWC at 28.69 ms p95 and CO-OPS at 38.67 ms p95; an
+  in-process CO-OPS profile measured 31.33 ms p95. Samples were concentrated in required Zod
+  validation and ordinary normalization, so no equivalent safe product-code optimization was
+  identified or made.
+- Two fresh single-worker provider gates passed without retries, trimming, or input changes: AWC
+  measured 21.11/20.13 ms p95 and CO-OPS 33.06/35.42 ms p95. The full canonical performance gate
+  then passed with server 14.62 ms p95, authenticated MCP 61.84 ms p95 with peak active work 10,
+  AWC 20.83 ms p95, CO-OPS 34.17 ms p95, Cesium multi-layer ingestion 5.91 ms p95, and combined
+  operational ingestion 6.83 ms p95. The 50 ms parser, 300 ms MCP, active-work 16, and 16.6 ms
+  frame ceilings remain unchanged.
+- The uncached 10/10 production build, official Inspector 2.5.0 and Conformance
+  0.2.0-alpha.11 gates, 10/10 Playwright suite, ADG over 68 documents/516 paths/18 symbols,
+  documentation tests 17/17, generated registry parity, architecture drift, and bundle budgets
+  pass. Rendered operational-awareness and voice screenshots at 360x640 and 1366x768 were
+  inspected and remained in-frame. The web entry is 107.45 KiB gzip and total bundle footprint is
+  1,249.33 KiB gzip; this recovery changes no browser asset, dependency, manifest, or lockfile.
+- `pnpm list -r --depth 0` reports 95 packages across 12 projects. Because `pnpm licenses list`
+  could not reconstruct a missing local Biome store-index record even after a frozen-lockfile
+  cache refresh, an independent read-only scan of 433 unique installed package manifests verified
+  every package declares a license: 367 MIT, 18 ISC, 17 Apache-2.0, 12 MPL-2.0, 9 MIT OR
+  Apache-2.0, 5 BSD-3-Clause, and one each under (MIT AND Zlib), (MIT OR CC0-1.0),
+  (MPL-2.0 OR Apache-2.0), 0BSD, and BSD-2-Clause.
+- Final status remains server-offline and non-authoritative: `STASIS_INACTIVE`, seed mode,
+  $10.00/$10.00 remaining, 17/19 providers, 20/22 feeds, and 16/19 layers active. The isolated
+  worktree preserves the primary worktree's unstaged voice and Layer Access edits. GitHub CLI
+  authentication remains unavailable, so open-PR inspection and PR creation were not claimed.
+- The user-authorized telemetry hardening is now recorded as task 6.7 before the final Phase 6
+  exit checkpoint. `NEXT_TASK=6.7`, status is `READY`, and no telemetry implementation or Phase 7
+  work is included in this recovery checkpoint.
 
 No later task is authorized merely because it appears in this plan.

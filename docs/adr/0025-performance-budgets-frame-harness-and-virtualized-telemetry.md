@@ -30,6 +30,15 @@ Phase 2 of [PLAN.md](../../PLAN.md) §10 and §13 mandates:
      Task 5.0.6 measured a contaminated 359.39ms p95 while Vite and all workspace
      tests ran concurrently, versus 91.73ms in the canonical suite; the 300ms
      threshold remains unchanged.
+   - Phase 6 exit recovery on 2026-09-13 retained the same isolation rule after three
+     contention-heavy provider runs exceeded the unchanged 50ms parser ceiling. A bounded
+     V8 profile of the exact fixture sizes measured AWC at 28.69ms p95 and CO-OPS at
+     38.67ms p95; a second in-process CO-OPS profile measured 31.33ms p95. Sampled work was
+     concentrated in the mandatory Zod boundary parse and ordinary normalization, with no
+     equivalent optimization that justified changing product code. Two subsequent fresh,
+     single-worker gates measured AWC at 21.11/20.13ms and CO-OPS at 33.06/35.42ms p95;
+     the full canonical gate measured 20.83/34.17ms. No retry-until-pass mechanism, sample
+     trimming, fixture reduction, validation bypass, dependency, or threshold change was made.
 
 2. **Deterministic Bundle Budgets & Rollup Chunking**:
    - Configured Vite Rollup `manualChunks` in [`apps/web/vite.config.ts`](../../apps/web/vite.config.ts) to isolate `@cesium/engine`, `svelte`, `uplot`, and `@tanstack/svelte-virtual` into independent vendor chunks.
