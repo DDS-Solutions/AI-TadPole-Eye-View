@@ -83,7 +83,7 @@ Package manifests are the installed source of truth:
 
 1. **Primitives**: Current controls are native Svelte components with component-scoped CSS. `shadcn-svelte` and `bits-ui` are not installed; adopting either requires the normal dependency and accessibility review.
 2. **Docking Panes**: `paneforge` is not installed. The current HUD uses fixed overlays; resizable panes remain proposed work.
-3. **High-Density Lists**: `@tanstack/svelte-virtual` is installed, but the current `VirtualizedTelemetryTable.svelte` uses its own bounded window calculation and does not import that package. Do not attribute the implementation to TanStack until a measured migration lands.
+3. **High-Density Lists**: `@tanstack/svelte-virtual` is installed, but `VirtualizedTelemetryTable.svelte` intentionally retains its manual fixed-36px-row window calculation and does not import that package. Task 6.7 measured 10,036 entities at no more than 21 DOM rows and 8.60ms p95 browser scroll render/layout work against the 16.6ms frame budget, so no migration is justified. Explicit reopen, channel, and search changes reset to the first result; passive live updates preserve reading position. Rows remain native keyboard-operable buttons keyed and selected by `kind + id`. Do not attribute the implementation to TanStack until a later measured variable-height or windowing need lands.
 4. **Time-Series Charts**: `uPlot` is installed and used by `TelemetryTimelineChart.svelte` for Canvas rendering.
 5. **Toasts & Alerts**: `svelte-sonner` is not installed. Current alerts are local component state; a toast dependency requires review before adoption.
 

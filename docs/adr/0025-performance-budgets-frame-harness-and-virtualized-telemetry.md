@@ -45,9 +45,26 @@ Phase 2 of [PLAN.md](../../PLAN.md) §10 and §13 mandates:
    - Built [`scripts/check-bundle-budgets.mjs`](../../scripts/check-bundle-budgets.mjs) automated validator checking uncompressed and gzip compressed chunk limits (Entry JS <= 150KB, Vendor Cesium <= 3.2MB, CSS <= 50KB, Total JS <= 3.6MB) as an automated CI gate (`pnpm check:budgets`).
 
 3. **High-Density Virtualized Telemetry Table (`apps/web`)**:
-   - Implemented [`apps/web/src/components/VirtualizedTelemetryTable.svelte`](../../apps/web/src/components/VirtualizedTelemetryTable.svelte) using windowed virtualization.
+   - Implemented [`apps/web/src/components/VirtualizedTelemetryTable.svelte`](../../apps/web/src/components/VirtualizedTelemetryTable.svelte) using manual fixed-row windowed virtualization. The already-installed TanStack package is not imported because the fixed 36px row contract has no measured variable-height or windowing gap that justifies a migration.
    - Constrains DOM elements to active viewport rows (~15–30 nodes out of 1,000+ active items), maintaining smooth 60 FPS scrolling.
    - Features real-time multi-field search, channel filter chips (ADS-B, AIS, USGS, FIRMS, GBFS, CCTV, RADIO, LAUNCH, WX), and one-click camera focus on Cesium entities.
+   - Task 6.7 resets the local viewport only for an explicit reopen, channel change, or search
+     change. Passive item refreshes do not participate in that effect and therefore do not force
+     the operator away from the current reading position. Selection and keyed-row identity both
+     retain `kind + id`.
+   - Rows are single native buttons with explicit entity-focused accessible names, preserving
+     pointer activation while providing Enter/Space behavior without nested interactive controls.
+     Search, clear, close, and channel controls expose explicit names and pressed state; close
+     returns focus to the table toggle.
+   - Six rows of overscan on each side retain a safe window while avoiding wrapper-object churn.
+     Focused Chromium evidence at 1366x768 measured 10,036 entities, no more than 21 DOM rows, and
+     8.60ms p95 scroll render/layout work against the 16.6ms frame budget. The 360x640 compact
+     layout keeps the panel, horizontal channel selector, search, four essential columns, and row
+     actions in-frame.
+   - Browser wall-clock evidence runs in a fresh process through
+     `playwright.telemetry-performance.config.ts`; the ordinary Playwright suite owns behavior,
+     accessibility, and layout. This follows the existing isolated-performance rule rather than
+     allowing a long globe suite or local proxy contention to contaminate timing assertions.
 
 4. **Canvas-Based Time-Series Telemetry (uPlot)**:
    - Implemented [`apps/web/src/components/TelemetryTimelineChart.svelte`](../../apps/web/src/components/TelemetryTimelineChart.svelte) using `uPlot` on Canvas.

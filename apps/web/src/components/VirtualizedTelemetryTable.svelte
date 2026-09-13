@@ -6,29 +6,37 @@
   let scrollContainer: HTMLDivElement | null = $state(null);
   let scrollTop = $state(0);
   let viewportHeight = $state(280);
+  let wasTableOpen = false;
+  let previousFilterKey = '';
 
   const rowHeight = 36;
-  const overscan = 10;
+  const overscan = 6;
 
   const items = $derived(layerStore.filteredItems);
   const totalItems = $derived(items.length);
   const totalHeight = $derived(totalItems * rowHeight);
-
   const startIndex = $derived(
     Math.max(0, Math.floor(scrollTop / rowHeight) - overscan)
   );
-
   const endIndex = $derived(
     Math.min(totalItems, Math.ceil((scrollTop + viewportHeight) / rowHeight) + overscan)
   );
+  const visibleItems = $derived(items.slice(startIndex, endIndex));
+  $effect(() => {
+    const isOpen = layerStore.isTableOpen;
+    const filterKey = `${layerStore.tableChannel}\u0000${layerStore.tableQuery}`;
+    const shouldResetScroll = isOpen && (!wasTableOpen || filterKey !== previousFilterKey);
 
-  const visibleItems = $derived(
-    items.slice(startIndex, endIndex).map((item, i) => ({
-      item,
-      virtualIndex: startIndex + i,
-      offsetY: (startIndex + i) * rowHeight,
-    }))
-  );
+    if (shouldResetScroll) {
+      scrollTop = 0;
+      if (scrollContainer) {
+        scrollContainer.scrollTop = 0;
+      }
+    }
+
+    wasTableOpen = isOpen;
+    previousFilterKey = filterKey;
+  });
 
   function handleScroll(e: Event) {
     const target = e.currentTarget as HTMLDivElement;
@@ -43,6 +51,11 @@
       data: item.rawData,
     });
     layerStore.triggerFlyTo(item.lat, item.lon, item.alt);
+  }
+
+  function handleCloseTable() {
+    layerStore.toggleTable(false);
+    queueMicrotask(() => document.getElementById('toggle-telemetry-table-btn')?.focus());
   }
 
   function getKindColor(kind: string): string {
@@ -74,35 +87,47 @@
 </script>
 
 {#if layerStore.isTableOpen}
-  <section id="virtualized-telemetry-table" class="telemetry-table-panel">
-    <!-- Header Controls -->
+  <section
+    id="virtualized-telemetry-table"
+    class="telemetry-table-panel"
+    aria-labelledby="telemetry-table-title"
+  >
     <div class="table-header">
       <div class="header-title-group">
-        <span class="pulse-icon">●</span>
-        <h3 class="table-title">High-Density Telemetry Stream</h3>
-        <span class="count-badge mono">{totalItems.toLocaleString()} ENTITIES</span>
+        <span class="pulse-icon" aria-hidden="true">●</span>
+        <h3 id="telemetry-table-title" class="table-title">High-Density Telemetry Stream</h3>
+        <span class="count-badge mono" data-testid="telemetry-count" aria-live="polite">
+          {totalItems.toLocaleString()} ENTITIES
+        </span>
       </div>
 
       <TelemetryChannelFilters />
 
-      <!-- Search & Close -->
       <div class="search-actions">
         <div class="search-box">
-          <span class="search-icon">🔍</span>
+          <span class="search-icon" aria-hidden="true">🔍</span>
           <input
             id="telemetry-search-input"
             type="text"
             placeholder="Search callsign, MMSI, location..."
+            aria-label="Search telemetry"
             bind:value={layerStore.tableQuery}
           />
           {#if layerStore.tableQuery}
-            <button class="clear-search-btn" onclick={() => (layerStore.tableQuery = '')}>✕</button>
+            <button
+              type="button"
+              class="clear-search-btn"
+              aria-label="Clear telemetry search"
+              onclick={() => (layerStore.tableQuery = '')}
+            >✕</button>
           {/if}
         </div>
         <button
+          type="button"
           id="close-table-btn"
           class="close-table-btn"
-          onclick={() => layerStore.toggleTable(false)}
+          onclick={handleCloseTable}
+          aria-label="Close telemetry table"
           title="Close table"
         >
           ✕
@@ -110,7 +135,6 @@
       </div>
     </div>
 
-    <!-- Table Columns Header -->
     <div class="columns-header">
       <div class="col col-kind">DOMAIN</div>
       <div class="col col-id">CALLSIGN / NAME</div>
@@ -121,57 +145,61 @@
       <div class="col col-action">ACTION</div>
     </div>
 
-    <!-- Virtualized Scroll Viewport -->
     <div
       bind:this={scrollContainer}
       class="virtual-viewport"
       onscroll={handleScroll}
       style="height: {viewportHeight}px;"
+      role="region"
+      aria-label="Telemetry rows"
     >
       <div class="virtual-scroll-track" style="height: {totalHeight}px;">
-        {#each visibleItems as { item, virtualIndex, offsetY } (item.kind + '-' + item.id)}
-          <div
+        {#each visibleItems as item, visibleIndex (item.kind + '-' + item.id)}
+          {@const virtualIndex = startIndex + visibleIndex}
+          <button
+            type="button"
             class="virtual-row"
-            class:selected={layerStore.selectedEntity?.id === item.id}
-            style="transform: translateY({offsetY}px); height: {rowHeight}px;"
+            class:selected={
+              layerStore.selectedEntity?.kind === item.kind &&
+              layerStore.selectedEntity.id === item.id
+            }
+            style="transform: translateY({virtualIndex * rowHeight}px); height: {rowHeight}px;"
             onclick={() => handleSelectRow(item)}
-            onkeydown={(e) => e.key === 'Enter' && handleSelectRow(item)}
-            role="button"
-            tabindex="0"
+            aria-label={`Focus ${item.kind} ${item.name}`}
+            data-virtual-index={virtualIndex}
+            data-entity-kind={item.kind}
+            data-entity-id={item.id}
           >
-            <div class="col col-kind">
+            <span class="col col-kind">
               <span
                 class="kind-badge"
                 style="background: {getKindColor(item.kind)}20; color: {getKindColor(item.kind)}; border-color: {getKindColor(item.kind)}50;"
               >
                 {item.kind.toUpperCase()}
               </span>
-            </div>
-            <div class="col col-id mono font-semibold" title={item.name}>
+            </span>
+            <span class="col col-id mono font-semibold" title={item.name}>
               {item.name}
-            </div>
-            <div class="col col-metric1 mono text-slate-300">
+            </span>
+            <span class="col col-metric1 mono text-slate-300">
               {item.metric1}
-            </div>
-            <div class="col col-metric2 mono text-slate-400">
+            </span>
+            <span class="col col-metric2 mono text-slate-400">
               {item.metric2}
-            </div>
-            <div class="col col-coords mono text-slate-400 text-xs">
+            </span>
+            <span class="col col-coords mono text-slate-400 text-xs">
               {item.coordinates}
-            </div>
-            <div class="col col-time mono text-slate-400 text-xs">
+            </span>
+            <span class="col col-time mono text-slate-400 text-xs">
               {item.timeText}
-            </div>
-            <div class="col col-action">
-              <button class="focus-btn" onclick={(e) => { e.stopPropagation(); handleSelectRow(item); }}>
-                🎯 Focus
-              </button>
-            </div>
-          </div>
+            </span>
+            <span class="col col-action">
+              <span class="focus-btn" aria-hidden="true">🎯 Focus</span>
+            </span>
+          </button>
         {/each}
-
         {#if totalItems === 0}
-          <div class="empty-state">
+          <div class="empty-state" role="status">
             No telemetry records matching filter criteria.
           </div>
         {/if}
@@ -198,7 +226,6 @@
     overflow: hidden;
     color: var(--hud-text-primary);
   }
-
   .table-header {
     display: flex;
     justify-content: space-between;
@@ -209,19 +236,16 @@
     gap: 12px;
     flex-wrap: wrap;
   }
-
   .header-title-group {
     display: flex;
     align-items: center;
     gap: 8px;
   }
-
   .pulse-icon {
     color: var(--hud-success-signal);
     font-size: 0.7rem;
     animation: pulse 2s infinite;
   }
-
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
@@ -234,7 +258,6 @@
     letter-spacing: 0.04em;
     color: var(--hud-text-primary);
   }
-
   .count-badge {
     font-size: 0.68rem;
     background: var(--hud-accent-soft);
@@ -243,13 +266,11 @@
     padding: 2px 6px;
     border-radius: 4px;
   }
-
   .search-actions {
     display: flex;
     align-items: center;
     gap: 8px;
   }
-
   .search-box {
     display: flex;
     align-items: center;
@@ -259,12 +280,10 @@
     padding: 2px 8px;
     gap: 6px;
   }
-
   .search-icon {
     font-size: 0.75rem;
     color: var(--hud-text-dim);
   }
-
   .search-box input {
     background: transparent;
     border: none;
@@ -274,11 +293,9 @@
     font-family: inherit;
     width: 180px;
   }
-
   .search-box input::placeholder {
     color: var(--hud-text-dim);
   }
-
   .clear-search-btn {
     background: none;
     border: none;
@@ -287,7 +304,6 @@
     font-size: 0.7rem;
     padding: 0;
   }
-
   .close-table-btn {
     background: var(--hud-chip-bg-strong);
     border: 1px solid var(--hud-border-medium);
@@ -356,11 +372,22 @@
     box-sizing: border-box;
     border-bottom: 1px solid var(--hud-border-faint);
     font-size: 0.75rem;
+    font-family: inherit;
+    color: inherit;
+    text-align: left;
+    appearance: none;
+    background: transparent;
     cursor: pointer;
     transition: background 0.1s ease;
   }
 
   .virtual-row:hover {
+    background: var(--hud-accent-faint);
+  }
+
+  .virtual-row:focus-visible {
+    outline: 2px solid var(--hud-accent);
+    outline-offset: -2px;
     background: var(--hud-accent-faint);
   }
 
@@ -401,7 +428,8 @@
     transition: all 0.15s ease;
   }
 
-  .focus-btn:hover {
+  .virtual-row:hover .focus-btn,
+  .virtual-row:focus-visible .focus-btn {
     background: var(--hud-accent);
     color: var(--hud-surface-dark);
   }
@@ -411,5 +439,57 @@
     text-align: center;
     color: var(--hud-text-secondary);
     font-size: 0.8rem;
+  }
+
+  @media (max-width: 720px) {
+    .telemetry-table-panel {
+      right: 4px;
+      bottom: 36px;
+      left: 4px;
+    }
+
+    .table-header {
+      gap: 8px;
+      padding: 8px;
+    }
+
+    .header-title-group,
+    .search-actions {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .count-badge {
+      margin-left: auto;
+      white-space: nowrap;
+    }
+
+    .search-box {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .search-box input {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .columns-header,
+    .virtual-row {
+      grid-template-columns: 60px minmax(0, 1fr) minmax(72px, 0.8fr) 64px;
+      padding-right: 6px;
+      padding-left: 6px;
+    }
+
+    .col-metric2,
+    .col-coords,
+    .col-time {
+      display: none;
+    }
+
+    .focus-btn {
+      padding-right: 4px;
+      padding-left: 4px;
+    }
   }
 </style>

@@ -58,6 +58,13 @@ filters, and WebSocket collaboration server composition now have cohesive module
 previously exempt UI files and the server application root are all below 500 lines, so the
 machine inventory now contains no large-file exemptions.
 
+Task 6.7 performed the next virtualized-table feature edit without reopening the exemption:
+`VirtualizedTelemetryTable.svelte` remains below 500 lines and its channel controls remain in
+`TelemetryChannelFilters.svelte`. Browser measurement retained the simpler manual fixed-row
+window—10,036 entities, at most 21 DOM rows, and 8.60ms p95 scroll render/layout work against the
+16.6ms frame budget—so the installed TanStack package still has no justified import or ownership
+change.
+
 ### Design colors
 
 Cesium controller colors now come from one `packages/cesium-kit` token module. Web
