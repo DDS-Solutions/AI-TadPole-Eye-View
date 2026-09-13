@@ -68,6 +68,8 @@ The full production build, official Inspector/conformance rerun, Playwright, and
 
 The CLI needed a targeted build in the fresh checkout. Its final offline status is explicitly non-authoritative: STASIS_INACTIVE, seed mode, $10.00/$10.00 remaining, 20 healthy feeds and two unavailable. Existing governance state and both pre-existing worktrees were preserved.
 
+Certification documentation was committed locally as `765b8a6`. Automatic approval review rejected the branch push because the payload includes earlier local voice/telemetry history and authorization for its destination/payload was not established. Nothing was pushed and no PR was created; publishing requires explicit developer approval. The subsequent handoff commit records this restriction without product changes.
+
 ## Reproduction
 
 After `pnpm turbo run build --filter=@gev/server...`, save the following block as `cancellation-probe.mjs` at the repository root and run `node cancellation-probe.mjs`. On the inspected tree it exits 1 at the final assertion. The test approval is local and is not production authority.

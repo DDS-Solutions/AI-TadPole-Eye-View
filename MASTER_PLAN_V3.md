@@ -3695,6 +3695,11 @@ No later task is authorized merely because it appears in this plan.
   STASIS_INACTIVE, seed mode, $10.00/$10.00 remaining, 17/19 providers, 20/22 feeds,
   16/19 layers active, 20 healthy feeds, and two unavailable. No existing governance state
   was resumed, deleted, or rewritten; the probe used isolated test governance.
+- Certification documentation is committed locally as `765b8a6`. Automatic approval review
+  rejected publishing `codex/phase-6-certification-20260913`: the proposed push includes
+  earlier local voice/telemetry history, and authorization for that payload and remote
+  destination was not established. No push or PR creation occurred. Publishing needs explicit
+  developer approval; the local evidence and prepared PR description remain available.
 - NEXT_TASK remains 6_EXIT with status BLOCKED. The exact cancellation-repair brief above
   awaits authorization. A completed repair must be followed by renewed exit certification;
   no Phase 7 work has been started or authorized.
