@@ -1756,6 +1756,38 @@ needed, leave the exit unchecked and request a new bounded 4-Pillar authorizatio
 absorbing implementation into the exit review.
 ```
 
+#### Ready-to-authorize 4-Pillar brief for blocked NEXT_TASK 6_EXIT option 2
+
+```text
+[SCOPE_CONTRACT] Profile and optimize only the deterministic AWC and NOAA CO-OPS parser paths in
+packages/providers/src/aviationWeather.ts and packages/providers/src/coastalConditions.ts, their
+focused functional/property coverage, packages/providers/test/operationalAwarenessPerformance.test.ts,
+ADR 0025/0047 evidence, and synchronized plan handoff. Preserve the exact accepted contracts,
+record ceilings, AOI semantics, provenance, source labels, SimClock behavior, and seed fixtures.
+Out of scope: threshold or fixture-size changes, provider/store/server/UI/Cesium/MCP behavior,
+live calls, new dependencies, telemetry-table work, Phase 7, and unrelated refactors.
+
+[PERFORMANCE_THRESHOLD] The existing 1,200-record AWC and 100-station/10,000-record CO-OPS cases
+each remain below 50 ms p95 without retries, trimming, reduced validation, or changed inputs. Prove
+output equivalence against the pre-optimization implementation and add property/limit regression
+coverage for any extracted fast path. The focused provider gate and full canonical performance
+gate pass in fresh single-worker processes; root lint, affected strict typecheck/unit/build, seed
+zero-network guards, ADG/tests, architecture drift, dependency/diff, and synchronized-plan checks
+pass with zero browser-bundle and dependency delta.
+
+[ARCHITECTURE_MODE] Preserve PLAN.md §2 validation, provider-boundary, SimClock, provenance,
+seed-default, and untrusted-data rules plus ADRs 0025, 0035, 0045, and 0047. Optimize measured
+allocation or validation work only inside the provider parser boundary; Zod-validated response
+semantics and the registry remain authoritative.
+
+[FAILURE_MODES] Do not raise or loosen the 50 ms ceiling; reduce records; skip trust-boundary
+validation; remove fields, provenance, freshness, or error checks; cache mutable results across
+calls; add retry-until-pass logic; terminate unrelated host processes; add a dependency; or start
+telemetry/Phase 7 work. If profiling cannot identify an equivalent bounded optimization or the
+canonical gate still fails after three genuine approaches, record LOGIC_BLOCKER with profiles and
+request option 1 or 3 rather than fabricating a pass.
+```
+
 ### Phase 6 — Standards-compliant MCP HTTP
 
 - [x] 6.1 Write an ADR comparing the official SDK with the existing hand-written server and pin the jointly supported stable protocol.
