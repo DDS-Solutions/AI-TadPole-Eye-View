@@ -2,8 +2,8 @@
 
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
-**Verified against repository:** 2026-09-11
-**Status:** IN PROGRESS — Phase 6; task 6.6 complete; Phase 6 exit awaits authorization
+**Verified against repository:** 2026-09-13
+**Status:** IN PROGRESS — Phase 6 exit blocked on unreproducible performance evidence
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -21,12 +21,12 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 PLAN_VERSION=3.0
 CURRENT_PHASE=6
 NEXT_TASK=6_EXIT
-NEXT_TASK_STATUS=READY
+NEXT_TASK_STATUS=BLOCKED
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
-LAST_VERIFIED_UTC=2026-09-11
+LAST_VERIFIED_UTC=2026-09-13
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
-IMPLEMENTATION_STARTED=NO
+IMPLEMENTATION_STARTED=YES
 ```
 
 The value of `NEXT_TASK` must always equal the first unchecked task in §10. A task may be checked only after its exit evidence is recorded in §17 and both plan files are synchronized.
@@ -3437,5 +3437,42 @@ No later task is authorized merely because it appears in this plan.
   the state-machine source is outside the exact authorized file list.
 - Next task is the review-only Phase 6 exit certification. Its embedded 4-Pillar brief awaits
   developer authorization. No Phase 7 task has started or been authorized.
+
+### Phase 6 exit certification DOC_BLOCKER / LOGIC_BLOCKER checkpoint — 2026-09-13
+
+- The developer authorized the exact embedded review-only Phase 6 exit brief. Certification ran
+  in an isolated `codex/phase-6-exit` worktree at reviewed Task 6.6 evidence commit `7a2716d`, so
+  concurrent unstaged voice and Layer Access edits in the primary worktree remained untouched and
+  supplied no evidence.
+- Startup evidence passed plan-copy equality and reported the expected non-authoritative offline
+  snapshot: `STASIS_INACTIVE`, seed mode, $10.00/$10.00 remaining, 17/19 providers, 20/22 feeds,
+  and 16/19 layers active. GitHub CLI authentication remains unavailable, so open-PR inspection
+  could not be completed through that tool.
+- Reproduced evidence passed root lint across 299 files, uncached strict typecheck across 17/17
+  tasks, and the uncached 16/16-task unit matrix with 511 tests. The unit matrix includes contracts
+  81/81, core 70/70, ops-mcp 53/53, server 137/137, preserved stdio 14/14, the byte-exact pinned
+  Tadpole transcript, principal/tenant/stream isolation, stable replay, denial replay, durable
+  STASIS/`BUDGET_DENIED`, durable `IN_DOUBT`, and the one governed audit/approval/budget lifecycle.
+  A first restricted unit launch was unable to spawn esbuild (`EPERM`); the authorized unrestricted
+  rerun is the passing evidence. Lockfile-pinned installation changed no manifest or lockfile.
+- The canonical performance command passed the general 100-request server benchmark at 36.79 ms
+  p95 and the 100-request MCP benchmark at 170.53 ms p95 with peak active work 10, below the 300 ms
+  and 16 limits. It then failed the provider parser gate: NWS 45.83 ms, AWC 53.09 ms, NHC 9.70 ms,
+  and CO-OPS 83.39 ms p95 against the 50 ms ceiling. Two genuine isolated single-worker reruns
+  also failed: first NWS/AWC/NHC/CO-OPS 33.83/42.44/8.32/60.82 ms, then
+  43.76/51.31/10.45/85.61 ms p95. The independently measured 2,000-entry Layer Access projection
+  and filter remained below 16.6 ms in all three runs.
+- `DOC_BLOCKER` with three-attempt `LOGIC_BLOCKER` evidence: the required full performance claim
+  is not reproducible on this host. The Phase 6 exit stays unchecked; the remaining Cesium/full
+  build, official loopback, documentation, registry, architecture, bundle, license, and final diff
+  gates were not represented as a completed certification after the mandatory command stopped.
+- Bounded resolution options: (1) rerun the unchanged isolated gate on a quiescent or CI benchmark
+  host while preserving the 50 ms thresholds; (2) authorize a focused AWC/CO-OPS profiling and
+  optimization task with contract/property regression coverage; or (3) authorize an ADR 0025
+  methodology amendment only after controlled multi-host measurements justify a different stable
+  benchmark, never from these failures alone.
+- `NEXT_TASK` remains `6_EXIT` with status `BLOCKED`. No Phase 7 or telemetry-table implementation
+  is authorized by this partial review. Recommended resume instruction: `Resume PLAN.md at blocked
+  NEXT_TASK 6_EXIT; select one recorded performance-blocker option and do not enter Phase 7.`
 
 No later task is authorized merely because it appears in this plan.
