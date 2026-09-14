@@ -1,10 +1,15 @@
 # Phase 6 exit review — cancellation blocker
 
 - Date: 2026-09-13
-- Result: **DOC_BLOCKER — Phase 6 exit remains unchecked.**
+- Original result: **DOC_BLOCKER — Phase 6 exit remains unchecked.**
+- Resolution: repair commit `76f14f3` passes focused cancellation, affected-unit, and performance
+  gates; merge and renewed exit certification remain pending.
 - Certification branch: `codex/phase-6-certification-20260913`.
 - Inspected tree: `737ccb73df8b549452324fe4ff39aea3f1713aec`, containing Task 6.7 implementation `3662f7f`.
-- Fetched origin/main: `732c0f3`. The Phase 6 MCP, contracts, server, governance, and shared executor paths are unchanged from that merged tree. Tasks 6.6 and 6.7 remain local commits; this review does not claim their PR approval or merge.
+- Original comparison base: `732c0f3`. GitHub PR
+  [#48](https://github.com/DDS-Solutions/AI-TadPole-Eye-View/pull/48) later squash-merged the
+  certification tree, including Tasks 6.6 and 6.7, as `eae54fe` on 2026-09-14. The repair branch
+  starts from that exact merged commit.
 - Runtime: Node 26.2.0, pnpm 10.34.5, Vitest 3.2.7; dependencies restored with the unchanged frozen lockfile.
 
 ## Finding
@@ -32,7 +37,7 @@ Observed result:
 
 The assertion that the flag remains unchanged fails. Audit and approval are still present; the defect is cancellation failing to prevent later dispatch, with work no longer represented by the transport counter. Repeated cancelled requests could therefore leave outstanding approval/execution work outside that counter; this amplification was not load-tested.
 
-Source locations:
+Historical source locations on the inspected pre-repair tree:
 
 - [HTTP adapter callback](../../packages/ops-mcp/src/httpAdapter.ts): lines 172–178 omit cancellation from executor context.
 - [Execution context](../../packages/core/src/toolExecutionTypes.ts): context carries no signal.
@@ -42,7 +47,35 @@ Source locations:
 
 The pinned [MCP Streamable HTTP cancellation specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http#cancellation), rechecked on 2026-09-13, treats SSE stream closure as request cancellation and recommends promptly stopping its work. The authorized Phase 6 brief requires stream-close cancellation and bounded cleanup. The current behavior does not establish those exit claims.
 
-## Completed verification
+## Repair resolution — 2026-09-14
+
+Commit `76f14f3` propagates the SDK call signal through `ToolExecutionContext` into the shared
+executor and makes the HTTP exchange lease observe the resulting executor promise. Work
+registration is sealed before the response leaves the adapter. Response cancellation and shutdown
+abort the request but do not release its slot while a dispatched handler remains active.
+
+The durable outcomes now follow the existing M3 boundary:
+
+- cancellation while approval is pending refunds the reservation with terminal
+  `REQUEST_CANCELLED`, zero settled cost, and one audit pair; a late approval is ignored;
+- cancellation after handler dispatch records `OPERATION_IN_DOUBT`, retains the reservation,
+  cannot be replayed, and remains counted until the handler promise stops;
+- cancellation and shutdown affect only their own request signals, while shutdown waits for all
+  tracked work and rejects new requests.
+
+The focused regression uses the actual Hono route, official SDK adapter, shared executor, SQLite
+ledger, and deferred approval/handlers. Core passes 72/72, ops-mcp 54/54, and server 140/140.
+All nine performance cases pass; general/MCP load measured 15.29/64.77 ms p95 with peak MCP active
+work 10 under the cap of 16. Parser maxima were 17.50/22.47/5.39/33.68 ms p95, Layer Access
+projection/filter measured 2.70/3.91 ms p95, and all Cesium ingestion cases remained below 16.6
+ms p95. Final pre-PR gates also pass the complete 517-test unit suite, uncached typecheck,
+production build, deterministic bundle budgets, lint, ADG and documentation checks, architectural
+drift, official MCP Inspector/conformance for the advertised tools-only surface with zero provider
+fetches, and Playwright 12/12. No dependency, browser source, remote enablement, production
+identity, or Phase 7 code changed. The Phase 6 exit checkbox remains open until merge and renewed
+certification.
+
+## Original blocked-tree verification
 
 | Command / inspection | Result |
 |---|---|
@@ -68,7 +101,10 @@ The full production build, official Inspector/conformance rerun, Playwright, and
 
 The CLI needed a targeted build in the fresh checkout. Its final offline status is explicitly non-authoritative: STASIS_INACTIVE, seed mode, $10.00/$10.00 remaining, 20 healthy feeds and two unavailable. Existing governance state and both pre-existing worktrees were preserved.
 
-Certification documentation was committed locally as `765b8a6`. Automatic approval review rejected the branch push because the payload includes earlier local voice/telemetry history and authorization for its destination/payload was not established. Nothing was pushed and no PR was created; publishing requires explicit developer approval. The subsequent handoff commit records this restriction without product changes.
+Certification documentation was committed locally as `765b8a6`. At review time, automatic
+approval review rejected the branch push because the payload included earlier local
+voice/telemetry history and authorization for its destination/payload was not established. The
+developer later authorized publication; PR #48 was posted and squash-merged as `eae54fe`.
 
 ## Reproduction
 
@@ -162,6 +198,9 @@ try {
 }
 ```
 
-## Required repair and next gate
+## Resolution and next gate
 
-The ready-to-authorize cancellation-repair 4-Pillar brief is in [PLAN.md](../../PLAN.md). It requires signal propagation through the sole governed execution path, cancellation before dispatch, bounded cleanup and accurate active-work accounting, durable non-replayable outcomes, and regression coverage for cancellation/approval/shutdown races. No product fix, new dependency, remote enablement, or Phase 7 work is included in this review.
+The authorized cancellation-repair 4-Pillar brief in [PLAN.md](../../PLAN.md) is implemented by
+`76f14f3`. The remaining gate is to merge the isolated repair and run renewed Phase 6 exit
+certification against that merged tree. No remote enablement or Phase 7 work is authorized by this
+repair.

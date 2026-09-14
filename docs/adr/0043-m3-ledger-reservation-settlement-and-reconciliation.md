@@ -4,6 +4,7 @@
 - **Date:** 2026-08-28
 - **Decision owner:** Developer approval of OQ-3
 - **Contract:** `gev.m3.ledger.v1`
+- **Cancellation clarification:** 2026-09-14 Phase 6 exit repair
 
 ## Context
 
@@ -103,11 +104,14 @@ Successful dispatch settles the validated actual cost. An actual cost above the 
 recorded in full and trips `COMPLIANCE_DRIFT`; if the resulting spend also meets/exceeds the cap,
 `BUDGET_BREACH` takes precedence. Neither trip auto-clears.
 
-Before dispatch, cancellation, M2 denial/unavailability, and expiry refund the reservation with
-zero settled cost. After `EXECUTING`, refund is permitted only with persisted human/provider/local
-evidence that proves both no effect and no charge. Refund or credit of an already settled charge
-is deferred; it remains a manual accounting process until a later compensating-credit contract is
-approved.
+Before handler dispatch, cancellation, M2 denial/unavailability, and expiry refund the reservation
+with zero settled cost. A pre-dispatch cancellation stores `REQUEST_CANCELLED` as its immutable
+terminal replay value, so a later approval or retry cannot dispatch it. After the handler is
+invoked, cancellation is ambiguous: the operation becomes `IN_DOUBT`, its reservation remains
+held, and transport capacity remains occupied until the underlying handler promise stops. A refund
+after `EXECUTING` is permitted only with persisted human/provider/local evidence that proves both
+no effect and no charge. Refund or credit of an already settled charge is deferred; it remains a
+manual accounting process until a later compensating-credit contract is approved.
 
 A handler exception or timeout after `EXECUTING`, loss of settlement acknowledgement, or startup
 recovery of an expired `EXECUTING` operation becomes `IN_DOUBT`. Its maximum reservation remains

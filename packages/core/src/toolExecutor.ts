@@ -17,6 +17,7 @@ import {
   type ToolExecutionFailureCode,
   type ToolExecutionResult,
   type ToolHandler,
+  isExecutionCancelled,
   isHandlerTimeout,
   makeFailure,
   makeSuccess,
@@ -261,13 +262,7 @@ export class GovernedToolExecutor {
       );
     }
 
-    let rawOutput: unknown;
-    try {
-      rawOutput = await runWithTimeout(
-        Promise.resolve(handler(input, { ...context, operation_id: intentId })),
-        OPERATOR_TOOLS[name].timeout_ms
-      );
-    } catch (error) {
+    if (context.signal?.aborted) {
       return this.finishUnreserved(
         auditSink,
         makeFailure(
@@ -275,11 +270,43 @@ export class GovernedToolExecutor {
           name,
           intentId,
           startTime,
-          isHandlerTimeout(error) ? 'HANDLER_TIMEOUT' : 'HANDLER_ERROR',
+          'REQUEST_CANCELLED',
+          `Tool execution cancelled before '${name}' was dispatched`,
+          'error'
+        )
+      );
+    }
+
+    let rawOutput: unknown;
+    let handlerPromise: Promise<unknown> | undefined;
+    try {
+      handlerPromise = Promise.resolve(handler(input, { ...context, operation_id: intentId }));
+      rawOutput = await runWithTimeout(
+        handlerPromise,
+        OPERATOR_TOOLS[name].timeout_ms,
+        context.signal
+      );
+    } catch (error) {
+      const result = this.finishUnreserved(
+        auditSink,
+        makeFailure(
+          this.clock,
+          name,
+          intentId,
+          startTime,
+          isExecutionCancelled(error)
+            ? 'REQUEST_CANCELLED'
+            : isHandlerTimeout(error)
+              ? 'HANDLER_TIMEOUT'
+              : 'HANDLER_ERROR',
           `Handler failed for tool '${name}': ${normalizeError(error)}`,
           'error'
         )
       );
+      if (isExecutionCancelled(error) && handlerPromise) {
+        await handlerPromise.catch(() => undefined);
+      }
+      return result;
     }
 
     const output = OPERATOR_TOOLS[name].outputSchema.safeParse(rawOutput);

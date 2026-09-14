@@ -9,8 +9,8 @@ import {
   type AuthInfo,
   type CallToolResult,
   type JsonSchemaType,
-  type McpHttpHandler,
   McpServer,
+  type McpHttpHandler as SdkMcpHttpHandler,
   createMcpHandler,
   fromJsonSchema,
 } from '@modelcontextprotocol/server';
@@ -31,6 +31,21 @@ export interface GevMcpHttpHandlerOptions {
   maxSubscriptions?: number;
   keepAliveMs?: number;
   onerror?: (error: Error) => void;
+}
+
+type SdkMcpHttpRequestOptions = NonNullable<Parameters<SdkMcpHttpHandler['fetch']>[1]>;
+
+export interface McpHttpExecutionObserver {
+  track(execution: Promise<ToolExecutionResult>): void;
+  seal(): void;
+}
+
+export interface GevMcpHttpRequestOptions extends SdkMcpHttpRequestOptions {
+  executionObserver?: McpHttpExecutionObserver;
+}
+
+export interface GevMcpHttpHandler extends Omit<SdkMcpHttpHandler, 'fetch'> {
+  fetch(request: Request, options?: GevMcpHttpRequestOptions): Promise<Response>;
 }
 
 const GEV_AUTHORIZATION_CONTEXT_KEY = 'gev.authorization_context';
@@ -140,10 +155,14 @@ function toCallToolResult(execution: ToolExecutionResult): CallToolResult {
  * modern-era validation, JSON/SSE response mechanics, and request cancellation.
  * Domain execution remains exclusively in the shared governed executor.
  */
-export function createGevMcpHttpHandler(options: GevMcpHttpHandlerOptions): McpHttpHandler {
-  return createMcpHandler(
+export function createGevMcpHttpHandler(options: GevMcpHttpHandlerOptions): GevMcpHttpHandler {
+  const executionObservers = new WeakMap<Request, McpHttpExecutionObserver>();
+  const handler = createMcpHandler(
     (requestContext) => {
       const authorization = readAuthorizationContext(requestContext.authInfo);
+      const executionObserver = requestContext.requestInfo
+        ? executionObservers.get(requestContext.requestInfo)
+        : undefined;
       const server = new McpServer(
         { name: '@gev/ops-mcp', version: '0.1.0' },
         authorization ? { capabilities: { tools: { listChanged: false } } } : undefined
@@ -170,12 +189,15 @@ export function createGevMcpHttpHandler(options: GevMcpHttpHandlerOptions): McpH
             annotations: definition.annotations,
           },
           async (args, requestContext) => {
-            const execution = await executeOperatorTool(options.context, definition.name, args, {
+            const executionPromise = executeOperatorTool(options.context, definition.name, args, {
               principal: authorization?.principal,
               tenant_id: authorization?.tenant_id,
               task_ref: authorization?.task_ref,
               operation_id: readOperationId(requestContext.mcpReq._meta),
+              signal: requestContext.mcpReq.signal,
             });
+            executionObserver?.track(executionPromise);
+            const execution = await executionPromise;
             return toCallToolResult(execution);
           }
         );
@@ -191,4 +213,25 @@ export function createGevMcpHttpHandler(options: GevMcpHttpHandlerOptions): McpH
       onerror: options.onerror,
     }
   );
+
+  return {
+    bus: handler.bus,
+    notify: handler.notify,
+    close: handler.close,
+    fetch: async (request, requestOptions) => {
+      const observer = requestOptions?.executionObserver;
+      if (observer) executionObservers.set(request, observer);
+      try {
+        return await handler.fetch(request, {
+          ...(requestOptions?.authInfo ? { authInfo: requestOptions.authInfo } : {}),
+          ...(requestOptions?.parsedBody === undefined
+            ? {}
+            : { parsedBody: requestOptions.parsedBody }),
+        });
+      } finally {
+        executionObservers.delete(request);
+        observer?.seal();
+      }
+    },
+  };
 }

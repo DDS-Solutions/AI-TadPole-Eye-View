@@ -4,7 +4,7 @@ import path from 'node:path';
 import { OPERATOR_TOOLS, type OperatorToolName } from '@gev/contracts';
 import type { McpAuthorizationContext } from '@gev/contracts/mcp-authorization';
 import { getMcpHttpToolDefinitions } from '@gev/contracts/mcp-presentation';
-import { FrozenClock } from '@gev/core';
+import { FrozenClock, type ToolExecutionResult } from '@gev/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { type OperatorContext, createOperatorContext } from '../src/context.js';
 import {
@@ -12,7 +12,7 @@ import {
   createGevMcpHttpHandler,
   toGevMcpAuthInfo,
 } from '../src/httpAdapter.js';
-import { MCP_OPERATOR_TOOL_NAMES } from '../src/tools.js';
+import { MCP_OPERATOR_TOOL_NAMES, handleGetBudget } from '../src/tools.js';
 
 const CLIENT_INFO = { name: 'ai-tadpole-os', version: 'test-build' };
 const RESOURCE = 'http://127.0.0.1:3000/mcp';
@@ -342,6 +342,70 @@ describe('modern MCP HTTP SDK adapter', () => {
     const retainedMessages = await readSseMessages(retained);
     expect(retainedMessages.some((message) => message.id === 'retain-1')).toBe(true);
     await expect(handler.close()).resolves.toBeUndefined();
+  });
+
+  it('propagates request cancellation and tracks execution until the handler stops', async () => {
+    const context = createContext();
+    const controller = new AbortController();
+    let handlerStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      handlerStarted = resolve;
+    });
+    let finishHandler!: () => void;
+    const handlerFinished = new Promise<void>((resolve) => {
+      finishHandler = resolve;
+    });
+    let receivedSignal: AbortSignal | undefined;
+    context.toolExecutor.register('get_budget', async (_input, executionContext) => {
+      receivedSignal = executionContext.signal;
+      handlerStarted();
+      await handlerFinished;
+      return handleGetBudget(context);
+    });
+    const handler = createGevMcpHttpHandler({ context, responseMode: 'sse' });
+    handlers.push(handler);
+    const baseRequest = modernRequest(
+      'tools/call',
+      'cancel-running',
+      {
+        name: 'get_budget',
+        arguments: {},
+        _meta: { operation_id: '00000000-0000-4000-8000-000000000094' },
+      },
+      { name: 'get_budget' }
+    );
+    const request = new Request(baseRequest, { signal: controller.signal });
+    let trackedExecution: Promise<ToolExecutionResult> | undefined;
+    const observer = {
+      track: vi.fn((execution: Promise<ToolExecutionResult>) => {
+        trackedExecution = execution;
+      }),
+      seal: vi.fn(),
+    };
+
+    const response = await handler.fetch(request, {
+      authInfo: toGevMcpAuthInfo('signed-test-token', AUTHORIZATION),
+      executionObserver: observer,
+    });
+    await started;
+
+    expect(observer.track).toHaveBeenCalledTimes(1);
+    expect(observer.seal).toHaveBeenCalledTimes(1);
+    expect(receivedSignal?.aborted).toBe(false);
+    controller.abort('client disconnected');
+    await vi.waitFor(() => expect(context.auditSink.tail({ limit: 10 })).toHaveLength(2));
+
+    let settled = false;
+    void trackedExecution?.then(() => {
+      settled = true;
+    });
+    await Promise.resolve();
+    expect(receivedSignal?.aborted).toBe(true);
+    expect(settled).toBe(false);
+
+    finishHandler();
+    await expect(trackedExecution).resolves.toMatchObject({ code: 'REQUEST_CANCELLED' });
+    await response.body?.cancel().catch(() => undefined);
   });
 
   it('projects per-request scopes and fails closed without validated request authority', async () => {
