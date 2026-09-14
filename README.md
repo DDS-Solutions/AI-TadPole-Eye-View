@@ -88,6 +88,9 @@ pnpm build            # required once after a fresh clone; builds the CLI and wo
 pnpm gev dev          # http://localhost:5173 — keyless seed mode by default
 ```
 
+> 💡 **Windows:** You can run `.\dev.bat` (or double-click `dev.bat`), which automatically verifies Node.js (>=24) and pnpm, bootstraps initial workspace builds if needed, and starts the development console.
+
+
 Run tests, showcase demonstration, and health diagnostics:
 
 ```bash
