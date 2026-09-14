@@ -3791,19 +3791,21 @@ No later task is authorized merely because it appears in this plan.
 
 ### Phase 6 exit certification completion checkpoint — 2026-09-14
 
-- The developer authorized a review-only certification of the clean current tree
-  `2991ece40d9a95831563246cc5c616e61dcd3c64`. Certification branch
-  `codex/phase-6-exit-certification-head2991ece` starts at that exact commit. The tree contains
-  squash-merged cancellation repair `3b1a929`, merged toolchain work through `origin/main`
-  `bbfe653`, and five later commits on the developer-selected branch as regression inputs. The
-  certification itself changes only ADR/review evidence, synchronized plan state, and the
-  ADG-required CLI/README/SECURITY phase labels; it does not represent those later commits as
-  merged. Certification evidence and state are committed as `3e3c895`.
+- The developer authorized a review-only certification of clean tree
+  `2991ece40d9a95831563246cc5c616e61dcd3c64`. An authenticated remote check subsequently proved
+  that its source branch had already been pushed and PR #51 squash-merged its byte-identical tree
+  as `2589176` at 2026-09-14T20:16:55Z; `git diff 2991ece origin/main` is empty. The unpushed
+  certification branch `codex/phase-6-exit-certification-head2991ece` was therefore replayed onto
+  current `origin/main` without a content conflict. The certified tree contains squash-merged
+  cancellation repair `3b1a929`; certification changes only ADR/review evidence, synchronized plan
+  state, and the ADG-required CLI/README/SECURITY phase labels. Rebased certification evidence and
+  state are committed as `02f78d9`.
 - Startup plan copies were byte-identical and the worktree was clean. `pnpm gev status` reported
   the expected non-authoritative offline snapshot: `STASIS_INACTIVE`, seed mode, $10.00/$10.00
   remaining, 17/19 providers, 20/22 feeds, 16/19 layers active, and two unavailable feeds. No
-  governance state was resumed, deleted, or rewritten. `gh pr list` was attempted but GitHub API
-  access failed at the configured local proxy, so no open-PR claim is made.
+  governance state was resumed, deleted, or rewritten. The initial restricted `gh pr list` attempt
+  failed at the configured local proxy; the later authenticated remote query confirmed merged PR
+  #51 and no certification branch or PR on GitHub before this handoff.
 - Focused pre-edit regression passed core 72/72, ops-mcp 54/54, and server 140/140, including the
   repaired pre-/post-dispatch cancellation boundary. Root lint passed across 304 files with 11
   non-blocking warnings already present on the reviewed tree. Uncached strict typecheck passed

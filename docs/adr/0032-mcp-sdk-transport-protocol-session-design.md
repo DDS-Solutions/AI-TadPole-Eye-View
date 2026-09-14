@@ -518,8 +518,10 @@ regression evidence was reproduced by the renewed Phase 6 exit certification.
 
 The developer-authorized review certified the clean tree at
 `2991ece40d9a95831563246cc5c616e61dcd3c64`, which contains merged cancellation repair
-`3b1a929` and later toolchain/product-maintenance commits as regression inputs. Certification
-changes only documentation, plan state, and the ADG-required CLI phase projection.
+`3b1a929` and later toolchain/product-maintenance commits as regression inputs. GitHub PR #51
+had already published and squash-merged that byte-identical tree as `2589176`; a direct tree diff
+is empty. Certification changes only documentation, plan state, and the ADG-required CLI phase
+projection.
 
 - Root lint passed across 304 files; uncached strict typecheck passed 17/17 tasks; the uncached
   unit matrix passed 16/16 tasks and 517 tests. Focused cancellation/MCP coverage passed core

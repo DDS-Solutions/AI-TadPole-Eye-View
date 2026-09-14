@@ -202,6 +202,6 @@ try {
 
 The authorized cancellation-repair 4-Pillar brief in [PLAN.md](../../PLAN.md) is implemented by
 `76f14f3` and squash-merged as `3b1a929`. Renewed Phase 6 exit certification passed against clean
-tree `2991ece40d9a95831563246cc5c616e61dcd3c64`; its exact commands, counts, measurements, and
-handoff are recorded in PLAN.md §17. No remote enablement or Phase 7 implementation is authorized
-by the repair or certification.
+tree `2991ece40d9a95831563246cc5c616e61dcd3c64`, published byte-identically by PR #51 as merged
+commit `2589176`; its exact commands, counts, measurements, and handoff are recorded in PLAN.md
+§17. No remote enablement or Phase 7 implementation is authorized by the repair or certification.
