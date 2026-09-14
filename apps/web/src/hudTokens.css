@@ -44,6 +44,16 @@
   --hud-danger: #ef4444;
   --hud-danger-soft: rgba(239, 68, 68, 0.3);
   --hud-warning: #fbbf24;
+  --voice-idle: var(--hud-text-dim);
+  --voice-connecting: var(--hud-warning);
+  --voice-listening: var(--hud-accent);
+  --voice-processing: #a78bfa;
+  --voice-speaking: var(--hud-success-signal);
+  --voice-stasis: var(--hud-danger);
+  --voice-error: var(--hud-danger);
+  --voice-processing-soft: rgba(167, 139, 250, 0.15);
+  --voice-processing-border: rgba(167, 139, 250, 0.4);
+  --voice-tool-text: #ddd6fe;
   --channel-flight: #38bdf8;
   --channel-flight-soft: rgba(56, 189, 248, 0.2);
   --channel-marine: #2dd4bf;

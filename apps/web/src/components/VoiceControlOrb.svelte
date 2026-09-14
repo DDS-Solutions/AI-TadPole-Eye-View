@@ -1,93 +1,171 @@
 <script lang="ts">
-  import { voiceStore } from '../stores/voice.svelte.js';
+  import { tick } from 'svelte';
+  import { MAX_VOICE_COMMAND_CHARS, voiceStore } from '../stores/voice.svelte.js';
 
   let isDrawerOpen = $state(false);
   let textInput = $state('');
+  let isSending = $state(false);
+  let shouldFollowTranscript = $state(true);
+  let hasUnreadTranscript = $state(false);
+  let transcriptContainer: HTMLDivElement | undefined;
+  let commandInput: HTMLInputElement | undefined;
+  let drawerToggle: HTMLButtonElement | undefined;
+  let previousTranscriptSignature = '';
 
-  function handleSend() {
-    if (textInput.trim()) {
-      voiceStore.sendUserMessage(textInput.trim());
-      textInput = '';
+  const currentStatus = $derived(
+    voiceStore.state.error && voiceStore.state.status === 'idle'
+      ? ('error' as const)
+      : voiceStore.state.status
+  );
+  const shouldConnect = $derived(currentStatus === 'idle' || currentStatus === 'error');
+
+  $effect(() => {
+    const transcript = voiceStore.state.transcript;
+    const last = transcript.at(-1);
+    const signature = last ? `${last.id}:${last.text.length}` : 'empty';
+    if (signature === previousTranscriptSignature) return;
+    previousTranscriptSignature = signature;
+    if (!isDrawerOpen) return;
+    if (!shouldFollowTranscript) {
+      hasUnreadTranscript = true;
+      return;
+    }
+    void tick().then(() => scrollToLatest('smooth'));
+  });
+
+  function setDrawerOpen(open: boolean): void {
+    isDrawerOpen = open;
+    if (!open) {
+      void tick().then(() => drawerToggle?.focus());
+      return;
+    }
+    shouldFollowTranscript = true;
+    hasUnreadTranscript = false;
+    void tick().then(() => {
+      scrollToLatest('auto');
+      commandInput?.focus();
+    });
+  }
+
+  function scrollToLatest(behavior: ScrollBehavior): void {
+    transcriptContainer?.scrollTo({
+      top: transcriptContainer.scrollHeight,
+      behavior,
+    });
+    shouldFollowTranscript = true;
+    hasUnreadTranscript = false;
+  }
+
+  function handleTranscriptScroll(): void {
+    if (!transcriptContainer) return;
+    const distanceFromBottom =
+      transcriptContainer.scrollHeight -
+      transcriptContainer.scrollTop -
+      transcriptContainer.clientHeight;
+    shouldFollowTranscript = distanceFromBottom < 48;
+    if (shouldFollowTranscript) hasUnreadTranscript = false;
+  }
+
+  async function handleSend(): Promise<void> {
+    if (isSending || !textInput.trim()) return;
+    isSending = true;
+    try {
+      const sent = await voiceStore.sendUserMessage(textInput);
+      if (sent) textInput = '';
+    } finally {
+      isSending = false;
     }
   }
 
-  function handleKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Enter') {
-      handleSend();
+  function handleKeyDown(event: KeyboardEvent): void {
+    if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
+    event.preventDefault();
+    void handleSend();
+  }
+
+  function handleOrbClick(): void {
+    switch (currentStatus) {
+      case 'idle':
+      case 'error':
+        void voiceStore.connect(voiceStore.state.provider);
+        break;
+      case 'speaking':
+        voiceStore.triggerBargeIn();
+        break;
+      case 'connecting':
+      case 'listening':
+      case 'processing':
+      case 'stasis_halted':
+        setDrawerOpen(!isDrawerOpen);
+        break;
     }
   }
 
-  const statusColors: Record<string, string> = {
-    idle: '#4a5568',
-    connecting: '#d69e2e',
-    listening: '#00f0ff',
-    processing: '#9f7aea',
-    speaking: '#39ff14',
-    stasis_halted: '#ff0055',
-    error: '#e53e3e',
-  };
-
-  const orbScale = $derived(1 + (voiceStore.state.audioLevel || 0) * 0.4);
-  const currentStatus = $derived(voiceStore.state.status);
-  const activeColor = $derived(statusColors[currentStatus] || '#00f0ff');
+  function formatToolArgs(args: unknown): string {
+    try {
+      const serialized = JSON.stringify(args, null, 2) ?? '';
+      return serialized.length > 2048 ? `${serialized.slice(0, 2048)}…` : serialized;
+    } catch {
+      return '[Unable to display tool arguments]';
+    }
+  }
 </script>
 
-<div class="voice-widget-container">
-  <!-- Tactical Voice Orb Button -->
+<svelte:window onkeydown={(event) => {
+  if (event.key === 'Escape' && isDrawerOpen) setDrawerOpen(false);
+}} />
+
+<div class="voice-widget-container" data-status={currentStatus}>
   <div class="orb-wrapper">
     <button
+      type="button"
       class="voice-orb"
       class:speaking={currentStatus === 'speaking'}
       class:listening={currentStatus === 'listening'}
       class:stasis={voiceStore.state.stasisActive}
-      style="--orb-color: {activeColor}; --orb-scale: {orbScale};"
-      onclick={() => {
-        if (currentStatus === 'idle') {
-          voiceStore.connect(voiceStore.state.provider);
-        } else if (currentStatus === 'speaking') {
-          voiceStore.triggerBargeIn();
-        } else {
-          isDrawerOpen = !isDrawerOpen;
-        }
-      }}
-      title="Tactical Voice Copilot ({currentStatus.toUpperCase()})"
+      onclick={handleOrbClick}
+      aria-label={`Voice Copilot: ${currentStatus.replace('_', ' ')}`}
+      aria-controls="voice-copilot-drawer"
+      aria-expanded={isDrawerOpen}
+      data-testid="voice-orb"
     >
-      <div class="orb-core">
+      <span class="orb-core" aria-hidden="true">
         {#if currentStatus === 'speaking'}
           <svg class="orb-icon pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
           </svg>
-        {:else if currentStatus === 'listening'}
+        {:else if currentStatus === 'connecting' || currentStatus === 'processing'}
+          <span class="spinner"></span>
+        {:else if currentStatus === 'stasis_halted'}
+          <span class="stasis-badge">STASIS</span>
+        {:else if currentStatus === 'error'}
+          <span class="error-badge">!</span>
+        {:else}
           <svg class="orb-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
           </svg>
-        {:else if currentStatus === 'processing'}
-          <div class="spinner"></div>
-        {:else if voiceStore.state.stasisActive}
-          <span class="stasis-badge">STASIS</span>
-        {:else}
-          <svg class="orb-icon idle" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-          </svg>
         {/if}
-      </div>
-      <div class="orb-ring"></div>
+      </span>
     </button>
 
-    <!-- Quick Status Pill -->
-    <div class="status-pill" style="border-color: {activeColor}; color: {activeColor};">
-      <span class="dot" style="background: {activeColor};"></span>
-      <span class="label">{currentStatus.toUpperCase()}</span>
-      <button class="drawer-toggle-btn" onclick={() => isDrawerOpen = !isDrawerOpen}>
-        {isDrawerOpen ? '▼' : '▲'}
-      </button>
+    <div class="status-pill" role="status" aria-live="polite">
+      <span class="dot"></span>
+      <span class="label">{currentStatus.replace('_', ' ').toUpperCase()}</span>
+      <button
+        bind:this={drawerToggle}
+        type="button"
+        class="drawer-toggle-btn"
+        onclick={() => setDrawerOpen(!isDrawerOpen)}
+        aria-label={`${isDrawerOpen ? 'Close' : 'Open'} Voice Copilot drawer`}
+        aria-controls="voice-copilot-drawer"
+        aria-expanded={isDrawerOpen}
+      >{isDrawerOpen ? '▼' : '▲'}</button>
     </div>
   </div>
 
-  <!-- Slide-out Tactical Transcript & Tool Stream Drawer -->
   {#if isDrawerOpen}
-    <div class="voice-drawer glass-panel">
-      <div class="drawer-header">
+    <section id="voice-copilot-drawer" class="voice-drawer" aria-label="Voice Copilot">
+      <header class="drawer-header">
         <div class="header-left">
           <span class="title">VOICE COPILOT // OSINT ACTUATOR</span>
           <span class="provider-pill">{voiceStore.state.provider}</span>
@@ -95,355 +173,177 @@
         <div class="header-actions">
           <select
             class="provider-select"
+            aria-label="Voice provider"
             value={voiceStore.state.provider}
-            onchange={(e) => {
-              const val = (e.target as HTMLSelectElement).value as 'mock' | 'openai-realtime';
-              voiceStore.connect(val);
+            disabled={currentStatus === 'connecting' || currentStatus === 'stasis_halted'}
+            onchange={(event) => {
+              const provider = (event.target as HTMLSelectElement).value as
+                | 'mock'
+                | 'openai-realtime';
+              void voiceStore.connect(provider);
             }}
           >
             <option value="mock">Seed/Mock Driver</option>
-            <option value="openai-realtime">OpenAI Realtime GA</option>
+            <option value="openai-realtime">OpenAI Realtime</option>
           </select>
           <button
+            type="button"
             class="btn-action"
+            disabled={currentStatus === 'stasis_halted'}
             onclick={() => {
-              if (currentStatus === 'idle') {
-                voiceStore.connect(voiceStore.state.provider);
-              } else {
-                voiceStore.disconnect();
-              }
+              if (shouldConnect) void voiceStore.connect(voiceStore.state.provider);
+              else voiceStore.disconnect();
             }}
-          >
-            {currentStatus === 'idle' ? 'CONNECT' : 'DISCONNECT'}
-          </button>
-          <button class="btn-close" onclick={() => isDrawerOpen = false}>✕</button>
+          >{currentStatus === 'stasis_halted' ? 'LOCKED' : shouldConnect ? 'CONNECT' : currentStatus === 'connecting' ? 'CANCEL' : 'DISCONNECT'}</button>
+          <button type="button" class="btn-close" onclick={() => setDrawerOpen(false)} aria-label="Close Voice Copilot">✕</button>
         </div>
-      </div>
+      </header>
 
-      <!-- Active Tool Call Banner -->
+      {#if voiceStore.state.error}
+        <div class="error-banner" role="alert">{voiceStore.state.error}</div>
+      {/if}
+
       {#if voiceStore.state.activeTool}
         <div class="tool-banner">
-          <span class="tool-tag">⚡ TOOL INVOCATION</span>
+          <span class="tool-tag">TOOL INVOCATION</span>
           <span class="tool-name">{voiceStore.state.activeTool.name}</span>
-          <pre class="tool-args">{JSON.stringify(voiceStore.state.activeTool.args)}</pre>
+          <pre class="tool-args">{formatToolArgs(voiceStore.state.activeTool.args)}</pre>
         </div>
       {/if}
 
-      <!-- Transcript Message Stream -->
-      <div class="transcript-feed">
-        {#each voiceStore.state.transcript as msg (msg.id)}
-          <div class="msg-card" class:agent={msg.role === 'agent'} class:user={msg.role === 'user'} class:system={msg.role === 'system'}>
-            <div class="msg-header">
-              <span class="msg-role">{msg.role.toUpperCase()}</span>
-              <span class="msg-time">{new Date(msg.ts).toLocaleTimeString()}</span>
-            </div>
-            <div class="msg-text">{msg.text}</div>
-          </div>
-        {/each}
+      <div class="feed-shell">
+        <div
+          class="transcript-feed"
+          bind:this={transcriptContainer}
+          onscroll={handleTranscriptScroll}
+          role="log"
+          aria-live="polite"
+          aria-label="Voice transcript"
+          data-testid="voice-transcript"
+        >
+          {#if voiceStore.state.transcript.length === 0}
+            <p class="empty-state">No commands yet. Connect or transmit to begin.</p>
+          {/if}
+          {#each voiceStore.state.transcript as msg (msg.id)}
+            <article class="msg-card" class:agent={msg.role === 'agent'} class:user={msg.role === 'user'} class:system={msg.role === 'system'}>
+              <div class="msg-header">
+                <span class="msg-role">{msg.role.toUpperCase()}</span>
+                <time class="msg-time">{new Date(msg.ts).toLocaleTimeString()}</time>
+              </div>
+              <div class="msg-text">{msg.text}</div>
+            </article>
+          {/each}
+        </div>
+        {#if hasUnreadTranscript}
+          <button type="button" class="new-messages" onclick={() => scrollToLatest('smooth')}>NEW MESSAGES ↓</button>
+        {/if}
       </div>
 
-      <!-- Operator Text Input -->
-      <div class="drawer-footer">
+      <footer class="drawer-footer">
         <input
+          bind:this={commandInput}
           type="text"
           class="chat-input"
-          placeholder="Issue voice/text command (e.g. 'Fly to Tokyo', 'Toggle marine layer')..."
+          aria-label="Voice Copilot command"
+          placeholder="Issue a voice or text command…"
           bind:value={textInput}
+          maxlength={MAX_VOICE_COMMAND_CHARS}
           onkeydown={handleKeyDown}
+          disabled={currentStatus === 'connecting' || currentStatus === 'stasis_halted'}
         />
-        <button class="send-btn" onclick={handleSend}>TRANSMIT</button>
-      </div>
-    </div>
+        <button
+          type="button"
+          class="send-btn"
+          onclick={() => void handleSend()}
+          disabled={isSending || !textInput.trim() || currentStatus === 'connecting' || currentStatus === 'stasis_halted'}
+        >{isSending ? 'SENDING…' : 'TRANSMIT'}</button>
+      </footer>
+    </section>
   {/if}
 </div>
 
 <style>
   .voice-widget-container {
+    --orb-color: var(--voice-idle);
     position: fixed;
-    bottom: 24px;
-    right: 24px;
+    right: max(16px, env(safe-area-inset-right));
+    bottom: max(16px, env(safe-area-inset-bottom));
     z-index: 1000;
     display: flex;
-    flex-direction: column;
+    flex-direction: column-reverse;
     align-items: flex-end;
     gap: 12px;
+    max-width: calc(100vw - 32px);
     font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    pointer-events: none;
   }
-
-  :global(body.layer-access-modal-open) .voice-widget-container {
-    visibility: hidden;
-  }
-
-  .orb-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
+  .voice-widget-container[data-status='connecting'] { --orb-color: var(--voice-connecting); }
+  .voice-widget-container[data-status='listening'] { --orb-color: var(--voice-listening); }
+  .voice-widget-container[data-status='processing'] { --orb-color: var(--voice-processing); }
+  .voice-widget-container[data-status='speaking'] { --orb-color: var(--voice-speaking); }
+  .voice-widget-container[data-status='stasis_halted'] { --orb-color: var(--voice-stasis); }
+  .voice-widget-container[data-status='error'] { --orb-color: var(--voice-error); }
+  :global(body.layer-access-modal-open) .voice-widget-container { visibility: hidden; }
+  .orb-wrapper, .voice-drawer { pointer-events: auto; }
+  .orb-wrapper { display: flex; align-items: center; gap: 12px; }
   .voice-orb {
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(10, 25, 40, 0.95) 0%, rgba(5, 10, 20, 0.98) 100%);
-    border: 2px solid var(--orb-color);
+    width: 56px; height: 56px; padding: 0; border: 2px solid var(--orb-color); border-radius: 50%;
+    background: radial-gradient(circle, var(--hud-panel-bg-raised), var(--hud-surface-dark));
     box-shadow: 0 0 15px var(--orb-color), inset 0 0 10px var(--orb-color);
-    cursor: pointer;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transform: scale(var(--orb-scale, 1));
-    transition: transform 0.1s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-    padding: 0;
-    outline: none;
+    color: var(--orb-color); cursor: pointer; display: grid; place-items: center;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
   }
-
-  .voice-orb:hover {
-    box-shadow: 0 0 25px var(--orb-color), inset 0 0 15px var(--orb-color);
+  .voice-orb:hover { box-shadow: 0 0 25px var(--orb-color), inset 0 0 15px var(--orb-color); }
+  button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--hud-accent); outline-offset: 2px; }
+  .orb-core { display: grid; place-items: center; }
+  .orb-icon { width: 24px; height: 24px; }
+  .orb-icon.pulse { animation: orb-pulse 1.2s infinite ease-in-out; }
+  .spinner { width: 20px; height: 20px; border: 2px solid var(--hud-accent-faint); border-top-color: var(--orb-color); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  .stasis-badge { color: var(--voice-stasis); font-size: 9px; font-weight: 800; }
+  .error-badge { color: var(--voice-error); font-size: 24px; font-weight: 800; }
+  .status-pill { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--orb-color); border-radius: 12px; background: var(--hud-panel-bg-raised); color: var(--orb-color); font-size: 10px; font-weight: 700; letter-spacing: 0.5px; backdrop-filter: blur(8px); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--orb-color); }
+  .label { white-space: nowrap; }
+  .drawer-toggle-btn, .btn-close { border: 0; background: transparent; color: inherit; cursor: pointer; }
+  .drawer-toggle-btn { padding: 2px 4px; font-size: 8px; }
+  .voice-drawer { width: min(440px, calc(100vw - 32px)); height: min(480px, calc(100dvh - 112px)); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--hud-accent-border); border-radius: 8px; background: var(--hud-panel-bg-overlay); box-shadow: 0 8px 32px var(--hud-shadow), 0 0 15px var(--hud-accent-faint); backdrop-filter: blur(12px); }
+  .drawer-header, .drawer-footer { display: flex; gap: 8px; padding: 10px 14px; background: var(--hud-surface-dark-strong); }
+  .drawer-header { align-items: stretch; flex-direction: column; border-bottom: 1px solid var(--hud-border-strong); }
+  .header-left { min-width: 0; display: flex; align-items: center; justify-content: space-between; }
+  .title { color: var(--voice-listening); font-size: 11px; font-weight: 700; letter-spacing: 0.8px; white-space: nowrap; }
+  .provider-pill { margin-left: 6px; padding: 2px 6px; border-radius: 4px; background: var(--hud-accent-faint); color: var(--voice-listening); font-size: 9px; white-space: nowrap; }
+  .header-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .provider-select { min-width: 0; padding: 3px 6px; border: 1px solid var(--hud-border-prominent); border-radius: 4px; background: var(--hud-surface-dark); color: var(--hud-text-secondary); font-size: 10px; }
+  .btn-action { padding: 3px 8px; border: 1px solid var(--hud-accent-border); border-radius: 4px; background: var(--hud-accent-soft); color: var(--voice-listening); cursor: pointer; font-size: 9px; font-weight: 700; }
+  .btn-close { padding: 4px; color: var(--hud-text-dim); font-size: 12px; }
+  button:disabled, select:disabled, input:disabled { cursor: not-allowed; opacity: 0.55; }
+  .error-banner { padding: 7px 14px; border-bottom: 1px solid var(--voice-error); background: var(--hud-danger-soft); color: var(--hud-text-primary); font-size: 10px; overflow-wrap: anywhere; }
+  .tool-banner { padding: 8px 14px; border-bottom: 1px solid var(--voice-processing-border); background: var(--voice-processing-soft); font-size: 10px; }
+  .tool-tag { margin-right: 6px; color: var(--voice-tool-text); font-weight: 800; }
+  .tool-name { color: var(--hud-text-primary); font-weight: 700; }
+  .tool-args { max-height: 74px; margin: 4px 0 0; overflow: auto; color: var(--voice-tool-text); font-size: 9px; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .feed-shell { position: relative; min-height: 0; flex: 1; }
+  .transcript-feed { height: 100%; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .empty-state { margin: auto; color: var(--hud-text-secondary); font-size: 10px; text-align: center; }
+  .msg-card { padding: 8px 12px; border-radius: 6px; color: var(--hud-text-data); font-size: 11px; line-height: 1.4; }
+  .msg-card.agent { border-left: 3px solid var(--voice-listening); background: var(--hud-accent-faint); }
+  .msg-card.user { border-left: 3px solid var(--voice-speaking); background: var(--hud-success-soft); }
+  .msg-card.system { border-left: 3px solid var(--hud-text-dim); background: var(--hud-surface-dark-soft); color: var(--hud-text-secondary); font-size: 10px; }
+  .msg-header { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 9px; font-weight: 700; opacity: 0.8; }
+  .msg-text { overflow-wrap: anywhere; white-space: pre-wrap; }
+  .new-messages { position: absolute; right: 12px; bottom: 8px; padding: 5px 8px; border: 1px solid var(--hud-accent-border); border-radius: 12px; background: var(--hud-panel-bg-raised); color: var(--voice-listening); cursor: pointer; font-size: 9px; font-weight: 700; }
+  .drawer-footer { border-top: 1px solid var(--hud-border-strong); }
+  .chat-input { min-width: 0; flex: 1; padding: 6px 10px; border: 1px solid var(--hud-accent-border); border-radius: 4px; background: var(--hud-surface-dark); color: var(--hud-text-primary); font-size: 11px; }
+  .send-btn { padding: 0 12px; border: 0; border-radius: 4px; background: var(--voice-listening); color: var(--hud-surface-dark); cursor: pointer; font-size: 10px; font-weight: 800; }
+  @keyframes orb-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.15); opacity: 0.85; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (max-width: 520px) {
+    .voice-widget-container { right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); max-width: calc(100vw - 24px); }
+    .voice-drawer { width: calc(100vw - 24px); height: min(480px, calc(100dvh - 104px)); }
+    .provider-select { flex: 1; }
   }
-
-  .orb-core {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--orb-color);
-  }
-
-  .orb-icon {
-    width: 24px;
-    height: 24px;
-  }
-
-  .orb-icon.pulse {
-    animation: orb-pulse 1.2s infinite ease-in-out;
-  }
-
-  @keyframes orb-pulse {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.15); opacity: 0.85; }
-  }
-
-  .spinner {
-    width: 20px;
-    height: 20px;
-    border: 2px solid rgba(0, 240, 255, 0.2);
-    border-top-color: #9f7aea;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-
-  .stasis-badge {
-    font-size: 9px;
-    font-weight: 800;
-    color: #ff0055;
-  }
-
-  .status-pill {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    background: rgba(10, 15, 25, 0.9);
-    border: 1px solid #00f0ff;
-    border-radius: 12px;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    backdrop-filter: blur(8px);
-  }
-
-  .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-  }
-
-  .drawer-toggle-btn {
-    background: transparent;
-    border: none;
-    color: inherit;
-    cursor: pointer;
-    font-size: 8px;
-    padding: 0 2px;
-  }
-
-  /* Slide-out Drawer */
-  .voice-drawer {
-    width: 440px;
-    height: 480px;
-    background: rgba(10, 16, 26, 0.95);
-    border: 1px solid rgba(0, 240, 255, 0.3);
-    border-radius: 8px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 240, 255, 0.15);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    backdrop-filter: blur(12px);
-  }
-
-  .drawer-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 14px;
-    background: rgba(5, 10, 18, 0.8);
-    border-bottom: 1px solid rgba(0, 240, 255, 0.2);
-  }
-
-  .title {
-    font-size: 11px;
-    font-weight: 700;
-    color: #00f0ff;
-    letter-spacing: 0.8px;
-  }
-
-  .provider-pill {
-    font-size: 9px;
-    background: rgba(0, 240, 255, 0.1);
-    color: #00f0ff;
-    padding: 2px 6px;
-    border-radius: 4px;
-    margin-left: 6px;
-  }
-
-  .header-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .provider-select {
-    background: #0a1018;
-    color: #a0aec0;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    font-size: 10px;
-    padding: 3px 6px;
-    border-radius: 4px;
-  }
-
-  .btn-action {
-    background: rgba(0, 240, 255, 0.15);
-    color: #00f0ff;
-    border: 1px solid rgba(0, 240, 255, 0.4);
-    font-size: 9px;
-    font-weight: 700;
-    padding: 3px 8px;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-
-  .btn-close {
-    background: transparent;
-    border: none;
-    color: #718096;
-    cursor: pointer;
-    font-size: 12px;
-  }
-
-  .tool-banner {
-    background: rgba(159, 122, 234, 0.15);
-    border-bottom: 1px solid rgba(159, 122, 234, 0.4);
-    padding: 8px 14px;
-    font-size: 10px;
-  }
-
-  .tool-tag {
-    color: #d6bcfa;
-    font-weight: 800;
-    margin-right: 6px;
-  }
-
-  .tool-name {
-    color: #fff;
-    font-weight: 700;
-  }
-
-  .tool-args {
-    margin: 4px 0 0 0;
-    font-size: 9px;
-    color: #e9d8fd;
-    white-space: pre-wrap;
-  }
-
-  .transcript-feed {
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .msg-card {
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 11px;
-    line-height: 1.4;
-  }
-
-  .msg-card.agent {
-    background: rgba(0, 240, 255, 0.08);
-    border-left: 3px solid #00f0ff;
-    color: #e2e8f0;
-  }
-
-  .msg-card.user {
-    background: rgba(57, 255, 20, 0.08);
-    border-left: 3px solid #39ff14;
-    color: #e2e8f0;
-  }
-
-  .msg-card.system {
-    background: rgba(255, 255, 255, 0.04);
-    border-left: 3px solid #718096;
-    color: #a0aec0;
-    font-size: 10px;
-  }
-
-  .msg-header {
-    display: flex;
-    justify-content: space-between;
-    font-size: 9px;
-    font-weight: 700;
-    margin-bottom: 4px;
-    opacity: 0.8;
-  }
-
-  .drawer-footer {
-    display: flex;
-    gap: 8px;
-    padding: 10px 14px;
-    background: rgba(5, 10, 18, 0.8);
-    border-top: 1px solid rgba(0, 240, 255, 0.2);
-  }
-
-  .chat-input {
-    flex: 1;
-    background: #060d17;
-    border: 1px solid rgba(0, 240, 255, 0.3);
-    color: #fff;
-    font-size: 11px;
-    padding: 6px 10px;
-    border-radius: 4px;
-    outline: none;
-  }
-
-  .chat-input:focus {
-    border-color: #00f0ff;
-  }
-
-  .send-btn {
-    background: #00f0ff;
-    color: #050a12;
-    border: none;
-    font-size: 10px;
-    font-weight: 800;
-    padding: 0 12px;
-    border-radius: 4px;
-    cursor: pointer;
+  @media (prefers-reduced-motion: reduce) {
+    .orb-icon.pulse, .spinner { animation: none; }
+    .voice-orb { transition: none; }
   }
 </style>

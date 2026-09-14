@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "task": "5.3.4",
-  "adr": "0048",
+  "task": "6.6",
+  "adr": "0040",
   "wallClock": [
     {
       "path": "packages/cesium-kit/src/frameBudget.ts",
@@ -55,15 +55,6 @@
       "gate": "Migrate the exact fingerprint to semantic CSS custom properties before task 7.3 or the next visual edit to this file."
     },
     {
-      "path": "apps/web/src/components/VoiceControlOrb.svelte",
-      "occurrences": 53,
-      "fingerprint": "052409af04fd22fa6856aa511ec3d4d437b85c086e1b93074944d8e1674c6956",
-      "classification": "follow-up",
-      "followUp": "DRIFT-COLOR-VOICE",
-      "owner": "apps/web UI and voice owners",
-      "gate": "Add an accepted voice-state palette to DESIGN.md and tokenize this exact fingerprint before the next visual edit to VoiceControlOrb."
-    },
-    {
       "path": "apps/web/src/designTokens.ts",
       "occurrences": 12,
       "fingerprint": "3c2379929daa3e5056f7c4556cfca238ddbc0a0b9a6ba974f2988ad09b8fa630",
@@ -72,10 +63,10 @@
     },
     {
       "path": "apps/web/src/hudTokens.css",
-      "occurrences": 66,
-      "fingerprint": "e8e84057587f5955530bb5656d4c244ad7f2c6dcc3020548c8c604c303a3a6e8",
+      "occurrences": 70,
+      "fingerprint": "99a221f2d194c445b2bafeab6287101908fb55ebd58981f99d42c7a0d884376f",
       "classification": "fixed",
-      "reason": "Task 5.2.3 completed the due core-HUD token migration and added the accepted orbital-estimate channel without changing rendered values."
+      "reason": "Task 6.6 extended the centralized HUD token surface with the DESIGN.md-approved voice session state palette and removed component color literals."
     },
     {
       "path": "packages/cesium-kit/src/designTokens.ts",

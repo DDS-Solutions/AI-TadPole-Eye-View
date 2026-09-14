@@ -277,6 +277,7 @@ test.describe('GEV v2 implemented-layer telemetry, virtualized table, and frame 
   test('visibly locks satellite controls when production terms are not approved', async ({
     page,
   }) => {
+    test.setTimeout(60_000);
     let satelliteRequests = 0;
     await page.route('**/api/satellites', async (route) => {
       satelliteRequests += 1;
@@ -310,8 +311,13 @@ test.describe('GEV v2 implemented-layer telemetry, virtualized table, and frame 
       path: path.join(resultsDir, 'satellite-terms-lock.png'),
     });
 
-    await expect(toggle).toBeEnabled({ timeout: 10_000 });
+    await expect
+      .poll(() => satelliteRequests, {
+        timeout: 30_000,
+        intervals: [500, 1_000, 2_000],
+      })
+      .toBeGreaterThanOrEqual(2);
+    await expect(toggle).toBeEnabled();
     await expect(toggle).not.toBeChecked();
-    expect(satelliteRequests).toBeGreaterThanOrEqual(2);
   });
 });

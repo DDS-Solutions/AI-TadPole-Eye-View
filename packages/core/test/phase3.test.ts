@@ -201,11 +201,14 @@ describe('Phase 3 Core Framework (@gev/core)', () => {
       expect(actor.getSnapshot().value).toEqual({ connected: 'speaking' });
 
       // Barge-in occurs while agent is speaking
+      const startedAt = performance.now();
       actor.send({ type: 'VAD_SPEECH_START' });
+      const elapsedMs = performance.now() - startedAt;
 
       // Immediately back to listening
       expect(actor.getSnapshot().value).toEqual({ connected: 'listening' });
       expect(actor.getSnapshot().context.lastBargeInTs).not.toBeNull();
+      expect(elapsedMs).toBeLessThan(100);
     });
 
     it('uses the injected clock for transcript IDs, timestamps, and barge-in state', () => {

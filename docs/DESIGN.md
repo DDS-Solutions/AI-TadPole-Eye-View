@@ -44,6 +44,29 @@ Every telemetry domain is strictly mapped to a dedicated color channel across gl
 | **Orbital Estimates** | `#c084fc` | `Orbital Lavender` | Propagated satellite estimate points and inspection accents |
 | **Governance / STASIS** | `#eab308` / `#ef4444` | `Gold / Red` | Budget burn meter, approval prompts, STASIS lockdown |
 
+### 2.3 Voice session state palette
+
+Voice state is application status, not telemetry-domain identity. The Voice Copilot uses only the
+semantic custom properties in `apps/web/src/hudTokens.css`; those values must not be reused to
+relabel a telemetry channel.
+
+| State | Token | Value | Meaning |
+|---|---|---:|---|
+| Idle | `--voice-idle` | `#64748b` | Disconnected and ready to start |
+| Connecting | `--voice-connecting` | `#fbbf24` | Transport readiness is pending |
+| Listening | `--voice-listening` | `#38bdf8` | Connected and ready for an operator command |
+| Processing | `--voice-processing` | `#a78bfa` | A response or governed tool result is pending |
+| Speaking | `--voice-speaking` | `#22c55e` | Agent audio is active; orb activation performs barge-in |
+| STASIS | `--voice-stasis` | `#ef4444` | Governance lock; connection and transmission controls are disabled |
+| Error | `--voice-error` | `#ef4444` | Connection or active-session failure; retry is explicit |
+| Tool detail | `--voice-tool-text` | `#ddd6fe` | Bounded governed-tool argument preview text |
+
+The compact container preserves strict pointer pass-through while the orb, status controls, and
+drawer opt back into pointer input. The drawer grows above the bottom-anchored orb, remains within
+the viewport at `360x640` and `1366x768`, and restores keyboard focus to the command field when
+opened. Transcript updates follow only while the operator is already near the newest message; a
+visible new-message control replaces forced scrolling while history is being read.
+
 ---
 
 ## 3. Typography Hierarchy
@@ -60,7 +83,7 @@ Package manifests are the installed source of truth:
 
 1. **Primitives**: Current controls are native Svelte components with component-scoped CSS. `shadcn-svelte` and `bits-ui` are not installed; adopting either requires the normal dependency and accessibility review.
 2. **Docking Panes**: `paneforge` is not installed. The current HUD uses fixed overlays; resizable panes remain proposed work.
-3. **High-Density Lists**: `@tanstack/svelte-virtual` is installed, but the current `VirtualizedTelemetryTable.svelte` uses its own bounded window calculation and does not import that package. Do not attribute the implementation to TanStack until a measured migration lands.
+3. **High-Density Lists**: `@tanstack/svelte-virtual` is installed, but `VirtualizedTelemetryTable.svelte` intentionally retains its manual fixed-36px-row window calculation and does not import that package. Task 6.7 measured 10,036 entities at no more than 21 DOM rows and 8.60ms p95 browser scroll render/layout work against the 16.6ms frame budget, so no migration is justified. Explicit reopen, channel, and search changes reset to the first result; passive live updates preserve reading position. Rows remain native keyboard-operable buttons keyed and selected by `kind + id`. Do not attribute the implementation to TanStack until a later measured variable-height or windowing need lands.
 4. **Time-Series Charts**: `uPlot` is installed and used by `TelemetryTimelineChart.svelte` for Canvas rendering.
 5. **Toasts & Alerts**: `svelte-sonner` is not installed. Current alerts are local component state; a toast dependency requires review before adoption.
 

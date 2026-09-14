@@ -2,8 +2,8 @@
 
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
-**Verified against repository:** 2026-09-11
-**Status:** IN PROGRESS — Phase 6; task 6.5 complete; Phase 6 exit awaits authorization
+**Verified against repository:** 2026-09-13
+**Status:** IN PROGRESS — Phase 6 exit BLOCKED: cancelled HTTP mutation can dispatch after approval
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -24,7 +24,7 @@ NEXT_TASK=6_EXIT
 NEXT_TASK_STATUS=BLOCKED
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
-LAST_VERIFIED_UTC=2026-09-11
+LAST_VERIFIED_UTC=2026-09-13
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
 IMPLEMENTATION_STARTED=NO
 ```
@@ -308,13 +308,16 @@ M4 may not rely on an auto-generated production signing key, `approve_all`, an i
 
 ### 7.1 MCP transport target
 
-As reverified on 2026-09-09 and decided by ADR 0032, the current stable protocol is
-`2026-07-28`. GEV currently implements only local `2024-11-05` stdio. The published Tadpole
+ADR 0032 pins modern HTTP to `2026-07-28`; GEV also preserves local `2024-11-05` stdio.
+Tasks 6.2–6.5 implement the single default-off `/mcp` POST endpoint, scoped authorization,
+truthful tool presentation, and bounded local conformance coverage. The published Tadpole
 implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0` implements the exact modern HTTP-first and
 legacy-stdio-fallback profile, and evidence commit `2dcde21f537cde6885950c5091078e83a2d1bd3c`
 proves its fail-closed negotiation and no-replay behavior against deterministic mock servers.
-This establishes the intended dual-transport client boundary, but not joint runtime compatibility:
-GEV still has no HTTP endpoint, so the live cross-repository smoke remains Task 6.2/6.5 evidence.
+Task 6.5 records the immutable client-source pins, byte-exact stdio transcript, independent
+Tadpole mock-server suite, and official GEV loopback harness. These are the accepted local
+evidence boundary; they do not establish production identity, remote enablement, or an actual
+Tadpole-process-to-GEV HTTP integration test.
 
 - Preserve byte- and behavior-compatible `2024-11-05` stdio for local operators and Tadpole
   fallback. HTTP 401/403/5xx, authentication, authorization, STASIS, approval, budget, or other
@@ -1690,11 +1693,40 @@ conformance or enabling a fail-open fallback.
 ```
 
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 6 exit
+#### Authorized 4-Pillar brief for NEXT_TASK 6.6
+
+```text
+[SCOPE_CONTRACT] Harden the existing voice session lifecycle and VoiceControlOrb UI in
+packages/core/src/agentAdapters.ts, apps/web/src/stores/voice.svelte.ts,
+apps/web/src/components/VoiceControlOrb.svelte, focused tests, hudTokens.css,
+docs/DESIGN.md, ADR 0026/0040, and synchronized plan evidence. Out of scope:
+server route redesign, live OpenAI calls, new providers, MCP behavior, Phase 7, and
+new dependencies.
+
+[PERFORMANCE_THRESHOLD] Zero frame-rate Svelte rune writes; no silently dropped first
+message; deterministic connection timeout/error/race tests; supported viewport content
+remains visible at 360x640 and 1366x768; barge-in remains under 100 ms; no unhandled
+promise rejection; no live network calls in tests; browser gzip delta no more than 2 KiB.
+
+[ARCHITECTURE_MODE] Preserve the XState lifecycle, provider-adapter boundary, SimClock,
+seed-mode behavior, governed shared governed executor, DESIGN.md tokens, pointer pass-through,
+and imperative per-frame rendering law. Local drawer state remains component-owned.
+
+[FAILURE_MODES] Do not report connected before transport readiness, silently drop or
+duplicate commands, allow stale attempts to win, force-scroll users reading history,
+write runes per animation frame, retain unbounded provider content, introduce arbitrary
+colors, weaken STASIS/governance, or enter Phase 7. If the adapter contract cannot be
+changed without affecting another consumer, stop with evidence and request a narrower
+contract decision.
+```
+
+#### Authorized 4-Pillar brief for NEXT_TASK 6 exit
 
 ```text
 [SCOPE_CONTRACT] Perform a review-only Phase 6 exit certification against the exact merged or
-review-approved implementations for tasks 6.1–6.5. Reconcile ADR 0032, executable MCP capability
+review-approved implementations for tasks 6.1–6.5, with regression gates on the committed
+post-6.7 tree at `737ccb7`. Preserve the primary worktree's uncommitted edits outside this
+certification. Reconcile ADR 0032, executable MCP capability
 truth, pinned Tadpole evidence, and the §17 checkpoints; rerun the canonical local/seed gates and
 mark the Phase 6 exit checkbox only when every exit claim is supported. Product-code changes are
 out of scope except a trivial fix-forward for directly observed documentation drift; any behavior
@@ -1710,7 +1742,10 @@ and the official 2026-07-28 advertised-surface harness remains green. Root lint,
 typecheck/unit/performance/build, seed zero-network guards, ADG/tests, provider-registry parity,
 architecture drift, bundle budgets, dependency/license inventory, git diff, and synchronized-plan
 checks pass on the reviewed tree. The MCP load benchmark remains below 300 ms p95 and peak active
-work below 16; browser bundle delta from Task 6.5 remains zero. Record exact commands, counts,
+work below 16. Preserve Task 6.5's recorded zero MCP browser-bundle delta; account separately
+for Task 6.6's recorded 1,914-byte gzip web-entry increase and Task 6.7's recorded 0.39 KiB
+gzip total-bundle increase. This documentation-only exit review adds zero browser bytes to
+the committed post-6.7 baseline and preserves all existing bundle budgets. Record exact commands, counts,
 versions, commit(s), and any unavailable PR tooling before checking the exit gate.
 
 [ARCHITECTURE_MODE] PLAN.md §0, §2 rules 1–3 and 7–15, §3 contracts/core/governance/MCP
@@ -1729,6 +1764,101 @@ needed, leave the exit unchecked and request a new bounded 4-Pillar authorizatio
 absorbing implementation into the exit review.
 ```
 
+#### Ready-to-authorize 4-Pillar brief for blocked NEXT_TASK 6_EXIT cancellation repair
+
+```text
+[SCOPE_CONTRACT] Repair the reproduced HTTP cancellation gap in
+packages/ops-mcp/src/httpAdapter.ts, packages/core/src/toolExecutionTypes.ts,
+packages/core/src/toolExecutor.ts, packages/core/src/reservedToolExecution.ts,
+apps/server/src/routes/mcp.ts, narrowly required existing governance/contract boundaries,
+focused core/governance/MCP/server tests, ADR 0032 and existing governance ADR evidence,
+RUNBOOK.md, the cancellation review record, and synchronized plan handoff. Propagate
+request cancellation through the one executor and keep outstanding work bounded.
+Out of scope: other voice/telemetry/Layer Access edits, new transports or tools,
+production identity, remote enablement, provider calls, dependencies, and Phase 7.
+
+[PERFORMANCE_THRESHOLD] Reproduce the deferred-approval cancellation failure before fixing
+it. Condition-driven tests prove cancellation before approval completion prevents dispatch;
+cancellation during execution and shutdown preserves unrelated requests; outstanding work
+remains accounted for until safely terminated; repeated cancellation cannot evade the
+configured work bound; and replay never causes a second mutation, approval, charge, or
+audit pair. Pre-dispatch cancellation durably releases reservations with an accurate
+outcome; ambiguous post-dispatch outcomes remain non-replayable and require reconciliation.
+Preserve already completed operations without claiming rollback. Golden stdio, pinned
+Tadpole transcript, auth/isolation/denial/STASIS/path/zero-network tests stay green.
+Root lint, strict typecheck, full unit/performance/build, official advertised-surface
+conformance, Playwright smoke, ADG/tests, registry parity, architecture, bundle/license,
+diff, and synchronized-plan gates pass. Keep MCP below 300 ms p95 with peak active work
+below 16, all parser/frame budgets unchanged, and zero browser-bundle growth.
+
+[ARCHITECTURE_MODE] PLAN.md §2–§3 and §5–§7; ADRs 0017, 0027, 0032, and 0041–0044.
+The SDK remains transport-only; GovernedToolExecutor owns execution/governance and the
+durable ledger owns terminal/replay state. Preserve SimClock, local/seed scope, default-off
+HTTP, scoped authority, audit intent/outcome, budget and human-only STASIS resume. Any
+necessary cancellation-state choice must be documented before implementation proceeds.
+
+[FAILURE_MODES] Do not free capacity while unbounded work continues, dispatch after a
+pre-dispatch cancellation, report ambiguous work as refunded success, introduce automatic
+retry/fallback, weaken limits or governance, or touch primary-worktree edits. If the existing
+ledger cannot represent an accurate terminal cancellation outcome within its accepted
+semantics, document the exact contract decision needed and stop. Leave Phase 6 exit
+unchecked until the repaired committed tree passes renewed certification.
+```
+
+#### Historical authorized recovery brief for NEXT_TASK 6_EXIT option 2
+
+```text
+[SCOPE_CONTRACT] Profile and optimize only the deterministic AWC and NOAA CO-OPS parser paths in
+packages/providers/src/aviationWeather.ts and packages/providers/src/coastalConditions.ts, their
+focused functional/property coverage, packages/providers/test/operationalAwarenessPerformance.test.ts,
+ADR 0025/0047 evidence, and synchronized plan handoff. Preserve the exact accepted contracts,
+record ceilings, AOI semantics, provenance, source labels, SimClock behavior, and seed fixtures.
+Out of scope: threshold or fixture-size changes, provider/store/server/UI/Cesium/MCP behavior,
+live calls, new dependencies, telemetry-table work, Phase 7, and unrelated refactors.
+
+[PERFORMANCE_THRESHOLD] The existing 1,200-record AWC and 100-station/10,000-record CO-OPS cases
+each remain below 50 ms p95 without retries, trimming, reduced validation, or changed inputs. Prove
+output equivalence against the pre-optimization implementation and add property/limit regression
+coverage for any extracted fast path. The focused provider gate and full canonical performance
+gate pass in fresh single-worker processes; root lint, affected strict typecheck/unit/build, seed
+zero-network guards, ADG/tests, architecture drift, dependency/diff, and synchronized-plan checks
+pass with zero browser-bundle and dependency delta.
+
+[ARCHITECTURE_MODE] Preserve PLAN.md §2 validation, provider-boundary, SimClock, provenance,
+seed-default, and untrusted-data rules plus ADRs 0025, 0035, 0045, and 0047. Optimize measured
+allocation or validation work only inside the provider parser boundary; Zod-validated response
+semantics and the registry remain authoritative.
+
+[FAILURE_MODES] Do not raise or loosen the 50 ms ceiling; reduce records; skip trust-boundary
+validation; remove fields, provenance, freshness, or error checks; cache mutable results across
+calls; add retry-until-pass logic; terminate unrelated host processes; add a dependency; or start
+telemetry/Phase 7 work. If profiling cannot identify an equivalent bounded optimization or the
+canonical gate still fails after three genuine approaches, record LOGIC_BLOCKER with profiles and
+request option 1 or 3 rather than fabricating a pass.
+```
+
+#### Authorized 4-Pillar brief for NEXT_TASK 6.7
+
+```text
+[SCOPE_CONTRACT] After task 6.6 is completed, update VirtualizedTelemetryTable.svelte,
+TelemetryChannelFilters.svelte, focused Playwright coverage, and ADR 0025/0040 or
+DESIGN.md where the virtualization decision is documented. Preserve all current voice
+changes. No provider, store, Cesium, MCP, Phase 7, or dependency changes.
+
+[PERFORMANCE_THRESHOLD] Correct reopen/filter scroll behavior; complete keyboard and
+accessible-name coverage; verify 360x640 and 1366x768 layouts; retain bounded DOM rows
+and 60 FPS windowing; gzip growth <= 2 KiB; lint, typecheck, build, Playwright, bundle,
+and architecture checks pass.
+
+[ARCHITECTURE_MODE] Keep manual fixed-row virtualization unless measurement justifies
+the already-installed TanStack implementation. Preserve design tokens, store ownership,
+pointer behavior, and cesium-kit boundaries.
+
+[FAILURE_MODES] Do not mix this with the dirty voice task, drop kind from identity,
+force-scroll during passive live updates, add dependencies, introduce arbitrary colors,
+or claim performance/accessibility without browser verification.
+```
+
 ### Phase 6 — Standards-compliant MCP HTTP
 
 - [x] 6.1 Write an ADR comparing the official SDK with the existing hand-written server and pin the jointly supported stable protocol.
@@ -1739,6 +1869,9 @@ absorbing implementation into the exit review.
 - [x] 6.3 Apply scoped auth, tenant/capability context, shared governance, and path confinement to every remote tool.
 - [x] 6.4 Correct tool annotations/capabilities; add output schemas and validated structured content; emit only truthful notifications.
 - [x] 6.5 Add protocol, auth, disconnect, replay, STASIS, concurrency, malformed-payload, and inspector/conformance tests.
+- [x] 6.6 Harden voice transport readiness, race handling, bounded HUD rendering, responsive layout, and accessibility.
+- [x] 6.7 Correct virtualized telemetry reopen/filter scrolling, identity, keyboard semantics,
+  accessible names, responsive layout, and browser-verified bounded windowing.
 - [ ] 6 exit: stdio remains compatible; unrelated sessions never receive each other’s messages; remote mutation cannot bypass audit/approval/budget/STASIS.
 
 ### Phase 7 — Identity, tenancy, and intelligence routing
@@ -3378,5 +3511,197 @@ No later task is authorized merely because it appears in this plan.
   task has been started or authorized.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 6_EXIT. Review and authorize
   the embedded Phase 6 exit 4-Pillar brief exactly; do not advance into Phase 7.`
+
+### Task 6.6 voice lifecycle and HUD hardening checkpoint — 2026-09-11
+
+- The developer authorized the exact embedded Task 6.6 brief. Implementation commit 09f8eaa
+  makes Realtime connect wait for transport readiness and session configuration, rejects
+  pre-ready sends, applies a deterministic 10-second timeout, bounds provider frames and tool
+  arguments, and separates response completion from persistent transport status. No server
+  route, provider, MCP, dependency, live OpenAI, production, or Phase 7 behavior changed.
+- The voice store aborts superseded token requests, closes pending adapters, rejects stale
+  callbacks, validates token responses and bounded operator input, caps retained provider text
+  at 64 KiB, keeps STASIS fail-closed, and observes all async failures. Commands remain in the
+  draft until delivery succeeds; the animation-frame AudioContext/rune loop was removed.
+- The HUD has complete status/icon behavior, explicit orb actions, bounded tool previews,
+  keyboard/IME labels and focus handling, semantic tokens, reduced-motion support, pointer
+  pass-through, responsive upward layout, and reader-respecting transcript follow behavior.
+  Rendered 360x640 and 1366x768 screenshots were inspected and remain fully in-frame.
+- Seven fake-WebSocket tests cover readiness, timeout, error, completion, close, and bounds;
+  barge-in remains below 100 ms. All four seed-only voice Playwright cases pass twice. The full
+  16-task unit matrix passes on rerun, all nine performance cases pass, and isolated smoke is
+  2/2 green after one non-reproduced SwiftShader context loss during the complete matrix.
+- Root lint checks 299 files; strict typecheck is 17/17; docs tests are 17/17; ADG checks 68
+  documents, 516 paths, and 18 module-qualified symbols. Architecture drift, diff checks,
+  production build, and bundle budgets pass. The measured web-entry delta is 1,914 bytes gzip
+  (108,032 to 109,946), below the 2 KiB limit.
+- Final local status is server-offline and non-authoritative: STASIS_INACTIVE, seed mode,
+  $10.00/$10.00 remaining, 17/19 providers, 20/22 feeds, and 16/19 layers active.
+- Concurrent local review edits remain unstaged in VoiceControlOrb.svelte, agentAdapters.ts,
+  voiceMachine.ts, and phase3.test.ts. They were preserved but are not Task 6.6 commit evidence;
+  the state-machine source is outside the exact authorized file list.
+- Next task is the review-only Phase 6 exit certification. Its embedded 4-Pillar brief awaits
+  developer authorization. No Phase 7 task has started or been authorized.
+
+### Phase 6 exit certification DOC_BLOCKER / LOGIC_BLOCKER checkpoint — 2026-09-13
+
+- The developer authorized the exact embedded review-only Phase 6 exit brief. Certification ran
+  in an isolated `codex/phase-6-exit` worktree at reviewed Task 6.6 evidence commit `7a2716d`, so
+  concurrent unstaged voice and Layer Access edits in the primary worktree remained untouched and
+  supplied no evidence.
+- Startup evidence passed plan-copy equality and reported the expected non-authoritative offline
+  snapshot: `STASIS_INACTIVE`, seed mode, $10.00/$10.00 remaining, 17/19 providers, 20/22 feeds,
+  and 16/19 layers active. GitHub CLI authentication remains unavailable, so open-PR inspection
+  could not be completed through that tool.
+- Reproduced evidence passed root lint across 299 files, uncached strict typecheck across 17/17
+  tasks, and the uncached 16/16-task unit matrix with 511 tests. The unit matrix includes contracts
+  81/81, core 70/70, ops-mcp 53/53, server 137/137, preserved stdio 14/14, the byte-exact pinned
+  Tadpole transcript, principal/tenant/stream isolation, stable replay, denial replay, durable
+  STASIS/`BUDGET_DENIED`, durable `IN_DOUBT`, and the one governed audit/approval/budget lifecycle.
+  A first restricted unit launch was unable to spawn esbuild (`EPERM`); the authorized unrestricted
+  rerun is the passing evidence. Lockfile-pinned installation changed no manifest or lockfile.
+- The canonical performance command passed the general 100-request server benchmark at 36.79 ms
+  p95 and the 100-request MCP benchmark at 170.53 ms p95 with peak active work 10, below the 300 ms
+  and 16 limits. It then failed the provider parser gate: NWS 45.83 ms, AWC 53.09 ms, NHC 9.70 ms,
+  and CO-OPS 83.39 ms p95 against the 50 ms ceiling. Two genuine isolated single-worker reruns
+  also failed: first NWS/AWC/NHC/CO-OPS 33.83/42.44/8.32/60.82 ms, then
+  43.76/51.31/10.45/85.61 ms p95. The independently measured 2,000-entry Layer Access projection
+  and filter remained below 16.6 ms in all three runs.
+- `DOC_BLOCKER` with three-attempt `LOGIC_BLOCKER` evidence: the required full performance claim
+  is not reproducible on this host. The Phase 6 exit stays unchecked; the remaining Cesium/full
+  build, official loopback, documentation, registry, architecture, bundle, license, and final diff
+  gates were not represented as a completed certification after the mandatory command stopped.
+- Bounded resolution options: (1) rerun the unchanged isolated gate on a quiescent or CI benchmark
+  host while preserving the 50 ms thresholds; (2) authorize a focused AWC/CO-OPS profiling and
+  optimization task with contract/property regression coverage; or (3) authorize an ADR 0025
+  methodology amendment only after controlled multi-host measurements justify a different stable
+  benchmark, never from these failures alone.
+- `NEXT_TASK` remains `6_EXIT` with status `BLOCKED`. No Phase 7 or telemetry-table implementation
+  is authorized by this partial review. Recommended resume instruction: `Resume PLAN.md at blocked
+  NEXT_TASK 6_EXIT; select one recorded performance-blocker option and do not enter Phase 7.`
+
+### Phase 6 exit parser-performance recovery checkpoint — 2026-09-13
+
+- The developer authorized the exact blocked-NEXT_TASK option 2 brief. Bounded V8 profiling of
+  the unchanged accepted workloads measured AWC at 28.69 ms p95 and CO-OPS at 38.67 ms p95; an
+  in-process CO-OPS profile measured 31.33 ms p95. Samples were concentrated in required Zod
+  validation and ordinary normalization, so no equivalent safe product-code optimization was
+  identified or made.
+- Two fresh single-worker provider gates passed without retries, trimming, or input changes: AWC
+  measured 21.11/20.13 ms p95 and CO-OPS 33.06/35.42 ms p95. The full canonical performance gate
+  then passed with server 14.62 ms p95, authenticated MCP 61.84 ms p95 with peak active work 10,
+  AWC 20.83 ms p95, CO-OPS 34.17 ms p95, Cesium multi-layer ingestion 5.91 ms p95, and combined
+  operational ingestion 6.83 ms p95. The 50 ms parser, 300 ms MCP, active-work 16, and 16.6 ms
+  frame ceilings remain unchanged.
+- The uncached 10/10 production build, official Inspector 2.5.0 and Conformance
+  0.2.0-alpha.11 gates, 10/10 Playwright suite, ADG over 68 documents/516 paths/18 symbols,
+  documentation tests 17/17, generated registry parity, architecture drift, and bundle budgets
+  pass. Rendered operational-awareness and voice screenshots at 360x640 and 1366x768 were
+  inspected and remained in-frame. The web entry is 107.45 KiB gzip and total bundle footprint is
+  1,249.33 KiB gzip; this recovery changes no browser asset, dependency, manifest, or lockfile.
+- `pnpm list -r --depth 0` reports 95 packages across 12 projects. Because `pnpm licenses list`
+  could not reconstruct a missing local Biome store-index record even after a frozen-lockfile
+  cache refresh, an independent read-only scan of 433 unique installed package manifests verified
+  every package declares a license: 367 MIT, 18 ISC, 17 Apache-2.0, 12 MPL-2.0, 9 MIT OR
+  Apache-2.0, 5 BSD-3-Clause, and one each under (MIT AND Zlib), (MIT OR CC0-1.0),
+  (MPL-2.0 OR Apache-2.0), 0BSD, and BSD-2-Clause.
+- Final status remains server-offline and non-authoritative: `STASIS_INACTIVE`, seed mode,
+  $10.00/$10.00 remaining, 17/19 providers, 20/22 feeds, and 16/19 layers active. The isolated
+  worktree preserves the primary worktree's unstaged voice and Layer Access edits. GitHub CLI
+  authentication remains unavailable, so open-PR inspection and PR creation were not claimed.
+- The user-authorized telemetry hardening is now recorded as task 6.7 before the final Phase 6
+  exit checkpoint. `NEXT_TASK=6.7`, status is `READY`, and no telemetry implementation or Phase 7
+  work is included in this recovery checkpoint.
+
+### Task 6.7 telemetry hardening checkpoint — 2026-09-13
+
+- The developer authorized the exact embedded Task 6.7 brief. Implementation commit `3662f7f`
+  updates only the two telemetry components, focused Playwright coverage, and the existing
+  virtualization design/ADR records. The isolated `codex/task-6.7-telemetry-hardening` worktree
+  preserved every unstaged voice and Layer Access edit in the primary worktree.
+- Manual fixed-36px-row virtualization remains the measured fit. Six rows of overscan and direct
+  slice rendering avoid wrapper allocation while selection and keyed identity retain `kind + id`.
+  Reopen, channel, and search changes reset to the first result; a real browser condition-wait
+  across the next seed flight refresh proves passive item updates preserve the reading position.
+- Rows are native buttons with entity-specific accessible names and verified Enter/Space
+  operation. Search, clear, close, and channel filters expose explicit names and pressed state;
+  close returns focus to the table toggle. Pointer selection/fly-to behavior and store ownership
+  remain unchanged.
+- Fresh dedicated Chromium measurement at 1366x768 rendered 10,036 entities with at most 20 of
+  the allowed 21 DOM rows and 8.60 ms p95 scroll render/layout work, below the 16.6 ms frame
+  budget. The performance case runs alone through
+  `playwright.telemetry-performance.config.ts`, consistent with ADR 0025's isolated wall-clock
+  methodology.
+- Browser verification passes the full ordinary Playwright matrix 12/12 in 6.4 minutes and the
+  final focused telemetry rerun 2/2 in 1.5 minutes. Inspected 1366x768 and 360x640 screenshots
+  retain the full desktop columns and the in-frame compact mobile controls/four-column layout.
+  The focused cases also prove bounded row counts, filter/search/reopen resets, passive-refresh
+  stability, `kind + id` selection, accessible names, and keyboard/focus behavior.
+- Final gates pass: lint checks 302 files; uncached strict typecheck is 17/17; the full unit matrix
+  is 16/16 tasks and 511 tests; the uncached production build is 10/10; ADG checks 68 documents,
+  516 paths, and 18 symbols; documentation tests are 17/17; generated provider parity,
+  architecture drift, `git diff --check`, and bundle budgets pass. The two pre-existing
+  `VoiceControlOrb.svelte` binding warnings remain preserved and were not edited.
+- The recovery baseline was 1,249.33 KiB gzip and the final bundle is 1,249.72 KiB gzip, a
+  0.39 KiB increase below the 2 KiB limit. The app entry is 107.64 KiB gzip and total CSS is
+  9.56 KiB gzip. No dependency manifest or lockfile entry changed.
+- Task 6.7 changes no MCP, governance, provider, store, Cesium, production, remote, live-service,
+  or Phase 7 implementation. The Phase 6 exit nevertheless remains unchecked until its
+  review-only gate certifies this exact post-6.7 tree; earlier exit recovery evidence is retained
+  but is not silently promoted across a later product-code commit.
+- Final status is server-offline and therefore non-authoritative: `STASIS_INACTIVE`, seed mode,
+  $10.00/$10.00 remaining, 17/19 providers, 20/22 feeds, and 16/19 layers active. GitHub CLI
+  authentication remains unavailable, so open-PR inspection and PR creation were not claimed.
+- Next task: **Phase 6 exit certification** against implementation commit `3662f7f`. Its embedded
+  review-only 4-Pillar brief requires renewed developer authorization for the exact post-6.7 tree;
+  no Phase 7 implementation has started or been authorized.
+
+### Phase 6 exit cancellation DOC_BLOCKER checkpoint — 2026-09-13
+
+- The developer authorized the exit review and bundle-baseline documentation correction.
+  Discovery found the later clean Task 6.7 handoff, so certification used its exact committed
+  tree `737ccb7` in `codex/phase-6-certification-20260913`. The primary worktree and the
+  Task 6.7 worktree remain untouched. The four primary unstaged files are
+  LayerAccessEntryDetail.svelte, VoiceControlOrb.svelte, voice.svelte.ts, and agentAdapters.ts.
+- Fetched `origin/main` remains `732c0f3`; the MCP/server/contracts/governance/shared-executor
+  paths under review are byte-identical to that merged tree. Task 6.6 and Task 6.7 remain
+  local commits; GitHub CLI is unauthenticated, so their PR/review status is not asserted.
+- Reproduced checks pass: root lint (302 files), uncached typecheck (17/17 tasks), uncached
+  unit suite (16/16 tasks, 511 tests), and canonical performance (9/9). General/MCP load
+  measured 19.64/71.97 ms p95; peak MCP active work was 10. Maximum NWS/AWC/NHC/CO-OPS
+  parsers measured 17.88/25.47/4.59/32.80 ms p95 under 50 ms. All Layer Access and Cesium
+  cases remained below 16.6 ms. Both immutable Tadpole commits resolve and all six pinned
+  source blobs match. Full details and the reproducible probe are in
+  [the cancellation review](docs/reviews/phase-6-exit-cancellation-2026-09-13.md).
+- A deterministic actual-router/SDK/executor probe pauses set_flag at approval, cancels
+  its SSE stream, then releases approval. The route reports zero active requests, yet the
+  flag changes from true to false and the ledger settles successfully with one audit pair.
+  The adapter omits cancellation from execution context; the executor has no signal or
+  pre-dispatch cancellation check. Existing cancellation tests exercise tools/list streams,
+  so their passing results do not establish cancellation of pending mutations.
+- DOC_BLOCKER: the required cancellation and bounded-cleanup claims cannot be certified.
+  No product correction is included. The full production build, official loopback rerun,
+  Playwright, and fresh bundle/license certification remain incomplete for this review;
+  earlier runs are retained as historical evidence, not promoted to a completed exit.
+- The authorized documentation correction separates Task 6.5's zero MCP browser delta,
+  Task 6.6's 1,914-byte gzip web-entry increase, and Task 6.7's 0.39 KiB total increase.
+  PLAN §7 and the ADR index now describe the existing default-off HTTP implementation.
+  No product code, dependency, manifest, lockfile, or browser asset changed in this review.
+- Handoff verification passes ADG (69 documents, 526 paths, 18 symbols), documentation tests
+  (17/17), generated provider-registry parity, architectural drift, and diff
+  checks. ADG's required IN PROGRESS phase label is retained while NEXT_TASK_STATUS carries
+  BLOCKED; synchronized plan copies and the cancellation evidence remain the resume source.
+- Final CLI status after its targeted build reports the non-authoritative offline snapshot:
+  STASIS_INACTIVE, seed mode, $10.00/$10.00 remaining, 17/19 providers, 20/22 feeds,
+  16/19 layers active, 20 healthy feeds, and two unavailable. No existing governance state
+  was resumed, deleted, or rewritten; the probe used isolated test governance.
+- Certification documentation is committed locally as `765b8a6`. Automatic approval review
+  rejected publishing `codex/phase-6-certification-20260913`: the proposed push includes
+  earlier local voice/telemetry history, and authorization for that payload and remote
+  destination was not established. No push or PR creation occurred. Publishing needs explicit
+  developer approval; the local evidence and prepared PR description remain available.
+- NEXT_TASK remains 6_EXIT with status BLOCKED. The exact cancellation-repair brief above
+  awaits authorization. A completed repair must be followed by renewed exit certification;
+  no Phase 7 work has been started or authorized.
 
 No later task is authorized merely because it appears in this plan.

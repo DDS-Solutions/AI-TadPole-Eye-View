@@ -39,6 +39,13 @@ licensing, and rendering boundary.
 - Final clean aggregate parser replay measured NHC's 256-item index at 4.89 ms p95 and CO-OPS at
   100 stations/10,000 records at 35.73 ms p95, both below 50 ms. The combined 2,056-entity
   operational snapshot measured 12.76 ms p95 against the 16.6 ms Cesium ingestion budget.
+- Phase 6 exit recovery on 2026-09-13 profiled the unchanged accepted maximum after transient
+  host contention produced non-reproducible AWC/CO-OPS failures. The exact fresh single-worker
+  gates measured AWC at 21.11 and 20.13 ms p95 and CO-OPS at 33.06 and 35.42 ms p95; the full
+  canonical performance gate measured 20.83 and 34.17 ms p95. V8 sampling identified required
+  Zod response validation and normal record normalization rather than an equivalent removable
+  fast path, so contracts, record limits, fixtures, validation, provenance, and implementation
+  remain unchanged.
 
 ## Consequences
 

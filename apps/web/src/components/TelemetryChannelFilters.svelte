@@ -16,12 +16,19 @@
   ] as const;
 </script>
 
-<div class="channel-filter-group" aria-label="Telemetry channel filters">
+<div class="channel-filter-group" role="group" aria-label="Telemetry channel filters">
   {#each channels as channel}
     <button
+      type="button"
       id={channel.value === 'satellite' ? 'filter-satellites' : undefined}
       class="channel-btn {channel.className}"
       class:active={layerStore.tableChannel === channel.value}
+      aria-pressed={layerStore.tableChannel === channel.value}
+      aria-label={
+        channel.value === 'all'
+          ? 'Show all telemetry channels'
+          : `Show ${channel.label} telemetry`
+      }
       onclick={() => (layerStore.tableChannel = channel.value)}
     >
       {channel.label}
@@ -72,4 +79,17 @@
   .btn-launch { --filter-accent: var(--channel-launch); }
   .btn-weather { --filter-accent: var(--channel-weather); }
   .btn-satellite { --filter-accent: var(--channel-satellites); }
+
+  @media (max-width: 720px) {
+    .channel-filter-group {
+      width: 100%;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+
+    .channel-btn {
+      flex: 0 0 auto;
+    }
+  }
 </style>
