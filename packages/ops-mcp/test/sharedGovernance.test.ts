@@ -92,7 +92,8 @@ describe('MCP shared governance runtime wiring', () => {
       method: 'tools/call',
       params: { name: 'get_budget', arguments: {} },
     });
-    const content = (response?.result as { content: Array<{ text: string }> }).content[0]?.text;
+    const content = (response?.result as { content?: Array<{ text: string }> } | undefined)
+      ?.content?.[0]?.text;
     const budget = JSON.parse(content ?? '{}');
     expect(budget).toMatchObject({
       cap_usd: 1,

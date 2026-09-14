@@ -1,29 +1,30 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.13/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
     "useIgnoreFile": true
   },
+  "assist": {
+    "enabled": false
+  },
   "files": {
     "ignoreUnknown": false,
-    "include": [
-      "src/**/*.ts",
-      "test/**/*.ts",
-      "e2e/**/*.ts",
-      "scripts/**/*.mjs",
+    "includes": [
+      "**/src/**/*.ts",
+      "**/test/**/*.ts",
+      "**/e2e/**/*.ts",
+      "**/scripts/**/*.mjs",
       "**/*.mjs",
       "**/*.ts",
-      "**/*.js"
-    ],
-    "ignore": [
-      "node_modules",
-      "dist",
-      ".turbo",
-      "test-results",
-      "playwright-report",
-      "e2e/test-results",
-      "e2e/playwright-report"
+      "**/*.js",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/.turbo",
+      "!**/test-results",
+      "!**/playwright-report",
+      "!**/e2e/test-results",
+      "!**/e2e/playwright-report"
     ]
   },
   "formatter": {
@@ -42,7 +43,7 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "suspicious": {
         "noExplicitAny": "warn"
       }
