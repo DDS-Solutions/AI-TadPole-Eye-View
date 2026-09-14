@@ -3798,7 +3798,7 @@ No later task is authorized merely because it appears in this plan.
   `bbfe653`, and five later commits on the developer-selected branch as regression inputs. The
   certification itself changes only ADR/review evidence, synchronized plan state, and the
   ADG-required CLI/README/SECURITY phase labels; it does not represent those later commits as
-  merged.
+  merged. Certification evidence and state are committed as `3e3c895`.
 - Startup plan copies were byte-identical and the worktree was clean. `pnpm gev status` reported
   the expected non-authoritative offline snapshot: `STASIS_INACTIVE`, seed mode, $10.00/$10.00
   remaining, 17/19 providers, 20/22 feeds, 16/19 layers active, and two unavailable feeds. No
