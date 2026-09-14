@@ -27,7 +27,7 @@ test.describe('GEV v2 implemented-layer telemetry, virtualized table, and frame 
     // 2. Assert basic shell elements and attribution
     const titleLocator = page.locator('#app-title');
 
-    await expect(titleLocator).toHaveText("GEV v2 — God's Eye View");
+    await expect(titleLocator).toHaveText('AI-Tadpole-Eye-View');
 
     const attributionLocator = page.locator('#osm-attribution');
     await expect(attributionLocator).toBeVisible();

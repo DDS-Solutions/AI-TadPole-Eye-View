@@ -1,6 +1,6 @@
 {
-  "name": "GEV v2 — God's Eye View",
-  "short_name": "GEV v2",
+  "name": "AI-Tadpole-Eye-View",
+  "short_name": "AI-Tadpole",
   "description": "Agent-Native Real-Time Global Telemetry & Tactical Intelligence Console",
   "start_url": "/",
   "display": "standalone",
