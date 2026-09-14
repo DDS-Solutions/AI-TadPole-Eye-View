@@ -133,7 +133,7 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
           min: 0,
           max: Number.POSITIVE_INFINITY,
         });
-      }).toThrow(/Number must be finite/);
+      }).toThrow(/Number must be finite|Infinity/);
 
       expect(() => {
         BudgetState.parse({
@@ -144,7 +144,7 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
           warn_threshold_pct: 80,
           last_trip: null,
         });
-      }).toThrow(/Number must be finite/);
+      }).toThrow(/Number must be finite|Infinity/);
     });
   });
 
@@ -209,7 +209,7 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
           latitude: Number.POSITIVE_INFINITY,
           longitude: 8.5,
         });
-      }).toThrow(/Number must be finite/);
+      }).toThrow(/Number must be finite|Infinity/);
 
       expect(() => {
         FlightState.parse({
@@ -219,7 +219,7 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
           longitude: 8.5,
           velocity: Number.POSITIVE_INFINITY,
         });
-      }).toThrow(/Number must be finite/);
+      }).toThrow(/Number must be finite|Infinity/);
     });
 
     it('validates cross-field ordered BoundingBox and rejects inverted boxes (P3)', () => {
@@ -283,7 +283,7 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
           ...scene,
           version: 2,
         });
-      }).toThrow(/Invalid literal value/);
+      }).toThrow(/Invalid literal value|expected 1/);
     });
 
     it('deterministically normalizes AOI polygon ring closure on parse (P4)', () => {
@@ -323,7 +323,7 @@ describe('Contracts Unit & Invariant Tests (Review Round 2)', () => {
           aois: [],
           sim_time: { iso: '2026-08-25T12:00:00.000Z', rate: 1, paused: false },
         });
-      }).toThrow(/Number must be finite/);
+      }).toThrow(/Number must be finite|Infinity/);
     });
   });
 

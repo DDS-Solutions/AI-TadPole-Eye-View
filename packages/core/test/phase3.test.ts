@@ -136,7 +136,7 @@ describe('Phase 3 Core Framework (@gev/core)', () => {
 
     it('queries ApprovalGate for dangerous tools', async () => {
       const approvalSpy = vi.fn().mockResolvedValue({
-        request_id: '11111111-2222-3333-4444-555555555555',
+        request_id: '11111111-2222-4333-8444-555555555555',
         decision: 'denied',
         decided_by: 'human',
         decided_at: new Date().toISOString(),

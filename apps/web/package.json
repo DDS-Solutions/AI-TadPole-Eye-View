@@ -23,7 +23,7 @@
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
     "vite": "^8.3.0",
     "vite-plugin-cesium-engine": "^1.10.0"
   }

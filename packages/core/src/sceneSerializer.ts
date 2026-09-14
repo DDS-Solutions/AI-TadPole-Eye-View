@@ -6,8 +6,21 @@ import { SystemClock } from './clock.js';
  * Universal base64url encoder supporting Node.js, Browsers, and Web Workers.
  */
 export function stringToBase64Url(str: string): string {
-  if (typeof Buffer !== 'undefined') {
-    return Buffer.from(str, 'utf-8')
+  const maybeBuffer = (
+    globalThis as unknown as {
+      Buffer?: {
+        from(
+          data: string,
+          enc: string
+        ): {
+          toString(enc: string): string;
+        };
+      };
+    }
+  ).Buffer;
+  if (typeof maybeBuffer !== 'undefined') {
+    return maybeBuffer
+      .from(str, 'utf-8')
       .toString('base64')
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
@@ -33,8 +46,20 @@ export function base64UrlToString(base64url: string): string {
     base64 += '=';
   }
 
-  if (typeof Buffer !== 'undefined') {
-    return Buffer.from(base64, 'base64').toString('utf-8');
+  const maybeBuffer = (
+    globalThis as unknown as {
+      Buffer?: {
+        from(
+          data: string,
+          enc: string
+        ): {
+          toString(enc: string): string;
+        };
+      };
+    }
+  ).Buffer;
+  if (typeof maybeBuffer !== 'undefined') {
+    return maybeBuffer.from(base64, 'base64').toString('utf-8');
   }
 
   // Browser / Web Worker environment
