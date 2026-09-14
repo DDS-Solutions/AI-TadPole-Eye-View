@@ -3840,5 +3840,9 @@ No later task is authorized merely because it appears in this plan.
   authorizes the exact embedded 4-Pillar brief. HTTP MCP remains default-off; no production,
   remote, provider, economic, or Phase 7 implementation has begun. The rebuilt final CLI status
   projects Phase 7 and repeats the non-authoritative offline `STASIS_INACTIVE` snapshot.
+- Certification PR #52 targets `main` from
+  `codex/phase-6-exit-certification-head2991ece`. GitHub reports the branch mergeable with exactly
+  the eight expected evidence/phase-projection files; required build and lint/typecheck/unit jobs
+  were pending at handoff and remain subject to human review before merge.
 
 No later task is authorized merely because it appears in this plan.
