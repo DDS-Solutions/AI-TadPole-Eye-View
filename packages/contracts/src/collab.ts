@@ -60,7 +60,7 @@ export type AoiAnnotation = z.infer<typeof AoiAnnotationSchema>;
 export const RoomIntentStateSchema = z.object({
   roomId: z.string().min(1),
   selectedEntity: EntityReferenceSchema.nullable().default(null),
-  activeLayers: z.record(z.boolean()).default({}),
+  activeLayers: z.record(z.string(), z.boolean()).default({}),
   aois: z.array(AoiAnnotationSchema).default([]),
   followLeaderId: z.string().nullable().default(null),
   simTimeOffsetSec: z.number().finite().default(0),

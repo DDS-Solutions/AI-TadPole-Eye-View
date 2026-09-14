@@ -20,12 +20,12 @@ export const RawStationCollectionSchema = z
 
 export const RawProductResponseSchema = z
   .object({
-    data: z.array(z.record(z.unknown())).optional(),
-    predictions: z.array(z.record(z.unknown())).optional(),
+    data: z.array(z.record(z.string(), z.unknown())).optional(),
+    predictions: z.array(z.record(z.string(), z.unknown())).optional(),
     current_predictions: z
       .union([
-        z.array(z.record(z.unknown())),
-        z.object({ cp: z.array(z.record(z.unknown())) }).passthrough(),
+        z.array(z.record(z.string(), z.unknown())),
+        z.object({ cp: z.array(z.record(z.string(), z.unknown())) }).passthrough(),
       ])
       .optional(),
   })

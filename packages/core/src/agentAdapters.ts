@@ -342,8 +342,19 @@ export class OpenAIRealtimeAdapter implements AgentProviderAdapter {
     const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
 
     // Fast path: Node.js Buffer
-    if (typeof Buffer !== 'undefined') {
-      return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString('base64');
+    const maybeBuffer = (
+      globalThis as unknown as {
+        Buffer?: {
+          from(
+            buf: ArrayBufferLike,
+            byteOffset?: number,
+            length?: number
+          ): { toString(enc: string): string };
+        };
+      }
+    ).Buffer;
+    if (typeof maybeBuffer !== 'undefined') {
+      return maybeBuffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString('base64');
     }
 
     // Fast path: Browser chunked btoa
@@ -358,8 +369,18 @@ export class OpenAIRealtimeAdapter implements AgentProviderAdapter {
 
   private base64ToBuffer(base64: string): Uint8Array {
     // Fast path: Node.js Buffer
-    if (typeof Buffer !== 'undefined') {
-      const buf = Buffer.from(base64, 'base64');
+    const maybeBuffer = (
+      globalThis as unknown as {
+        Buffer?: {
+          from(
+            data: string,
+            enc: string
+          ): { buffer: ArrayBufferLike; byteOffset: number; byteLength: number };
+        };
+      }
+    ).Buffer;
+    if (typeof maybeBuffer !== 'undefined') {
+      const buf = maybeBuffer.from(base64, 'base64');
       return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
     }
 

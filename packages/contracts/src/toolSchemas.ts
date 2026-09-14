@@ -190,7 +190,7 @@ export const InspectTelemetryOutputSchema = z.object({
   layer: z.string(),
   id: z.string(),
   found: z.boolean(),
-  data: z.record(z.unknown()).optional(),
+  data: z.record(z.string(), z.unknown()).optional(),
 });
 export type InspectTelemetryOutput = z.infer<typeof InspectTelemetryOutputSchema>;
 
@@ -205,7 +205,7 @@ export type QueryAoiInput = z.infer<typeof QueryAoiInputSchema>;
 
 export const QueryAoiOutputSchema = z.object({
   total_entities: z.number().finite().nonnegative(),
-  counts_by_layer: z.record(z.number()),
+  counts_by_layer: z.record(z.string(), z.number()),
   bounds: z.object({
     south: z.number(),
     west: z.number(),

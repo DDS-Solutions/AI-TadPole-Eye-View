@@ -46,7 +46,7 @@ const RawFeatureCollectionSchema = z.object({
         type: z.literal('Feature'),
         id: z.union([z.string(), z.number()]).optional(),
         geometry: z.union([PointGeometrySchema, OperationalAreaGeometrySchema]).nullable(),
-        properties: z.record(z.unknown()),
+        properties: z.record(z.string(), z.unknown()),
       })
     )
     .max(AWC_PRODUCT_MAX_RECORDS),

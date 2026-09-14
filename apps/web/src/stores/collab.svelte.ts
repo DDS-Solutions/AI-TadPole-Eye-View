@@ -85,7 +85,7 @@ class CollabStore {
             this.ws &&
             this.ws.readyState === WebSocket.OPEN
           ) {
-            this.ws.send(update);
+            this.ws.send(update as unknown as BufferSource);
           }
         } catch {
           this.state.error = 'Rejected invalid collaborative intent state';

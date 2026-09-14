@@ -23,7 +23,7 @@
 <header class="hud-header">
   <div class="hud-title-card">
     <div class="title-row">
-      <h1 id="app-title">GEV v2 — God's Eye View</h1>
+      <h1 id="app-title">AI-Tadpole-Eye-View</h1>
       <span class="version-badge">OSINT CONSOLE</span>
       <button
         id="toggle-telemetry-table-btn"
