@@ -1,8 +1,8 @@
 # ADR 0032: Incremental official MCP SDK adoption with preserved stdio compatibility
 
-- **Status:** Accepted; cancellation repair implemented default-off; Phase 6 exit recertification pending
+- **Status:** Accepted; default-off; cancellation repaired; Phase 6 exit certified
 - **Date:** 2026-09-08
-- **Task:** PLAN.md 6.1–6.5
+- **Task:** PLAN.md 6.1–6.5 and Phase 6 exit
 - **Extends:** [ADR 0017](./0017-mcp-server-and-cli-architecture.md),
   [ADR 0020](./0020-server-proxies-and-cost-governor-architecture.md),
   [ADR 0027](./0027-shared-tool-registry-contracts-and-governed-actuators-architecture.md),
@@ -13,7 +13,8 @@
 The 2026-09-13 exit review reproduced mutation dispatch after SSE cancellation while approval
 was pending. [Evidence and reproduction](../reviews/phase-6-exit-cancellation-2026-09-13.md)
 supersede any claim that stream-only tests prove cancellation of pending governed work. Repair
-commit `76f14f3` closes that defect while retaining the finding as historical regression evidence.
+commit `76f14f3`, squash-merged as `3b1a929`, closes that defect while retaining the finding as
+historical regression evidence. Renewed certification on 2026-09-14 closes the Phase 6 exit gate.
 
 At the task 6.1 decision point, GEV had a working hand-written MCP server over newline-delimited
 stdio, but no HTTP MCP transport and no official MCP SDK dependency. Phase 6 needed a
@@ -510,18 +511,49 @@ cancelling one running request does not abort another, the active-work ceiling c
 and shutdown waits for dispatched work. Affected package suites pass with core 72/72, ops-mcp
 54/54, and server 140/140. The nine performance cases pass; 100 MCP requests measured 64.77 ms
 p95 with peak active work 10 under the cap of 16. No manifest, lockfile, browser source, remote
-enablement, or production authority changed. Phase 6 exit remains unchecked until the repaired
-tree is merged and passes renewed certification.
+enablement, or production authority changed. The repair was squash-merged as `3b1a929` and its
+regression evidence was reproduced by the renewed Phase 6 exit certification.
+
+## Phase 6 exit certification — 2026-09-14
+
+The developer-authorized review certified the clean tree at
+`2991ece40d9a95831563246cc5c616e61dcd3c64`, which contains merged cancellation repair
+`3b1a929` and later toolchain/product-maintenance commits as regression inputs. GitHub PR #51
+had already published and squash-merged that byte-identical tree as `2589176`; a direct tree diff
+is empty. Certification changes only documentation, plan state, and the ADG-required CLI phase
+projection.
+
+- Root lint passed across 304 files; uncached strict typecheck passed 17/17 tasks; the uncached
+  unit matrix passed 16/16 tasks and 517 tests. Focused cancellation/MCP coverage passed core
+  72/72, ops-mcp 54/54, and server 140/140.
+- The canonical performance gate passed all nine cases. General/MCP load measured 14.55/82.29 ms
+  p95 with peak active work 10; all parser maxima remained at or below 25.92 ms against 50 ms,
+  and every Layer Access/Cesium measurement remained at or below 8.53 ms against 16.6 ms.
+- MCP Inspector 2.5.0 found seven tools and zero schema errors. Conformance
+  0.2.0-alpha.11 passed the applicable `tools-list` and `http-header-validation` scenarios for
+  `2026-07-28`, with zero non-loopback/provider fetches. Both Tadpole commits and all six pinned
+  source blobs resolve, and the literal stdio transcript remains green.
+- The uncached production build passed 10/10 tasks; Playwright passed 12/12 and its desktop and
+  360x640 artifacts remained in-frame. ADG, documentation tests, generated registry parity,
+  architecture drift, bundle budgets, plan equality, and diff checks passed. Total browser
+  footprint is 1,239.16 KiB gzip within the existing budgets.
+- The standard pnpm license reporter could not read a missing local Biome store-index record.
+  A read-only audit of the 419 unique installed package manifests found a declared license on
+  every package; no install, manifest, or lockfile mutation supplied evidence.
+
+This certification does not enable HTTP MCP by default, establish production identity or remote
+reachability, add capabilities or notifications, or authorize Phase 7 implementation.
 
 ## Consequences
 
 - GEV avoids reimplementing a security-sensitive modern protocol while retaining a known-good
   local integration and a simple rollback.
-- The SDK adds a measurable server-only dependency cost and a second installed Zod major. That
-  cost is accepted only at the isolated adapter boundary and must be remeasured after install.
+- The SDK adds a measurable server-only dependency cost at the isolated adapter boundary. The
+  later repository-wide Zod 4 upgrade removes the previously duplicated Zod major; the installed
+  tree retains only Zod 4.x variants.
 - The stale Phase 6 assumptions about HTTP GET, protocol sessions, and event-ID reconnect are
   removed for the modern target rather than silently implemented as legacy behavior.
 - Tadpole client-fix and deterministic evidence now exist as published immutable commits. Task 6.5
   freezes the joint request/response contract and official loopback evidence while scoped server
-  authorization remains default-off. The repaired cancellation boundary requires merge and a
-  separate renewed Phase 6 exit certification before Phase 7.
+  authorization remains default-off. The repaired cancellation boundary is merged and the renewed
+  Phase 6 exit certification passed; production identity and remote enablement remain later work.

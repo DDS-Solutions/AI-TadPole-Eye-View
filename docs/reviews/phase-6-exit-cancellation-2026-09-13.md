@@ -2,8 +2,8 @@
 
 - Date: 2026-09-13
 - Original result: **DOC_BLOCKER — Phase 6 exit remains unchecked.**
-- Resolution: repair commit `76f14f3` passes focused cancellation, affected-unit, and performance
-  gates; merge and renewed exit certification remain pending.
+- Resolution: **CLOSED.** Repair commit `76f14f3` passes focused cancellation, affected-unit, and
+  performance gates, squash-merged as `3b1a929`, and renewed certification passed on 2026-09-14.
 - Certification branch: `codex/phase-6-certification-20260913`.
 - Inspected tree: `737ccb73df8b549452324fe4ff39aea3f1713aec`, containing Task 6.7 implementation `3662f7f`.
 - Original comparison base: `732c0f3`. GitHub PR
@@ -201,6 +201,7 @@ try {
 ## Resolution and next gate
 
 The authorized cancellation-repair 4-Pillar brief in [PLAN.md](../../PLAN.md) is implemented by
-`76f14f3`. The remaining gate is to merge the isolated repair and run renewed Phase 6 exit
-certification against that merged tree. No remote enablement or Phase 7 work is authorized by this
-repair.
+`76f14f3` and squash-merged as `3b1a929`. Renewed Phase 6 exit certification passed against clean
+tree `2991ece40d9a95831563246cc5c616e61dcd3c64`, published byte-identically by PR #51 as merged
+commit `2589176`; its exact commands, counts, measurements, and handoff are recorded in PLAN.md
+§17. No remote enablement or Phase 7 implementation is authorized by the repair or certification.

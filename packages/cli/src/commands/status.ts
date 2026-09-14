@@ -14,7 +14,7 @@ export interface StatusOptions {
   governanceDbPath?: string;
 }
 
-export const PROJECT_PHASE = 'Phase 6 — Standards-Compliant MCP HTTP';
+export const PROJECT_PHASE = 'Phase 7 — Identity, Tenancy, and Intelligence Routing';
 
 export async function runStatus(options: StatusOptions = {}): Promise<void> {
   const clock = new SystemClock();
