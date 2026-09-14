@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-14
-**Status:** IN PROGRESS — Phase 6 exit BLOCKED pending cancellation-repair merge and renewed certification
+**Status:** IN PROGRESS — Phase 7 task 7.1 BLOCKED pending OQ-4 decision and exact 4-Pillar authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -19,8 +19,8 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 
 ```text
 PLAN_VERSION=3.0
-CURRENT_PHASE=6
-NEXT_TASK=6_EXIT
+CURRENT_PHASE=7
+NEXT_TASK=7.1
 NEXT_TASK_STATUS=BLOCKED
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
@@ -315,9 +315,10 @@ implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0` implements the exact m
 legacy-stdio-fallback profile, and evidence commit `2dcde21f537cde6885950c5091078e83a2d1bd3c`
 proves its fail-closed negotiation and no-replay behavior against deterministic mock servers.
 Task 6.5 records the immutable client-source pins, byte-exact stdio transcript, independent
-Tadpole mock-server suite, and official GEV loopback harness. These are the accepted local
-evidence boundary; they do not establish production identity, remote enablement, or an actual
-Tadpole-process-to-GEV HTTP integration test.
+Tadpole mock-server suite, and official GEV loopback harness. The renewed 2026-09-14 Phase 6 exit
+certification reproduced those gates plus the repaired cancellation boundary. These are the
+accepted local evidence boundary; they do not establish production identity, remote enablement,
+or an actual Tadpole-process-to-GEV HTTP integration test.
 
 - Preserve byte- and behavior-compatible `2024-11-05` stdio for local operators and Tadpole
   fallback. HTTP 401/403/5xx, authentication, authorization, STASIS, approval, budget, or other
@@ -446,9 +447,10 @@ Unanswered questions do not block earlier independent safety work.
   modern `/mcp`.
 - The AI-Tadpole-OS Rust/MCP maintainer owns client corrections, the GEV Phase 6 implementer owns
   the endpoint, and the joint DDS-Solutions integration owner owns cross-repository evidence.
-  Published Tadpole implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0` and evidence
-  `2dcde21f537cde6885950c5091078e83a2d1bd3c` satisfy the pre-implementation gate; actual
-  cross-repository conformance remains a Phase 6 obligation.
+  Published Tadpole implementation `329d32d6d3940ff4564d94c1797f540065dbc6a0`, evidence
+  `2dcde21f537cde6885950c5091078e83a2d1bd3c`, task 6.5 transcript/conformance coverage, and the
+  renewed exit certification satisfy the bounded Phase 6 evidence obligation. Actual authenticated
+  Tadpole-process-to-GEV runtime integration remains Phase 12 work.
 
 ---
 
@@ -1872,7 +1874,55 @@ or claim performance/accessibility without browser verification.
 - [x] 6.6 Harden voice transport readiness, race handling, bounded HUD rendering, responsive layout, and accessibility.
 - [x] 6.7 Correct virtualized telemetry reopen/filter scrolling, identity, keyboard semantics,
   accessible names, responsive layout, and browser-verified bounded windowing.
-- [ ] 6 exit: stdio remains compatible; unrelated sessions never receive each other’s messages; remote mutation cannot bypass audit/approval/budget/STASIS.
+- [x] 6 exit: stdio remains compatible; unrelated sessions never receive each other’s messages; remote mutation cannot bypass audit/approval/budget/STASIS.
+
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 7.1
+
+```text
+[SCOPE_CONTRACT] Resolve OQ-4 in a new ADR before implementation: record the human-approved
+production identity-provider/verifier shape, issuer and audience/resource policy, stable principal
+claim, tenant identifier and membership model, role vocabulary, token/session expiry and
+revocation behavior, and retention/export/deletion ownership requirements. Then add one
+contract-validated authenticated principal/tenant/role context and enforce resource ownership at
+the server boundary and through the existing governed MCP execution context. In scope:
+packages/contracts/src/mcpAuthorization.ts or one narrowly named identity contract module,
+apps/server/src/middleware/opsAuth.ts and narrowly required identity/ownership middleware,
+packages/ops-mcp authorization/context consumption only where needed for one shared authority,
+focused contracts/server/MCP/governance tests, the new ADR and index, security documentation, and
+synchronized plan handoff. Out of scope: provider credentials or terms administration, persisted
+BusinessContext, economic/provider calls, the intelligence UI, production IdP provisioning or
+network access, remote MCP enablement, new transports/tools, tasks 7.2-7.4, and later phases.
+
+[PERFORMANCE_THRESHOLD] A table-driven role/ownership matrix proves every protected HTTP and MCP
+resource accepts only an authenticated principal with explicit membership in the requested tenant
+and the required role/capability. Missing, malformed, expired, revoked, wrong-issuer,
+wrong-audience/resource, cross-tenant, unknown-role, and overlong claims fail before body/domain
+dispatch with no audit mutation, provider call, or private-field leak. Request-local identity
+remains isolated under concurrency and reconnect; scene/tool ownership tests fail closed; logs,
+errors, audit data, and diagnostics omit raw tokens and disallowed private claims. Existing Phase 6
+stdio, HTTP auth, cancellation, replay, governance, path, conformance, performance, and seed
+zero-network gates remain green. Root lint; uncached strict typecheck/unit/build; affected
+performance; Playwright smoke; ADG/tests; architecture; bundle/dependency/license; diff; and
+synchronized-plan checks pass with no browser-bundle growth unless separately justified.
+
+[ARCHITECTURE_MODE] PLAN.md §2 rules 1-3 and 7-15; §3 contracts/server/governance/MCP boundaries;
+§4.5 tenant-scoped access rules; §5-§7; ADRs 0020, 0027, 0032, and 0041-0044. Identity verification
+is an injected resource-server boundary that returns validated data, never handler authority.
+Authorization derives from one immutable request-local principal/tenant/role context and the
+existing registry/capability policy; transports do not create separate governors. Preserve
+default-off HTTP, seed/local mode, SimClock, audit-before-action, durable STASIS, and fail-closed
+production configuration. Any persistence requires an explicit migration/repository boundary;
+Phase 13 remains the owner of persisted BusinessContext.
+
+[FAILURE_MODES] Do not invent unresolved OQ-4 facts; reuse the compatibility ops token as a
+production identity; accept caller-selected issuer/JWKS/introspection endpoints; infer tenant or
+role from tool arguments; trust forwarded headers; log tokens/private claims; keep shared mutable
+identity keyed by connection; permit cross-tenant reads; auto-provision memberships; add a
+fail-open/local production fallback; weaken Phase 6 governance or cancellation; persist business
+data without its later migration decision; enable remote/production access; or absorb tasks 7.2+
+or economic/UI work. If the developer has not supplied and accepted every OQ-4 decision needed by
+the ADR, record DOC_BLOCKER with the exact missing facts and stop before implementation.
+```
 
 ### Phase 7 — Identity, tenancy, and intelligence routing
 
@@ -3738,5 +3788,55 @@ No later task is authorized merely because it appears in this plan.
 - NEXT_TASK remains 6_EXIT with status BLOCKED until this repair is reviewed and merged and the
   exact merged tree passes renewed Phase 6 exit certification. The exit checkbox remains
   unchecked; no Phase 7 implementation is authorized.
+
+### Phase 6 exit certification completion checkpoint — 2026-09-14
+
+- The developer authorized a review-only certification of the clean current tree
+  `2991ece40d9a95831563246cc5c616e61dcd3c64`. Certification branch
+  `codex/phase-6-exit-certification-head2991ece` starts at that exact commit. The tree contains
+  squash-merged cancellation repair `3b1a929`, merged toolchain work through `origin/main`
+  `bbfe653`, and five later commits on the developer-selected branch as regression inputs. The
+  certification itself changes only ADR/review evidence, synchronized plan state, and the
+  ADG-required CLI/README/SECURITY phase labels; it does not represent those later commits as
+  merged.
+- Startup plan copies were byte-identical and the worktree was clean. `pnpm gev status` reported
+  the expected non-authoritative offline snapshot: `STASIS_INACTIVE`, seed mode, $10.00/$10.00
+  remaining, 17/19 providers, 20/22 feeds, 16/19 layers active, and two unavailable feeds. No
+  governance state was resumed, deleted, or rewritten. `gh pr list` was attempted but GitHub API
+  access failed at the configured local proxy, so no open-PR claim is made.
+- Focused pre-edit regression passed core 72/72, ops-mcp 54/54, and server 140/140, including the
+  repaired pre-/post-dispatch cancellation boundary. Root lint passed across 304 files with 11
+  non-blocking warnings already present on the reviewed tree. Uncached strict typecheck passed
+  17/17 tasks; the uncached unit matrix passed 16/16 tasks and 517 tests.
+- The canonical nine-case performance gate passed. General/MCP 100-request load measured
+  14.55/82.29 ms p95 with MCP peak active work 10, below 300 ms and cap 16. NWS/AWC/NHC/CO-OPS
+  measured 13.50/15.39/5.80/25.92 ms p95, below 50 ms. Layer Access projection/filter measured
+  3.67/5.55 ms p95. Multi-layer/cable/satellite/operational Cesium ingestion measured
+  7.70/5.43/3.48/8.53 ms p95, all below 16.6 ms.
+- The uncached production build passed 10/10 tasks. MCP Inspector 2.5.0 reported seven tools and
+  zero schema errors; Conformance 0.2.0-alpha.11 passed applicable `tools-list` and
+  `http-header-validation` scenarios for `2026-07-28`, with zero non-loopback/provider fetches.
+  Both immutable Tadpole commits and all six pinned source blobs resolve; the literal modern-probe
+  to legacy-stdio transcript remains byte- and behavior-compatible.
+- Playwright passed 12/12 in 6.0 minutes. The generated operational globe, telemetry desktop,
+  telemetry 360x640, and voice desktop/mobile artifacts were inspected and remained readable and
+  in-frame. ADG passed over 69 documents, 526 paths, and 18 module-qualified symbols;
+  documentation tests passed 17/17; generated provider-registry parity, architecture drift, bundle
+  budgets, `git diff --check`, and synchronized-plan checks passed.
+- The deterministic bundle report measured app entry 125.92 KiB gzip, total CSS 9.26 KiB gzip,
+  and total footprint 1,239.16 KiB gzip, all within existing budgets. `pnpm list -r --depth 0`
+  reports 95 packages across 12 projects. `pnpm licenses list` could not read a missing local Biome
+  store-index record; the documented read-only fallback audited 419 unique installed package
+  manifests and found a declared license on every package. No install, manifest, or lockfile
+  mutation supplied evidence.
+- A bare `pnpm turbo` baseline launch could not resolve the present local Turbo executable, and a
+  restricted Vitest launch then hit the known Windows `spawn EPERM` sandbox boundary. The exact
+  installed Turbo 2.10.12 entry point and authorized unrestricted workers ran the same uncached
+  tasks successfully; neither launcher failure is represented as a product failure.
+- Phase 6 exit is complete. `CURRENT_PHASE=7`, `NEXT_TASK=7.1`, and status remains `BLOCKED` until
+  the developer supplies the OQ-4 identity/tenant/role/retention/export/deletion decisions and
+  authorizes the exact embedded 4-Pillar brief. HTTP MCP remains default-off; no production,
+  remote, provider, economic, or Phase 7 implementation has begun. The rebuilt final CLI status
+  projects Phase 7 and repeats the non-authoritative offline `STASIS_INACTIVE` snapshot.
 
 No later task is authorized merely because it appears in this plan.
