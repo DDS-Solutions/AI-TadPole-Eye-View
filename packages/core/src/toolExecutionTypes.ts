@@ -9,6 +9,7 @@ export interface ToolExecutionContext {
   task_ref?: string;
   tenant_id?: string | null;
   operation_id?: string;
+  signal?: AbortSignal;
 }
 
 export type ToolHandler<TInput = unknown, TOutput = unknown> = (
@@ -34,6 +35,7 @@ export type ToolExecutionFailureCode =
   | 'RESERVATION_EXPIRED'
   | 'APPROVAL_UNAVAILABLE'
   | 'APPROVAL_DENIED'
+  | 'REQUEST_CANCELLED'
   | 'HANDLER_ERROR'
   | 'HANDLER_TIMEOUT'
   | 'OUTPUT_VALIDATION_FAILED'
@@ -146,18 +148,46 @@ export function normalizeError(error: unknown): string {
 
 class ToolTimeoutError extends Error {}
 
-export async function runWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
+class ToolCancellationError extends Error {}
+
+export async function runWithCancellation<T>(
+  promise: Promise<T>,
+  signal?: AbortSignal
+): Promise<T> {
+  if (!signal) return promise;
+  if (signal.aborted) throw new ToolCancellationError('Tool execution was cancelled');
+
+  let cancel: (() => void) | undefined;
   try {
     return await Promise.race([
       promise,
       new Promise<T>((_resolve, reject) => {
-        timer = setTimeout(
-          () => reject(new ToolTimeoutError(`Handler exceeded ${timeoutMs} ms`)),
-          timeoutMs
-        );
+        cancel = () => reject(new ToolCancellationError('Tool execution was cancelled'));
+        signal.addEventListener('abort', cancel, { once: true });
       }),
     ]);
+  } finally {
+    if (cancel) signal.removeEventListener('abort', cancel);
+  }
+}
+
+export async function runWithTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  signal?: AbortSignal
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timed = Promise.race([
+    promise,
+    new Promise<T>((_resolve, reject) => {
+      timer = setTimeout(
+        () => reject(new ToolTimeoutError(`Handler exceeded ${timeoutMs} ms`)),
+        timeoutMs
+      );
+    }),
+  ]);
+  try {
+    return await runWithCancellation(timed, signal);
   } finally {
     if (timer !== undefined) clearTimeout(timer);
   }
@@ -165,6 +195,10 @@ export async function runWithTimeout<T>(promise: Promise<T>, timeoutMs: number):
 
 export function isHandlerTimeout(error: unknown): boolean {
   return error instanceof ToolTimeoutError;
+}
+
+export function isExecutionCancelled(error: unknown): boolean {
+  return error instanceof ToolCancellationError;
 }
 
 function isStoredResult(value: unknown): value is ToolExecutionResult<unknown> {

@@ -14,11 +14,13 @@ import {
   type ToolExecutionFailureCode,
   type ToolExecutionResult,
   type ToolHandler,
+  isExecutionCancelled,
   isHandlerTimeout,
   makeFailure,
   makeSuccess,
   normalizeError,
   readStoredResult,
+  runWithCancellation,
   runWithTimeout,
   toAuditOutcome,
   toMicrousd,
@@ -135,11 +137,32 @@ export async function executeReservedTool<T>(
   }
 
   const fingerprint = reservation.operation.request_fingerprint;
+  const cancelled = cancellationFailure(clock, name, intentId, startTime, context.signal);
+  if (cancelled) {
+    return refundReserved(options, name, intentId, fingerprint, cancelled, startTime);
+  }
   if (definition.is_dangerous) {
-    const approvalFailure = await requestApproval(options, name, intentId, startTime);
+    const approvalFailure = await requestApproval(
+      options,
+      name,
+      intentId,
+      startTime,
+      context.signal
+    );
     if (approvalFailure) {
       return refundReserved(options, name, intentId, fingerprint, approvalFailure, startTime);
     }
+  }
+
+  const cancelledBeforeDispatch = cancellationFailure(
+    clock,
+    name,
+    intentId,
+    startTime,
+    context.signal
+  );
+  if (cancelledBeforeDispatch) {
+    return refundReserved(options, name, intentId, fingerprint, cancelledBeforeDispatch, startTime);
   }
 
   try {
@@ -158,45 +181,22 @@ export async function executeReservedTool<T>(
     return refundReserved(options, name, intentId, fingerprint, result, startTime);
   }
 
+  let handlerPromise: Promise<unknown>;
+  try {
+    handlerPromise = Promise.resolve(handler(input, { ...context, operation_id: intentId }));
+  } catch (error) {
+    return markExecutionInDoubt(options, name, intentId, fingerprint, error, startTime);
+  }
+
   let rawOutput: unknown;
   try {
-    rawOutput = await runWithTimeout(
-      Promise.resolve(handler(input, { ...context, operation_id: intentId })),
-      definition.timeout_ms
-    );
+    rawOutput = await runWithTimeout(handlerPromise, definition.timeout_ms, context.signal);
   } catch (error) {
-    const sourceCode = isHandlerTimeout(error) ? 'HANDLER_TIMEOUT' : 'HANDLER_ERROR';
-    const ambiguous = {
-      ...makeFailure(
-        clock,
-        name,
-        intentId,
-        startTime,
-        'OPERATION_IN_DOUBT',
-        `${sourceCode}: ${normalizeError(error)}`,
-        'error'
-      ),
-      retryable: false,
-    };
-    try {
-      ledger.markInDoubt({
-        operation_id: intentId,
-        request_fingerprint: fingerprint,
-        reason: ambiguous.error ?? 'Ambiguous handler outcome',
-        audit_outcome: toAuditOutcome(clock, ambiguous),
-      });
-      return ambiguous;
-    } catch (ledgerError) {
-      return makeFailure(
-        clock,
-        name,
-        intentId,
-        startTime,
-        'LEDGER_UNAVAILABLE',
-        `Handler outcome is ambiguous and could not be durably reconciled: ${normalizeError(ledgerError)}`,
-        'error'
-      );
+    const result = markExecutionInDoubt(options, name, intentId, fingerprint, error, startTime);
+    if (isExecutionCancelled(error)) {
+      await handlerPromise.catch(() => undefined);
     }
+    return result;
   }
 
   const output = definition.outputSchema.safeParse(rawOutput);
@@ -225,7 +225,8 @@ async function requestApproval(
   options: ReservedToolExecutionOptions,
   name: OperatorToolName,
   intentId: string,
-  startTime: number
+  startTime: number,
+  signal?: AbortSignal
 ): Promise<ToolExecutionResult<never> | null> {
   let approval: ApprovalResult;
   const approvalGate = options.approvalGate;
@@ -241,8 +242,8 @@ async function requestApproval(
     );
   }
   try {
-    approval = ApprovalResultSchema.parse(
-      await approvalGate.request({
+    const approvalPromise = Promise.resolve(
+      approvalGate.request({
         id: options.idFactory(),
         ts: options.clock.iso(),
         intent_id: intentId,
@@ -252,7 +253,11 @@ async function requestApproval(
         expires_at: new Date(options.clock.now() + 60_000).toISOString(),
       })
     );
+    approval = ApprovalResultSchema.parse(await runWithCancellation(approvalPromise, signal));
   } catch (error) {
+    if (isExecutionCancelled(error)) {
+      return cancellationFailure(options.clock, name, intentId, startTime, signal);
+    }
     return makeFailure(
       options.clock,
       name,
@@ -274,6 +279,74 @@ async function requestApproval(
         `Tool execution rejected by ApprovalGate: decision was '${approval.decision}'`,
         'blocked'
       );
+}
+
+function cancellationFailure(
+  clock: SimClock,
+  name: OperatorToolName,
+  intentId: string,
+  startTime: number,
+  signal?: AbortSignal
+): ToolExecutionResult<never> | null {
+  if (!signal?.aborted) return null;
+  return {
+    ...makeFailure(
+      clock,
+      name,
+      intentId,
+      startTime,
+      'REQUEST_CANCELLED',
+      `Tool execution cancelled before '${name}' was dispatched`,
+      'error'
+    ),
+    retryable: false,
+  };
+}
+
+function markExecutionInDoubt(
+  options: ReservedToolExecutionOptions,
+  name: OperatorToolName,
+  intentId: string,
+  fingerprint: string,
+  error: unknown,
+  startTime: number
+): ToolExecutionResult<never> {
+  const sourceCode = isExecutionCancelled(error)
+    ? 'REQUEST_CANCELLED'
+    : isHandlerTimeout(error)
+      ? 'HANDLER_TIMEOUT'
+      : 'HANDLER_ERROR';
+  const ambiguous = {
+    ...makeFailure(
+      options.clock,
+      name,
+      intentId,
+      startTime,
+      'OPERATION_IN_DOUBT',
+      `${sourceCode}: ${normalizeError(error)}`,
+      'error'
+    ),
+    retryable: false,
+  };
+  try {
+    options.ledger.markInDoubt({
+      operation_id: intentId,
+      request_fingerprint: fingerprint,
+      reason: ambiguous.error ?? 'Ambiguous handler outcome',
+      audit_outcome: toAuditOutcome(options.clock, ambiguous),
+    });
+    return ambiguous;
+  } catch (ledgerError) {
+    return makeFailure(
+      options.clock,
+      name,
+      intentId,
+      startTime,
+      'LEDGER_UNAVAILABLE',
+      `Handler outcome is ambiguous and could not be durably reconciled: ${normalizeError(ledgerError)}`,
+      'error'
+    );
+  }
 }
 
 function refundReserved<T>(

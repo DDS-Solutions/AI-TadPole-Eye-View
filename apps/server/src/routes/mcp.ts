@@ -2,7 +2,8 @@ import { getMissingOperatorToolScopes, isOperatorToolName } from '@gev/contracts
 import type { McpAuthorizationContext, McpBearerVerifier } from '@gev/contracts/mcp-authorization';
 import { isMcpOperatorToolName } from '@gev/ops-mcp';
 import {
-  type createGevMcpHttpHandler,
+  type GevMcpHttpHandler,
+  type McpHttpExecutionObserver,
   mcpBearerChallengeResponse,
   toGevMcpAuthInfo,
   verifyMcpBearerAuthorization,
@@ -20,8 +21,6 @@ export const MCP_HTTP_DEFAULT_MAX_ACTIVE_REQUESTS = 100;
 export const MCP_TEST_ISSUER = 'https://auth.gev.test/';
 export const MCP_TEST_SUBJECT = 'svc:tadpole-test';
 
-type GevMcpHttpHandler = ReturnType<typeof createGevMcpHttpHandler>;
-
 export interface McpHttpRouterOptions {
   handler: GevMcpHttpHandler;
   now: () => number;
@@ -36,14 +35,16 @@ export interface McpHttpRouteLifecycle {
   peakActiveRequestCount: () => number;
 }
 
-interface ExchangeLease {
+interface ExchangeLease extends McpHttpExecutionObserver {
   signal: AbortSignal;
   abort: (reason?: unknown) => void;
-  release: () => void;
+  release: () => Promise<void>;
 }
 
 class ExchangeGate {
   private readonly controllers = new Map<symbol, AbortController>();
+  private readonly finishResponses = new Map<symbol, () => void>();
+  private readonly releases = new Map<symbol, Promise<void>>();
   private closed = false;
   private peak = 0;
 
@@ -56,24 +57,66 @@ class ExchangeGate {
 
     const key = Symbol('mcp-http-exchange');
     const controller = new AbortController();
-    const relayAbort = () => controller.abort(sourceSignal.reason);
+    const relayAbort = () => {
+      controller.abort(sourceSignal.reason);
+      finishResponse();
+    };
+    this.controllers.set(key, controller);
+    this.peak = Math.max(this.peak, this.controllers.size);
+    let released = false;
+    let sealed = false;
+    let responseFinished = false;
+    const work = new Set<Promise<void>>();
+    let resolveRelease: (() => void) | undefined;
+    const releaseComplete = new Promise<void>((resolve) => {
+      resolveRelease = resolve;
+    });
+    this.releases.set(key, releaseComplete);
+    const finishIfIdle = () => {
+      if (released || !sealed || !responseFinished || work.size > 0) return;
+      released = true;
+      sourceSignal.removeEventListener('abort', relayAbort);
+      this.controllers.delete(key);
+      this.finishResponses.delete(key);
+      this.releases.delete(key);
+      resolveRelease?.();
+    };
+    const finishResponse = () => {
+      responseFinished = true;
+      finishIfIdle();
+    };
+    this.finishResponses.set(key, finishResponse);
     if (sourceSignal.aborted) {
       relayAbort();
     } else {
       sourceSignal.addEventListener('abort', relayAbort, { once: true });
     }
-    this.controllers.set(key, controller);
-    this.peak = Math.max(this.peak, this.controllers.size);
-    let released = false;
 
     return {
       signal: controller.signal,
       abort: (reason?: unknown) => controller.abort(reason),
+      track: (execution) => {
+        if (sealed) {
+          throw new Error('MCP execution started after request work registration was sealed');
+        }
+        const tracked = execution.then(
+          () => undefined,
+          () => undefined
+        );
+        work.add(tracked);
+        void tracked.finally(() => {
+          work.delete(tracked);
+          finishIfIdle();
+        });
+      },
+      seal: () => {
+        sealed = true;
+        finishIfIdle();
+      },
       release: () => {
-        if (released) return;
-        released = true;
-        sourceSignal.removeEventListener('abort', relayAbort);
-        this.controllers.delete(key);
+        sealed = true;
+        finishResponse();
+        return releaseComplete;
       },
     };
   }
@@ -92,13 +135,14 @@ class ExchangeGate {
 
   abortAll(): void {
     this.closed = true;
-    for (const controller of this.controllers.values()) {
+    for (const [key, controller] of this.controllers) {
       controller.abort(new Error('MCP HTTP handler is shutting down'));
+      this.finishResponses.get(key)?.();
     }
   }
 
-  releaseAll(): void {
-    this.controllers.clear();
+  async waitForIdle(): Promise<void> {
+    await Promise.all([...this.releases.values()]);
   }
 }
 
@@ -206,7 +250,7 @@ async function readBoundedRequest(
 
 function responseWithLease(response: Response, lease: ExchangeLease): Response {
   if (response.body === null) {
-    lease.release();
+    void lease.release();
     return response;
   }
 
@@ -216,13 +260,13 @@ function responseWithLease(response: Response, lease: ExchangeLease): Response {
       try {
         const { done, value } = await reader.read();
         if (done) {
-          lease.release();
+          await lease.release();
           controller.close();
           return;
         }
         controller.enqueue(value);
       } catch (error) {
-        lease.release();
+        await lease.release();
         controller.error(error);
       }
     },
@@ -231,7 +275,7 @@ function responseWithLease(response: Response, lease: ExchangeLease): Response {
       try {
         await reader.cancel(reason);
       } finally {
-        lease.release();
+        await lease.release();
       }
     },
   });
@@ -312,11 +356,11 @@ export function createMcpHttpRouter(options: McpHttpRouterOptions): McpHttpRoute
 
     const verifier = options.bearerVerifier;
     if (!verifier) {
-      lease.release();
+      void lease.release();
       return jsonRpcHttpError(503, -32003, 'MCP HTTP authorization is not configured');
     }
     if (hasQueryBearer(c.req.raw)) {
-      lease.release();
+      void lease.release();
       return mcpBearerChallengeResponse('invalid_token', MCP_HTTP_RESOURCE_METADATA);
     }
 
@@ -329,8 +373,12 @@ export function createMcpHttpRouter(options: McpHttpRouterOptions): McpHttpRoute
         nowEpochSeconds: Math.floor(options.now() / 1000),
       });
     } catch {
-      lease.release();
+      void lease.release();
       return mcpBearerChallengeResponse('invalid_token', MCP_HTTP_RESOURCE_METADATA);
+    }
+    if (lease.signal.aborted) {
+      void lease.release();
+      return jsonRpcHttpError(400, -32003, 'MCP request was cancelled');
     }
 
     const requestedToolName = c.req.header('mcp-name');
@@ -342,7 +390,7 @@ export function createMcpHttpRouter(options: McpHttpRouterOptions): McpHttpRoute
     ) {
       const missingScopes = getMissingOperatorToolScopes(requestedToolName, authorization.scopes);
       if (missingScopes.length > 0) {
-        lease.release();
+        void lease.release();
         return mcpBearerChallengeResponse(
           'insufficient_scope',
           MCP_HTTP_RESOURCE_METADATA,
@@ -355,7 +403,7 @@ export function createMcpHttpRouter(options: McpHttpRouterOptions): McpHttpRoute
     try {
       boundedRequest = await readBoundedRequest(c.req.raw, lease.signal, MCP_HTTP_MAX_BODY_BYTES);
     } catch (error) {
-      lease.release();
+      void lease.release();
       if (error instanceof BodyLimitError) {
         return jsonRpcHttpError(413, -32003, 'MCP request body exceeds 1 MiB');
       }
@@ -364,19 +412,24 @@ export function createMcpHttpRouter(options: McpHttpRouterOptions): McpHttpRoute
       }
       return jsonRpcHttpError(400, -32700, 'Unable to read MCP request body');
     }
+    if (lease.signal.aborted) {
+      void lease.release();
+      return jsonRpcHttpError(400, -32003, 'MCP request was cancelled');
+    }
 
     try {
       const accessToken = authorizationHeader?.slice('Bearer '.length);
       if (!accessToken) {
-        lease.release();
+        void lease.release();
         return mcpBearerChallengeResponse('invalid_token', MCP_HTTP_RESOURCE_METADATA);
       }
       const response = await options.handler.fetch(boundedRequest, {
         authInfo: toGevMcpAuthInfo(accessToken, authorization),
+        executionObserver: lease,
       });
       return responseWithLease(response, lease);
     } catch {
-      lease.release();
+      void lease.release();
       return jsonRpcHttpError(500, -32603, 'MCP HTTP handler failed closed');
     }
   });
@@ -392,7 +445,7 @@ export function createMcpHttpRouter(options: McpHttpRouterOptions): McpHttpRoute
         try {
           await options.handler.close();
         } finally {
-          gate.releaseAll();
+          await gate.waitForIdle();
         }
       })();
       return closePromise;
