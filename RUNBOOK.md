@@ -329,7 +329,18 @@ never an unconditional force push, then verify the pull request diff contains on
 
 A closed SSE stream and an active-request count of zero do not prove that governed work stopped.
 The Phase 6 exit review reproduced a mutation executing after stream cancellation while approval
-was pending. Keep HTTP default-off and follow the bounded repair brief in PLAN.md; do not treat
-stream-only tools/list tests as mutation-cancellation evidence. Verify approval/dispatch/shutdown
-races, durable outcomes, and actual outstanding work before certifying cleanup. See the
-[reproduction and evidence](docs/reviews/phase-6-exit-cancellation-2026-09-13.md).
+was pending. The repair keeps HTTP default-off and makes the shared executor promise the unit of
+active-work accounting.
+
+For cancellation checks, pause a real governed tool at approval and after handler dispatch. Verify
+the following invariants with condition waits:
+
+- before dispatch, the ledger is `REFUNDED` with terminal `REQUEST_CANCELLED`, zero settled cost,
+  one audit pair, and no late handler call after approval resolves;
+- after dispatch, the ledger is `IN_DOUBT`, replay never redispatches, and the request remains in
+  the active count until the handler promise stops;
+- cancelling one request does not abort another, repeated abandoned requests cannot bypass the
+  configured active-work ceiling, and shutdown waits for dispatched work before completing.
+
+Do not use stream-only `tools/list` tests as mutation-cancellation evidence. See the historical
+[reproduction and repair evidence](docs/reviews/phase-6-exit-cancellation-2026-09-13.md).

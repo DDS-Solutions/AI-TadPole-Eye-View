@@ -1,6 +1,6 @@
 # ADR 0032: Incremental official MCP SDK adoption with preserved stdio compatibility
 
-- **Status:** Accepted; Tasks 6.2–6.5 implemented default-off; Phase 6 exit blocked by cancellation
+- **Status:** Accepted; cancellation repair implemented default-off; Phase 6 exit recertification pending
 - **Date:** 2026-09-08
 - **Task:** PLAN.md 6.1–6.5
 - **Extends:** [ADR 0017](./0017-mcp-server-and-cli-architecture.md),
@@ -12,7 +12,8 @@
 
 The 2026-09-13 exit review reproduced mutation dispatch after SSE cancellation while approval
 was pending. [Evidence and reproduction](../reviews/phase-6-exit-cancellation-2026-09-13.md)
-supersede any claim that existing stream tests prove cancellation of pending governed work.
+supersede any claim that stream-only tests prove cancellation of pending governed work. Repair
+commit `76f14f3` closes that defect while retaining the finding as historical regression evidence.
 
 At the task 6.1 decision point, GEV had a working hand-written MCP server over newline-delimited
 stdio, but no HTTP MCP transport and no official MCP SDK dependency. Phase 6 needed a
@@ -219,7 +220,7 @@ paths.
 | Capabilities | Advertise only `tools`. Omit/false `listChanged` while the visible list is static. Do not claim prompts, resources, roots, sampling, logging, tasks, or subscriptions without implementation and tests. | 6.4–6.5 |
 | HTTP transport and negotiation | One `/mcp` POST endpoint, modern `2026-07-28`, `server/discover`, per-request `_meta`, `MCP-Protocol-Version`, `Mcp-Method`, conditional `Mcp-Name`, header/body matching, correct JSON/SSE and error statuses. GET/DELETE return 405. No `/mcp/sse`. | 6.2, 6.5 |
 | Lifecycle and session state | Modern HTTP has no initialize handshake or protocol session. Build a fresh cheap MCP server adapter per request around shared infrastructure; pass all caller state explicitly. Never key authority to a connection. | 6.2–6.3 |
-| Cancellation | Closing an HTTP response stream aborts that request. Propagate an `AbortSignal` through the transport-independent execution boundary where safe; never emit a late response after cancellation. Preserve legacy stdio behavior until separately migrated. | 6.2, 6.5 |
+| Cancellation | Closing an HTTP response stream aborts that request and passes the SDK request signal through the transport-independent executor. Cancellation before dispatch records `REQUEST_CANCELLED` and refunds the reservation. Cancellation after dispatch records `IN_DOUBT`; the HTTP slot and shutdown remain pending until the handler promise stops. Never emit a late response after cancellation. Preserve legacy stdio behavior until separately migrated. | 6.2, 6.5, 6 exit repair |
 | Notifications | Request-related messages stay on that request's stream. Long-lived list changes require an authenticated, capability-filtered `subscriptions/listen` implementation; until then advertise none and emit none. Never broadcast. | 6.4–6.5 |
 | Authentication and authorization | The SDK handler is not an auth wall. Validate bearer tokens before body dispatch on every HTTP request; validate issuer, audience/resource, expiry, signature, and scopes; forbid query tokens and token passthrough. Stdio retains its local process/environment trust model. | 6.3, 6.5 |
 | Host and Origin | Apply exact deployment allowlists before the SDK handler. Reject invalid present Origin with 403, protect localhost from DNS rebinding, and never treat CORS as authorization. | 6.2, 6.5 |
@@ -485,6 +486,33 @@ tool catalog, authorization policy, governance policy, scene authority, or stdio
 Task 6.5 does not enable production or remote MCP, add legacy HTTP, approve subscriptions or
 notifications, complete the Phase 6 exit gate, or authorize any Phase 7 work.
 
+## Phase 6 cancellation repair evidence
+
+Repair commit `76f14f3` connects the official SDK request signal to the one
+`GovernedToolExecutor` and couples each HTTP exchange lease to its observed executor promise.
+The adapter seals work registration before returning the response. A disconnected response or
+shutdown can end response ownership, but the concurrency slot is released only after registered
+execution settles. This prevents repeated abandoned responses from creating uncounted work.
+
+The executor now distinguishes the durable dispatch boundary:
+
+- cancellation while a reservation or approval is pending stores a terminal
+  `REQUEST_CANCELLED` result, refunds with zero settled cost, and ignores a later approval;
+- cancellation after the handler is invoked stores `OPERATION_IN_DOUBT`, does not refund or
+  redispatch, and waits for the underlying handler promise before reporting the work stopped;
+- unreserved reads receive the same signal and remain accounted until their handler promise
+  stops, while retaining their existing audit lifecycle.
+
+Condition-driven tests exercise the actual Hono route, official SDK adapter, SQLite ledger,
+approval gate, and shared executor. They prove late approval cannot dispatch, terminal
+cancellation and in-doubt replay do not add approval, mutation, settlement, or audit work,
+cancelling one running request does not abort another, the active-work ceiling cannot be evaded,
+and shutdown waits for dispatched work. Affected package suites pass with core 72/72, ops-mcp
+54/54, and server 140/140. The nine performance cases pass; 100 MCP requests measured 64.77 ms
+p95 with peak active work 10 under the cap of 16. No manifest, lockfile, browser source, remote
+enablement, or production authority changed. Phase 6 exit remains unchecked until the repaired
+tree is merged and passes renewed certification.
+
 ## Consequences
 
 - GEV avoids reimplementing a security-sensitive modern protocol while retaining a known-good
@@ -495,5 +523,5 @@ notifications, complete the Phase 6 exit gate, or authorize any Phase 7 work.
   removed for the modern target rather than silently implemented as legacy behavior.
 - Tadpole client-fix and deterministic evidence now exist as published immutable commits. Task 6.5
   freezes the joint request/response contract and official loopback evidence while scoped server
-  authorization remains default-off. The separate Phase 6 exit gate remains pending explicit
-  authorization.
+  authorization remains default-off. The repaired cancellation boundary requires merge and a
+  separate renewed Phase 6 exit certification before Phase 7.

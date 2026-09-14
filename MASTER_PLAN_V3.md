@@ -2,8 +2,8 @@
 
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
-**Verified against repository:** 2026-09-13
-**Status:** IN PROGRESS — Phase 6 exit BLOCKED: cancelled HTTP mutation can dispatch after approval
+**Verified against repository:** 2026-09-14
+**Status:** IN PROGRESS — Phase 6 exit BLOCKED pending cancellation-repair merge and renewed certification
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -24,9 +24,9 @@ NEXT_TASK=6_EXIT
 NEXT_TASK_STATUS=BLOCKED
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
-LAST_VERIFIED_UTC=2026-09-13
+LAST_VERIFIED_UTC=2026-09-14
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
-IMPLEMENTATION_STARTED=NO
+IMPLEMENTATION_STARTED=YES
 ```
 
 The value of `NEXT_TASK` must always equal the first unchecked task in §10. A task may be checked only after its exit evidence is recorded in §17 and both plan files are synchronized.
@@ -3663,9 +3663,10 @@ No later task is authorized merely because it appears in this plan.
   tree `737ccb7` in `codex/phase-6-certification-20260913`. The primary worktree and the
   Task 6.7 worktree remain untouched. The four primary unstaged files are
   LayerAccessEntryDetail.svelte, VoiceControlOrb.svelte, voice.svelte.ts, and agentAdapters.ts.
-- Fetched `origin/main` remains `732c0f3`; the MCP/server/contracts/governance/shared-executor
-  paths under review are byte-identical to that merged tree. Task 6.6 and Task 6.7 remain
-  local commits; GitHub CLI is unauthenticated, so their PR/review status is not asserted.
+- At review time, fetched `origin/main` was `732c0f3`; the
+  MCP/server/contracts/governance/shared-executor paths were byte-identical to that merged tree.
+  The developer later authorized publication, and GitHub PR #48 squash-merged the certification
+  tree, including Tasks 6.6 and 6.7, as `eae54fe` on 2026-09-14.
 - Reproduced checks pass: root lint (302 files), uncached typecheck (17/17 tasks), uncached
   unit suite (16/16 tasks, 511 tests), and canonical performance (9/9). General/MCP load
   measured 19.64/71.97 ms p95; peak MCP active work was 10. Maximum NWS/AWC/NHC/CO-OPS
@@ -3695,13 +3696,47 @@ No later task is authorized merely because it appears in this plan.
   STASIS_INACTIVE, seed mode, $10.00/$10.00 remaining, 17/19 providers, 20/22 feeds,
   16/19 layers active, 20 healthy feeds, and two unavailable. No existing governance state
   was resumed, deleted, or rewritten; the probe used isolated test governance.
-- Certification documentation is committed locally as `765b8a6`. Automatic approval review
-  rejected publishing `codex/phase-6-certification-20260913`: the proposed push includes
-  earlier local voice/telemetry history, and authorization for that payload and remote
-  destination was not established. No push or PR creation occurred. Publishing needs explicit
-  developer approval; the local evidence and prepared PR description remain available.
-- NEXT_TASK remains 6_EXIT with status BLOCKED. The exact cancellation-repair brief above
-  awaits authorization. A completed repair must be followed by renewed exit certification;
-  no Phase 7 work has been started or authorized.
+- Certification documentation was committed locally as `765b8a6`. Automatic approval review
+  initially rejected publishing `codex/phase-6-certification-20260913` because the proposed push
+  included earlier local voice/telemetry history and authorization for that destination/payload
+  had not yet been established. The developer subsequently authorized publication; PR #48 was
+  posted and merged as `eae54fe`.
+- NEXT_TASK remained 6_EXIT with status BLOCKED after that review. The developer authorized the
+  exact cancellation-repair brief on 2026-09-14. Repair and renewed certification remain bounded
+  to Phase 6; no Phase 7 work has been started or authorized.
+
+### Phase 6 cancellation repair implementation checkpoint — 2026-09-14
+
+- The repair branch `codex/phase-6-cancellation-repair` starts from merged `origin/main` commit
+  `eae54fe`, preserving the four unrelated primary-worktree edits. Product/test implementation
+  commit `76f14f3` changes only the shared executor cancellation boundary, the MCP HTTP adapter and
+  route accounting, and focused regression coverage. No dependency, lockfile, browser source,
+  provider, remote enablement, production authority, or Phase 7 code changed.
+- The official SDK request signal now reaches `ToolExecutionContext`. Cancellation before handler
+  dispatch stores terminal `REQUEST_CANCELLED`, refunds the reservation with zero settled cost,
+  writes one audit outcome, and ignores late approval. Cancellation after handler dispatch stores
+  `OPERATION_IN_DOUBT`, retains the reservation, never redispatches on replay, and waits for the
+  underlying handler promise before the executor reports that work stopped.
+- Each HTTP exchange lease observes its executor promise and seals work registration before the
+  response leaves the adapter. Response cancellation and shutdown abort request-local work but
+  retain the active slot until tracked execution settles. Tests prove one cancelled request does
+  not abort another, repeated abandoned responses cannot bypass the active-work cap, and shutdown
+  waits for dispatched work before completing.
+- Affected lint and strict typecheck pass. Uncached affected suites pass core 72/72, ops-mcp 54/54,
+  and server 140/140. The nine performance cases pass: general/MCP load is 15.29/64.77 ms p95 with
+  peak MCP active work 10 under cap 16; parser maxima are 17.50/22.47/5.39/33.68 ms p95; Layer
+  Access projection/filter is 2.70/3.91 ms p95; multi-layer/cable/satellite/operational Cesium
+  ingestion is 6.72/5.25/3.73/7.50 ms p95, all below 16.6 ms.
+- Final pre-PR gates pass: root lint (304 files), uncached typecheck, uncached unit suites (16/16
+  tasks, 517 tests), production build, deterministic bundle budgets, ADG (69 documents, 526 paths,
+  18 symbol references), documentation tests (17/17), provider-document generation, architectural
+  drift, official MCP Inspector/conformance for the advertised tools-only surface with zero provider
+  fetches, and Playwright (12/12).
+- ADR 0032, ADR 0043, RUNBOOK.md, and the cancellation review record now describe the durable
+  pre-/post-dispatch boundary and correct the historical publication record for merged PR #48.
+  PLAN.md and MASTER_PLAN_V3.md remain synchronized.
+- NEXT_TASK remains 6_EXIT with status BLOCKED until this repair is reviewed and merged and the
+  exact merged tree passes renewed Phase 6 exit certification. The exit checkbox remains
+  unchecked; no Phase 7 implementation is authorized.
 
 No later task is authorized merely because it appears in this plan.
