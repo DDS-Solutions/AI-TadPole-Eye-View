@@ -7,9 +7,9 @@
   let isSending = $state(false);
   let shouldFollowTranscript = $state(true);
   let hasUnreadTranscript = $state(false);
-  let transcriptContainer: HTMLDivElement | undefined;
-  let commandInput: HTMLInputElement | undefined;
-  let drawerToggle: HTMLButtonElement | undefined;
+  let transcriptContainer = $state<HTMLDivElement>();
+  let commandInput = $state<HTMLInputElement>();
+  let drawerToggle = $state<HTMLButtonElement>();
   let previousTranscriptSignature = '';
 
   const currentStatus = $derived(
@@ -84,26 +84,14 @@
   }
 
   function handleOrbClick(): void {
-    switch (currentStatus) {
-      case 'idle':
-      case 'error':
-        void voiceStore.connect(voiceStore.state.provider);
-        break;
-      case 'speaking':
-        voiceStore.triggerBargeIn();
-        break;
-      case 'connecting':
-      case 'listening':
-      case 'processing':
-      case 'stasis_halted':
-        setDrawerOpen(!isDrawerOpen);
-        break;
-    }
+    if (shouldConnect) void voiceStore.connect(voiceStore.state.provider);
+    else if (currentStatus === 'speaking') voiceStore.triggerBargeIn();
+    else setDrawerOpen(!isDrawerOpen);
   }
 
   function formatToolArgs(args: unknown): string {
     try {
-      const serialized = JSON.stringify(args, null, 2) ?? '';
+      const serialized = JSON.stringify(args) ?? '';
       return serialized.length > 2048 ? `${serialized.slice(0, 2048)}…` : serialized;
     } catch {
       return '[Unable to display tool arguments]';
@@ -127,7 +115,6 @@
       aria-label={`Voice Copilot: ${currentStatus.replace('_', ' ')}`}
       aria-controls="voice-copilot-drawer"
       aria-expanded={isDrawerOpen}
-      data-testid="voice-orb"
     >
       <span class="orb-core" aria-hidden="true">
         {#if currentStatus === 'speaking'}
@@ -217,13 +204,9 @@
           bind:this={transcriptContainer}
           onscroll={handleTranscriptScroll}
           role="log"
-          aria-live="polite"
           aria-label="Voice transcript"
           data-testid="voice-transcript"
         >
-          {#if voiceStore.state.transcript.length === 0}
-            <p class="empty-state">No commands yet. Connect or transmit to begin.</p>
-          {/if}
           {#each voiceStore.state.transcript as msg (msg.id)}
             <article class="msg-card" class:agent={msg.role === 'agent'} class:user={msg.role === 'user'} class:system={msg.role === 'system'}>
               <div class="msg-header">
@@ -291,9 +274,7 @@
     background: radial-gradient(circle, var(--hud-panel-bg-raised), var(--hud-surface-dark));
     box-shadow: 0 0 15px var(--orb-color), inset 0 0 10px var(--orb-color);
     color: var(--orb-color); cursor: pointer; display: grid; place-items: center;
-    transition: box-shadow 0.2s ease, border-color 0.2s ease;
   }
-  .voice-orb:hover { box-shadow: 0 0 25px var(--orb-color), inset 0 0 15px var(--orb-color); }
   button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--hud-accent); outline-offset: 2px; }
   .orb-core { display: grid; place-items: center; }
   .orb-icon { width: 24px; height: 24px; }
@@ -301,16 +282,15 @@
   .spinner { width: 20px; height: 20px; border: 2px solid var(--hud-accent-faint); border-top-color: var(--orb-color); border-radius: 50%; animation: spin 0.8s linear infinite; }
   .stasis-badge { color: var(--voice-stasis); font-size: 9px; font-weight: 800; }
   .error-badge { color: var(--voice-error); font-size: 24px; font-weight: 800; }
-  .status-pill { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--orb-color); border-radius: 12px; background: var(--hud-panel-bg-raised); color: var(--orb-color); font-size: 10px; font-weight: 700; letter-spacing: 0.5px; backdrop-filter: blur(8px); }
+  .status-pill { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--orb-color); border-radius: 12px; background: var(--hud-panel-bg-raised); color: var(--orb-color); font-size: 10px; font-weight: 700; }
   .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--orb-color); }
-  .label { white-space: nowrap; }
   .drawer-toggle-btn, .btn-close { border: 0; background: transparent; color: inherit; cursor: pointer; }
   .drawer-toggle-btn { padding: 2px 4px; font-size: 8px; }
   .voice-drawer { width: min(440px, calc(100vw - 32px)); height: min(480px, calc(100dvh - 112px)); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--hud-accent-border); border-radius: 8px; background: var(--hud-panel-bg-overlay); box-shadow: 0 8px 32px var(--hud-shadow), 0 0 15px var(--hud-accent-faint); backdrop-filter: blur(12px); }
   .drawer-header, .drawer-footer { display: flex; gap: 8px; padding: 10px 14px; background: var(--hud-surface-dark-strong); }
   .drawer-header { align-items: stretch; flex-direction: column; border-bottom: 1px solid var(--hud-border-strong); }
   .header-left { min-width: 0; display: flex; align-items: center; justify-content: space-between; }
-  .title { color: var(--voice-listening); font-size: 11px; font-weight: 700; letter-spacing: 0.8px; white-space: nowrap; }
+  .title { color: var(--voice-listening); font-size: 11px; font-weight: 700; white-space: nowrap; }
   .provider-pill { margin-left: 6px; padding: 2px 6px; border-radius: 4px; background: var(--hud-accent-faint); color: var(--voice-listening); font-size: 9px; white-space: nowrap; }
   .header-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .provider-select { min-width: 0; padding: 3px 6px; border: 1px solid var(--hud-border-prominent); border-radius: 4px; background: var(--hud-surface-dark); color: var(--hud-text-secondary); font-size: 10px; }
@@ -319,17 +299,16 @@
   button:disabled, select:disabled, input:disabled { cursor: not-allowed; opacity: 0.55; }
   .error-banner { padding: 7px 14px; border-bottom: 1px solid var(--voice-error); background: var(--hud-danger-soft); color: var(--hud-text-primary); font-size: 10px; overflow-wrap: anywhere; }
   .tool-banner { padding: 8px 14px; border-bottom: 1px solid var(--voice-processing-border); background: var(--voice-processing-soft); font-size: 10px; }
-  .tool-tag { margin-right: 6px; color: var(--voice-tool-text); font-weight: 800; }
+  .tool-tag { color: var(--voice-tool-text); font-weight: 800; }
   .tool-name { color: var(--hud-text-primary); font-weight: 700; }
   .tool-args { max-height: 74px; margin: 4px 0 0; overflow: auto; color: var(--voice-tool-text); font-size: 9px; overflow-wrap: anywhere; white-space: pre-wrap; }
   .feed-shell { position: relative; min-height: 0; flex: 1; }
   .transcript-feed { height: 100%; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-  .empty-state { margin: auto; color: var(--hud-text-secondary); font-size: 10px; text-align: center; }
   .msg-card { padding: 8px 12px; border-radius: 6px; color: var(--hud-text-data); font-size: 11px; line-height: 1.4; }
   .msg-card.agent { border-left: 3px solid var(--voice-listening); background: var(--hud-accent-faint); }
   .msg-card.user { border-left: 3px solid var(--voice-speaking); background: var(--hud-success-soft); }
   .msg-card.system { border-left: 3px solid var(--hud-text-dim); background: var(--hud-surface-dark-soft); color: var(--hud-text-secondary); font-size: 10px; }
-  .msg-header { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 9px; font-weight: 700; opacity: 0.8; }
+  .msg-header { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 9px; font-weight: 700; }
   .msg-text { overflow-wrap: anywhere; white-space: pre-wrap; }
   .new-messages { position: absolute; right: 12px; bottom: 8px; padding: 5px 8px; border: 1px solid var(--hud-accent-border); border-radius: 12px; background: var(--hud-panel-bg-raised); color: var(--voice-listening); cursor: pointer; font-size: 9px; font-weight: 700; }
   .drawer-footer { border-top: 1px solid var(--hud-border-strong); }
@@ -344,6 +323,5 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .orb-icon.pulse, .spinner { animation: none; }
-    .voice-orb { transition: none; }
   }
 </style>

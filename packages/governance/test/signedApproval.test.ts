@@ -287,7 +287,7 @@ describe('M2 signed approval verification', () => {
       (result): result is PromiseRejectedResult => result.status === 'rejected'
     );
     expect(rejected?.reason).toBeInstanceOf(Error);
-    expect((rejected?.reason as Error).message).toMatch(/replay detected/);
+    expect((rejected?.reason as Error | undefined)?.message).toMatch(/replay detected/);
     first.close();
     second.close();
   });

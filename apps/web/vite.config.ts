@@ -19,6 +19,9 @@ export default defineConfig({
           if (id.includes('node_modules/uplot') || id.includes('node_modules/@tanstack')) {
             return 'vendor-viz';
           }
+          if (id.includes('node_modules/xstate') || id.includes('node_modules/yjs')) {
+            return 'vendor-state';
+          }
           return undefined;
         },
       },

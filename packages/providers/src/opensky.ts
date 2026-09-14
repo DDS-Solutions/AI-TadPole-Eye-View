@@ -25,42 +25,20 @@ export interface OpenSkyAdapterOptions {
 
 export const RawOpenSkyVectorSchema = z.tuple([
   z.string(), // 0: icao24
-  z
-    .string()
-    .nullable(), // 1: callsign
+  z.string().nullable(), // 1: callsign
   z.string(), // 2: origin_country
-  z
-    .number()
-    .nullable(), // 3: time_position
+  z.number().nullable(), // 3: time_position
   z.number(), // 4: last_contact
-  z
-    .number()
-    .nullable(), // 5: longitude
-  z
-    .number()
-    .nullable(), // 6: latitude
-  z
-    .number()
-    .nullable(), // 7: baro_altitude
+  z.number().nullable(), // 5: longitude
+  z.number().nullable(), // 6: latitude
+  z.number().nullable(), // 7: baro_altitude
   z.boolean(), // 8: on_ground
-  z
-    .number()
-    .nullable(), // 9: velocity
-  z
-    .number()
-    .nullable(), // 10: true_track
-  z
-    .number()
-    .nullable(), // 11: vertical_rate
-  z
-    .array(z.number())
-    .nullable(), // 12: sensors
-  z
-    .number()
-    .nullable(), // 13: geo_altitude
-  z
-    .string()
-    .nullable(), // 14: squawk
+  z.number().nullable(), // 9: velocity
+  z.number().nullable(), // 10: true_track
+  z.number().nullable(), // 11: vertical_rate
+  z.array(z.number()).nullable(), // 12: sensors
+  z.number().nullable(), // 13: geo_altitude
+  z.string().nullable(), // 14: squawk
   z.boolean(), // 15: spi
   z.number(), // 16: position_source
 ]);

@@ -114,12 +114,12 @@ describe('GEV v2 Operator MCP Server (@gev/ops-mcp)', () => {
     });
 
     expect(healthRes?.id).toBe(3);
-    const healthContent = (healthRes?.result as { content: Array<{ text: string }> }).content[0]
-      ?.text;
+    const healthResult = healthRes?.result as
+      | { content: Array<{ text: string }>; structuredContent?: unknown }
+      | undefined;
+    const healthContent = healthResult?.content[0]?.text;
     const parsedHealth = JSON.parse(healthContent || '{}');
-    expect((healthRes?.result as { structuredContent: unknown }).structuredContent).toEqual(
-      parsedHealth
-    );
+    expect(healthResult?.structuredContent).toEqual(parsedHealth);
     expect(parsedHealth.feeds).toHaveLength(22);
     expect(parsedHealth.feeds[0].feed).toBe('flights');
     expect(parsedHealth.feeds[0].provider).toBe('opensky');
@@ -139,12 +139,12 @@ describe('GEV v2 Operator MCP Server (@gev/ops-mcp)', () => {
       },
     });
 
-    const budgetContent = (budgetRes?.result as { content: Array<{ text: string }> }).content[0]
-      ?.text;
+    const budgetResult = budgetRes?.result as
+      | { content: Array<{ text: string }>; structuredContent?: unknown }
+      | undefined;
+    const budgetContent = budgetResult?.content[0]?.text;
     const parsedBudget = JSON.parse(budgetContent || '{}');
-    expect((budgetRes?.result as { structuredContent: unknown }).structuredContent).toEqual(
-      parsedBudget
-    );
+    expect(budgetResult?.structuredContent).toEqual(parsedBudget);
     expect(parsedBudget.cap_usd).toBe(10.0);
     expect(parsedBudget.stasis_active).toBe(false);
   });
@@ -167,7 +167,8 @@ describe('GEV v2 Operator MCP Server (@gev/ops-mcp)', () => {
     });
 
     expect(res?.id).toBe(5);
-    const content = (res?.result as { content: Array<{ text: string }> }).content[0]?.text;
+    const content = (res?.result as { content?: Array<{ text: string }> } | undefined)?.content?.[0]
+      ?.text;
     const parsed = JSON.parse(content || '{}');
     expect(parsed.flag).toBe('opensky.enabled');
     expect(parsed.enabled).toBe(false);
@@ -250,7 +251,8 @@ describe('GEV v2 Operator MCP Server (@gev/ops-mcp)', () => {
       },
     });
 
-    const content = (res?.result as { content: Array<{ text: string }> }).content[0]?.text;
+    const content = (res?.result as { content?: Array<{ text: string }> } | undefined)?.content?.[0]
+      ?.text;
     const diag = JSON.parse(content || '{}');
     expect(diag.checks.length).toBeGreaterThanOrEqual(3);
     expect(diag.checks.some((c: { name: string }) => c.name === 'governance_stasis')).toBe(true);

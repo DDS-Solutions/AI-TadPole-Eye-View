@@ -319,14 +319,11 @@ export class OpenAIRealtimeAdapter implements AgentProviderAdapter {
           this.events.onResponseComplete?.();
           break;
         case 'error': {
-          const errorPayload = msg.error;
+          const errorPayload = msg.error as Record<string, unknown> | undefined;
           const message =
-            errorPayload &&
-            typeof errorPayload === 'object' &&
-            'message' in errorPayload &&
-            typeof errorPayload.message === 'string'
+            typeof errorPayload?.message === 'string'
               ? errorPayload.message
-              : 'Realtime server reported an error';
+              : 'Realtime server error';
           this.events.onError?.(new Error(message));
           break;
         }

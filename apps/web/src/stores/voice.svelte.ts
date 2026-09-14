@@ -323,7 +323,7 @@ class VoiceStore {
     this.adapter = null;
     this.pendingAdapter = null;
     this.operationalError = message;
-    this.actor.send({ type: 'ERROR', message });
+    this.actor.send({ type: 'DISCONNECT' });
     void adapter.disconnect().catch(() => {});
   }
 
