@@ -3873,6 +3873,7 @@ No later task is authorized merely because it appears in this plan.
   the eight expected evidence/phase-projection files; required build and lint/typecheck/unit jobs
   were pending at handoff and remain subject to human review before merge.
 
+<<<<<<< HEAD
 ### Task 7.1 Exit Evidence — Authenticated principal/tenant/role context and resource ownership
 
 - **Scope & Authorization:** The developer authorized the exact Task 7.1 four-pillar brief. OQ-4 was resolved in accepted [ADR 0031](./docs/adr/0031-authentication-identity-tenancy-route-policy.md) with the Auth0 Organizations profile (`https://dds-solutions-gev.us.auth0.com/`, REST resource `https://dds-solutions-gev.us.auth0.com/api/gev`, MCP resource `https://dds-solutions-gev.us.auth0.com/api/gev/mcp`, algorithm RS256, 300-second maximum access-token lifetime). Production identity verification fails closed until an approved verifier is injected at composition; local `GEV_OPS_TOKEN` remains a non-production compatibility credential.
