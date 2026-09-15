@@ -60,6 +60,7 @@ export type OpsAuthDecision =
 export interface OpsAuthorizationPolicy {
   allowedRoles: readonly IdentityRole[];
   requiredScopes?: readonly AuthenticatedIdentityContext['scopes'][number][];
+  allowLocalSeed?: boolean;
 }
 
 export interface OpsAuthAdapter {
@@ -84,10 +85,20 @@ const PLATFORM_ADMIN_OPS_PATHS = [
 
 /** Installs the closed role matrix before any protected operations route is registered. */
 export function mountOpsAuthorization(app: Hono, auth: OpsAuthAdapter): void {
-  app.use(
-    '/ops/*',
-    auth.middleware({ allowedRoles: ['operator', 'tenant_admin', 'platform_admin'] })
-  );
+  const operatorMiddleware = auth.middleware({
+    allowedRoles: ['operator', 'tenant_admin', 'platform_admin'],
+  });
+  const layerAccessMiddleware = auth.middleware({
+    allowedRoles: ['operator', 'tenant_admin', 'platform_admin'],
+    allowLocalSeed: true,
+  });
+  app.use('/ops/*', async (c, next) => {
+    const normalizedPath = c.req.path.replace(/\/+$/, '');
+    if (normalizedPath === '/ops/layer-access') {
+      return layerAccessMiddleware(c, next);
+    }
+    return operatorMiddleware(c, next);
+  });
   const platformAdmin = auth.middleware({ allowedRoles: ['platform_admin'] });
   for (const path of PLATFORM_ADMIN_OPS_PATHS) app.use(path, platformAdmin);
 }
@@ -419,13 +430,16 @@ export function createOpsAuth(options: OpsAuthOptions = {}): OpsAuthAdapter {
         }
       }
     } else {
-      return localDecision.kind === 'local_seed' && policy
-        ? denied(
-            401,
-            'MISSING_BEARER_TOKEN',
-            'Unauthorized: Bearer token required for privileged server access'
-          )
-        : localDecision;
+      if (localDecision.kind === 'local_seed') {
+        return policy && !policy.allowLocalSeed
+          ? denied(
+              401,
+              'MISSING_BEARER_TOKEN',
+              'Unauthorized: Bearer token required for privileged server access'
+            )
+          : localDecision;
+      }
+      return localDecision;
     }
 
     const requestedTenant = requestedTenantId ?? identity.tenant_id;
