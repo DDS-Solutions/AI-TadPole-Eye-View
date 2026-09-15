@@ -38,7 +38,8 @@ function createVerifier(): IdentityBearerVerifier {
       const token = request.access_token;
       if (token === 'bearer-tenant-a') return makeTenantIdentity('tenant-a');
       if (token === 'bearer-tenant-b') return makeTenantIdentity('tenant-b');
-      if (token === 'bearer-tenant-admin') return makeTenantIdentity('tenant-admin', 'platform_admin');
+      if (token === 'bearer-tenant-admin')
+        return makeTenantIdentity('tenant-admin', 'platform_admin');
       return null;
     },
   };

@@ -7,7 +7,6 @@ import { migrateAuditChain } from './auditChainMigration.js';
 export const GOVERNANCE_SCHEMA_VERSION = 5;
 export const GOVERNANCE_BUSY_TIMEOUT_MS = 5_000;
 
-
 export interface GovernanceDatabaseOptions {
   dbPath?: string;
   clock?: SimClock;

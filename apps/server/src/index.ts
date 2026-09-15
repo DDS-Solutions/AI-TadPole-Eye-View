@@ -1,7 +1,4 @@
-import {
-  ProviderRegistrySchema,
-  SystemHealthResponseSchema,
-} from '@gev/contracts';
+import { ProviderRegistrySchema, SystemHealthResponseSchema } from '@gev/contracts';
 import { GovernedToolExecutor, SystemClock } from '@gev/core';
 import { SatellitePropagator } from '@gev/core/satellite-propagation';
 import { createGovernanceRuntimeContext } from '@gev/governance';

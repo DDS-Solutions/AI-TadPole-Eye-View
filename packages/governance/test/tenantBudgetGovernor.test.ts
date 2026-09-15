@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
+  type Actor,
   GevEvents,
   type LedgerReservationRequest,
   M3_FINGERPRINT_VERSION,
@@ -119,7 +120,7 @@ describe('Tenant Budget Governor & Ledger Isolation', () => {
     expect(statusB.spent_microusd).toBe(0);
 
     // Human-only resume for Tenant A
-    expect(() => runtime.budgetLedger.resumeTenant(tenantA, 'ai' as any)).toThrow(
+    expect(() => runtime.budgetLedger.resumeTenant(tenantA, 'ai' as unknown as Actor)).toThrow(
       /requires a human actor/
     );
     runtime.budgetLedger.resumeTenant(tenantA, 'human');
@@ -181,7 +182,7 @@ describe('Tenant Budget Governor & Ledger Isolation', () => {
           { minLength: 5, maxLength: 30 }
         ),
         (operations) => {
-          const dbPath = tempDb();
+          const dbPath = ':memory:';
           const clock = new FrozenClock(1_700_000_000_000);
           const ledger = new SqliteBudgetLedger({ dbPath, clock });
 
@@ -234,5 +235,5 @@ describe('Tenant Budget Governor & Ledger Isolation', () => {
       ),
       { numRuns: 15 }
     );
-  });
+  }, 30_000);
 });

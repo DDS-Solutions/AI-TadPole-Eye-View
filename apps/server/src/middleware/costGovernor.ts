@@ -176,10 +176,7 @@ export class CostGovernor {
 
       // 4. Per-tenant rate limit on cache misses
       if (this.rateLimiter) {
-        const limit =
-          this.tenantRateLimits?.[providerName] ??
-          tier.requestsPerMinute ??
-          60;
+        const limit = this.tenantRateLimits?.[providerName] ?? tier.requestsPerMinute ?? 60;
         const rateDecision = this.rateLimiter.consume(`provider:${providerName}`, tenantId, limit);
         if (!rateDecision.allowed) {
           c.header('Retry-After', String(rateDecision.retryAfterSeconds));
@@ -206,7 +203,13 @@ export class CostGovernor {
         await withRequestTimeout(next(), BILLABLE_REQUEST_TIMEOUT_MS);
       } catch (error) {
         if (activeReservation) {
-          markAmbiguousReservation(this.budgetLedger, this.clock, activeReservation, providerName, error);
+          markAmbiguousReservation(
+            this.budgetLedger,
+            this.clock,
+            activeReservation,
+            providerName,
+            error
+          );
           c.res = c.json(
             {
               error: 'Billable provider outcome is ambiguous and requires human reconciliation',

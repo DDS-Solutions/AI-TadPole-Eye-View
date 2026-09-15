@@ -21,50 +21,9 @@ import {
   createLedgerAuditOutcome,
   normalizeTerminalResult,
 } from './ledgerSerialization.js';
+import type { BudgetRow, LedgerRow, TenantBudgetRow } from './budgetLedgerTypes.js';
 
-export interface LedgerRow {
-  operation_id: string;
-  intent_id: string;
-  contract_version: string;
-  fingerprint_version: string;
-  request_fingerprint: string;
-  fingerprint_components_json: string;
-  state: string;
-  reserved_microusd: number;
-  settled_microusd: number;
-  period_start: string;
-  deadline_at: string;
-  created_at: string;
-  execution_started_at: string | null;
-  terminal_at: string | null;
-  terminal_result_json: string | null;
-  terminal_result_digest: string | null;
-  evidence_json: string | null;
-}
-
-export interface BudgetRow {
-  period_start: string;
-  spent_microusd: number;
-  cap_microusd: number;
-  stasis_active: number;
-  trip_code: string | null;
-  stasis_message: string | null;
-}
-
-export interface TenantBudgetRow {
-  tenant_id: string;
-  period_start: string;
-  spent_microusd: number;
-  cap_microusd: number;
-  warn_threshold_pct: number;
-  stasis_active: number;
-  trip_code: string | null;
-  trip_at: string | null;
-  resumed_by: string | null;
-  stasis_message: string | null;
-  revision: number;
-}
-
+export type { LedgerRow, BudgetRow, TenantBudgetRow };
 
 export class BudgetLedgerStore {
   private readonly auditChain: AuditChainStore;
@@ -185,9 +144,9 @@ export class BudgetLedgerStore {
           resumed_by, stasis_message, revision
         ) VALUES (1, ?, 0, 10000000, 80, 0, NULL, NULL, NULL, NULL, 0)`)
         .run(now);
-      row = this.db
-        .prepare('SELECT * FROM governance_budget_state WHERE singleton_id = 1')
-        .get() as BudgetRow | undefined;
+      row = this.db.prepare('SELECT * FROM governance_budget_state WHERE singleton_id = 1').get() as
+        | BudgetRow
+        | undefined;
     }
     if (!row) throw new Error('Durable governance budget state is missing');
     return row;
@@ -288,9 +247,15 @@ export class BudgetLedgerStore {
     }
     const now = this.isoNow();
     this.db
-      .prepare('INSERT OR IGNORE INTO governance_tenant_budgets (tenant_id, period_start, spent_microusd, cap_microusd, warn_threshold_pct, stasis_active, trip_code, trip_at, resumed_by, stasis_message, revision) VALUES (?, ?, 0, ?, 80, 0, NULL, NULL, NULL, NULL, 0)')
+      .prepare(
+        'INSERT OR IGNORE INTO governance_tenant_budgets (tenant_id, period_start, spent_microusd, cap_microusd, warn_threshold_pct, stasis_active, trip_code, trip_at, resumed_by, stasis_message, revision) VALUES (?, ?, 0, ?, 80, 0, NULL, NULL, NULL, NULL, 0)'
+      )
       .run(tenantId, now, cap);
-    return this.readTenantBudgetRow(tenantId)!;
+    const row = this.readTenantBudgetRow(tenantId);
+    if (!row) {
+      throw new Error(`Failed to initialize budget for tenant ${tenantId}`);
+    }
+    return row;
   }
 
   readTenantBudgetRow(tenantId: string): TenantBudgetRow | null {
@@ -302,7 +267,9 @@ export class BudgetLedgerStore {
 
   activeHeldMicrousdForTenant(tenantId: string): number {
     const row = this.db
-      .prepare("SELECT COALESCE(SUM(reserved_microusd), 0) AS held FROM governance_budget_operations WHERE tenant_id = ? AND state IN ('RESERVED', 'EXECUTING', 'IN_DOUBT')")
+      .prepare(
+        "SELECT COALESCE(SUM(reserved_microusd), 0) AS held FROM governance_budget_operations WHERE tenant_id = ? AND state IN ('RESERVED', 'EXECUTING', 'IN_DOUBT')"
+      )
       .get(tenantId) as { held: number };
     if (!Number.isSafeInteger(row.held) || row.held < 0) {
       throw new Error('Tenant active reservation sum is invalid');
@@ -310,29 +277,41 @@ export class BudgetLedgerStore {
     return row.held;
   }
 
-  writeTenantTrip(tenantId: string, reason: 'BUDGET_BREACH' | 'COMPLIANCE_DRIFT', message: string): void {
+  writeTenantTrip(
+    tenantId: string,
+    reason: 'BUDGET_BREACH' | 'COMPLIANCE_DRIFT',
+    message: string
+  ): void {
     this.db
-      .prepare('UPDATE governance_tenant_budgets SET stasis_active = 1, trip_code = ?, trip_at = ?, resumed_by = NULL, stasis_message = ?, revision = revision + 1 WHERE tenant_id = ?')
+      .prepare(
+        'UPDATE governance_tenant_budgets SET stasis_active = 1, trip_code = ?, trip_at = ?, resumed_by = NULL, stasis_message = ?, revision = revision + 1 WHERE tenant_id = ?'
+      )
       .run(reason, this.isoNow(), message, tenantId);
   }
 
   setTenantCap(tenantId: string, capMicrousd: number): void {
     this.ensureTenantBudget(tenantId);
     this.db
-      .prepare('UPDATE governance_tenant_budgets SET cap_microusd = ?, revision = revision + 1 WHERE tenant_id = ?')
+      .prepare(
+        'UPDATE governance_tenant_budgets SET cap_microusd = ?, revision = revision + 1 WHERE tenant_id = ?'
+      )
       .run(capMicrousd, tenantId);
   }
 
   resumeTenant(tenantId: string, resumedBy: string): void {
     this.ensureTenantBudget(tenantId);
     this.db
-      .prepare('UPDATE governance_tenant_budgets SET stasis_active = 0, resumed_by = ?, stasis_message = NULL, revision = revision + 1 WHERE tenant_id = ?')
+      .prepare(
+        'UPDATE governance_tenant_budgets SET stasis_active = 0, resumed_by = ?, stasis_message = NULL, revision = revision + 1 WHERE tenant_id = ?'
+      )
       .run(resumedBy, tenantId);
   }
 
   hasInDoubt(): boolean {
     const row = this.db
-      .prepare(`SELECT COUNT(*) AS count FROM governance_budget_operations WHERE state = 'IN_DOUBT'`)
+      .prepare(
+        `SELECT COUNT(*) AS count FROM governance_budget_operations WHERE state = 'IN_DOUBT'`
+      )
       .get() as { count: number };
     return row.count > 0;
   }
@@ -355,7 +334,9 @@ export class BudgetLedgerStore {
 
   readExpiredOperations(now: string): LedgerRow[] {
     return this.db
-      .prepare("SELECT * FROM governance_budget_operations WHERE deadline_at <= ? AND state IN ('RESERVED', 'EXECUTING') ORDER BY created_at, operation_id")
+      .prepare(
+        "SELECT * FROM governance_budget_operations WHERE deadline_at <= ? AND state IN ('RESERVED', 'EXECUTING') ORDER BY created_at, operation_id"
+      )
       .all(now) as unknown as LedgerRow[];
   }
 
@@ -427,7 +408,9 @@ export class BudgetLedgerStore {
       'Execution deadline expired after dispatch'
     );
     const changed = this.db
-      .prepare("UPDATE governance_budget_operations SET state = 'IN_DOUBT' WHERE operation_id = ? AND state = 'EXECUTING'")
+      .prepare(
+        "UPDATE governance_budget_operations SET state = 'IN_DOUBT' WHERE operation_id = ? AND state = 'EXECUTING'"
+      )
       .run(current.operation_id);
     if (changed.changes !== 1) throw transitionRace();
     this.insertLedgerEntry(current.operation_id, 'in_doubt', current.reserved_microusd, {

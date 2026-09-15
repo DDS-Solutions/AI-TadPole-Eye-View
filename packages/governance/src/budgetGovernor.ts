@@ -40,7 +40,6 @@ interface TenantBudgetStateRow {
   revision: number;
 }
 
-
 export interface CapBudgetGovernorOptions {
   capUsd?: number;
   spentUsd?: number;

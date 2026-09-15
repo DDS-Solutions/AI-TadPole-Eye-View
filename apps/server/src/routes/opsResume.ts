@@ -1,9 +1,5 @@
 import crypto from 'node:crypto';
-import {
-  type Actor,
-  type AuthenticatedIdentityContext,
-  GevEvents,
-} from '@gev/contracts';
+import { type Actor, type AuthenticatedIdentityContext, GevEvents } from '@gev/contracts';
 import type { SimClock } from '@gev/core';
 import type { CapBudgetGovernor, SqliteAuditSink } from '@gev/governance';
 import { Hono } from 'hono';

@@ -1,7 +1,4 @@
-import {
-  GevEvents,
-  type LedgerOperation,
-} from '@gev/contracts';
+import { GevEvents, type LedgerOperation } from '@gev/contracts';
 import type { SimClock } from '@gev/core';
 import type { SqliteBudgetLedger } from '@gev/governance';
 import { markResponseProvenanceCached } from '@gev/providers';

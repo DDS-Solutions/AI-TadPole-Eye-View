@@ -325,7 +325,7 @@ export class SqliteBudgetLedger implements BudgetLedger {
     try {
       const row = this.store.readOperationRow(operationId);
       return row ? this.store.toOperation(row) : null;
-    } catch (error) {
+    } catch (_error) {
       throw unavailableLedger();
     }
   }
@@ -435,8 +435,6 @@ export class SqliteBudgetLedger implements BudgetLedger {
     this.publish(committed);
     return operation;
   }
-
-
 
   private assertFingerprint(operation: LedgerOperation, fingerprint: string): void {
     if (operation.request_fingerprint !== fingerprint)
