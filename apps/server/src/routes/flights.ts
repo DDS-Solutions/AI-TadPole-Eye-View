@@ -12,17 +12,49 @@ export function createFlightsRouter(adapter: OpenSkyAdapter) {
     const lomin = c.req.query('lomin');
     const lomax = c.req.query('lomax');
 
-    if (lamin && lamax && lomin && lomax) {
-      const parsed = BoundingBoxSchema.safeParse({
-        min_lat: Number.parseFloat(lamin),
-        max_lat: Number.parseFloat(lamax),
-        min_lon: Number.parseFloat(lomin),
-        max_lon: Number.parseFloat(lomax),
-      });
-
-      if (parsed.success) {
-        bbox = parsed.data;
+    const hasAnyBbox =
+      lamin !== undefined || lamax !== undefined || lomin !== undefined || lomax !== undefined;
+    if (hasAnyBbox) {
+      if (!lamin || !lamax || !lomin || !lomax) {
+        return c.json(
+          {
+            error: 'All four bounding box parameters (lamin, lamax, lomin, lomax) are required',
+            code: 'INVALID_BBOX',
+          },
+          400
+        );
       }
+      const min_lat = Number.parseFloat(lamin);
+      const max_lat = Number.parseFloat(lamax);
+      const min_lon = Number.parseFloat(lomin);
+      const max_lon = Number.parseFloat(lomax);
+
+      if (
+        Number.isNaN(min_lat) ||
+        Number.isNaN(max_lat) ||
+        Number.isNaN(min_lon) ||
+        Number.isNaN(max_lon)
+      ) {
+        return c.json(
+          {
+            error: 'Bounding box parameters must be valid numbers',
+            code: 'INVALID_BBOX',
+          },
+          400
+        );
+      }
+
+      const parsed = BoundingBoxSchema.safeParse({ min_lat, max_lat, min_lon, max_lon });
+      if (!parsed.success) {
+        return c.json(
+          {
+            error: 'Bounding box coordinates are invalid or out of range',
+            code: 'INVALID_BBOX',
+          },
+          400
+        );
+      }
+      bbox = parsed.data;
     }
 
     try {

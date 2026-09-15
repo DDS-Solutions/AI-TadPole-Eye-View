@@ -59,7 +59,7 @@ describe('Voice Realtime Session Token Route (PLAN.md §10 Phase 1 Item 6)', () 
     expect(res.status).toBe(503);
     const data = (await res.json()) as { code: string; error: string };
     expect(data.code).toBe('AUTH_NOT_CONFIGURED');
-    expect(data.error).toContain('GEV_OPS_TOKEN is not configured');
+    expect(data.error).toContain('identity verification is not configured');
   });
 
   it('POST /api/voice/session preserves explicit local seed access with zero outbound calls', async () => {

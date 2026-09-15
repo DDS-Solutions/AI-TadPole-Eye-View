@@ -2,8 +2,8 @@
 
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
-**Verified against repository:** 2026-09-14
-**Status:** IN PROGRESS — Phase 7 task 7.1 BLOCKED pending OQ-4 decision and exact 4-Pillar authorization
+**Verified against repository:** 2026-09-15
+**Status:** IN PROGRESS — Phase 7 task 7.1 complete; task 7.2 ready for review and authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,11 +20,11 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=7
-NEXT_TASK=7.1
-NEXT_TASK_STATUS=BLOCKED
+NEXT_TASK=7.2
+NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
-LAST_VERIFIED_UTC=2026-09-14
+LAST_VERIFIED_UTC=2026-09-15
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
 IMPLEMENTATION_STARTED=YES
 ```
@@ -1876,7 +1876,7 @@ or claim performance/accessibility without browser verification.
   accessible names, responsive layout, and browser-verified bounded windowing.
 - [x] 6 exit: stdio remains compatible; unrelated sessions never receive each other’s messages; remote mutation cannot bypass audit/approval/budget/STASIS.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 7.1
+#### Authorized 4-Pillar brief for NEXT_TASK 7.1
 
 ```text
 [SCOPE_CONTRACT] Resolve OQ-4 in a new ADR before implementation: record the human-approved
@@ -1926,7 +1926,35 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 
 ### Phase 7 — Identity, tenancy, and intelligence routing
 
-- [ ] 7.1 Resolve OQ-4 in an ADR and implement authenticated principal/tenant/role context with resource ownership tests.
+- [x] 7.1 Resolve OQ-4 in an ADR and implement authenticated principal/tenant/role context with resource ownership tests.
+
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 7.2
+
+```text
+[SCOPE_CONTRACT] Protect quota-consuming provider and economic calls across server proxy endpoints
+and shared tool execution by enforcing per-tenant rate limits, caching, tenant-allocated budgets, and
+kill-switch policy. In scope: apps/server/src/middleware/costGovernor.ts, apps/server/src/middleware/opsAuth.ts,
+packages/governance/src/budgetGovernor.ts, packages/governance/src/budgetLedger.ts, packages/contracts/src/identity.ts
+and related tenant/quota schemas, server routes consuming provider quotas, focused unit/property/integration
+tests, and security/runbook documentation. Out of scope: UI changes for intelligence, persisted BusinessContext,
+remote identity provisioning, new provider implementations, Phase 8 economic modules, and tasks 7.3+.
+
+[PERFORMANCE_THRESHOLD] Per-tenant quota and rate limits strictly enforce isolation: one tenant's quota
+exhaustion or burst rate does not degrade or block another tenant. Cache hits return in < 10ms; cache
+invalidation on kill-switch or flag toggle is immediate. Spend across concurrent tenant requests settles
+idempotently with zero negative remaining balances and zero ledger drift. All existing unit, load,
+performance, MCP conformance, and Playwright smoke gates remain green.
+
+[ARCHITECTURE_MODE] PLAN.md §2 rules 1-4, 7, 8, 10-13; §3; §4.5; §5; ADRs 0020, 0027, 0031, and 0041-0044.
+Tenant rate limits and spend allocations derive from the verified request-local identity context. Reads
+can spend money; missing, suppressed, or cached estimates never bypass tenant accounting. Pinned-fetch and
+kill switches fail closed. Durable STASIS stops further spending on breach.
+
+[FAILURE_MODES] Do not allow global shared buckets where a single tenant starves other tenants; do not store
+credentials or secrets in rate limit or audit keys; do not permit unauthenticated access to quota-consuming
+endpoints; do not fail open if the governor or ledger encounters an error.
+```
+
 - [ ] 7.2 Protect quota-consuming provider/economic calls and add per-tenant rate, cache, budget, and kill-switch policy.
 - [ ] 7.3 Add the lazy `/#/intelligence` view and navigation without Cesium; document any new dependency and enforce bundle delta.
 - [ ] 7.4 Activate tenant-scoped Layer Access administration: secure credential submission,
@@ -3845,4 +3873,26 @@ No later task is authorized merely because it appears in this plan.
   the eight expected evidence/phase-projection files; required build and lint/typecheck/unit jobs
   were pending at handoff and remain subject to human review before merge.
 
+<<<<<<< HEAD
+### Task 7.1 Exit Evidence — Authenticated principal/tenant/role context and resource ownership
+
+- **Scope & Authorization:** The developer authorized the exact Task 7.1 four-pillar brief. OQ-4 was resolved in accepted [ADR 0031](./docs/adr/0031-authentication-identity-tenancy-route-policy.md) with the Auth0 Organizations profile (`https://dds-solutions-gev.us.auth0.com/`, REST resource `https://dds-solutions-gev.us.auth0.com/api/gev`, MCP resource `https://dds-solutions-gev.us.auth0.com/api/gev/mcp`, algorithm RS256, 300-second maximum access-token lifetime). Production identity verification fails closed until an approved verifier is injected at composition; local `GEV_OPS_TOKEN` remains a non-production compatibility credential.
+- **Contract & Boundary Enforcement:** Created `packages/contracts/src/identity.ts` with strict Zod contracts: `PrincipalIdSchema`, `TenantIdSchema`, `IdentityRoleSchema` (closed role set: `viewer`, `operator`, `tenant_admin`, `platform_admin`, `ai_copilot`), `AuthenticatedIdentityContextSchema`, and `authorizeTenantResource()`. Injected resource-server verification was added to `apps/server/src/middleware/opsAuth.ts` and `apps/server/src/index.ts`, enforcing tenant resource ownership, closed role permissions, and request-local context isolation across all `/ops/*` routes. Governed MCP scene operations (`load_scene`, `save_scene`) and audit inspection (`tail_logs`) enforce tenant path confinement (`resolveSceneRoot`) and task ownership checks.
+- **Test Coverage:**
+  - Table-driven REST route authorization matrix in `apps/server/test/opsAuthRoutes.test.ts` verified every `/ops/*` route against all five roles and unauthenticated callers.
+  - Injected bearer verification, token lifetime/window, and fast-check tenant ownership property tests in `apps/server/test/opsAuth.test.ts` and `packages/contracts/test/identity.test.ts`.
+  - MCP cross-tenant isolation and tenant-confined scene root tests in `apps/server/test/mcpAuthorization.test.ts` and `packages/ops-mcp/test/sceneSecurity.test.ts`.
+- **Quality Gates:**
+  - Unit & Performance: `pnpm test` passed 16/16 packages; high-concurrency load (100 requests) p95 < 300ms, operational parsers p95 < 50ms, Cesium ingestion p95 < 16.6ms.
+  - Strict Typecheck: `pnpm turbo run typecheck --force` passed 17/17 tasks uncached.
+  - Lint: `pnpm lint` passed Biome check across 309 files (0 errors, 11 existing warnings).
+  - Architecture & Docs: `pnpm architecture:check` passed with 0 large files (>500 lines without ADR); `pnpm docs:check` (ADG) passed across 70 doc files, 527 paths, 18 symbols; `pnpm docs:test` passed 17/17.
+  - MCP Conformance: `pnpm test:mcp:official` passed MCP Inspector 2.5.0 (7 tools, 0 schema errors) and Conformance 0.2.0-alpha.11 (`tools-list`, `http-header-validation`).
+  - Bundle & Budgets: `pnpm check:budgets` passed (total JS gzip 1230.65 KB <= 3600 KB budget, CSS gzip 9.26 KB <= 50 KB budget); `pnpm docs:providers:check` passed.
+  - Playwright Smoke: `pnpm --filter @gev/e2e test:e2e smoke.spec.ts` passed 2/2 in 2.2m.
+  - Git hygiene: `git diff --check` reported zero whitespace or formatting errors.
+- **Plan Advancement:** Task 7.1 is marked complete (`[x]`). `CURRENT_PHASE=7`, `NEXT_TASK=7.2`, `NEXT_TASK_STATUS=READY`. A ready-to-authorize 4-Pillar brief for Task 7.2 is provided.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 7.2. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
 No later task is authorized merely because it appears in this plan.
+

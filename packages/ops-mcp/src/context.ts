@@ -26,6 +26,7 @@ export interface OperatorContext {
   flags: Map<string, boolean>;
   sceneRoot: string;
   sceneState: SceneState;
+  tenantSceneStates: Map<string, SceneState>;
 }
 
 export function createOperatorContext(customContext?: Partial<OperatorContext>): OperatorContext {
@@ -70,6 +71,7 @@ export function createOperatorContext(customContext?: Partial<OperatorContext>):
       customContext?.sceneRoot ?? process.env.GEV_MCP_SCENE_ROOT ?? DEFAULT_SCENE_ROOT
     ),
     sceneState: customContext?.sceneState ?? getDefaultSceneState(clock),
+    tenantSceneStates: customContext?.tenantSceneStates ?? new Map<string, SceneState>(),
   };
   registerOperatorToolHandlers(context);
   return context;

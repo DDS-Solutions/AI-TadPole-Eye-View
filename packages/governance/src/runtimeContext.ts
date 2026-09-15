@@ -23,6 +23,7 @@ export interface GovernanceRuntimeContext {
   budgetGovernor: CapBudgetGovernor;
   budgetLedger: SqliteBudgetLedger;
   approvalGate: ApprovalGate;
+  startReaper(intervalMs?: number): { stop(): void };
   authority(): GovernanceAuthority;
   close(): void;
 }
@@ -133,12 +134,31 @@ export function createGovernanceRuntimeContext(
   }
 
   let closed = false;
+  const activeReapers = new Set<NodeJS.Timeout>();
+
   return {
     clock,
     auditSink,
     budgetGovernor,
     budgetLedger,
     approvalGate,
+    startReaper: (intervalMs = 30_000) => {
+      const timer = setInterval(() => {
+        if (closed) return;
+        try {
+          budgetLedger.recoverExpired();
+        } catch {
+          // Ignore transient errors if database is locked/busy
+        }
+      }, intervalMs);
+      activeReapers.add(timer);
+      return {
+        stop: () => {
+          clearInterval(timer);
+          activeReapers.delete(timer);
+        },
+      };
+    },
     authority: () => ({
       kind: budgetGovernor.isSharedAuthority() ? 'shared_sqlite' : 'process_local',
       authoritative: budgetGovernor.isSharedAuthority(),
@@ -150,6 +170,10 @@ export function createGovernanceRuntimeContext(
         return;
       }
       closed = true;
+      for (const timer of activeReapers) {
+        clearInterval(timer);
+      }
+      activeReapers.clear();
       if (ownsApprovalGate && approvalGate instanceof SignedApprovalGate) {
         approvalGate.close();
       }

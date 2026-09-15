@@ -1,4 +1,4 @@
-import { type AuditOutcome, GevEvents } from '@gev/contracts';
+import { type AuditOutcome, type AuthenticatedIdentityContext, GevEvents } from '@gev/contracts';
 import type { SimClock } from './clock.js';
 
 export const MICRO_USD_PER_USD = 1_000_000;
@@ -8,6 +8,8 @@ export interface ToolExecutionContext {
   principal?: string;
   task_ref?: string;
   tenant_id?: string | null;
+  identity?: AuthenticatedIdentityContext;
+  authority_task_ref?: string;
   operation_id?: string;
   signal?: AbortSignal;
 }

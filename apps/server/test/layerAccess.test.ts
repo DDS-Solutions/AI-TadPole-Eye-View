@@ -8,6 +8,7 @@ import { createApp } from '../src/index.js';
 
 const temporaryDirectories: string[] = [];
 const NOW = Date.parse('2026-09-06T20:00:00.000Z');
+const OPS_TOKEN = 'layer-access-operator-token';
 
 function databasePath(): string {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'gev-layer-access-'));
@@ -18,7 +19,7 @@ function databasePath(): string {
 afterEach(() => {
   vi.restoreAllMocks();
   for (const directory of temporaryDirectories.splice(0)) {
-    fs.rmSync(directory, { recursive: true, force: true });
+    fs.rmSync(directory, { recursive: true, force: true, maxRetries: 3, retryDelay: 25 });
   }
 });
 
@@ -28,9 +29,11 @@ describe('Layer Access authenticated read route', () => {
     const runtime = createApp({
       clock: new FrozenClock(NOW),
       governanceDbPath: databasePath(),
-      opsAuth: { requireAuth: false },
+      opsAuth: { opsToken: OPS_TOKEN, requireAuth: true },
     });
-    const response = await runtime.app.request('/ops/layer-access');
+    const response = await runtime.app.request('/ops/layer-access', {
+      headers: { Authorization: `Bearer ${OPS_TOKEN}` },
+    });
     expect(response.status).toBe(200);
     expect(response.headers.get('cache-control')).toBe('no-store');
     const model = LayerAccessReadModelSchema.parse(await response.json());
@@ -41,7 +44,7 @@ describe('Layer Access authenticated read route', () => {
       layers: { total: 19, active: 16 },
     });
     expect(model.authority).toMatchObject({
-      kind: 'local_seed',
+      kind: 'authenticated_local_operator',
       credential_status_access: 'unavailable',
     });
     expect(model.entries.find((entry) => entry.id === 'opensky')?.credential).toMatchObject({
@@ -88,6 +91,23 @@ describe('Layer Access authenticated read route', () => {
       credential: { status: 'valid', masked_fingerprint: '•••••••• A91C' },
       terms: { status: 'approved' },
       configuration: { current_state: 'valid' },
+    });
+    runtime.governanceContext.close();
+  });
+
+  it('allows tokenless read in local seed mode returning authority kind local_seed', async () => {
+    const runtime = createApp({
+      clock: new FrozenClock(NOW),
+      governanceDbPath: databasePath(),
+      opsAuth: { opsToken: '', requireAuth: false },
+    });
+    const response = await runtime.app.request('/ops/layer-access');
+    expect(response.status).toBe(200);
+    const model = LayerAccessReadModelSchema.parse(await response.json());
+    expect(model.entries).toHaveLength(19);
+    expect(model.authority).toMatchObject({
+      kind: 'local_seed',
+      credential_status_access: 'unavailable',
     });
     runtime.governanceContext.close();
   });

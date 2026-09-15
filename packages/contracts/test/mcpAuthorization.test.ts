@@ -11,6 +11,9 @@ function validAuthorization() {
     actor: 'ai' as const,
     principal: 'svc:tadpole-test',
     tenant_id: 'tenant-test',
+    role: 'ai_copilot' as const,
+    client_id: 'ai-tadpole-os',
+    token_id: 'token-task-6-3',
     task_ref: 'task-6.3-test',
     issuer: 'https://auth.gev.test/',
     audience: RESOURCE,
@@ -34,6 +37,7 @@ describe('MCP authorization contracts', () => {
   it.each([
     { principal: `svc:${'p'.repeat(125)}` },
     { tenant_id: 't'.repeat(129) },
+    { role: 'operator' },
     { task_ref: ' task-6.3-test' },
     { scopes: ['read.telemetry', 'unknown.scope'] },
     { scopes: ['read.telemetry', 'read.telemetry'] },

@@ -7,7 +7,11 @@ import { issueSignedMcpToken, joseMcpBearerVerifier } from './mcpTestAuth.js';
 
 describe('Server Proxy High-Concurrency Load Verification (PLAN.md §10 Phase 4 & §13)', () => {
   it('serves 100 concurrent requests across proxy endpoints with p95 < 300ms and 0% errors', async () => {
-    const { app, auditSink } = createApp();
+    const opsToken = 'load-test-operator-token';
+    const { app, auditSink } = createApp({
+      opsAuth: { opsToken, requireAuth: true },
+    });
+    const headers = { Accept: 'application/json', Authorization: `Bearer ${opsToken}` };
 
     const endpoints = [
       '/api/health',
@@ -27,7 +31,7 @@ describe('Server Proxy High-Concurrency Load Verification (PLAN.md §10 Phase 4 
     const durations: number[] = [];
     // Prime the caches with initial warmup requests
     for (const ep of endpoints) {
-      await app.request(ep);
+      await app.request(ep, { headers });
     }
 
     // Run 10 concurrent worker loops (simulating 10 VUs) executing 10 requests each (100 total)
@@ -39,7 +43,7 @@ describe('Server Proxy High-Concurrency Load Verification (PLAN.md §10 Phase 4 
         const ep = endpoints[(workerId * requestsPerWorker + j) % endpoints.length];
         const startReq = performance.now();
         const res = await app.request(ep, {
-          headers: { Accept: 'application/json' },
+          headers,
         });
         const duration = performance.now() - startReq;
         durations.push(duration);

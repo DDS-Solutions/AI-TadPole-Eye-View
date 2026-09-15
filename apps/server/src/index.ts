@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import {
   type Actor,
+  type AuthenticatedIdentityContext,
   GevEvents,
   ProviderRegistrySchema,
   SystemHealthResponseSchema,
@@ -27,17 +28,17 @@ import {
   withProviderHealth,
   withUnavailableProviders,
 } from '@gev/providers';
-import { serve } from '@hono/node-server';
 import { getConnInfo } from '@hono/node-server/conninfo';
 import { type Context, Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { CreateAppOptions } from './appOptions.js';
-import { bindMcpHttpShutdown, mountMcpHttpRuntime } from './mcpRuntime.js';
+import { mountMcpHttpRuntime } from './mcpRuntime.js';
 import { CostGovernor, DEFAULT_PROVIDER_TIERS } from './middleware/costGovernor.js';
 import {
   InMemoryRateLimiter,
   createOpsAuth,
   createRateLimitMiddleware,
+  mountOpsAuthorization,
 } from './middleware/opsAuth.js';
 import { PRODUCT_VERSION } from './productVersion.js';
 import { createAuditIntegrityRouter } from './routes/auditIntegrity.js';
@@ -62,9 +63,8 @@ import { createSeedReloadRouter } from './routes/seedReload.js';
 import { createShipsRouter } from './routes/ships.js';
 import { createVoiceRouter } from './routes/voice.js';
 import { createWeatherRouter } from './routes/weather.js';
-import { resolveServerClockFromEnvironment } from './serverClock.js';
+import { startStandaloneServer } from './serverStartup.js';
 import { ServerTelemetryManager } from './telemetry/index.js';
-import { attachWebSocketCollabServer } from './websocketCollab.js';
 
 export { attachWebSocketCollabServer } from './websocketCollab.js';
 export type { CreateAppOptions } from './appOptions.js';
@@ -85,8 +85,14 @@ export function createApp(options: CreateAppOptions = {}) {
     options.governanceContext ??
     createGovernanceRuntimeContext({ clock, dbPath: options.governanceDbPath });
   const telemetry = new ServerTelemetryManager({ clock });
-  const auth = createOpsAuth(options.opsAuth);
-  const opsAuth = auth.middleware();
+  const auth = createOpsAuth({
+    ...options.opsAuth,
+    bearerVerifier: options.identityBearerVerifier,
+    clock,
+  });
+  const opsAuth = auth.middleware({
+    allowedRoles: ['operator', 'tenant_admin', 'platform_admin'],
+  });
   const rateLimiter = new InMemoryRateLimiter(clock);
   const resolveClientId =
     options.resolveClientId ??
@@ -199,12 +205,19 @@ export function createApp(options: CreateAppOptions = {}) {
     }
   });
 
-  const mcpHttp = mountMcpHttpRuntime(app, options, {
-    clock,
-    governanceContext,
-    openSkyAdapter,
-    providerRegistry,
-  });
+  const mcpHttp = mountMcpHttpRuntime(
+    app,
+    {
+      ...options,
+      mcpHttpBearerVerifier: options.mcpHttpBearerVerifier ?? options.identityBearerVerifier,
+    },
+    {
+      clock,
+      governanceContext,
+      openSkyAdapter,
+      providerRegistry,
+    }
+  );
 
   app.use(
     '*',
@@ -214,7 +227,7 @@ export function createApp(options: CreateAppOptions = {}) {
     })
   );
 
-  app.use('/ops/*', opsAuth);
+  mountOpsAuthorization(app, auth);
 
   app.get('/api/health', async (c) => {
     const govState = budgetGovernor.state();
@@ -238,6 +251,7 @@ export function createApp(options: CreateAppOptions = {}) {
     );
   });
 
+  app.use('/api/telemetry/*', opsAuth);
   app.get('/api/telemetry/metrics', async (c) => {
     return c.json(telemetry.getMetrics());
   });
@@ -268,37 +282,27 @@ export function createApp(options: CreateAppOptions = {}) {
 
   app.use('/api/flights/*', costGovernor.middleware('flights'));
   app.route('/api/flights', createFlightsRouter(openSkyAdapter));
-
   app.use('/api/ships/*', costGovernor.middleware('ships'));
   app.route('/api/ships', createShipsRouter(aisAdapter));
-
   app.use('/api/quakes/*', costGovernor.middleware('quakes'));
   app.route('/api/quakes', createQuakesRouter(quakeAdapter));
-
   app.use('/api/firms/*', costGovernor.middleware('firms'));
   app.route('/api/firms', createFirmsRouter(firmsAdapter));
-
   app.use('/api/gbfs/*', costGovernor.middleware('gbfs'));
   app.route('/api/gbfs', createGbfsRouter(gbfsAdapter));
-
   app.use('/api/radio/*', costGovernor.middleware('radio'));
   app.route('/api/radio', createRadioRouter(radioAdapter));
-
   app.use('/api/overpass/*', costGovernor.middleware('overpass'));
   app.route(
     '/api/overpass',
     createOverpassRouter({ seedMode: providerRegistry.requested_mode === 'seed', clock })
   );
-
   app.use('/api/cctv/*', costGovernor.middleware('cctv'));
   app.route('/api/cctv', createCctvRouter(cctvAdapter));
-
   app.use('/api/launches/*', costGovernor.middleware('launches'));
   app.route('/api/launches', createLaunchRouter({ adapter: launchAdapter }));
-
   app.use('/api/weather/*', costGovernor.middleware('weather'));
   app.route('/api/weather', createWeatherRouter({ adapter: weatherAdapter }));
-
   app.use('/api/cables/*', costGovernor.middleware('cables'));
   app.route('/api/cables', createCablesRouter(cableAdapter));
 
@@ -362,9 +366,11 @@ export function createApp(options: CreateAppOptions = {}) {
   app.get('/ops/audit', async (c) => {
     const taskRef = c.req.query('task_ref');
     const limitParam = c.req.query('limit');
-    const limit = limitParam ? Number.parseInt(limitParam, 10) : 100;
+    const parsedLimit = limitParam ? Number.parseInt(limitParam, 10) : 100;
+    const limit =
+      Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 1000) : 100;
     if (taskRef) {
-      const entries = auditSink.tailByTaskRef(taskRef);
+      const entries = auditSink.tailByTaskRef(taskRef, limit);
       return c.json({ entries });
     }
     const entries = auditSink.tail({ limit });
@@ -377,9 +383,17 @@ export function createApp(options: CreateAppOptions = {}) {
 
   // Ops STASIS Resume (Rule 1: intent → action → outcome; human-only)
   app.post('/ops/resume', async (c) => {
-    const identity = c.var as unknown as { opsActor: Actor; opsAuthenticated: boolean };
+    const identity = c.var as unknown as {
+      opsActor: Actor;
+      opsAuthenticated: boolean;
+      opsIdentity?: AuthenticatedIdentityContext;
+    };
     const actor = identity.opsActor;
-    if (identity.opsAuthenticated !== true || actor !== 'human') {
+    if (
+      identity.opsAuthenticated !== true ||
+      actor !== 'human' ||
+      identity.opsIdentity?.role !== 'platform_admin'
+    ) {
       return c.json(
         {
           error: 'STASIS resume requires an authenticated human operator',
@@ -482,18 +496,4 @@ export function createApp(options: CreateAppOptions = {}) {
   };
 }
 
-if (process.env.NODE_ENV !== 'test') {
-  const { app, collabRoomManager, rateLimiter, mcpHttp } = createApp({
-    clock: resolveServerClockFromEnvironment(),
-  });
-  const port = Number(process.env.PORT) || 3000;
-  const hostname = process.env.GEV_HOST || '127.0.0.1';
-  const server = serve({
-    fetch: app.fetch,
-    port,
-    hostname,
-  });
-
-  attachWebSocketCollabServer(server, collabRoomManager, rateLimiter);
-  bindMcpHttpShutdown(mcpHttp, server);
-}
+if (process.env.NODE_ENV !== 'test') startStandaloneServer(createApp);

@@ -81,11 +81,14 @@ export class SqliteBudgetLedger implements BudgetLedger {
       const existing = this.store.readOperationRow(request.operation_id);
       if (existing) return this.classifyExisting(existing, fingerprint);
 
+      const now = this.store.isoNow();
+      const activeSibling = this.store.readActiveOperationByFingerprint(fingerprint, now);
+      if (activeSibling) return this.classifyExisting(activeSibling, fingerprint);
+
       const budget = this.store.readBudgetRow();
       const reserved = toMicrousd(components.estimate.max, 'estimate.max', true, 'up');
       const held = this.store.activeHeldMicrousd();
       const available = Math.max(0, budget.cap_microusd - budget.spent_microusd - held);
-      const now = this.store.isoNow();
       committed.push(this.store.insertAuditIntent(request.audit_intent));
 
       if (budget.stasis_active === 1 || reserved > available) {

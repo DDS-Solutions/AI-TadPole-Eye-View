@@ -20,7 +20,13 @@ import type {
   TailLogsInput,
   TailLogsOutput,
 } from '@gev/contracts';
-import { type ToolExecutionContext, type ToolExecutionResult, deserializeScene } from '@gev/core';
+import { TenantIdSchema } from '@gev/contracts';
+import {
+  type ToolExecutionContext,
+  type ToolExecutionResult,
+  deserializeScene,
+  getDefaultSceneState,
+} from '@gev/core';
 import {
   listProviderRegistryFeeds,
   resolveFixturePath,
@@ -162,6 +168,35 @@ async function writeSceneFile(
   }
   return scenePath;
 }
+
+async function tenantSceneRoot(
+  sceneRoot: string,
+  tenantId: string,
+  create: boolean
+): Promise<string> {
+  const parsedTenantId = TenantIdSchema.parse(tenantId);
+  const root = await canonicalSceneRoot(sceneRoot, create);
+  const candidate = path.join(root, parsedTenantId);
+  assertWithinSceneRoot(root, candidate);
+  if (create) await fs.promises.mkdir(candidate, { recursive: true });
+  const linkStat = await fs.promises.lstat(candidate);
+  if (linkStat.isSymbolicLink() || !linkStat.isDirectory()) {
+    throw new Error('Tenant scene root must be a regular directory');
+  }
+  const canonicalTenantRoot = await fs.promises.realpath(candidate);
+  assertWithinSceneRoot(root, canonicalTenantRoot);
+  return canonicalTenantRoot;
+}
+
+async function resolveSceneRoot(
+  sceneRoot: string,
+  executionContext: ToolExecutionContext,
+  create: boolean
+): Promise<string> {
+  return executionContext.tenant_id
+    ? tenantSceneRoot(sceneRoot, executionContext.tenant_id, create)
+    : sceneRoot;
+}
 function summarizeScene(scene: SceneState): SceneToolSummary {
   return {
     version: scene.version,
@@ -280,7 +315,8 @@ export async function handleRunDiagnostics(
 }
 export async function handleLoadScene(
   ctx: OperatorContext,
-  input: LoadSceneInput
+  input: LoadSceneInput,
+  executionContext: ToolExecutionContext = {}
 ): Promise<LoadSceneOutput> {
   let raw: string;
   let source: 'inline' | 'file';
@@ -292,14 +328,20 @@ export async function handleLoadScene(
     raw = input.scene_json;
     source = 'inline';
   } else {
-    const file = await readSceneFile(ctx.sceneRoot, input.scene_path as string);
+    validateSceneFileName(input.scene_path as string);
+    const root = await resolveSceneRoot(ctx.sceneRoot, executionContext, false);
+    const file = await readSceneFile(root, input.scene_path as string);
     raw = file.raw;
     scenePath = file.scenePath;
     source = 'file';
   }
 
   const validated = deserializeScene(raw);
-  ctx.sceneState = validated;
+  if (executionContext.tenant_id) {
+    ctx.tenantSceneStates.set(executionContext.tenant_id, validated);
+  } else {
+    ctx.sceneState = validated;
+  }
 
   return {
     loaded: true,
@@ -311,11 +353,16 @@ export async function handleLoadScene(
 
 export async function handleSaveScene(
   ctx: OperatorContext,
-  input: SaveSceneInput
+  input: SaveSceneInput,
+  executionContext: ToolExecutionContext = {}
 ): Promise<SaveSceneOutput> {
-  const scene = ctx.sceneState;
+  validateSceneFileName(input.save_path);
+  const scene = executionContext.tenant_id
+    ? (ctx.tenantSceneStates.get(executionContext.tenant_id) ?? getDefaultSceneState(ctx.clock))
+    : ctx.sceneState;
+  const root = await resolveSceneRoot(ctx.sceneRoot, executionContext, true);
   const scenePath = await writeSceneFile(
-    ctx.sceneRoot,
+    root,
     input.save_path,
     `${JSON.stringify(scene, null, 2)}\n`
   );
@@ -329,10 +376,19 @@ export async function handleSaveScene(
 
 export async function handleTailLogs(
   ctx: OperatorContext,
-  input: TailLogsInput
+  input: TailLogsInput,
+  executionContext: ToolExecutionContext = {}
 ): Promise<TailLogsOutput> {
-  const entries = input.task_ref
-    ? ctx.auditSink.tailByTaskRef(input.task_ref)
+  if (
+    executionContext.identity &&
+    input.task_ref &&
+    input.task_ref !== executionContext.authority_task_ref
+  ) {
+    throw new Error('Audit resource ownership denied');
+  }
+  const taskRef = executionContext.identity ? executionContext.task_ref : input.task_ref;
+  const entries = taskRef
+    ? ctx.auditSink.tailByTaskRef(taskRef)
     : ctx.auditSink.tail({ limit: input.limit ?? 50 });
 
   return { entries };
@@ -356,9 +412,15 @@ export function registerOperatorToolHandlers(ctx: OperatorContext): void {
     .register('get_feed_health', (input) => handleGetFeedHealth(ctx, input))
     .register('get_budget', () => handleGetBudget(ctx))
     .register('run_diagnostics', (input) => handleRunDiagnostics(ctx, input))
-    .register('load_scene', (input) => handleLoadScene(ctx, input))
-    .register('save_scene', (input) => handleSaveScene(ctx, input))
-    .register('tail_logs', (input) => handleTailLogs(ctx, input))
+    .register('load_scene', (input, executionContext) =>
+      handleLoadScene(ctx, input, executionContext)
+    )
+    .register('save_scene', (input, executionContext) =>
+      handleSaveScene(ctx, input, executionContext)
+    )
+    .register('tail_logs', (input, executionContext) =>
+      handleTailLogs(ctx, input, executionContext)
+    )
     .register('set_flag', (input) => handleSetFlag(ctx, input));
 }
 

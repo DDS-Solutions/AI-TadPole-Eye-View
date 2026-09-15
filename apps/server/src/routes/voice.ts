@@ -84,8 +84,10 @@ export function createVoiceRouter(options: VoiceRouterOptions) {
       });
 
       if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`OpenAI API returned HTTP ${res.status}: ${errText}`);
+        return c.json(
+          { error: 'Upstream voice provider error', code: 'VOICE_PROVIDER_ERROR' },
+          502
+        );
       }
 
       const json = (await res.json()) as {
@@ -100,9 +102,8 @@ export function createVoiceRouter(options: VoiceRouterOptions) {
         model: json.model || reqData.model,
         session_id: json.id || `sess_${crypto.randomUUID()}`,
       });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown OpenAI error';
-      return c.json({ error: message }, 502);
+    } catch {
+      return c.json({ error: 'Upstream voice provider error', code: 'VOICE_PROVIDER_ERROR' }, 502);
     }
   });
 

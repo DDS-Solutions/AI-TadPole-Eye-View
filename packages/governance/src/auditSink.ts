@@ -203,12 +203,12 @@ export class SqliteAuditSink implements AuditSink {
   /**
    * Helper: Tails entries filtered by task_ref.
    */
-  tailByTaskRef(taskRef: string): AuditEntry[] {
+  tailByTaskRef(taskRef: string, limit = 500): AuditEntry[] {
     const rows = this.db
       .prepare(
-        'SELECT * FROM audit_events WHERE task_ref = ? OR intent_id IN (SELECT id FROM audit_events WHERE task_ref = ?) ORDER BY rowid ASC'
+        'SELECT * FROM audit_events WHERE task_ref = ? OR intent_id IN (SELECT id FROM audit_events WHERE task_ref = ?) ORDER BY rowid ASC LIMIT ?'
       )
-      .all(taskRef, taskRef) as unknown as AuditEventStorageRow[];
+      .all(taskRef, taskRef, limit) as unknown as AuditEventStorageRow[];
     return rows.map(auditStorageRowToEntry);
   }
 

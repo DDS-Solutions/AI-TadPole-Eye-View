@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createApp } from '../src/index.js';
 
 const tempDirectories: string[] = [];
+const OPS_TOKEN = 'audit-integrity-operator-token';
 
 function tempDatabase(): string {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'gev-server-audit-'));
@@ -23,9 +24,14 @@ afterEach(() => {
 
 describe('protected audit integrity inspection', () => {
   it('returns the validated durable chain checkpoint', async () => {
-    const context = createApp({ governanceDbPath: tempDatabase() });
+    const context = createApp({
+      governanceDbPath: tempDatabase(),
+      opsAuth: { opsToken: OPS_TOKEN, requireAuth: true },
+    });
     try {
-      const response = await context.app.request('/ops/audit/integrity');
+      const response = await context.app.request('/ops/audit/integrity', {
+        headers: { Authorization: `Bearer ${OPS_TOKEN}` },
+      });
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toMatchObject({
         status: 'valid',
@@ -41,7 +47,10 @@ describe('protected audit integrity inspection', () => {
 
   it('reports post-startup tampering without returning suspect payloads or repairing it', async () => {
     const dbPath = tempDatabase();
-    const context = createApp({ governanceDbPath: dbPath });
+    const context = createApp({
+      governanceDbPath: dbPath,
+      opsAuth: { opsToken: OPS_TOKEN, requireAuth: true },
+    });
     context.auditSink.intent({
       kind: GevEvents.AuditIntent,
       id: crypto.randomUUID(),
@@ -57,7 +66,9 @@ describe('protected audit integrity inspection', () => {
       tamper
         .prepare("UPDATE audit_events SET target = 'suspect-private-payload' WHERE rowid = 1")
         .run();
-      const response = await context.app.request('/ops/audit/integrity');
+      const response = await context.app.request('/ops/audit/integrity', {
+        headers: { Authorization: `Bearer ${OPS_TOKEN}` },
+      });
       expect(response.status).toBe(409);
       const body = (await response.json()) as Record<string, unknown>;
       expect(body).toMatchObject({

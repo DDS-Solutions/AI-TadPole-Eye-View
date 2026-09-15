@@ -344,3 +344,22 @@ the following invariants with condition waits:
 
 Do not use stream-only `tools/list` tests as mutation-cancellation evidence. See the historical
 [reproduction and repair evidence](docs/reviews/phase-6-exit-cancellation-2026-09-13.md).
+
+## 10. Authenticated Principal, Tenant Identity, and Route Policy (ADR 0031)
+
+Privileged operations and governed MCP surfaces derive authority from one immutable
+request-local principal, tenant, and role context:
+
+- **Production Provider Profile:** Auth0 Organizations profile (`https://dds-solutions-gev.us.auth0.com/`,
+  REST audience `https://dds-solutions-gev.us.auth0.com/api/gev`, MCP audience
+  `https://dds-solutions-gev.us.auth0.com/api/gev/mcp`, algorithm `RS256`, 300-second maximum access-token lifetime).
+- **Closed Role Matrix:** `viewer`, `operator`, `tenant_admin`, `platform_admin`, `ai_copilot`.
+  Roles and capability scopes are conjunctive: scopes do not grant roles, and roles do not grant scopes.
+- **Fail-Closed Composition:** Production requires an injected `IdentityBearerVerifier`. If unconfigured,
+  privileged surfaces fail closed with `503 AUTH_NOT_CONFIGURED`.
+- **Local Compatibility:** `GEV_OPS_TOKEN` is a non-production compatibility credential for local development.
+  It maps to local development tenant/roles and is never accepted as a production identity.
+- **Tenant Isolation:** Resource ownership requires exact match between the authenticated `tenant_id`
+  and the requested resource (e.g. `X-GEV-Tenant` header or MCP execution context). Cross-tenant requests
+  fail closed before handler dispatch or audit generation.
+

@@ -6,8 +6,7 @@ import {
   M3_FINGERPRINT_VERSION,
   M3_LEDGER_CONTRACT_VERSION,
 } from '@gev/contracts';
-import type { SimClock } from '@gev/core';
-import { SystemClock } from '@gev/core';
+import { type SimClock, SystemClock } from '@gev/core';
 import { LedgerOperationError, type SqliteBudgetLedger } from '@gev/governance';
 import { markResponseProvenanceCached } from '@gev/providers';
 import type { Context, Next } from 'hono';
@@ -18,8 +17,7 @@ import {
   withRequestTimeout,
 } from './billableFeedResult.js';
 import { DEFAULT_PROVIDER_TIERS, type ProviderTierConfig } from './costGovernorConfig.js';
-
-export { DEFAULT_PROVIDER_TIERS, type ProviderTierConfig } from './costGovernorConfig.js';
+export { DEFAULT_PROVIDER_TIERS, type ProviderTierConfig };
 
 const MAX_CACHE_ENTRIES = 200;
 const BILLABLE_REQUEST_TIMEOUT_MS = 30_000;
@@ -69,11 +67,10 @@ export class CostGovernor {
   }
 
   middleware(providerName: string) {
-    const tier = this.tiers[providerName] ?? {
-      ttlSeconds: 10,
-      costPerFetchUsd: 0,
-      maxStaleSeconds: 60,
-    };
+    const tier = this.tiers[providerName];
+    if (!tier) {
+      throw new Error(`Cost governor: no registered provider tier for '${providerName}'`);
+    }
 
     return async (c: Context, next: Next) => {
       const now = this.clock.now();
@@ -216,10 +213,7 @@ export class CostGovernor {
   private getProviderState(providerName: string): ProviderState {
     let state = this.providerStates.get(providerName);
     if (!state) {
-      state = {
-        cooldownUntil: 0,
-        cache: new Map(),
-      };
+      state = { cooldownUntil: 0, cache: new Map() };
       this.providerStates.set(providerName, state);
     }
     return state;
@@ -413,10 +407,11 @@ export class CostGovernor {
       );
     }
     try {
+      const settledMicrousd = terminal.status < 400 ? reservation.actualMicrousd : 0;
       const operation = ledger.settle({
         operation_id: reservation.operationId,
         request_fingerprint: reservation.requestFingerprint,
-        actual_microusd: reservation.actualMicrousd,
+        actual_microusd: settledMicrousd,
         terminal_result: terminal,
         audit_outcome: {
           kind: GevEvents.AuditOutcome,
@@ -489,10 +484,13 @@ export class CostGovernor {
     }
     c.header('X-GEV-Idempotent-Replay', 'true');
     c.header('Content-Type', operation.terminal_result.contentType);
+    const body = markResponseProvenanceCached(operation.terminal_result.body, {
+      clock: this.clock,
+      cacheId: operation.operation_id,
+      storedAtMs: this.clock.now(),
+    });
     return c.body(
-      typeof operation.terminal_result.body === 'string'
-        ? operation.terminal_result.body
-        : JSON.stringify(operation.terminal_result.body),
+      typeof body === 'string' ? body : JSON.stringify(body),
       operation.terminal_result.status as 200
     );
   }

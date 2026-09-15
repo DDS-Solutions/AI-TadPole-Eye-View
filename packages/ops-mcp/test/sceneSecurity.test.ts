@@ -7,7 +7,7 @@ import {
   SaveSceneOutputSchema,
   SceneState,
 } from '@gev/contracts';
-import { FrozenClock, getDefaultSceneState } from '@gev/core';
+import { type ToolExecutionContext, FrozenClock, getDefaultSceneState } from '@gev/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   MAX_SCENE_BYTES,
@@ -52,9 +52,10 @@ function makeScene() {
 async function executeOperatorTool(
   context: OperatorContext,
   name: string,
-  args: Record<string, unknown>
+  args: Record<string, unknown>,
+  executionContext: Omit<ToolExecutionContext, 'actor'> = {}
 ): Promise<unknown> {
-  const execution = await executeOperatorToolResult(context, name, args);
+  const execution = await executeOperatorToolResult(context, name, args, executionContext);
   if (!execution.success) {
     throw new Error(execution.error ?? `Tool ${name} failed`);
   }
@@ -173,6 +174,58 @@ describe('local MCP scene confinement and truth', () => {
     expect((await fs.promises.readdir(sceneRoot)).filter((name) => name.endsWith('.tmp'))).toEqual(
       []
     );
+  });
+
+  it('isolates in-memory and persisted scene state by authenticated tenant', async () => {
+    const sceneRoot = await makeSceneRoot();
+    const context = makeContext(sceneRoot);
+    const tenantOneScene = makeScene();
+    const tenantTwoScene = SceneState.parse({
+      ...makeScene(),
+      camera: { ...makeScene().camera, altitude: 246_810 },
+      selected_entity: { kind: 'ship', id: 'tenant-two-vessel' },
+    });
+
+    await executeOperatorTool(
+      context,
+      'load_scene',
+      { scene_json: JSON.stringify(tenantOneScene) },
+      { tenant_id: 'tenant-one' }
+    );
+    await executeOperatorTool(
+      context,
+      'load_scene',
+      { scene_json: JSON.stringify(tenantTwoScene) },
+      { tenant_id: 'tenant-two' }
+    );
+    await executeOperatorTool(
+      context,
+      'save_scene',
+      { save_path: 'snapshot.json' },
+      { tenant_id: 'tenant-one' }
+    );
+    await executeOperatorTool(
+      context,
+      'save_scene',
+      { save_path: 'snapshot.json' },
+      { tenant_id: 'tenant-two' }
+    );
+
+    const tenantOnePersisted = SceneState.parse(
+      JSON.parse(
+        await fs.promises.readFile(path.join(sceneRoot, 'tenant-one', 'snapshot.json'), 'utf-8')
+      )
+    );
+    const tenantTwoPersisted = SceneState.parse(
+      JSON.parse(
+        await fs.promises.readFile(path.join(sceneRoot, 'tenant-two', 'snapshot.json'), 'utf-8')
+      )
+    );
+
+    expect(tenantOnePersisted).toEqual(tenantOneScene);
+    expect(tenantTwoPersisted).toEqual(tenantTwoScene);
+    expect(context.sceneState).toEqual(getDefaultSceneState(context.clock));
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it.each([

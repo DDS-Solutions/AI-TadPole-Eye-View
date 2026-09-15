@@ -121,4 +121,39 @@ describe('collaboration transport integrity', () => {
     }
     expect(makeAttempt().writes[0]).toContain('429 Too Many Requests');
   });
+
+  it('preserves presence when one of multiple connections for the same client disconnects', () => {
+    const manager = new CollabRoomManager(new FrozenClock());
+    const tab1 = new FakeWebSocket();
+    const tab2 = new FakeWebSocket();
+
+    manager.handleWebSocketPeer(tab1 as unknown as WebSocket, {
+      sub: 'operator-1',
+      callsign: 'OperatorOne',
+      roomId: 'multi-tab-room',
+      role: 'operator',
+    });
+    manager.handleWebSocketPeer(tab2 as unknown as WebSocket, {
+      sub: 'operator-1',
+      callsign: 'OperatorOne',
+      roomId: 'multi-tab-room',
+      role: 'operator',
+    });
+
+    const room = manager.getRoom('multi-tab-room');
+    expect(room?.peers.size).toBe(2);
+    expect(room?.peers.get('operator-1')?.presence?.callsign).toBe('OperatorOne');
+
+    // Close first tab
+    tab1.emit('close');
+
+    // Peer count decreases to 1, but client presence is still active
+    expect(room?.peers.size).toBe(1);
+    expect(room?.peers.get('operator-1')?.presence?.callsign).toBe('OperatorOne');
+
+    // Close second tab
+    tab2.emit('close');
+    expect(room?.peers.size).toBe(0);
+    expect(room?.peers.get('operator-1')).toBeUndefined();
+  });
 });

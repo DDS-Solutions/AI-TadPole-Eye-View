@@ -134,6 +134,7 @@ describe('scoped MCP HTTP authorization', () => {
         await issueSignedMcpToken({ scopes: ['unknown.scope'] }),
         MCP_HTTP_RESOURCE,
       ],
+      ['human-role', await issueSignedMcpToken({ role: 'operator' }), MCP_HTTP_RESOURCE],
       [
         'overlong-principal',
         await issueSignedMcpToken({ principal: `svc:${'p'.repeat(125)}` }),
@@ -231,7 +232,7 @@ describe('scoped MCP HTTP authorization', () => {
         kind: 'audit.intent',
         id: operationId,
         actor: 'ai',
-        task_ref: 'task-6.3-signed-call',
+        task_ref: expect.stringMatching(/^tenant:tenant-63:task:[0-9a-f]{64}$/),
       }),
       expect.objectContaining({
         kind: 'audit.outcome',
@@ -239,6 +240,32 @@ describe('scoped MCP HTTP authorization', () => {
         status: 'ok',
       }),
     ]);
+  });
+
+  it('rejects an MCP cross-tenant resource request before governed execution', async () => {
+    const { app, auditSink, budgetGovernor } = createAuthorizedApp();
+    const token = await issueSignedMcpToken({
+      principal: 'svc:tenant-alpha',
+      tenantId: 'tenant-alpha',
+      scopes: ['read.telemetry'],
+    });
+    const operationId = '00000000-0000-4000-8000-000000000071';
+    const response = await app.request(
+      MCP_HTTP_RESOURCE,
+      requestInit('tools/call', 'cross-tenant-call', token, {
+        name: 'get_budget',
+        arguments: {},
+        _meta: {
+          operation_id: operationId,
+          'com.dds-solutions.gev/tenantId': 'tenant-beta',
+        },
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(JSON.stringify(await readJson(response))).toContain('resource ownership denied');
+    expect(auditSink.tail({ limit: 10 })).toEqual([]);
+    expect(budgetGovernor.state().spent_usd).toBe(0);
   });
 
   it.each([

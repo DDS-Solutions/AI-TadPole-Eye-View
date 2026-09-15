@@ -33,6 +33,7 @@ export interface UnifiedTelemetryItem {
   alt: number;
   timeText: string;
   rawData: Record<string, unknown>;
+  isDefaultCoordinates?: boolean;
 }
 
 export interface UnifiedEntityCollections {
@@ -190,6 +191,7 @@ export function buildUnifiedTelemetryItems(
   if (visibility.launches) {
     for (const launch of entities.launches) {
       const firstPoint = launch.trajectory[0];
+      const hasTrajectory = Boolean(firstPoint);
       const latitude = firstPoint?.latitude ?? 34.6;
       const longitude = firstPoint?.longitude ?? -120.6;
       items.push({
@@ -198,12 +200,15 @@ export function buildUnifiedTelemetryItems(
         name: launch.name,
         metric1: `Orbit: ${launch.target_orbit}`,
         metric2: `Vehicle: ${launch.vehicle}`,
-        coordinates: `${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°`,
+        coordinates: hasTrajectory
+          ? `${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°`
+          : `${latitude.toFixed(2)}°, ${longitude.toFixed(2)}° (est)`,
         lat: latitude,
         lon: longitude,
         alt: 50_000,
         timeText: launch.status.toUpperCase(),
         rawData: launch as unknown as Record<string, unknown>,
+        isDefaultCoordinates: !hasTrajectory,
       });
     }
   }

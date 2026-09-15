@@ -1,4 +1,9 @@
-import { getAuthorizedOperatorToolNames } from '@gev/contracts';
+import { createHash } from 'node:crypto';
+import {
+  TenantIdSchema,
+  authorizeTenantResource,
+  getAuthorizedOperatorToolNames,
+} from '@gev/contracts';
 import {
   type McpAuthorizationContext,
   McpAuthorizationContextSchema,
@@ -92,6 +97,25 @@ function readOperationId(metadata: unknown): string | undefined {
   }
   const operationId = (metadata as { operation_id?: unknown }).operation_id;
   return typeof operationId === 'string' ? operationId : undefined;
+}
+
+const MCP_TENANT_METADATA_KEY = 'com.dds-solutions.gev/tenantId';
+
+function readRequestedTenantId(metadata: unknown, fallback: string): string | null {
+  if (!metadata || typeof metadata !== 'object' || !(MCP_TENANT_METADATA_KEY in metadata)) {
+    return fallback;
+  }
+  const parsed = TenantIdSchema.safeParse(
+    (metadata as Record<string, unknown>)[MCP_TENANT_METADATA_KEY]
+  );
+  return parsed.success ? parsed.data : null;
+}
+
+function tenantScopedTaskRef(authorization: McpAuthorizationContext): string {
+  const digest = createHash('sha256')
+    .update(`${authorization.tenant_id}\0${authorization.task_ref}`, 'utf8')
+    .digest('hex');
+  return `tenant:${authorization.tenant_id}:task:${digest}`;
 }
 
 function executionMetadata(execution: ToolExecutionResult): Record<string, unknown> {
@@ -189,10 +213,24 @@ export function createGevMcpHttpHandler(options: GevMcpHttpHandlerOptions): GevM
             annotations: definition.annotations,
           },
           async (args, requestContext) => {
+            if (!authorization) throw new Error('MCP identity is unavailable');
+            const requestedTenantId = readRequestedTenantId(
+              requestContext.mcpReq._meta,
+              authorization.tenant_id
+            );
+            const ownership = requestedTenantId
+              ? authorizeTenantResource(authorization, {
+                  tenant_id: requestedTenantId,
+                  allowed_roles: ['ai_copilot'],
+                })
+              : { allowed: false as const };
+            if (!ownership.allowed) throw new Error('MCP tenant resource ownership denied');
             const executionPromise = executeOperatorTool(options.context, definition.name, args, {
-              principal: authorization?.principal,
-              tenant_id: authorization?.tenant_id,
-              task_ref: authorization?.task_ref,
+              principal: authorization.principal,
+              tenant_id: authorization.tenant_id,
+              identity: authorization,
+              authority_task_ref: authorization.task_ref,
+              task_ref: tenantScopedTaskRef(authorization),
               operation_id: readOperationId(requestContext.mcpReq._meta),
               signal: requestContext.mcpReq.signal,
             });

@@ -23,3 +23,4 @@ export * from './auditIntegrity.js';
 export * from './provenance.js';
 export * from './cables.js';
 export * from './satellites.js';
+export * from './identity.js';

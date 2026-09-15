@@ -54,6 +54,7 @@ export function isAllowedWebSocketOrigin(
 }
 
 export interface RoomPeer {
+  connId: string;
   clientId: string;
   callsign: string;
   role: 'viewer' | 'operator' | 'ai_copilot';
@@ -62,10 +63,21 @@ export interface RoomPeer {
   presence?: UserPresence;
 }
 
+export class PeerMap extends Map<string, RoomPeer> {
+  override get(key: string): RoomPeer | undefined {
+    const direct = super.get(key);
+    if (direct) return direct;
+    for (const peer of this.values()) {
+      if (peer.clientId === key) return peer;
+    }
+    return undefined;
+  }
+}
+
 export interface ActiveRoom {
   roomId: string;
   doc: CollabIntentDoc;
-  peers: Map<string, RoomPeer>;
+  peers: PeerMap;
   createdAt: number;
   lastActivityAt: number;
 }
@@ -117,7 +129,7 @@ export class CollabRoomManager {
       room = {
         roomId,
         doc: new CollabIntentDoc(roomId),
-        peers: new Map(),
+        peers: new PeerMap(),
         createdAt: this.clock.now(),
         lastActivityAt: this.clock.now(),
       };
@@ -208,10 +220,12 @@ export class CollabRoomManager {
     }
 
     const clientId = tokenPayload.sub;
+    const connId = crypto.randomUUID();
     const peerColors = ['#00f0ff', '#ff0055', '#39ff14', '#ffe600', '#bf00ff', '#ff8800'];
     const assignedColor = peerColors[room.peers.size % peerColors.length] ?? '#00f0ff';
 
     const peer: RoomPeer = {
+      connId,
       clientId,
       callsign: tokenPayload.callsign,
       role: tokenPayload.role,
@@ -226,7 +240,7 @@ export class CollabRoomManager {
       },
     };
 
-    room.peers.set(clientId, peer);
+    room.peers.set(connId, peer);
 
     // 1. Send initial full CRDT state (binary)
     const initialBinaryState = room.doc.encodeState();
@@ -271,8 +285,8 @@ export class CollabRoomManager {
         }
 
         // Broadcast binary update to all OTHER peers in the room
-        for (const [peerId, otherPeer] of room.peers.entries()) {
-          if (peerId !== clientId && otherPeer.ws && otherPeer.ws.readyState === 1) {
+        for (const [peerConnId, otherPeer] of room.peers.entries()) {
+          if (peerConnId !== connId && otherPeer.ws && otherPeer.ws.readyState === 1) {
             otherPeer.ws.send(bytes);
           }
         }
@@ -303,19 +317,24 @@ export class CollabRoomManager {
     });
 
     ws.on('close', () => {
-      room.peers.delete(clientId);
+      room.peers.delete(connId);
       this.broadcastPresence(room);
     });
   }
 
   private broadcastPresence(room: ActiveRoom): void {
-    const presences = Array.from(room.peers.values())
-      .map((p) => p.presence)
-      .filter(Boolean);
+    const presenceByClient = new Map<string, UserPresence>();
+    for (const peer of room.peers.values()) {
+      if (!peer.presence) continue;
+      const existing = presenceByClient.get(peer.clientId);
+      if (!existing || peer.presence.lastSeenTs >= existing.lastSeenTs) {
+        presenceByClient.set(peer.clientId, peer.presence);
+      }
+    }
 
     const payload = JSON.stringify({
       type: 'presence_list',
-      presences,
+      presences: Array.from(presenceByClient.values()),
     });
 
     for (const peer of room.peers.values()) {
