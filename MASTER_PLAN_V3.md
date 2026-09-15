@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-15
-**Status:** IN PROGRESS — Phase 7 task 7.1 complete; task 7.2 ready for review and authorization
+**Status:** IN PROGRESS — Phase 7 task 7.2 complete; task 7.3 ready for review and authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=7
-NEXT_TASK=7.2
+NEXT_TASK=7.3
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
@@ -1928,34 +1928,20 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 
 - [x] 7.1 Resolve OQ-4 in an ADR and implement authenticated principal/tenant/role context with resource ownership tests.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 7.2
+- [x] 7.2 Protect quota-consuming provider/economic calls and add per-tenant rate, cache, budget, and kill-switch policy.
+
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 7.3
 
 ```text
-[SCOPE_CONTRACT] Protect quota-consuming provider and economic calls across server proxy endpoints
-and shared tool execution by enforcing per-tenant rate limits, caching, tenant-allocated budgets, and
-kill-switch policy. In scope: apps/server/src/middleware/costGovernor.ts, apps/server/src/middleware/opsAuth.ts,
-packages/governance/src/budgetGovernor.ts, packages/governance/src/budgetLedger.ts, packages/contracts/src/identity.ts
-and related tenant/quota schemas, server routes consuming provider quotas, focused unit/property/integration
-tests, and security/runbook documentation. Out of scope: UI changes for intelligence, persisted BusinessContext,
-remote identity provisioning, new provider implementations, Phase 8 economic modules, and tasks 7.3+.
+[SCOPE_CONTRACT] Add the lazy `/#/intelligence` view and navigation in apps/web without importing or initializing Cesium. In scope: apps/web/src/routes/intelligence or equivalent lazy route, navigation links, design tokens compliant with docs/DESIGN.md, bundle budget enforcement, and Playwright verification. Out of scope: live Cesium globe loading on the intelligence route, economic analytics implementation (Phase 8), Layer Access admin (task 7.4), or tasks 7.4+.
 
-[PERFORMANCE_THRESHOLD] Per-tenant quota and rate limits strictly enforce isolation: one tenant's quota
-exhaustion or burst rate does not degrade or block another tenant. Cache hits return in < 10ms; cache
-invalidation on kill-switch or flag toggle is immediate. Spend across concurrent tenant requests settles
-idempotently with zero negative remaining balances and zero ledger drift. All existing unit, load,
-performance, MCP conformance, and Playwright smoke gates remain green.
+[PERFORMANCE_THRESHOLD] Initial bundle size does not increase by more than 15 KB gzip; lazy route chunk loads only when navigated to; Cesium is not downloaded or initialized on `/#/intelligence`; all tests green.
 
-[ARCHITECTURE_MODE] PLAN.md §2 rules 1-4, 7, 8, 10-13; §3; §4.5; §5; ADRs 0020, 0027, 0031, and 0041-0044.
-Tenant rate limits and spend allocations derive from the verified request-local identity context. Reads
-can spend money; missing, suppressed, or cached estimates never bypass tenant accounting. Pinned-fetch and
-kill switches fail closed. Durable STASIS stops further spending on breach.
+[ARCHITECTURE_MODE] PLAN.md §2 rules 8, 9; §3; §5; docs/DESIGN.md. Design tokens are law. Strict Svelte 5 runes; components do not own Cesium objects; no Tailwind.
 
-[FAILURE_MODES] Do not allow global shared buckets where a single tenant starves other tenants; do not store
-credentials or secrets in rate limit or audit keys; do not permit unauthenticated access to quota-consuming
-endpoints; do not fail open if the governor or ledger encounters an error.
+[FAILURE_MODES] Do not eagerly load Cesium or intelligence assets; do not introduce arbitrary colors outside docs/DESIGN.md; do not exceed bundle limits.
 ```
 
-- [ ] 7.2 Protect quota-consuming provider/economic calls and add per-tenant rate, cache, budget, and kill-switch policy.
 - [ ] 7.3 Add the lazy `/#/intelligence` view and navigation without Cesium; document any new dependency and enforce bundle delta.
 - [ ] 7.4 Activate tenant-scoped Layer Access administration: secure credential submission,
   masked status, bounded validation, rotation/revocation/deletion, versioned terms evidence,
@@ -3892,7 +3878,36 @@ No later task is authorized merely because it appears in this plan.
   - Playwright Smoke: `pnpm --filter @gev/e2e test:e2e smoke.spec.ts` passed 2/2 in 2.2m.
   - Git hygiene: `git diff --check` reported zero whitespace or formatting errors.
 - **Plan Advancement:** Task 7.1 is marked complete (`[x]`). `CURRENT_PHASE=7`, `NEXT_TASK=7.2`, `NEXT_TASK_STATUS=READY`. A ready-to-authorize 4-Pillar brief for Task 7.2 is provided.
-- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 7.2. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 7.2 Exit Evidence — Multi-tenant quota, rate limit, cache partitioning, and kill-switch policy
+
+- **Scope & Authorization:** The developer authorized the exact Task 7.2 four-pillar brief. Accepted [ADR 0050](./docs/adr/0050-tenant-quota-rate-cache-killswitch-policy.md) establishes the architectural policy for per-tenant rate limits, tenant-partitioned in-memory caching (`tenantCaches`), durable per-tenant budget allocations, and immediate cache invalidation on kill-switch activation or provider flag toggle.
+- **Contract & Schema Enhancements:**
+  - Added `TenantQuotaAllocationSchema`, `TenantBudgetStatusSchema`, and `TenantRateLimitPolicySchema` in `packages/contracts/src/identity.ts`.
+  - Added SQLite governance migration 5 (`governance_tenant_budgets`) in `packages/governance/src/governanceDb.ts` to persist per-tenant cap, spent, warn threshold, STASIS status, trip reason, and human resume audit metadata.
+- **Durable Ledger & Isolation:**
+  - Extended `packages/governance/src/budgetLedgerStore.ts` and `packages/governance/src/budgetLedger.ts` with tenant budget tracking, ensuring concurrent tenant reservations and settlements do not produce negative balances or ledger drift.
+  - Implemented tenant budget checking and human STASIS resume in `packages/governance/src/budgetGovernor.ts`.
+- **Server Middleware & Security Boundary:**
+  - Enhanced `apps/server/src/middleware/costGovernor.ts` with per-tenant rate limiting (`rateLimiter.checkLimit(rateLimitKey)` where `rateLimitKey = 'tenant:' + tenantId`), per-tenant cache partitioning (`tenantCaches: Map<string, Map<string, CacheEntry>>`), and cached response precomputation on insertion to ensure < 10ms cache hits.
+  - Added `apps/server/src/middleware/costGovernorSettlement.ts` to manage billable reservation settlement, in-doubt marking, and replay while keeping file sizes strictly under 500 lines (Standing Rule 5).
+  - Wired provider kill-switch and flag toggle to immediately purge tenant caches in `apps/server/src/index.ts`.
+  - Modularized ops resume and status endpoints into `apps/server/src/routes/opsResume.ts`.
+- **Verification & Test Coverage:**
+  - Integration suite `apps/server/test/tenantCostGovernor.test.ts` (6 tests) verified:
+    1. Tenant A rate limit burst (429) does not degrade or block Tenant B (200).
+    2. Tenant A quota exhaustion (429 BUDGET_DENIED) does not degrade or block Tenant B.
+    3. Unauthenticated requests to quota-consuming endpoints fail closed with 401.
+    4. Kill-switch immediately invalidates cache and returns 503 fail-closed.
+    5. Cache hits return in < 10ms with correct X-GEV-Cache headers.
+    6. Flag toggle immediately invalidates cache across tenants.
+  - Property suite `packages/governance/test/tenantBudgetGovernor.test.ts` (3 tests) verified that concurrent tenant spends settle idempotently with zero negative remaining balances and zero ledger drift.
+  - Full suite passed: 24 test files (203 tests) in `@gev/server`, 8 test files (54 tests) in `@gev/governance`.
+  - Architectural drift check (`pnpm architecture:check`) passed with 0 large files (>500 lines) and zero unclassified drift.
+  - ADG check (`pnpm docs:check`) passed across 71 doc files, 547 paths, 18 module symbols; `pnpm docs:test` passed 17/17.
+  - Monorepo turbo build, typecheck, and tests passed 29/29 tasks.
+- **Plan Advancement:** Task 7.2 is marked complete (`[x]`). `CURRENT_PHASE=7`, `NEXT_TASK=7.3`, `NEXT_TASK_STATUS=READY`. A ready-to-authorize 4-Pillar brief for Task 7.3 is provided.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 7.3. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
 

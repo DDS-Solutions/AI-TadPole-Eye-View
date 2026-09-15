@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import {
+  type Actor,
   type AuditEntry,
   type BudgetLedger,
   LedgerFingerprintComponentsSchema,
@@ -22,11 +23,11 @@ import {
 import { type SimClock, SystemClock } from '@gev/core';
 import { AuditChainStore } from './auditChainStore.js';
 import type { TrustedAuditRetentionKey } from './auditRetention.js';
-import { BudgetLedgerStore, type LedgerRow } from './budgetLedgerStore.js';
+import { BudgetLedgerStore, type TenantBudgetRow } from './budgetLedgerStore.js';
+
 import { openGovernanceDatabase, withImmediateTransaction } from './governanceDb.js';
 import { LedgerOperationError, transitionRace, unavailableLedger } from './ledgerErrors.js';
 import {
-  blockedLedgerResult,
   createLedgerAuditOutcome,
   fingerprintLedgerComponents,
   reconciliationLedgerResult,
@@ -79,45 +80,111 @@ export class SqliteBudgetLedger implements BudgetLedger {
 
     const result = this.transaction(() => {
       const existing = this.store.readOperationRow(request.operation_id);
-      if (existing) return this.classifyExisting(existing, fingerprint);
+      if (existing) return this.store.classifyExisting(existing, fingerprint);
 
       const now = this.store.isoNow();
       const activeSibling = this.store.readActiveOperationByFingerprint(fingerprint, now);
-      if (activeSibling) return this.classifyExisting(activeSibling, fingerprint);
+      if (activeSibling) return this.store.classifyExisting(activeSibling, fingerprint);
 
       const budget = this.store.readBudgetRow();
       const reserved = toMicrousd(components.estimate.max, 'estimate.max', true, 'up');
-      const held = this.store.activeHeldMicrousd();
-      const available = Math.max(0, budget.cap_microusd - budget.spent_microusd - held);
       committed.push(this.store.insertAuditIntent(request.audit_intent));
 
-      if (budget.stasis_active === 1 || reserved > available) {
-        const reason =
-          budget.stasis_active === 1 ? (budget.trip_code ?? 'BUDGET_BREACH') : 'BUDGET_BREACH';
-        const message =
-          budget.stasis_active === 1
-            ? (budget.stasis_message ?? 'System is locked in STASIS mode.')
-            : `Reservation requires ${reserved} micro-USD but only ${available} micro-USD remains.`;
-        if (budget.stasis_active !== 1) this.store.writeTrip('BUDGET_BREACH', message);
-        const terminalResult = blockedLedgerResult(
-          request.operation_id,
-          'BUDGET_DENIED',
+      // Global STASIS halts all operations regardless of tenant
+      if (budget.stasis_active === 1) {
+        const reason = (budget.trip_code ?? 'BUDGET_BREACH') as 'BUDGET_BREACH';
+        const message = budget.stasis_message ?? 'System is locked in STASIS mode.';
+        const { outcome, operation } = this.store.recordReservationDenial(
+          request,
+          fingerprint,
+          reserved,
+          now,
+          reason,
           message,
           components.action
         );
-        const outcome = createLedgerAuditOutcome(
-          request.operation_id,
-          now,
-          'blocked',
-          terminalResult,
-          message
-        );
-        this.store.insertOperation(request, fingerprint, reserved, now, 'DENIED', terminalResult);
-        this.store.insertLedgerEntry(request.operation_id, 'denied', reserved, { reason, message });
         committed.push(this.store.insertAuditOutcome(outcome));
         return LedgerReservationResultSchema.parse({
           kind: 'denied',
+          operation,
+          reason,
+          message,
+        });
+      }
+
+      // Per-tenant budget isolation
+      if (components.tenant_id) {
+        const tenantBudget = this.store.ensureTenantBudget(components.tenant_id);
+        const tenantHeld = this.store.activeHeldMicrousdForTenant(components.tenant_id);
+        const tenantAvailable = Math.max(
+          0,
+          tenantBudget.cap_microusd - tenantBudget.spent_microusd - tenantHeld
+        );
+
+        if (tenantBudget.stasis_active === 1 || reserved > tenantAvailable) {
+          const reason =
+            tenantBudget.stasis_active === 1
+              ? ((tenantBudget.trip_code ?? 'BUDGET_BREACH') as 'BUDGET_BREACH')
+              : 'BUDGET_BREACH';
+          const message =
+            tenantBudget.stasis_active === 1
+              ? (tenantBudget.stasis_message ??
+                `Tenant '${components.tenant_id}' is locked in STASIS mode.`)
+              : `Tenant '${components.tenant_id}' reservation requires ${reserved} micro-USD but only ${tenantAvailable} micro-USD remains.`;
+          if (tenantBudget.stasis_active !== 1) {
+            this.store.writeTenantTrip(components.tenant_id, 'BUDGET_BREACH', message);
+          }
+          const { outcome, operation } = this.store.recordReservationDenial(
+            request,
+            fingerprint,
+            reserved,
+            now,
+            reason,
+            message,
+            components.action,
+            { tenant_id: components.tenant_id }
+          );
+          committed.push(this.store.insertAuditOutcome(outcome));
+          return LedgerReservationResultSchema.parse({
+            kind: 'denied',
+            operation,
+            reason,
+            message,
+          });
+        }
+
+        this.store.insertOperation(request, fingerprint, reserved, now, 'RESERVED', null);
+        this.store.insertLedgerEntry(request.operation_id, 'reserved', reserved, {
+          available_before: tenantAvailable,
+          tenant_id: components.tenant_id,
+        });
+        return LedgerReservationResultSchema.parse({
+          kind: 'reserved',
           operation: this.store.readRequiredOperation(request.operation_id),
+        });
+      }
+
+      // Legacy global budget check when tenant_id is null
+      const held = this.store.activeHeldMicrousd();
+      const available = Math.max(0, budget.cap_microusd - budget.spent_microusd - held);
+
+      if (reserved > available) {
+        const reason = 'BUDGET_BREACH';
+        const message = `Reservation requires ${reserved} micro-USD but only ${available} micro-USD remains.`;
+        this.store.writeTrip('BUDGET_BREACH', message);
+        const { outcome, operation } = this.store.recordReservationDenial(
+          request,
+          fingerprint,
+          reserved,
+          now,
+          reason,
+          message,
+          components.action
+        );
+        committed.push(this.store.insertAuditOutcome(outcome));
+        return LedgerReservationResultSchema.parse({
+          kind: 'denied',
+          operation,
           reason,
           message,
         });
@@ -258,7 +325,7 @@ export class SqliteBudgetLedger implements BudgetLedger {
     try {
       const row = this.store.readOperationRow(operationId);
       return row ? this.store.toOperation(row) : null;
-    } catch (error) {
+    } catch (_error) {
       throw unavailableLedger();
     }
   }
@@ -269,63 +336,15 @@ export class SqliteBudgetLedger implements BudgetLedger {
     const committed: AuditEntry[] = [];
     this.transaction(() => {
       const now = this.store.isoNow();
-      const rows = this.db
-        .prepare(`
-        SELECT * FROM governance_budget_operations
-        WHERE deadline_at <= ? AND state IN ('RESERVED', 'EXECUTING')
-        ORDER BY created_at, operation_id
-      `)
-        .all(now) as unknown as LedgerRow[];
+      const rows = this.store.readExpiredOperations(now);
       for (const row of rows) {
         const current = this.store.toOperation(row);
         if (current.state === 'RESERVED') {
-          const result = blockedLedgerResult(
-            current.operation_id,
-            'RESERVATION_EXPIRED',
-            'Reservation expired before dispatch',
-            current.fingerprint_components.action
-          );
-          const outcome = createLedgerAuditOutcome(
-            current.intent_id,
-            now,
-            'blocked',
-            result,
-            'Reservation expired before dispatch'
-          );
-          this.store.applyTerminal(current, 'REFUNDED', 0, result, null);
+          const outcome = this.store.expireReserved(current, now);
           committed.push(this.store.insertAuditOutcome(outcome));
           refunded.push(current.operation_id);
         } else {
-          const result = blockedLedgerResult(
-            current.operation_id,
-            'OPERATION_IN_DOUBT',
-            'Execution deadline expired after dispatch',
-            current.fingerprint_components.action
-          );
-          const outcome = createLedgerAuditOutcome(
-            current.intent_id,
-            now,
-            'error',
-            result,
-            'Execution deadline expired after dispatch'
-          );
-          const changed = this.db
-            .prepare(`UPDATE governance_budget_operations SET state = 'IN_DOUBT'
-            WHERE operation_id = ? AND state = 'EXECUTING'`)
-            .run(current.operation_id);
-          if (changed.changes !== 1) throw transitionRace();
-          this.store.insertLedgerEntry(
-            current.operation_id,
-            'in_doubt',
-            current.reserved_microusd,
-            {
-              reason: 'deadline_expired',
-            }
-          );
-          this.store.writeTrip(
-            'COMPLIANCE_DRIFT',
-            'An executed operation expired with an ambiguous outcome.'
-          );
+          const outcome = this.store.expireExecuting(current, now);
           committed.push(this.store.insertAuditOutcome(outcome));
           inDoubt.push(current.operation_id);
         }
@@ -340,14 +359,28 @@ export class SqliteBudgetLedger implements BudgetLedger {
 
   hasInDoubt(): boolean {
     try {
-      const row = this.db
-        .prepare(`SELECT COUNT(*) AS count FROM governance_budget_operations
-        WHERE state = 'IN_DOUBT'`)
-        .get() as { count: number };
-      return row.count > 0;
-    } catch (error) {
+      return this.store.hasInDoubt();
+    } catch {
       throw unavailableLedger();
     }
+  }
+
+  getTenantBudget(tenantId: string): TenantBudgetRow {
+    return this.transaction(() => this.store.ensureTenantBudget(tenantId));
+  }
+
+  setTenantCap(tenantId: string, capMicrousd: number): void {
+    if (!Number.isSafeInteger(capMicrousd) || capMicrousd <= 0) {
+      throw new Error('Tenant cap must be a positive integer micro-USD amount');
+    }
+    this.transaction(() => this.store.setTenantCap(tenantId, capMicrousd));
+  }
+
+  resumeTenant(tenantId: string, resumedBy: Actor = 'human'): void {
+    if (resumedBy !== 'human') {
+      throw new Error('STASIS resume requires a human actor');
+    }
+    this.transaction(() => this.store.resumeTenant(tenantId, resumedBy));
   }
 
   close(): void {
@@ -401,22 +434,6 @@ export class SqliteBudgetLedger implements BudgetLedger {
     });
     this.publish(committed);
     return operation;
-  }
-
-  private classifyExisting(row: LedgerRow, fingerprint: string): LedgerReservationResult {
-    const operation = this.store.toOperation(row);
-    if (operation.request_fingerprint !== fingerprint) {
-      return LedgerReservationResultSchema.parse({
-        kind: 'conflict',
-        operation,
-        message: 'Idempotency key is bound to different request components',
-      });
-    }
-    if (operation.state === 'IN_DOUBT')
-      return LedgerReservationResultSchema.parse({ kind: 'in_doubt', operation });
-    if (operation.state === 'RESERVED' || operation.state === 'EXECUTING')
-      return LedgerReservationResultSchema.parse({ kind: 'in_progress', operation });
-    return LedgerReservationResultSchema.parse({ kind: 'replay', operation });
   }
 
   private assertFingerprint(operation: LedgerOperation, fingerprint: string): void {

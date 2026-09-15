@@ -103,88 +103,15 @@ export function mountOpsAuthorization(app: Hono, auth: OpsAuthAdapter): void {
   for (const path of PLATFORM_ADMIN_OPS_PATHS) app.use(path, platformAdmin);
 }
 
-export interface RateLimitDecision {
-  allowed: boolean;
-  remaining: number;
-  retryAfterSeconds: number;
-}
-
-interface RateLimitWindow {
-  count: number;
-  startedAtMs: number;
-}
-
-/** Shared, clock-injected fixed-window protection for bounded in-memory surfaces. */
-export class InMemoryRateLimiter {
-  private readonly windows = new Map<string, RateLimitWindow>();
-  private readonly maxEntries = 5000;
-
-  constructor(
-    private readonly clock: SimClock,
-    private readonly windowMs = 60_000
-  ) {}
-
-  private prune(now: number): void {
-    for (const [k, w] of this.windows.entries()) {
-      if (now - w.startedAtMs >= this.windowMs) {
-        this.windows.delete(k);
-      }
-    }
-  }
-
-  consume(bucket: string, clientId: string, limit: number): RateLimitDecision {
-    const now = this.clock.now();
-    const key = `${bucket}:${clientId}`;
-    let window = this.windows.get(key);
-
-    if (this.windows.size > this.maxEntries) {
-      this.prune(now);
-    }
-
-    if (!window || now - window.startedAtMs >= this.windowMs) {
-      window = { count: 0, startedAtMs: now };
-      this.windows.set(key, window);
-    }
-
-    if (window.count >= limit) {
-      return {
-        allowed: false,
-        remaining: 0,
-        retryAfterSeconds: Math.max(
-          1,
-          Math.ceil((window.startedAtMs + this.windowMs - now) / 1000)
-        ),
-      };
-    }
-
-    window.count += 1;
-    return {
-      allowed: true,
-      remaining: limit - window.count,
-      retryAfterSeconds: 0,
-    };
-  }
-}
-
-export interface RateLimitMiddlewareOptions {
-  bucket: string;
-  limit: number;
-  resolveClientId: (c: Context) => string;
-}
-
-export function createRateLimitMiddleware(
-  limiter: InMemoryRateLimiter,
-  options: RateLimitMiddlewareOptions
-): MiddlewareHandler {
-  return async (c: Context, next: Next) => {
-    const decision = limiter.consume(options.bucket, options.resolveClientId(c), options.limit);
-    if (!decision.allowed) {
-      c.header('Retry-After', String(decision.retryAfterSeconds));
-      return c.json({ error: 'Rate limit exceeded', code: 'RATE_LIMITED' }, 429);
-    }
-    return await next();
-  };
-}
+export {
+  type RateLimitDecision,
+  InMemoryRateLimiter,
+  type RateLimitMiddlewareOptions,
+  createRateLimitMiddleware,
+  resolveRequestTenantId,
+  type TenantRateLimitMiddlewareOptions,
+  createTenantRateLimitMiddleware,
+} from './rateLimiter.js';
 
 function normalizedTokenDigest(token: string): Buffer {
   return createHash('sha256').update(token, 'utf8').digest();
@@ -319,6 +246,11 @@ export function createOpsAuth(options: OpsAuthOptions = {}): OpsAuthAdapter {
     };
   };
 
+  const tokenCache = new Map<
+    string,
+    { identity: AuthenticatedIdentityContext; expiresAtEpochSeconds: number }
+  >();
+
   const authenticate = async (
     authorization?: string,
     requestedTenantId?: string,
@@ -332,38 +264,56 @@ export function createOpsAuth(options: OpsAuthOptions = {}): OpsAuthAdapter {
       const accessToken = extractBearerToken(authorization);
       if (!accessToken) return localDecision;
       const nowEpochSeconds = Math.floor(clock.now() / 1000);
-      const verificationRequest = IdentityBearerVerificationRequestSchema.safeParse({
-        access_token: accessToken,
-        audience: resource,
-        resource,
-        now_epoch_seconds: nowEpochSeconds,
-      });
-      if (!verificationRequest.success) {
-        return denied(401, 'INVALID_BEARER_TOKEN', 'Unauthorized: Invalid privileged credentials');
-      }
-      try {
-        const parsed = AuthenticatedIdentityContextSchema.safeParse(
-          await bearerVerifier.verify(Object.freeze(verificationRequest.data))
-        );
-        if (
-          !parsed.success ||
-          parsed.data.issuer !== expectedIssuer ||
-          parsed.data.audience !== resource ||
-          parsed.data.resource !== resource ||
-          !identityIsCurrent(parsed.data, nowEpochSeconds)
-        ) {
+      const cached = tokenCache.get(accessToken);
+      if (cached && nowEpochSeconds < cached.expiresAtEpochSeconds) {
+        identity = cached.identity;
+      } else {
+        const verificationRequest = IdentityBearerVerificationRequestSchema.safeParse({
+          access_token: accessToken,
+          audience: resource,
+          resource,
+          now_epoch_seconds: nowEpochSeconds,
+        });
+        if (!verificationRequest.success) {
           return denied(
             401,
             'INVALID_BEARER_TOKEN',
             'Unauthorized: Invalid privileged credentials'
           );
         }
-        identity = Object.freeze({
-          ...parsed.data,
-          scopes: Object.freeze([...parsed.data.scopes]),
-        }) as AuthenticatedIdentityContext;
-      } catch {
-        return denied(401, 'INVALID_BEARER_TOKEN', 'Unauthorized: Invalid privileged credentials');
+        try {
+          const parsed = AuthenticatedIdentityContextSchema.safeParse(
+            await bearerVerifier.verify(Object.freeze(verificationRequest.data))
+          );
+          if (
+            !parsed.success ||
+            parsed.data.issuer !== expectedIssuer ||
+            parsed.data.audience !== resource ||
+            parsed.data.resource !== resource ||
+            !identityIsCurrent(parsed.data, nowEpochSeconds)
+          ) {
+            return denied(
+              401,
+              'INVALID_BEARER_TOKEN',
+              'Unauthorized: Invalid privileged credentials'
+            );
+          }
+          identity = Object.freeze({
+            ...parsed.data,
+            scopes: Object.freeze([...parsed.data.scopes]),
+          }) as AuthenticatedIdentityContext;
+          if (tokenCache.size >= 1000) tokenCache.clear();
+          tokenCache.set(accessToken, {
+            identity,
+            expiresAtEpochSeconds: parsed.data.expires_at_epoch_seconds,
+          });
+        } catch {
+          return denied(
+            401,
+            'INVALID_BEARER_TOKEN',
+            'Unauthorized: Invalid privileged credentials'
+          );
+        }
       }
     } else {
       if (localDecision.kind === 'local_seed') {

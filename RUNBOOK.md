@@ -108,24 +108,25 @@ an exact validity end only after the replacement is distributed; mark a compromi
 key `revoked` immediately. The provisional profile and future revision points are in
 [ADR 0042](./docs/adr/0042-signed-m2-approval-verification.md).
 
-### Signed M2 approval verification
+### Multi-tenant Quota, Rate Limit, and Budget Governance
 
-Production runtimes deny dangerous mutations unless an explicit `SignedApprovalGate`
-is composed with a trusted external decision provider and server-side Ed25519 public-key
-allowlist. Never place approval private keys in GEV environment variables, fixtures,
-logs, browser bundles, or error messages. `LocalM2ApprovalDemoGate` is permitted only
-for deterministic non-production seed/test/demo flows.
+Phase 7 introduces per-tenant quotas and rate limiting to prevent noisy neighbor starvation:
 
-Approval payloads expire after at most 60 seconds, allow at most 5 seconds of future
-clock skew, and use verifier-issued one-time nonces. A nonce or request replay, unknown
-signer/key, revoked key, scope/intent mismatch, invalid signature, clock failure, or
-SQLite failure must stop before handler dispatch. Do not delete nonce rows to retry a
-mutation; task 5.1.4 defines retry and settlement idempotency.
+1. **Tenant Budget Quotas:**
+   - Managed in `governance_tenant_budgets` table (schema version 5).
+   - If a tenant's spend reaches its allocated cap, `SqliteBudgetLedger.reserve()` denies requests for that tenant with `BUDGET_DENIED` (HTTP 429).
+   - Tenant budget exhaustion trips tenant-level STASIS without tripping global STASIS, ensuring other tenants operate normally.
+   - Resumption of a tenant STASIS lockdown requires human operator invocation via `budgetLedger.resumeTenant(tenantId, 'human')` or `budgetGovernor.resumeTenant(tenantId, 'human')`.
 
-Key rotation uses overlapping active public keys. Mark an outgoing key `retired` with
-an exact validity end only after the replacement is distributed; mark a compromised
-key `revoked` immediately. The provisional profile and future revision points are in
-[ADR 0042](./docs/adr/0042-signed-m2-approval-verification.md).
+2. **Per-Tenant Rate Limits:**
+   - Provider proxy endpoints enforce rate limits partitioned per tenant (`provider:${providerName}:${tenantId}`).
+   - Burst consumption above limits returns HTTP 429 `TENANT_RATE_LIMITED` with the `X-GEV-Tenant-Rate-Limited: true` header.
+
+3. **Per-Tenant Caching & Immediate Invalidation:**
+   - Upstream provider responses are cached partitioned by `(provider, tenantId, url)`.
+   - On kill-switch trigger or governed flag update (`set_flag`), `costGovernor.invalidate(providerName)` wipes the cache immediately across all tenants.
+   - Individual tenant caches can be cleared via `costGovernor.invalidateTenant(providerName, tenantId)`.
+   - Disabled providers fail closed immediately with HTTP 503 `KILL_SWITCH_ACTIVE`.
 
 ---
 

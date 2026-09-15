@@ -9,6 +9,7 @@ import type { SimClock } from '@gev/core';
 import type { GovernanceRuntimeContext } from '@gev/governance';
 import type { CablePackFetcher, SatelliteFetcher, SatelliteLiveGroup } from '@gev/providers';
 import type { Context } from 'hono';
+import type { CostGovernorOptions } from './middleware/costGovernor.js';
 import type { OpsAuthOptions } from './middleware/opsAuth.js';
 
 export interface CreateAppOptions {
@@ -34,4 +35,7 @@ export interface CreateAppOptions {
   mcpHttpMaxActiveRequests?: number;
   mcpHttpResponseMode?: 'auto' | 'json' | 'sse';
   mcpSceneRoot?: string;
+  isProviderEnabled?: (providerName: string) => boolean;
+  costGovernorOptions?: Partial<CostGovernorOptions>;
+  tenantRateLimits?: Record<string, number>;
 }

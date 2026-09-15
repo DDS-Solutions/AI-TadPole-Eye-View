@@ -4,6 +4,7 @@ export interface ProviderTierConfig {
   ttlSeconds: number;
   costPerFetchUsd: number;
   maxStaleSeconds: number;
+  requestsPerMinute?: number;
 }
 
 function providerTier(

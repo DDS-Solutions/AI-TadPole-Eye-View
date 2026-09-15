@@ -1,11 +1,4 @@
-import crypto from 'node:crypto';
-import {
-  type Actor,
-  type AuthenticatedIdentityContext,
-  GevEvents,
-  ProviderRegistrySchema,
-  SystemHealthResponseSchema,
-} from '@gev/contracts';
+import { ProviderRegistrySchema, SystemHealthResponseSchema } from '@gev/contracts';
 import { GovernedToolExecutor, SystemClock } from '@gev/core';
 import { SatellitePropagator } from '@gev/core/satellite-propagation';
 import { createGovernanceRuntimeContext } from '@gev/governance';
@@ -59,6 +52,7 @@ import { createOverpassRouter } from './routes/overpass.js';
 import { createQuakesRouter } from './routes/quakes.js';
 import { createRadioRouter } from './routes/radio.js';
 import { createSatellitesRouter } from './routes/satellites.js';
+import { createOpsResumeRouter } from './routes/opsResume.js';
 import { createSeedReloadRouter } from './routes/seedReload.js';
 import { createShipsRouter } from './routes/ships.js';
 import { createVoiceRouter } from './routes/voice.js';
@@ -161,6 +155,10 @@ export function createApp(options: CreateAppOptions = {}) {
   const costGovernor = new CostGovernor({
     clock,
     budgetLedger,
+    rateLimiter,
+    tenantRateLimits: options.tenantRateLimits,
+    isProviderEnabled: options.isProviderEnabled,
+    auth,
     ...(providerRegistry.requested_mode === 'seed'
       ? {
           tiers: Object.fromEntries(
@@ -171,6 +169,7 @@ export function createApp(options: CreateAppOptions = {}) {
           ),
         }
       : {}),
+    ...options.costGovernorOptions,
   });
   const collabRoomManager = new CollabRoomManager(clock);
   const cableActivationErrors = new Map<string, string>();
@@ -184,25 +183,33 @@ export function createApp(options: CreateAppOptions = {}) {
   });
   cablePackExecutor.register('set_flag', async (input) => {
     const prefix = 'cables.download-pack.';
-    if (!input.enabled || !input.flag.startsWith(prefix)) {
-      return { flag: input.flag, enabled: input.enabled, updated: false };
+    if (input.flag.startsWith(prefix)) {
+      if (!input.enabled) {
+        return { flag: input.flag, enabled: input.enabled, updated: false };
+      }
+      const packId = input.flag.slice(prefix.length);
+      try {
+        const response = await cablePackLoader.loadPack(packId);
+        const nextRegistry = activateProviderDownloadPack(providerRegistry, 'submarine-cables');
+        cableAdapter.activatePack(packId, response);
+        providerRegistry = nextRegistry;
+        costGovernor.invalidate('cables');
+        cableActivationErrors.delete(packId);
+        return { flag: input.flag, enabled: true, updated: true };
+      } catch {
+        cableActivationErrors.set(
+          packId,
+          'Configured cable pack is unavailable or failed integrity and contract validation'
+        );
+        return { flag: input.flag, enabled: true, updated: false };
+      }
     }
-    const packId = input.flag.slice(prefix.length);
-    try {
-      const response = await cablePackLoader.loadPack(packId);
-      const nextRegistry = activateProviderDownloadPack(providerRegistry, 'submarine-cables');
-      cableAdapter.activatePack(packId, response);
-      providerRegistry = nextRegistry;
-      costGovernor.invalidate('cables');
-      cableActivationErrors.delete(packId);
-      return { flag: input.flag, enabled: true, updated: true };
-    } catch {
-      cableActivationErrors.set(
-        packId,
-        'Configured cable pack is unavailable or failed integrity and contract validation'
-      );
-      return { flag: input.flag, enabled: true, updated: false };
+    if (input.flag.endsWith('.enabled')) {
+      const providerName = input.flag.replace(/\.enabled$/, '');
+      costGovernor.invalidate(providerName);
+      return { flag: input.flag, enabled: input.enabled, updated: true };
     }
+    return { flag: input.flag, enabled: input.enabled, updated: false };
   });
 
   const mcpHttp = mountMcpHttpRuntime(
@@ -377,92 +384,7 @@ export function createApp(options: CreateAppOptions = {}) {
     return c.json({ entries });
   });
 
-  app.get('/ops/status', async (c) => {
-    return c.json(budgetGovernor.state());
-  });
-
-  // Ops STASIS Resume (Rule 1: intent → action → outcome; human-only)
-  app.post('/ops/resume', async (c) => {
-    const identity = c.var as unknown as {
-      opsActor: Actor;
-      opsAuthenticated: boolean;
-      opsIdentity?: AuthenticatedIdentityContext;
-    };
-    const actor = identity.opsActor;
-    if (
-      identity.opsAuthenticated !== true ||
-      actor !== 'human' ||
-      identity.opsIdentity?.role !== 'platform_admin'
-    ) {
-      return c.json(
-        {
-          error: 'STASIS resume requires an authenticated human operator',
-          code: 'HUMAN_AUTH_REQUIRED',
-        },
-        403
-      );
-    }
-    const body = (await c.req.json().catch(() => ({}))) as { reason?: string };
-    const reason = body.reason ?? 'Human operator manual override via ops API';
-    const state = budgetGovernor.state();
-
-    if (!state.stasis_active) {
-      return c.json({ status: 'ok', message: 'STASIS is not currently active' });
-    }
-
-    const startTime = clock.now();
-    const intentId = crypto.randomUUID();
-
-    // Rule 1: Audit intent BEFORE mutation
-    auditSink.intent({
-      kind: GevEvents.AuditIntent,
-      id: intentId,
-      ts: new Date(startTime).toISOString(),
-      actor,
-      action: 'governance.resume',
-      target: 'stasis.lock',
-      params: { reason },
-      task_ref: 'ops-resume',
-    });
-
-    try {
-      budgetGovernor.resume(actor);
-    } catch (error) {
-      const reconciliationRequired =
-        error instanceof Error && error.message.includes('reconciliation');
-      auditSink.outcome({
-        kind: GevEvents.AuditOutcome,
-        intent_id: intentId,
-        ts: new Date(clock.now()).toISOString(),
-        status: 'blocked',
-        error: reconciliationRequired
-          ? 'Human reconciliation is required before STASIS resume'
-          : 'STASIS resume failed closed',
-        duration_ms: clock.now() - startTime,
-      });
-      return c.json(
-        {
-          error: reconciliationRequired
-            ? 'Reconcile every ambiguous operation before resuming STASIS'
-            : 'STASIS resume failed closed',
-          code: reconciliationRequired ? 'RECONCILIATION_REQUIRED' : 'GOVERNANCE_UNAVAILABLE',
-        },
-        reconciliationRequired ? 409 : 503
-      );
-    }
-
-    // Rule 1: Audit outcome AFTER mutation
-    auditSink.outcome({
-      kind: GevEvents.AuditOutcome,
-      intent_id: intentId,
-      ts: new Date(clock.now()).toISOString(),
-      status: 'ok',
-      result: { resumed: true, reason },
-      duration_ms: clock.now() - startTime,
-    });
-
-    return c.json({ status: 'ok', message: 'STASIS resumed', reason });
-  });
+  app.route('/ops', createOpsResumeRouter({ clock, auditSink, budgetGovernor }));
 
   return {
     app,

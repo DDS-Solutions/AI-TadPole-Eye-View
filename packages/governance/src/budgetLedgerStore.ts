@@ -7,42 +7,23 @@ import {
   LedgerOperationSchema,
   type LedgerRefundRequest,
   type LedgerReservationRequest,
+  type LedgerReservationResult,
+  LedgerReservationResultSchema,
   M3_FINGERPRINT_VERSION,
   M3_LEDGER_CONTRACT_VERSION,
 } from '@gev/contracts';
 import type { SimClock } from '@gev/core';
 import { AuditChainStore } from './auditChainStore.js';
 import { LedgerOperationError, transitionRace } from './ledgerErrors.js';
-import { canonicalizeLedgerComponents, normalizeTerminalResult } from './ledgerSerialization.js';
+import {
+  blockedLedgerResult,
+  canonicalizeLedgerComponents,
+  createLedgerAuditOutcome,
+  normalizeTerminalResult,
+} from './ledgerSerialization.js';
+import type { BudgetRow, LedgerRow, TenantBudgetRow } from './budgetLedgerTypes.js';
 
-export interface LedgerRow {
-  operation_id: string;
-  intent_id: string;
-  contract_version: string;
-  fingerprint_version: string;
-  request_fingerprint: string;
-  fingerprint_components_json: string;
-  state: string;
-  reserved_microusd: number;
-  settled_microusd: number;
-  period_start: string;
-  deadline_at: string;
-  created_at: string;
-  execution_started_at: string | null;
-  terminal_at: string | null;
-  terminal_result_json: string | null;
-  terminal_result_digest: string | null;
-  evidence_json: string | null;
-}
-
-export interface BudgetRow {
-  period_start: string;
-  spent_microusd: number;
-  cap_microusd: number;
-  stasis_active: number;
-  trip_code: string | null;
-  stasis_message: string | null;
-}
+export type { LedgerRow, BudgetRow, TenantBudgetRow };
 
 export class BudgetLedgerStore {
   private readonly auditChain: AuditChainStore;
@@ -151,9 +132,22 @@ export class BudgetLedgerStore {
   }
 
   readBudgetRow(): BudgetRow {
-    const row = this.db
+    let row = this.db
       .prepare('SELECT * FROM governance_budget_state WHERE singleton_id = 1')
       .get() as BudgetRow | undefined;
+    if (!row) {
+      const now = this.isoNow();
+      this.db
+        .prepare(`INSERT OR IGNORE INTO governance_budget_state (
+          singleton_id, period_start, spent_microusd, cap_microusd,
+          warn_threshold_pct, stasis_active, trip_code, trip_at,
+          resumed_by, stasis_message, revision
+        ) VALUES (1, ?, 0, 10000000, 80, 0, NULL, NULL, NULL, NULL, 0)`)
+        .run(now);
+      row = this.db.prepare('SELECT * FROM governance_budget_state WHERE singleton_id = 1').get() as
+        | BudgetRow
+        | undefined;
+    }
     if (!row) throw new Error('Durable governance budget state is missing');
     return row;
   }
@@ -226,12 +220,227 @@ export class BudgetLedgerStore {
         current.state
       );
     if (changed.changes !== 1) throw transitionRace();
-    if (state === 'SETTLED') this.recordSettlement(current, actual);
+    if (state === 'SETTLED') {
+      this.recordSettlement(current, actual);
+      if (current.fingerprint_components.tenant_id) {
+        this.recordTenantSettlement(current.fingerprint_components.tenant_id, current, actual);
+      }
+    }
     this.insertLedgerEntry(current.operation_id, state.toLowerCase(), actual, evidence);
   }
 
   isoNow(): string {
     return new Date(this.clock.now()).toISOString();
+  }
+
+  ensureTenantBudget(tenantId: string, defaultCapMicrousd?: number): TenantBudgetRow {
+    const existing = this.readTenantBudgetRow(tenantId);
+    if (existing) return existing;
+    let cap = defaultCapMicrousd;
+    if (cap === undefined) {
+      try {
+        const globalBudget = this.readBudgetRow();
+        cap = globalBudget.cap_microusd;
+      } catch {
+        cap = 10_000_000;
+      }
+    }
+    const now = this.isoNow();
+    this.db
+      .prepare(
+        'INSERT OR IGNORE INTO governance_tenant_budgets (tenant_id, period_start, spent_microusd, cap_microusd, warn_threshold_pct, stasis_active, trip_code, trip_at, resumed_by, stasis_message, revision) VALUES (?, ?, 0, ?, 80, 0, NULL, NULL, NULL, NULL, 0)'
+      )
+      .run(tenantId, now, cap);
+    const row = this.readTenantBudgetRow(tenantId);
+    if (!row) {
+      throw new Error(`Failed to initialize budget for tenant ${tenantId}`);
+    }
+    return row;
+  }
+
+  readTenantBudgetRow(tenantId: string): TenantBudgetRow | null {
+    const row = this.db
+      .prepare('SELECT * FROM governance_tenant_budgets WHERE tenant_id = ?')
+      .get(tenantId) as TenantBudgetRow | undefined;
+    return row ?? null;
+  }
+
+  activeHeldMicrousdForTenant(tenantId: string): number {
+    const row = this.db
+      .prepare(
+        "SELECT COALESCE(SUM(reserved_microusd), 0) AS held FROM governance_budget_operations WHERE tenant_id = ? AND state IN ('RESERVED', 'EXECUTING', 'IN_DOUBT')"
+      )
+      .get(tenantId) as { held: number };
+    if (!Number.isSafeInteger(row.held) || row.held < 0) {
+      throw new Error('Tenant active reservation sum is invalid');
+    }
+    return row.held;
+  }
+
+  writeTenantTrip(
+    tenantId: string,
+    reason: 'BUDGET_BREACH' | 'COMPLIANCE_DRIFT',
+    message: string
+  ): void {
+    this.db
+      .prepare(
+        'UPDATE governance_tenant_budgets SET stasis_active = 1, trip_code = ?, trip_at = ?, resumed_by = NULL, stasis_message = ?, revision = revision + 1 WHERE tenant_id = ?'
+      )
+      .run(reason, this.isoNow(), message, tenantId);
+  }
+
+  setTenantCap(tenantId: string, capMicrousd: number): void {
+    this.ensureTenantBudget(tenantId);
+    this.db
+      .prepare(
+        'UPDATE governance_tenant_budgets SET cap_microusd = ?, revision = revision + 1 WHERE tenant_id = ?'
+      )
+      .run(capMicrousd, tenantId);
+  }
+
+  resumeTenant(tenantId: string, resumedBy: string): void {
+    this.ensureTenantBudget(tenantId);
+    this.db
+      .prepare(
+        'UPDATE governance_tenant_budgets SET stasis_active = 0, resumed_by = ?, stasis_message = NULL, revision = revision + 1 WHERE tenant_id = ?'
+      )
+      .run(resumedBy, tenantId);
+  }
+
+  hasInDoubt(): boolean {
+    const row = this.db
+      .prepare(
+        `SELECT COUNT(*) AS count FROM governance_budget_operations WHERE state = 'IN_DOUBT'`
+      )
+      .get() as { count: number };
+    return row.count > 0;
+  }
+
+  classifyExisting(row: LedgerRow, fingerprint: string): LedgerReservationResult {
+    const operation = this.toOperation(row);
+    if (operation.request_fingerprint !== fingerprint) {
+      return LedgerReservationResultSchema.parse({
+        kind: 'conflict',
+        operation,
+        message: 'Idempotency key is bound to different request components',
+      });
+    }
+    if (operation.state === 'IN_DOUBT')
+      return LedgerReservationResultSchema.parse({ kind: 'in_doubt', operation });
+    if (operation.state === 'RESERVED' || operation.state === 'EXECUTING')
+      return LedgerReservationResultSchema.parse({ kind: 'in_progress', operation });
+    return LedgerReservationResultSchema.parse({ kind: 'replay', operation });
+  }
+
+  readExpiredOperations(now: string): LedgerRow[] {
+    return this.db
+      .prepare(
+        "SELECT * FROM governance_budget_operations WHERE deadline_at <= ? AND state IN ('RESERVED', 'EXECUTING') ORDER BY created_at, operation_id"
+      )
+      .all(now) as unknown as LedgerRow[];
+  }
+
+  recordReservationDenial(
+    request: LedgerReservationRequest,
+    fingerprint: string,
+    reserved: number,
+    now: string,
+    reason: 'BUDGET_BREACH',
+    message: string,
+    action: string,
+    extraMetadata?: Record<string, unknown>
+  ): { operation: LedgerOperation; outcome: AtomicLedgerAuditOutcome } {
+    const terminalResult = blockedLedgerResult(
+      request.operation_id,
+      'BUDGET_DENIED',
+      message,
+      action
+    );
+    const outcome = createLedgerAuditOutcome(
+      request.operation_id,
+      now,
+      'blocked',
+      terminalResult,
+      message
+    );
+    this.insertOperation(request, fingerprint, reserved, now, 'DENIED', terminalResult);
+    this.insertLedgerEntry(request.operation_id, 'denied', reserved, {
+      reason,
+      message,
+      ...extraMetadata,
+    });
+    return {
+      operation: this.readRequiredOperation(request.operation_id),
+      outcome,
+    };
+  }
+
+  expireReserved(current: LedgerOperation, now: string): AtomicLedgerAuditOutcome {
+    const result = blockedLedgerResult(
+      current.operation_id,
+      'RESERVATION_EXPIRED',
+      'Reservation expired before dispatch',
+      current.fingerprint_components.action
+    );
+    const outcome = createLedgerAuditOutcome(
+      current.intent_id,
+      now,
+      'blocked',
+      result,
+      'Reservation expired before dispatch'
+    );
+    this.applyTerminal(current, 'REFUNDED', 0, result, null);
+    return outcome;
+  }
+
+  expireExecuting(current: LedgerOperation, now: string): AtomicLedgerAuditOutcome {
+    const result = blockedLedgerResult(
+      current.operation_id,
+      'OPERATION_IN_DOUBT',
+      'Execution deadline expired after dispatch',
+      current.fingerprint_components.action
+    );
+    const outcome = createLedgerAuditOutcome(
+      current.intent_id,
+      now,
+      'error',
+      result,
+      'Execution deadline expired after dispatch'
+    );
+    const changed = this.db
+      .prepare(
+        "UPDATE governance_budget_operations SET state = 'IN_DOUBT' WHERE operation_id = ? AND state = 'EXECUTING'"
+      )
+      .run(current.operation_id);
+    if (changed.changes !== 1) throw transitionRace();
+    this.insertLedgerEntry(current.operation_id, 'in_doubt', current.reserved_microusd, {
+      reason: 'deadline_expired',
+    });
+    this.writeTrip('COMPLIANCE_DRIFT', 'An executed operation expired with an ambiguous outcome.');
+    return outcome;
+  }
+
+  private recordTenantSettlement(tenantId: string, current: LedgerOperation, actual: number): void {
+    const budget = this.ensureTenantBudget(tenantId);
+    const spent = budget.spent_microusd + actual;
+    if (!Number.isSafeInteger(spent)) {
+      throw new Error('Tenant settled spend is outside the supported micro-USD range');
+    }
+    let trip: 'BUDGET_BREACH' | 'COMPLIANCE_DRIFT' | null = null;
+    if (spent >= budget.cap_microusd) trip = 'BUDGET_BREACH';
+    else if (actual > current.reserved_microusd) trip = 'COMPLIANCE_DRIFT';
+    const now = this.isoNow();
+    const message = trip
+      ? `Tenant settlement recorded ${actual} micro-USD against a ${current.reserved_microusd} micro-USD reservation.`
+      : budget.stasis_message;
+    this.db
+      .prepare(`UPDATE governance_tenant_budgets SET spent_microusd = ?,
+      stasis_active = CASE WHEN ? IS NULL THEN stasis_active ELSE 1 END,
+      trip_code = COALESCE(?, trip_code), trip_at = CASE WHEN ? IS NULL THEN trip_at ELSE ? END,
+      resumed_by = CASE WHEN ? IS NULL THEN resumed_by ELSE NULL END,
+      stasis_message = ?, revision = revision + 1 WHERE tenant_id = ?
+    `)
+      .run(spent, trip, trip, trip, now, trip, message, tenantId);
   }
 
   private recordSettlement(current: LedgerOperation, actual: number): void {
@@ -241,8 +450,11 @@ export class BudgetLedgerStore {
       throw new Error('Settled spend is outside the supported micro-USD range');
     }
     let trip: 'BUDGET_BREACH' | 'COMPLIANCE_DRIFT' | null = null;
-    if (spent >= budget.cap_microusd) trip = 'BUDGET_BREACH';
-    else if (actual > current.reserved_microusd) trip = 'COMPLIANCE_DRIFT';
+    if (!current.fingerprint_components.tenant_id && spent >= budget.cap_microusd) {
+      trip = 'BUDGET_BREACH';
+    } else if (actual > current.reserved_microusd) {
+      trip = 'COMPLIANCE_DRIFT';
+    }
     const now = this.isoNow();
     const message = trip
       ? `Settlement recorded ${actual} micro-USD against a ${current.reserved_microusd} micro-USD reservation.`

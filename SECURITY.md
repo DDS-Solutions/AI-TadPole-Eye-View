@@ -17,8 +17,8 @@ GEV v2 is an agent-native geospatial OSINT telemetry console tracking public dat
                                       ▼
 ┌───────────────────────────────────────────────────────────────────────────┐
 │ [SEMI-TRUSTED] Backend Server (Hono)                                      │
-│  - Auth0 access-token verification seam and feed caching                  │
-│  - Per-client request rate limits are pending hardening work              │
+│  - Auth0 access-token verification seam and per-tenant feed caching       │
+│  - Per-tenant rate limiting on provider endpoints                         │
 │  - Upstream proxy routing via pinned-fetch (SSRF guarded, TLS pinned)     │
 └──────────────────────┬───────────────────────────────┬────────────────────┘
                        │                               │
@@ -41,7 +41,7 @@ GEV v2 is an agent-native geospatial OSINT telemetry console tracking public dat
 | **Tampering** | Malformed scene deep links or corrupted state injection | [packages/core/src/sceneSerializer.ts](./packages/core/src/sceneSerializer.ts) enforces Zod `SceneState.parse()` validation; Overpass sanitizer validates query AST. |
 | **Repudiation** | Unaccounted mutating actions or rogue AI tool calls | **Rule 1 (Audit-Before-Action):** Every mutating operation logs `audit.intent` to SQLite WAL *before* execution and `audit.outcome` *after* completion. |
 | **Information Disclosure** | Exposure of API keys, credentials, or internal server infrastructure | All upstream credentials (`OPENAI_API_KEY`, `AISSTREAM_API_KEY`, etc.) remain strictly server-side. Pinned-fetch blocks SSRF against internal cloud metadata endpoints. |
-| **Denial of Service** | Unbounded external feed polling or runaway LLM token spend | Per-feed caching with TTL tiers; byte-capped streams with mandatory timeouts; `CapBudgetGovernor` trips **STASIS** lockdown when spend exceeds caps. |
+| **Denial of Service** | Unbounded external feed polling, runaway token spend, or tenant cross-starvation | Per-tenant feed caching with TTL tiers; byte-capped streams with mandatory timeouts; per-tenant rate limits (`provider:${providerName}:${tenantId}`) ensuring noisy tenants never starve others; per-tenant budget allocations in SQLite governance ledger; `CapBudgetGovernor` trips tenant or global **STASIS** lockdown when spend exceeds caps; kill-switch fail-closed enforcement (503). |
 | **Elevation of Privilege** | AI agent attempting self-resumption or modifying safety governors | Human-only STASIS resume is enforced in durable shared state. M2 signed approvals bind intent/scopes/signer/key/nonce/time and reject replay in shared SQLite; production denies until a trusted external approval provider and key allowlist are configured. |
 
 ### Current hardening limitations

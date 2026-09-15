@@ -93,4 +93,66 @@ describe('authenticated identity contract', () => {
     expect(identityIsCurrent(current, NOW - 61)).toBe(false);
     expect(identityIsCurrent(current, NOW + 60)).toBe(false);
   });
+
+  it('validates tenant quota allocations', async () => {
+    const { TenantQuotaAllocationSchema } = await import('../src/identity.js');
+    const valid = TenantQuotaAllocationSchema.parse({
+      tenant_id: 'org_test',
+      cap_microusd: 10_000_000,
+    });
+    expect(valid).toMatchObject({
+      tenant_id: 'org_test',
+      cap_microusd: 10_000_000,
+      rate_limit_per_minute: 60,
+      burst_limit: 10,
+      warn_threshold_pct: 80,
+    });
+    expect(() =>
+      TenantQuotaAllocationSchema.parse({
+        tenant_id: 'org_test',
+        cap_microusd: 0,
+      })
+    ).toThrow();
+  });
+
+  it('validates tenant budget status and enforces non-negative remaining balances', async () => {
+    const { TenantBudgetStatusSchema } = await import('../src/identity.js');
+    const valid = TenantBudgetStatusSchema.parse({
+      tenant_id: 'org_test',
+      period_start: '2026-09-15T00:00:00.000Z',
+      spent_microusd: 500_000,
+      cap_microusd: 1_000_000,
+      remaining_microusd: 500_000,
+      warn_threshold_pct: 80,
+      stasis_active: false,
+      trip_code: null,
+      trip_at: null,
+      stasis_message: null,
+      revision: 1,
+    });
+    expect(valid.remaining_microusd).toBe(500_000);
+
+    // Negative remaining balances strictly forbidden
+    expect(() =>
+      TenantBudgetStatusSchema.parse({
+        ...valid,
+        remaining_microusd: -1,
+      })
+    ).toThrow();
+  });
+
+  it('validates tenant rate limit policies', async () => {
+    const { TenantRateLimitPolicySchema } = await import('../src/identity.js');
+    const policy = TenantRateLimitPolicySchema.parse({
+      tenant_id: 'org_test',
+      bucket: 'telemetry.flights',
+      limit: 120,
+    });
+    expect(policy).toMatchObject({
+      tenant_id: 'org_test',
+      bucket: 'telemetry.flights',
+      limit: 120,
+      window_ms: 60_000,
+    });
+  });
 });
