@@ -26,6 +26,21 @@ interface BudgetStateRow {
   revision: number;
 }
 
+interface TenantBudgetStateRow {
+  tenant_id: string;
+  period_start: string;
+  spent_microusd: number;
+  cap_microusd: number;
+  warn_threshold_pct: number;
+  stasis_active: number;
+  trip_code: string | null;
+  trip_at: string | null;
+  resumed_by: string | null;
+  stasis_message: string | null;
+  revision: number;
+}
+
+
 export interface CapBudgetGovernorOptions {
   capUsd?: number;
   spentUsd?: number;
@@ -240,6 +255,124 @@ export class CapBudgetGovernor implements BudgetGovernor {
     });
   }
 
+  checkTenant(tenantId: string, action: { action: string; estimate: CostEstimate }): Verdict {
+    const estimate = CostEstimateSchema.parse(action.estimate);
+    const estimateMicrousd = toMicrousd(estimate.max, 'estimate.max', true, 'up');
+
+    return withImmediateTransaction(this.db, () => {
+      const globalRow = this.readRequiredRow();
+      if (globalRow.stasis_active === 1) {
+        return {
+          allowed: false,
+          reason: (globalRow.trip_code ?? 'BUDGET_BREACH') as TripCode,
+          message: globalRow.stasis_message ?? 'System is locked in STASIS mode.',
+        };
+      }
+
+      const row = this.ensureTenantRow(tenantId);
+      const remainingMicrousd = Math.max(0, row.cap_microusd - row.spent_microusd);
+
+      if (row.stasis_active === 1) {
+        return {
+          allowed: false,
+          reason: (row.trip_code ?? 'BUDGET_BREACH') as TripCode,
+          message: row.stasis_message ?? `Tenant '${tenantId}' is locked in STASIS mode.`,
+        };
+      }
+
+      if (row.spent_microusd + estimateMicrousd > row.cap_microusd) {
+        const message = `Estimated spend max $${estimate.max.toFixed(2)} for ${action.action} exceeds remaining cap $${fromMicrousd(remainingMicrousd).toFixed(2)} for tenant '${tenantId}' (Cap: $${fromMicrousd(row.cap_microusd).toFixed(2)}, Spent: $${fromMicrousd(row.spent_microusd).toFixed(2)}).`;
+        this.writeTenantTrip(tenantId, 'BUDGET_BREACH', message);
+        return { allowed: false, reason: 'BUDGET_BREACH', message };
+      }
+
+      return {
+        allowed: true,
+        remaining_usd: fromMicrousd(remainingMicrousd - estimateMicrousd),
+      };
+    });
+  }
+
+  tenantState(tenantId: string): BudgetState {
+    return withImmediateTransaction(this.db, () => {
+      const row = this.ensureTenantRow(tenantId);
+      return this.toBudgetState(row);
+    });
+  }
+
+  recordTenantSpend(tenantId: string, amountUsd: number): void {
+    const amountMicrousd = toMicrousd(amountUsd, 'Spend amount', true, 'up');
+    withImmediateTransaction(this.db, () => {
+      const row = this.ensureTenantRow(tenantId);
+      const spentMicrousd = row.spent_microusd + amountMicrousd;
+      if (!Number.isSafeInteger(spentMicrousd)) {
+        throw new Error('Tenant settled spend is outside the supported micro-USD range');
+      }
+
+      const shouldTrip = spentMicrousd >= row.cap_microusd && row.stasis_active === 0;
+      const now = new Date(this.clock.now()).toISOString();
+      const message = shouldTrip
+        ? `Tenant settled spend ($${fromMicrousd(spentMicrousd).toFixed(2)}) met or exceeded budget cap ($${fromMicrousd(row.cap_microusd).toFixed(2)}).`
+        : row.stasis_message;
+
+      this.db
+        .prepare(`
+          UPDATE governance_tenant_budgets
+          SET spent_microusd = ?,
+              stasis_active = ?,
+              trip_code = ?,
+              trip_at = ?,
+              resumed_by = ?,
+              stasis_message = ?,
+              revision = revision + 1
+          WHERE tenant_id = ?
+        `)
+        .run(
+          spentMicrousd,
+          shouldTrip ? 1 : row.stasis_active,
+          shouldTrip ? 'BUDGET_BREACH' : row.trip_code,
+          shouldTrip ? now : row.trip_at,
+          shouldTrip ? null : row.resumed_by,
+          message,
+          tenantId
+        );
+    });
+  }
+
+  setTenantCap(tenantId: string, capUsd: number): void {
+    const capMicrousd = toMicrousd(capUsd, 'capUsd', false, 'down');
+    withImmediateTransaction(this.db, () => {
+      this.ensureTenantRow(tenantId);
+      this.db
+        .prepare(`
+          UPDATE governance_tenant_budgets
+          SET cap_microusd = ?, revision = revision + 1
+          WHERE tenant_id = ?
+        `)
+        .run(capMicrousd, tenantId);
+    });
+  }
+
+  resumeTenant(tenantId: string, resumedBy: Actor = 'human'): void {
+    if (resumedBy !== 'human') {
+      throw new Error('STASIS resume requires a human actor');
+    }
+
+    withImmediateTransaction(this.db, () => {
+      this.ensureTenantRow(tenantId);
+      this.db
+        .prepare(`
+          UPDATE governance_tenant_budgets
+          SET stasis_active = 0,
+              resumed_by = CASE WHEN trip_code IS NULL THEN NULL ELSE ? END,
+              stasis_message = NULL,
+              revision = revision + 1
+          WHERE tenant_id = ?
+        `)
+        .run(resumedBy, tenantId);
+    });
+  }
+
   close(): void {
     if (this.closed) {
       return;
@@ -310,5 +443,43 @@ export class CapBudgetGovernor implements BudgetGovernor {
         WHERE singleton_id = 1
       `)
       .run(reason, new Date(this.clock.now()).toISOString(), message);
+  }
+
+  private ensureTenantRow(tenantId: string): TenantBudgetStateRow {
+    const existing = this.db
+      .prepare('SELECT * FROM governance_tenant_budgets WHERE tenant_id = ?')
+      .get(tenantId) as TenantBudgetStateRow | undefined;
+    if (existing) return existing;
+
+    const globalRow = this.readRequiredRow();
+    const now = new Date(this.clock.now()).toISOString();
+    this.db
+      .prepare(`
+        INSERT OR IGNORE INTO governance_tenant_budgets (
+          tenant_id, period_start, spent_microusd, cap_microusd,
+          warn_threshold_pct, stasis_active, trip_code, trip_at,
+          resumed_by, stasis_message, revision
+        ) VALUES (?, ?, 0, ?, 80, 0, NULL, NULL, NULL, NULL, 0)
+      `)
+      .run(tenantId, now, globalRow.cap_microusd);
+
+    return this.db
+      .prepare('SELECT * FROM governance_tenant_budgets WHERE tenant_id = ?')
+      .get(tenantId) as unknown as TenantBudgetStateRow;
+  }
+
+  private writeTenantTrip(tenantId: string, reason: TripCode, message: string): void {
+    this.db
+      .prepare(`
+        UPDATE governance_tenant_budgets
+        SET stasis_active = 1,
+            trip_code = ?,
+            trip_at = ?,
+            resumed_by = NULL,
+            stasis_message = ?,
+            revision = revision + 1
+        WHERE tenant_id = ?
+      `)
+      .run(reason, new Date(this.clock.now()).toISOString(), message, tenantId);
   }
 }

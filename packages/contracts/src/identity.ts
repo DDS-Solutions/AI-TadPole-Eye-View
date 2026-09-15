@@ -195,3 +195,41 @@ export function identityIsCurrent(
     identity.expires_at_epoch_seconds > nowEpochSeconds
   );
 }
+
+export const TenantQuotaAllocationSchema = z
+  .object({
+    tenant_id: TenantIdSchema,
+    cap_microusd: z.number().int().positive(),
+    rate_limit_per_minute: z.number().int().positive().default(60),
+    burst_limit: z.number().int().positive().default(10),
+    warn_threshold_pct: z.number().int().min(1).max(100).default(80),
+  })
+  .strict();
+export type TenantQuotaAllocation = z.infer<typeof TenantQuotaAllocationSchema>;
+
+export const TenantBudgetStatusSchema = z
+  .object({
+    tenant_id: TenantIdSchema,
+    period_start: z.string().datetime(),
+    spent_microusd: z.number().int().nonnegative(),
+    cap_microusd: z.number().int().positive(),
+    remaining_microusd: z.number().int().nonnegative(),
+    warn_threshold_pct: z.number().int().min(1).max(100),
+    stasis_active: z.boolean(),
+    trip_code: z.enum(['BUDGET_BREACH', 'LOGIC_BLOCKER', 'COMPLIANCE_DRIFT']).nullable(),
+    trip_at: z.string().datetime().nullable(),
+    stasis_message: z.string().nullable(),
+    revision: z.number().int().nonnegative(),
+  })
+  .strict();
+export type TenantBudgetStatus = z.infer<typeof TenantBudgetStatusSchema>;
+
+export const TenantRateLimitPolicySchema = z
+  .object({
+    tenant_id: TenantIdSchema,
+    bucket: z.string().min(1).max(64),
+    limit: z.number().int().positive(),
+    window_ms: z.number().int().positive().default(60_000),
+  })
+  .strict();
+export type TenantRateLimitPolicy = z.infer<typeof TenantRateLimitPolicySchema>;

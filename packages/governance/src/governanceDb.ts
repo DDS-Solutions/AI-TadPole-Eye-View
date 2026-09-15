@@ -4,8 +4,9 @@ import { DatabaseSync } from 'node:sqlite';
 import { type SimClock, SystemClock } from '@gev/core';
 import { migrateAuditChain } from './auditChainMigration.js';
 
-export const GOVERNANCE_SCHEMA_VERSION = 4;
+export const GOVERNANCE_SCHEMA_VERSION = 5;
 export const GOVERNANCE_BUSY_TIMEOUT_MS = 5_000;
+
 
 export interface GovernanceDatabaseOptions {
   dbPath?: string;
@@ -223,6 +224,35 @@ function migrateGovernanceDatabase(db: DatabaseSync, clock: SimClock): void {
 
     if (versionRow.version < 4) {
       migrateAuditChain(db, new Date(clock.now()).toISOString());
+    }
+
+    if (versionRow.version < 5) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS governance_tenant_budgets (
+          tenant_id TEXT PRIMARY KEY,
+          period_start TEXT NOT NULL,
+          spent_microusd INTEGER NOT NULL DEFAULT 0 CHECK (spent_microusd >= 0),
+          cap_microusd INTEGER NOT NULL CHECK (cap_microusd > 0),
+          warn_threshold_pct INTEGER NOT NULL DEFAULT 80 CHECK (warn_threshold_pct BETWEEN 1 AND 100),
+          stasis_active INTEGER NOT NULL DEFAULT 0 CHECK (stasis_active IN (0, 1)),
+          trip_code TEXT CHECK (
+            trip_code IS NULL OR trip_code IN ('BUDGET_BREACH', 'LOGIC_BLOCKER', 'COMPLIANCE_DRIFT')
+          ),
+          trip_at TEXT,
+          resumed_by TEXT CHECK (resumed_by IS NULL OR resumed_by = 'human'),
+          stasis_message TEXT,
+          revision INTEGER NOT NULL DEFAULT 0 CHECK (revision >= 0),
+          CHECK (
+            (trip_code IS NULL AND trip_at IS NULL) OR
+            (trip_code IS NOT NULL AND trip_at IS NOT NULL)
+          ),
+          CHECK (stasis_active = 0 OR trip_code IS NOT NULL)
+        );
+        CREATE INDEX IF NOT EXISTS governance_tenant_budgets_stasis_idx
+          ON governance_tenant_budgets (stasis_active);
+        INSERT INTO governance_schema_migrations (version, applied_at)
+        VALUES (5, '${new Date(clock.now()).toISOString()}');
+      `);
     }
 
     db.exec('COMMIT;');

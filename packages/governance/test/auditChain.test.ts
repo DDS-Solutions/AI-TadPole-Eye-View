@@ -145,7 +145,7 @@ describe('versioned SQLite audit chain', () => {
       DROP TABLE governance_audit_chain_state;
       DROP TABLE governance_audit_retention_receipts;
       DROP TABLE governance_audit_mutation_guard;
-      DELETE FROM governance_schema_migrations WHERE version = 4;
+      DELETE FROM governance_schema_migrations WHERE version >= 4;
     `);
     legacy.close();
 

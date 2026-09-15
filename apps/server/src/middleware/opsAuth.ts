@@ -175,6 +175,55 @@ export function createRateLimitMiddleware(
   };
 }
 
+export function resolveRequestTenantId(c: Context, fallback?: string): string | undefined {
+  return (
+    (c.get('opsTenantId') as string | undefined) ??
+    (c.get('opsIdentity') as AuthenticatedIdentityContext | undefined)?.tenant_id ??
+    (c.var as { opsTenantId?: string } | undefined)?.opsTenantId ??
+    fallback
+  );
+}
+
+export interface TenantRateLimitMiddlewareOptions {
+  bucket: string;
+  limit: number;
+  fallbackTenantId?: string;
+}
+
+export function createTenantRateLimitMiddleware(
+  limiter: InMemoryRateLimiter,
+  options: TenantRateLimitMiddlewareOptions
+): MiddlewareHandler {
+  return async (c: Context, next: Next) => {
+    const tenantId = resolveRequestTenantId(c, options.fallbackTenantId);
+
+    if (!tenantId) {
+      return c.json(
+        {
+          error: 'Unauthorized: Authenticated tenant required for rate-limited endpoint',
+          code: 'UNAUTHENTICATED_QUOTA_ACCESS',
+        },
+        401
+      );
+    }
+
+    const decision = limiter.consume(options.bucket, tenantId, options.limit);
+    if (!decision.allowed) {
+      c.header('Retry-After', String(decision.retryAfterSeconds));
+      c.header('X-GEV-Tenant-Rate-Limited', 'true');
+      return c.json(
+        {
+          error: `Per-tenant rate limit exceeded for tenant '${tenantId}'`,
+          code: 'TENANT_RATE_LIMITED',
+        },
+        429
+      );
+    }
+    return await next();
+  };
+}
+
+
 function normalizedTokenDigest(token: string): Buffer {
   return createHash('sha256').update(token, 'utf8').digest();
 }
@@ -308,6 +357,11 @@ export function createOpsAuth(options: OpsAuthOptions = {}): OpsAuthAdapter {
     };
   };
 
+  const tokenCache = new Map<
+    string,
+    { identity: AuthenticatedIdentityContext; expiresAtEpochSeconds: number }
+  >();
+
   const authenticate = async (
     authorization?: string,
     requestedTenantId?: string,
@@ -321,38 +375,48 @@ export function createOpsAuth(options: OpsAuthOptions = {}): OpsAuthAdapter {
       const accessToken = extractBearerToken(authorization);
       if (!accessToken) return localDecision;
       const nowEpochSeconds = Math.floor(clock.now() / 1000);
-      const verificationRequest = IdentityBearerVerificationRequestSchema.safeParse({
-        access_token: accessToken,
-        audience: resource,
-        resource,
-        now_epoch_seconds: nowEpochSeconds,
-      });
-      if (!verificationRequest.success) {
-        return denied(401, 'INVALID_BEARER_TOKEN', 'Unauthorized: Invalid privileged credentials');
-      }
-      try {
-        const parsed = AuthenticatedIdentityContextSchema.safeParse(
-          await bearerVerifier.verify(Object.freeze(verificationRequest.data))
-        );
-        if (
-          !parsed.success ||
-          parsed.data.issuer !== expectedIssuer ||
-          parsed.data.audience !== resource ||
-          parsed.data.resource !== resource ||
-          !identityIsCurrent(parsed.data, nowEpochSeconds)
-        ) {
-          return denied(
-            401,
-            'INVALID_BEARER_TOKEN',
-            'Unauthorized: Invalid privileged credentials'
-          );
+      const cached = tokenCache.get(accessToken);
+      if (cached && nowEpochSeconds < cached.expiresAtEpochSeconds) {
+        identity = cached.identity;
+      } else {
+        const verificationRequest = IdentityBearerVerificationRequestSchema.safeParse({
+          access_token: accessToken,
+          audience: resource,
+          resource,
+          now_epoch_seconds: nowEpochSeconds,
+        });
+        if (!verificationRequest.success) {
+          return denied(401, 'INVALID_BEARER_TOKEN', 'Unauthorized: Invalid privileged credentials');
         }
-        identity = Object.freeze({
-          ...parsed.data,
-          scopes: Object.freeze([...parsed.data.scopes]),
-        }) as AuthenticatedIdentityContext;
-      } catch {
-        return denied(401, 'INVALID_BEARER_TOKEN', 'Unauthorized: Invalid privileged credentials');
+        try {
+          const parsed = AuthenticatedIdentityContextSchema.safeParse(
+            await bearerVerifier.verify(Object.freeze(verificationRequest.data))
+          );
+          if (
+            !parsed.success ||
+            parsed.data.issuer !== expectedIssuer ||
+            parsed.data.audience !== resource ||
+            parsed.data.resource !== resource ||
+            !identityIsCurrent(parsed.data, nowEpochSeconds)
+          ) {
+            return denied(
+              401,
+              'INVALID_BEARER_TOKEN',
+              'Unauthorized: Invalid privileged credentials'
+            );
+          }
+          identity = Object.freeze({
+            ...parsed.data,
+            scopes: Object.freeze([...parsed.data.scopes]),
+          }) as AuthenticatedIdentityContext;
+          if (tokenCache.size >= 1000) tokenCache.clear();
+          tokenCache.set(accessToken, {
+            identity,
+            expiresAtEpochSeconds: parsed.data.expires_at_epoch_seconds,
+          });
+        } catch {
+          return denied(401, 'INVALID_BEARER_TOKEN', 'Unauthorized: Invalid privileged credentials');
+        }
       }
     } else {
       return localDecision.kind === 'local_seed' && policy
