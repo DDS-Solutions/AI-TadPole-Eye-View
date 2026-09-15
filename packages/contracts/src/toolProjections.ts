@@ -107,5 +107,5 @@ function zodToJsonSchemaLight(schema: z.ZodTypeAny): Record<string, unknown> {
     return clean;
   }
 
-  return {};
+  throw new Error('Tool schema projection failed: z.toJSONSchema is not available');
 }

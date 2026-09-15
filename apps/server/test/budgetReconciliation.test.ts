@@ -111,8 +111,8 @@ describe('human M3 reconciliation route', () => {
         headers: { 'Content-Type': 'application/json' },
         body: '{}',
       });
-      expect(response.status).toBe(403);
-      await expect(response.json()).resolves.toMatchObject({ code: 'HUMAN_AUTH_REQUIRED' });
+      expect(response.status).toBe(401);
+      await expect(response.json()).resolves.toMatchObject({ code: 'MISSING_BEARER_TOKEN' });
     } finally {
       context.governanceContext.close();
     }

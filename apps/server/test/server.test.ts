@@ -2,6 +2,8 @@ import { GevEvents } from '@gev/contracts';
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../src/index.js';
 
+const OPS_TOKEN = 'server-operator-token';
+
 describe('Server API & Governed Ops (@gev/server)', () => {
   it('GET /api/health returns system and governor status', async () => {
     const { app } = createApp();
@@ -28,7 +30,9 @@ describe('Server API & Governed Ops (@gev/server)', () => {
   });
 
   it('POST /ops/seed/reload executes 5-step lifecycle and writes SQLite WAL', async () => {
-    const { app, auditSink } = createApp();
+    const { app, auditSink } = createApp({
+      opsAuth: { opsToken: OPS_TOKEN, requireAuth: true },
+    });
     const taskRef = 'task-reload-test-01';
 
     // Execute mutating reload
@@ -37,6 +41,7 @@ describe('Server API & Governed Ops (@gev/server)', () => {
       headers: {
         'X-Task-Ref': taskRef,
         'X-Actor': 'ai',
+        Authorization: `Bearer ${OPS_TOKEN}`,
       },
     });
 
@@ -60,7 +65,9 @@ describe('Server API & Governed Ops (@gev/server)', () => {
   });
 
   it('POST /ops/seed/reload blocks and logs STASIS trip when cap is breached', async () => {
-    const { app, auditSink, budgetGovernor } = createApp();
+    const { app, auditSink, budgetGovernor } = createApp({
+      opsAuth: { opsToken: OPS_TOKEN, requireAuth: true },
+    });
     const taskRef = 'task-stasis-trip-01';
 
     // Artificially breach budget to trigger STASIS
@@ -71,6 +78,7 @@ describe('Server API & Governed Ops (@gev/server)', () => {
       headers: {
         'X-Task-Ref': taskRef,
         'X-Actor': 'ai',
+        Authorization: `Bearer ${OPS_TOKEN}`,
       },
     });
 

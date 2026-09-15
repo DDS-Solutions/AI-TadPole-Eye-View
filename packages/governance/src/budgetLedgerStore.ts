@@ -103,6 +103,20 @@ export class BudgetLedgerStore {
     );
   }
 
+  readActiveOperationByFingerprint(fingerprint: string, nowIso: string): LedgerRow | null {
+    return (
+      (this.db
+        .prepare(
+          `SELECT * FROM governance_budget_operations
+          WHERE request_fingerprint = ?
+            AND state IN ('RESERVED', 'EXECUTING')
+            AND deadline_at > ?
+          ORDER BY rowid DESC LIMIT 1`
+        )
+        .get(fingerprint, nowIso) as LedgerRow | undefined) ?? null
+    );
+  }
+
   readRequiredOperation(operationId: string): LedgerOperation {
     const row = this.readOperationRow(operationId);
     if (!row) {

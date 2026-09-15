@@ -1,4 +1,5 @@
 import type {
+  IdentityBearerVerifier,
   CablePackManifest,
   LayerAccessProviderRuntimeInput,
   ProviderRegistry,
@@ -27,6 +28,7 @@ export interface CreateAppOptions {
   satelliteGroups?: readonly SatelliteLiveGroup[];
   satelliteFetcher?: SatelliteFetcher;
   layerAccessAuthorizedLocalState?: readonly LayerAccessProviderRuntimeInput[];
+  identityBearerVerifier?: IdentityBearerVerifier;
   mcpHttpEnabled?: boolean;
   mcpHttpBearerVerifier?: McpBearerVerifier;
   mcpHttpMaxActiveRequests?: number;

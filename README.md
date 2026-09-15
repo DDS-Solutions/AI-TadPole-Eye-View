@@ -127,7 +127,6 @@ node scripts/adg.mjs  # run Active Documentation Guard
 
 ### Not yet built (WIP Roadmap)
 
-- **Satellites layer:** No provider file, no SGP4 / egm96 math in `core/`, no Cesium layer. Listed in PLAN.md section 8.
 - **M4 Runtime:** Live autonomous AI agent process operating the running console via ops-mcp under governance.
 - **T3 TAK/CoT bridge:** Post-parity roadmap item per PLAN.md section 9.
 - **k6 expansion:** `load/k6-proxies.js` exists with proxy thresholds; broader scenarios and CI execution are still pending.

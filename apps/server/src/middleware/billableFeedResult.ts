@@ -1,3 +1,7 @@
+import { Buffer } from 'node:buffer';
+
+export const MAX_FEED_BODY_BYTES = 10 * 1024 * 1024; // 10 MB limit
+
 export interface FeedTerminalResult {
   kind: 'gev.feed.terminal.v1';
   status: number;
@@ -5,12 +9,70 @@ export interface FeedTerminalResult {
   body: unknown;
 }
 
-export async function readFeedTerminalResponse(response: Response): Promise<FeedTerminalResult> {
+export async function readFeedTerminalResponse(
+  response: Response,
+  maxBytes = MAX_FEED_BODY_BYTES
+): Promise<FeedTerminalResult> {
   const contentType = response.headers.get('Content-Type') ?? 'application/octet-stream';
+  const contentLength = response.headers.get('Content-Length');
+  if (contentLength && Number.parseInt(contentLength, 10) > maxBytes) {
+    return {
+      kind: 'gev.feed.terminal.v1',
+      status: 413,
+      contentType: 'application/json',
+      body: {
+        error: 'Feed response body exceeded maximum allowable size',
+        code: 'OUTPUT_TOO_LARGE',
+      },
+    };
+  }
+
   let body: unknown = null;
   try {
-    const text = await response.clone().text();
-    body = contentType.includes('json') ? JSON.parse(text) : text;
+    const cloned = response.clone();
+    const reader = cloned.body?.getReader();
+    if (!reader) {
+      const text = await cloned.text();
+      if (Buffer.byteLength(text) > maxBytes) {
+        return {
+          kind: 'gev.feed.terminal.v1',
+          status: 413,
+          contentType: 'application/json',
+          body: {
+            error: 'Feed response body exceeded maximum allowable size',
+            code: 'OUTPUT_TOO_LARGE',
+          },
+        };
+      }
+      body = contentType.includes('json') ? JSON.parse(text) : text;
+    } else {
+      const chunks: Uint8Array[] = [];
+      let totalBytes = 0;
+      let done = false;
+      while (!done) {
+        const { value, done: isDone } = await reader.read();
+        done = isDone;
+        if (value) {
+          totalBytes += value.byteLength;
+          if (totalBytes > maxBytes) {
+            await reader.cancel();
+            return {
+              kind: 'gev.feed.terminal.v1',
+              status: 413,
+              contentType: 'application/json',
+              body: {
+                error: 'Feed response body exceeded maximum allowable size',
+                code: 'OUTPUT_TOO_LARGE',
+              },
+            };
+          }
+          chunks.push(value);
+        }
+      }
+      const combined = Buffer.concat(chunks);
+      const text = combined.toString('utf-8');
+      body = contentType.includes('json') ? JSON.parse(text) : text;
+    }
   } catch {
     body = null;
   }

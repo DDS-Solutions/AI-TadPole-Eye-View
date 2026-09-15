@@ -17,7 +17,7 @@ GEV v2 is an agent-native geospatial OSINT telemetry console tracking public dat
                                       ▼
 ┌───────────────────────────────────────────────────────────────────────────┐
 │ [SEMI-TRUSTED] Backend Server (Hono)                                      │
-│  - Authenticated ephemeral token minting (ek_) and feed caching           │
+│  - Auth0 access-token verification seam and feed caching                  │
 │  - Per-client request rate limits are pending hardening work              │
 │  - Upstream proxy routing via pinned-fetch (SSRF guarded, TLS pinned)     │
 └──────────────────────┬───────────────────────────────┬────────────────────┘
@@ -37,7 +37,7 @@ GEV v2 is an agent-native geospatial OSINT telemetry console tracking public dat
 
 | Threat Category | Potential Attack Vector | System Countermeasure & Mitigation |
 |---|---|---|
-| **Spoofing** | Rogue client impersonating authorized operator or injecting fake telemetry | Short-lived ephemeral tokens (`ek_`) for AI sessions; strict Zod schema validation on all inbound REST/WS payloads. |
+| **Spoofing** | Rogue client impersonating an authorized operator, service, or tenant member | Exact issuer/resource validation, five-minute access-token ceiling, injected revocation-aware verifier, and strict identity-contract validation before protected REST or MCP dispatch. |
 | **Tampering** | Malformed scene deep links or corrupted state injection | [packages/core/src/sceneSerializer.ts](./packages/core/src/sceneSerializer.ts) enforces Zod `SceneState.parse()` validation; Overpass sanitizer validates query AST. |
 | **Repudiation** | Unaccounted mutating actions or rogue AI tool calls | **Rule 1 (Audit-Before-Action):** Every mutating operation logs `audit.intent` to SQLite WAL *before* execution and `audit.outcome` *after* completion. |
 | **Information Disclosure** | Exposure of API keys, credentials, or internal server infrastructure | All upstream credentials (`OPENAI_API_KEY`, `AISSTREAM_API_KEY`, etc.) remain strictly server-side. Pinned-fetch blocks SSRF against internal cloud metadata endpoints. |
@@ -46,14 +46,34 @@ GEV v2 is an agent-native geospatial OSINT telemetry console tracking public dat
 
 ### Current hardening limitations
 
+- OQ-4 selects Auth0 Organizations with issuer
+  `https://dds-solutions-gev.us.auth0.com/`, REST resource
+  `https://dds-solutions-gev.us.auth0.com/api/gev`, and MCP resource
+  `https://dds-solutions-gev.us.auth0.com/api/gev/mcp`. The shared identity and
+  ownership enforcement is implemented, but the Auth0 tenant, custom domain, JWKS/revocation
+  integration, clients, and organization memberships are not provisioned by this repository.
+  Production protected routes therefore fail closed until an approved verifier is injected.
+- Verified `org_id` membership maps to one opaque `tenant_id`; the closed role set is `viewer`,
+  `operator`, `tenant_admin`, `platform_admin`, and `ai_copilot`. Role and capability checks are
+  conjunctive. `platform_admin` does not imply access to arbitrary tenant data, and
+  `ai_copilot` cannot perform human-only administration, export, deletion, approval, or STASIS
+  resume.
+- Access tokens have zero durable retention. Authentication security events retain bounded
+  identifiers for 90 days. Tenant deletion revokes access immediately, allows 30 days for
+  approved recovery, and expires backups within 60 days; there are no approved retention
+  deviations. Governance evidence remains subject to ADR 0044.
 - The SQLite audit WAL uses the versioned `gev.audit.chain.v1` sidecar, startup verification,
   pre-persistence redaction/bounds, and signed retention receipts. A local database administrator
   can still replace both rows and local checkpoints; independent Tadpole/head anchoring remains a
   later integration boundary.
 - Signed M2 verification is implemented, but the production approval provider, managed public-key distribution, and authenticated signer-to-principal mapping remain integration decisions. The local demo signer is forbidden in production.
-- Local stdio MCP exposes only verified local-state tools and confines scene files to a configured root. A future network MCP transport must reuse those capability and confinement checks rather than introduce a transport-specific bypass.
+- Local stdio MCP and default-off HTTP MCP share one governed executor. HTTP MCP requires a
+  validated AI identity, tenant membership, scoped tool capability, tenant-owned task/audit
+  context, and tenant-confined scene state before dispatch.
 - Collaboration still requires exact Origin enforcement, staged CRDT validation, remote-update origin tagging, and request/concurrency limits.
-- Local tokenless seed mode is development-only and does not prove authenticated human resume or shared cross-process STASIS.
+- Local tokenless seed mode and the compatibility operations token are development-only. Neither
+  establishes production identity, and tokenless local requests cannot reach protected operation
+  handlers or resume STASIS.
 
 ---
 

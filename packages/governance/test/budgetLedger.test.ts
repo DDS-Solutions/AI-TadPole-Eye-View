@@ -1,4 +1,3 @@
-import { spawn } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -18,10 +17,10 @@ import { CapBudgetGovernor } from '../src/budgetGovernor.js';
 import { LedgerOperationError, SqliteBudgetLedger } from '../src/budgetLedger.js';
 import { openGovernanceDatabase } from '../src/governanceDb.js';
 import { createGovernanceRuntimeContext } from '../src/runtimeContext.js';
+import { reserveInLedgerChild } from './ledgerProcessSupport.js';
 
 const tempDirectories: string[] = [];
 const START = Date.parse('2026-08-28T12:00:00.000Z');
-const childFixture = path.resolve(import.meta.dirname, 'fixtures', 'ledgerProcess.ts');
 
 function tempDatabase(): string {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'gev-ledger-'));
@@ -36,16 +35,22 @@ function request(
   input: unknown = { value: 1 },
   deadlineOffsetMs = 30_000
 ): LedgerReservationRequest {
+  const common = {
+    actor: 'ai' as const,
+    action: 'tool.test_mutation',
+    params: input,
+    task_ref: 'task-5.1.4-test',
+  };
   return {
     operation_id: operationId,
     fingerprint_components: {
       contract_version: M3_LEDGER_CONTRACT_VERSION,
       fingerprint_version: M3_FINGERPRINT_VERSION,
-      actor: 'ai',
+      actor: common.actor,
       tenant_id: null,
-      action: 'tool.test_mutation',
+      action: common.action,
       input,
-      task_ref: 'task-5.1.4-test',
+      task_ref: common.task_ref,
       is_mutating: true,
       estimate: { currency: 'usd', min: 0, max: maxUsd },
     },
@@ -54,11 +59,8 @@ function request(
       kind: GevEvents.AuditIntent,
       id: operationId,
       ts: clock.iso(),
-      actor: 'ai',
-      action: 'tool.test_mutation',
       target: 'test_mutation',
-      params: input,
-      task_ref: 'task-5.1.4-test',
+      ...common,
     },
   };
 }
@@ -74,35 +76,9 @@ function outcome(clock: FrozenClock, operationId: string, result: unknown) {
   };
 }
 
-function reserveInChild(dbPath: string, operationId: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [childFixture, dbPath, operationId], {
-      env: { ...process.env, NODE_ENV: 'test', VITEST: 'true' },
-      stdio: ['ignore', 'pipe', 'pipe'],
-      windowsHide: true,
-    });
-    let stdout = '';
-    let stderr = '';
-    child.stdout.setEncoding('utf8');
-    child.stderr.setEncoding('utf8');
-    child.stdout.on('data', (chunk: string) => {
-      stdout += chunk;
-    });
-    child.stderr.on('data', (chunk: string) => {
-      stderr += chunk;
-    });
-    child.once('error', reject);
-    child.once('exit', (code) => {
-      if (code === 0) resolve(stdout.trim());
-      else reject(new Error(`Ledger child exited ${code}: ${stderr}`));
-    });
-  });
-}
-
 afterEach(() => {
-  for (const directory of tempDirectories.splice(0)) {
+  for (const directory of tempDirectories.splice(0))
     fs.rmSync(directory, { recursive: true, force: true });
-  }
 });
 
 describe('M3 durable budget ledger', () => {
@@ -112,8 +88,8 @@ describe('M3 durable budget ledger', () => {
     init.close();
     const operationId = crypto.randomUUID();
     const results = await Promise.all([
-      reserveInChild(dbPath, operationId),
-      reserveInChild(dbPath, operationId),
+      reserveInLedgerChild(dbPath, operationId),
+      reserveInLedgerChild(dbPath, operationId),
     ]);
     expect(results.sort()).toEqual(['in_progress', 'reserved']);
 
@@ -471,6 +447,41 @@ describe('M3 durable budget ledger', () => {
       ledger.close();
       governor.close();
       opened.db.close();
+    }
+  });
+
+  it('deduplicates concurrent active sibling operations by request fingerprint (M6)', () => {
+    const clock = new FrozenClock(START);
+    const runtime = createGovernanceRuntimeContext({ dbPath: tempDatabase(), clock, capUsd: 10 });
+    try {
+      const id1 = crypto.randomUUID();
+      const res1 = runtime.budgetLedger.reserve(request(clock, id1, 1.0, { query: 'same-data' }));
+      expect(res1.kind).toBe('reserved');
+
+      const res2 = runtime.budgetLedger.reserve(
+        request(clock, crypto.randomUUID(), 1.0, { query: 'same-data' })
+      );
+      expect(res2.kind).toBe('in_progress');
+      expect(res2.operation.operation_id).toBe(id1);
+      expect(runtime.budgetGovernor.state().spent_usd).toBe(0);
+    } finally {
+      runtime.close();
+    }
+  });
+
+  it('starts and stops periodic reaper via startReaper (M7)', async () => {
+    const clock = new FrozenClock(START);
+    const runtime = createGovernanceRuntimeContext({ dbPath: tempDatabase(), clock, capUsd: 10 });
+    const reaper = runtime.startReaper(50);
+    try {
+      const expireId = crypto.randomUUID();
+      runtime.budgetLedger.reserve(request(clock, expireId, 2.0, { query: 'expire' }, 1_000));
+      clock.setTime(clock.now() + 5_000);
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      expect(runtime.budgetLedger.lookup(expireId)?.state).toBe('REFUNDED');
+    } finally {
+      reaper.stop();
+      runtime.close();
     }
   });
 });

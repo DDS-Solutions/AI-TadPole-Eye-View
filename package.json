@@ -34,6 +34,11 @@
     "vitest": "^5.0.0"
   },
   "packageManager": "pnpm@10.34.5",
+  "pnpm": {
+    "overrides": {
+      "zod": "^4.6.5"
+    }
+  },
   "engines": {
     "node": ">=24"
   }

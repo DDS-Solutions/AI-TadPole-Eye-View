@@ -25,6 +25,40 @@ function createProtectedApp() {
   });
 }
 
+const IDENTITY_NOW = 1_700_000_000_000;
+
+function identityForRole(role: IdentityRole): AuthenticatedIdentityContext {
+  const ai = role === 'ai_copilot';
+  return {
+    actor: ai ? 'ai' : 'human',
+    principal: ai ? 'svc:tadpole' : `auth0|${role}`,
+    tenant_id: 'org_alpha',
+    role,
+    client_id: ai ? 'ai-tadpole-os' : 'gev-web',
+    token_id: `token-${role}`,
+    issuer: GEV_PRODUCTION_IDENTITY_PROFILE.issuer,
+    audience: GEV_PRODUCTION_IDENTITY_PROFILE.rest_resource,
+    resource: GEV_PRODUCTION_IDENTITY_PROFILE.rest_resource,
+    scopes: ['read.telemetry', 'read.audit', 'write.scenes', 'write.flags'],
+    issued_at_epoch_seconds: IDENTITY_NOW / 1000 - 60,
+    not_before_epoch_seconds: IDENTITY_NOW / 1000 - 60,
+    expires_at_epoch_seconds: IDENTITY_NOW / 1000 + 60,
+  };
+}
+
+function createIdentityApp() {
+  return createApp({
+    clock: new FrozenClock(IDENTITY_NOW),
+    opsAuth: { requireAuth: true },
+    identityBearerVerifier: {
+      async verify(request) {
+        const role = request.access_token as IdentityRole;
+        return identityForRole(role);
+      },
+    },
+  });
+}
+
 describe('operations route authentication coverage', () => {
   it('keeps the route-coverage table synchronized with every registered /ops handler', () => {
     const { app, auditSink } = createProtectedApp();
@@ -55,6 +89,61 @@ describe('operations route authentication coverage', () => {
       }
     }
   );
+
+  const OWNERSHIP_MATRIX = PROTECTED_OPS_ROUTES.flatMap((route) =>
+    (['viewer', 'operator', 'tenant_admin', 'platform_admin', 'ai_copilot'] as const).map(
+      (role) => ({
+        ...route,
+        role,
+        allowed:
+          role === 'platform_admin' ||
+          ((route.path === '/ops/status' || route.path === '/ops/layer-access') &&
+            (role === 'operator' || role === 'tenant_admin')),
+      })
+    )
+  );
+
+  it.each(OWNERSHIP_MATRIX)(
+    '$method $path applies the $role resource role policy',
+    async ({ method, path, role, allowed }) => {
+      const context = createIdentityApp();
+      try {
+        const response = await context.app.request(path, {
+          method,
+          headers: {
+            Authorization: `Bearer ${role}`,
+            'X-GEV-Tenant': 'org_alpha',
+          },
+        });
+        if (path === '/ops/audit/stream' && allowed) await response.body?.cancel();
+        expect([401, 403].includes(response.status), `${role} ${method} ${path}`).toBe(!allowed);
+      } finally {
+        context.governanceContext.close();
+      }
+    }
+  );
+
+  it('rejects cross-tenant ownership before audit, body parsing, or mutation', async () => {
+    const context = createIdentityApp();
+    try {
+      const response = await context.app.request('/ops/seed/reload', {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer platform_admin',
+          'X-GEV-Tenant': 'org_other',
+          'X-Task-Ref': 'cross-tenant-attempt',
+          'Content-Type': 'application/json',
+        },
+        body: '{',
+      });
+      expect(response.status).toBe(403);
+      await expect(response.json()).resolves.toMatchObject({ code: 'TENANT_ACCESS_DENIED' });
+      expect(context.auditSink.tailByTaskRef('cross-tenant-attempt')).toEqual([]);
+      expect(context.budgetGovernor.state().spent_usd).toBe(0);
+    } finally {
+      context.governanceContext.close();
+    }
+  });
 
   it.each(PROTECTED_OPS_ROUTES)(
     '$method $path rejects an invalid bearer credential',
@@ -235,8 +324,8 @@ describe('operations route authentication coverage', () => {
         method: 'POST',
         headers: { 'X-Actor': 'human', 'X-Task-Ref': localTask },
       });
-      expect(localResponse.status).toBe(200);
-      expect(localContext.auditSink.tailByTaskRef(localTask)[0]).toMatchObject({ actor: 'system' });
+      expect(localResponse.status).toBe(401);
+      expect(localContext.auditSink.tailByTaskRef(localTask)).toEqual([]);
     } finally {
       protectedContext.auditSink.close();
       localContext.auditSink.close();
@@ -254,8 +343,8 @@ describe('operations route authentication coverage', () => {
         body: JSON.stringify({ reason: 'spoofed local resume' }),
       });
 
-      expect(response.status).toBe(403);
-      await expect(response.json()).resolves.toMatchObject({ code: 'HUMAN_AUTH_REQUIRED' });
+      expect(response.status).toBe(401);
+      await expect(response.json()).resolves.toMatchObject({ code: 'MISSING_BEARER_TOKEN' });
       expect(context.budgetGovernor.state().stasis_active).toBe(true);
       expect(context.auditSink.tailByTaskRef('ops-resume')).toEqual([]);
     } finally {
@@ -275,3 +364,9 @@ describe('operations route authentication coverage', () => {
     }
   });
 });
+import {
+  type AuthenticatedIdentityContext,
+  GEV_PRODUCTION_IDENTITY_PROFILE,
+  type IdentityRole,
+} from '@gev/contracts';
+import { FrozenClock } from '@gev/core';

@@ -179,6 +179,8 @@ function migrateGovernanceDatabase(db: DatabaseSync, clock: SimClock): void {
           ON governance_budget_operations (state);
         CREATE INDEX governance_budget_operations_deadline_idx
           ON governance_budget_operations (deadline_at);
+        CREATE INDEX IF NOT EXISTS governance_budget_operations_fingerprint_idx
+          ON governance_budget_operations (request_fingerprint, state);
 
         CREATE TABLE governance_budget_ledger_entries (
           entry_id TEXT PRIMARY KEY,

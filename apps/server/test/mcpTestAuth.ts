@@ -23,6 +23,9 @@ export function testMcpAuthorization(
     actor: 'ai',
     principal: MCP_TEST_SUBJECT,
     tenant_id: 'tenant-test',
+    role: 'ai_copilot',
+    client_id: 'ai-tadpole-os',
+    token_id: 'token-task-6-3',
     task_ref: 'task-6.3-test',
     issuer: MCP_TEST_ISSUER,
     audience: MCP_HTTP_RESOURCE,
@@ -57,6 +60,9 @@ export interface SignedMcpTokenOptions {
   resource?: string;
   principal?: string;
   tenantId?: string;
+  role?: string;
+  clientId?: string;
+  tokenId?: string;
   taskRef?: string;
   scopes?: readonly string[];
   issuedAt?: number;
@@ -69,6 +75,8 @@ export async function issueSignedMcpToken(options: SignedMcpTokenOptions = {}): 
   const issuedAt = options.issuedAt ?? MCP_TEST_NOW / 1000 - 60;
   return new SignJWT({
     tenant_id: options.tenantId ?? 'tenant-test',
+    role: options.role ?? 'ai_copilot',
+    client_id: options.clientId ?? 'ai-tadpole-os',
     task_ref: options.taskRef ?? 'task-6.3-signed-test',
     resource: options.resource ?? MCP_HTTP_RESOURCE,
     scope: (options.scopes ?? ['read.telemetry']).join(' '),
@@ -80,6 +88,7 @@ export async function issueSignedMcpToken(options: SignedMcpTokenOptions = {}): 
     .setIssuedAt(issuedAt)
     .setNotBefore(options.notBefore ?? issuedAt)
     .setExpirationTime(options.expiresAt ?? MCP_TEST_NOW / 1000 + 60)
+    .setJti(options.tokenId ?? 'token-task-6-3')
     .sign(options.signingKey ?? MCP_TEST_SIGNING_KEY);
 }
 
@@ -106,6 +115,9 @@ export function joseMcpBearerVerifier(
         actor: 'ai',
         principal: payload.sub,
         tenant_id: payload.tenant_id,
+        role: payload.role,
+        client_id: payload.client_id,
+        token_id: payload.jti,
         task_ref: payload.task_ref,
         issuer: payload.iss,
         audience: payload.aud,

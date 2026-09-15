@@ -13,6 +13,7 @@ import {
   toGevMcpAuthInfo,
 } from '../src/httpAdapter.js';
 import { MCP_OPERATOR_TOOL_NAMES, handleGetBudget } from '../src/tools.js';
+import { readSseMessages } from './httpTestSupport.js';
 
 const CLIENT_INFO = { name: 'ai-tadpole-os', version: 'test-build' };
 const RESOURCE = 'http://127.0.0.1:3000/mcp';
@@ -20,6 +21,9 @@ const AUTHORIZATION: McpAuthorizationContext = {
   actor: 'ai',
   principal: 'svc:tadpole-test',
   tenant_id: 'tenant-test',
+  role: 'ai_copilot',
+  client_id: 'ai-tadpole-os',
+  token_id: 'token-task-6-3',
   task_ref: 'task-6.3-http-adapter',
   issuer: 'https://auth.gev.test/',
   audience: RESOURCE,
@@ -90,16 +94,6 @@ function modernRequest(
 
 async function readJson(response: Response): Promise<Record<string, unknown>> {
   return (await response.json()) as Record<string, unknown>;
-}
-
-async function readSseMessages(response: Response): Promise<Array<Record<string, unknown>>> {
-  const raw = await response.text();
-  return raw.split(/\r?\n\r?\n/).flatMap((event) =>
-    event
-      .split(/\r?\n/)
-      .filter((line) => line.startsWith('data:'))
-      .map((line) => JSON.parse(line.slice('data:'.length).trim()) as Record<string, unknown>)
-  );
 }
 
 afterEach(async () => {
@@ -485,13 +479,15 @@ describe('modern MCP HTTP SDK adapter', () => {
         expect.objectContaining({
           principal: 'svc:tadpole-test',
           tenant_id: 'tenant-test',
-          task_ref: 'task-6.3-http-adapter',
+          authority_task_ref: 'task-6.3-http-adapter',
+          task_ref: expect.stringMatching(/^tenant:tenant-test:task:[0-9a-f]{64}$/),
           operation_id: firstOperation,
         }),
         expect.objectContaining({
           principal: 'svc:audit-reader',
           tenant_id: 'tenant-audit',
-          task_ref: 'task-6.3-audit-reader',
+          authority_task_ref: 'task-6.3-audit-reader',
+          task_ref: expect.stringMatching(/^tenant:tenant-audit:task:[0-9a-f]{64}$/),
           operation_id: secondOperation,
         }),
       ])
