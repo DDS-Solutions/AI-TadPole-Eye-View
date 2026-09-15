@@ -94,4 +94,21 @@ describe('Layer Access authenticated read route', () => {
     });
     runtime.governanceContext.close();
   });
+
+  it('allows tokenless read in local seed mode returning authority kind local_seed', async () => {
+    const runtime = createApp({
+      clock: new FrozenClock(NOW),
+      governanceDbPath: databasePath(),
+      opsAuth: { opsToken: '', requireAuth: false },
+    });
+    const response = await runtime.app.request('/ops/layer-access');
+    expect(response.status).toBe(200);
+    const model = LayerAccessReadModelSchema.parse(await response.json());
+    expect(model.entries).toHaveLength(19);
+    expect(model.authority).toMatchObject({
+      kind: 'local_seed',
+      credential_status_access: 'unavailable',
+    });
+    runtime.governanceContext.close();
+  });
 });
