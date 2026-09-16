@@ -48,25 +48,32 @@ export function getOpenAIToolDefinitions(
   });
 }
 
+const mcpToolDefinitionCache = new Map<OperatorToolName, McpToolDefinition>();
+
 export function getMcpToolDefinitions(
   toolNames?: readonly OperatorToolName[]
 ): McpToolDefinition[] {
   return selectToolNames(toolNames).map((name) => {
-    const definition = OPERATOR_TOOLS[name];
-    return {
-      name: definition.name,
-      description: definition.description,
-      inputSchema: zodToJsonSchemaLight(definition.inputSchema),
-      outputSchema: zodToJsonSchemaLight(definition.outputSchema),
-      _metadata: {
-        is_mutating: definition.is_mutating,
-        is_dangerous: definition.is_dangerous,
-        is_cacheable: definition.is_cacheable,
-        requires_reservation: definition.requires_reservation,
-        cost_estimate: definition.cost_estimate,
-        timeout_ms: definition.timeout_ms,
-      },
-    };
+    let cached = mcpToolDefinitionCache.get(name);
+    if (!cached) {
+      const definition = OPERATOR_TOOLS[name];
+      cached = {
+        name: definition.name,
+        description: definition.description,
+        inputSchema: zodToJsonSchemaLight(definition.inputSchema),
+        outputSchema: zodToJsonSchemaLight(definition.outputSchema),
+        _metadata: {
+          is_mutating: definition.is_mutating,
+          is_dangerous: definition.is_dangerous,
+          is_cacheable: definition.is_cacheable,
+          requires_reservation: definition.requires_reservation,
+          cost_estimate: definition.cost_estimate,
+          timeout_ms: definition.timeout_ms,
+        },
+      };
+      mcpToolDefinitionCache.set(name, cached);
+    }
+    return cached;
   });
 }
 
