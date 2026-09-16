@@ -76,7 +76,9 @@ describe('operational-awareness contracts', () => {
   it('validates normalized UTC timestamps with resilient fractional second precision', () => {
     expect(NormalizedUtcTimestampSchema.safeParse('2024-08-25T10:00:00.000Z').success).toBe(true);
     expect(NormalizedUtcTimestampSchema.safeParse('2024-08-25T10:00:00Z').success).toBe(true);
-    expect(NormalizedUtcTimestampSchema.safeParse('2024-08-25T10:00:00.123456Z').success).toBe(true);
+    expect(NormalizedUtcTimestampSchema.safeParse('2024-08-25T10:00:00.123456Z').success).toBe(
+      true
+    );
     expect(NormalizedUtcTimestampSchema.safeParse('2024-08-25T10:00:00+00:00').success).toBe(false);
     expect(NormalizedUtcTimestampSchema.safeParse('2024-08-25 10:00:00').success).toBe(false);
   });
