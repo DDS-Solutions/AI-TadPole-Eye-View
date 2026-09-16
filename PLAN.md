@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=8
-NEXT_TASK=8.2
+NEXT_TASK=8.3
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
@@ -128,7 +128,7 @@ The pre-existing `README.md` worktree modification belongs to the user and is ou
 | `packages/governance` | Audit, approval, capability, budget, STASIS, Tadpole adapters |
 | `packages/ops-mcp` | Shared operator MCP surface and transports |
 | `packages/cli` | `gev` operator commands |
-| Economic workspace package | **Planned in Phase 8**: pure economic analysis and source registry; its path does not exist yet |
+| `packages/economic` | Pure economic analysis, source registry, and statistical metrics; zero I/O |
 | `fixtures` | Recorded, licensed, deterministic provider fixtures |
 | `e2e` / `load` | Playwright and k6 verification |
 
@@ -1949,19 +1949,19 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
   redacted; invalid/revoked credentials and expired/superseded terms relock affected layers;
   direct route/reload works in the chosen hosting model.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 8.2
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 8.3
 
 ```text
-[SCOPE_CONTRACT] Write ADR reserving the economic workspace package path; create the pure economic analysis workspace package with no I/O, pure domain math, explicit source registry contracts, and zero network/filesystem dependencies. Out of scope: live data queries, network calls, database persistence, or UI components.
-[PERFORMANCE_THRESHOLD] 100% test pass; deterministic frozen-clock property and unit tests; zero I/O execution; ADG and monorepo quality gates green.
-[ARCHITECTURE_MODE] PLAN.md §2 (rules 1, 6, 8), §8.2; ADR reserving literal package path; pure TypeScript calculation/domain models; all outputs carry required DataProvenance.
-[FAILURE_MODES] Introducing any direct network/HTTP call or I/O into the pure economic analysis package is strictly forbidden; undeclared package path without prior ADR reservation fails validation.
+[SCOPE_CONTRACT] Add licensed, deterministic test fixtures for ACS, CBP/ZBP, BLS OEWS/LAU, FEMA NRI, and approved OSM commercial POI examples to fixtures/; ensure all fixture records validate against contracts, carry required provenance, and are strictly marked seed/fixture mode. Out of scope: live API calls, persistent storage, or UI integration.
+[PERFORMANCE_THRESHOLD] 100% test pass; deterministic frozen-clock validation; fixture parsing p95 < 10ms; zero live network calls under GEV_SEED_MODE=1.
+[ARCHITECTURE_MODE] PLAN.md §2 (rules 1, 4, 7, 12); DataProvenance schema v1 validation; strictly licensed synthetic/public domain seed fixtures.
+[FAILURE_MODES] Bundling unverified proprietary data or live API tokens in fixtures fails validation; fixtures labeled as live data are rejected immediately.
 ```
 
 ### Phase 8 — Economic R0: safe foundation
 
 - [x] 8.1 Add discriminated geography, estimate, provenance, evidence, and BusinessContext-preview contracts with malicious/limit tests.
-- [ ] 8.2 Create a new workspace package for pure economic analysis with no I/O and an explicit source registry; reserve its literal path in the implementing ADR before creation.
+- [x] 8.2 Create a new workspace package for pure economic analysis with no I/O and an explicit source registry; reserve its literal path in the implementing ADR before creation.
 - [ ] 8.3 Add licensed deterministic fixtures for ACS, CBP/ZBP, BLS, FEMA, and approved OSM examples; fixtures can never be labeled live.
 - [ ] 8.4 Implement a protected, stateless preview API and MCP tool through shared governance.
 - [ ] 8.5 Add content/instruction separation and prompt-injection tests before any provider/economic text enters an LLM/Tadpole context.
@@ -4050,6 +4050,34 @@ No later task is authorized merely because it appears in this plan.
   - Bundle budgets (`pnpm check:budgets`): PASSED (Total JS Gzip 1239.55 KB <= 3600 KB ceiling).
 - **Plan Advancement:** Task 8.1 complete (`[x]`). `CURRENT_PHASE=8`, `NEXT_TASK=8.2`, `NEXT_TASK_STATUS=READY`.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 8.2. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### 17.39 Task 8.2: Economic Workspace Package & Pure Domain Architecture
+
+- **Execution:** Completed on branch `codex/task-8.2-economic-package`.
+- **ADR 0052:** Formally reserved `packages/economic` with package identifier `@gev/economic`, established strict zero-I/O execution boundaries, explicit typed source registry, and statistical calculation standards. Registered in `docs/adr/INDEX.md`.
+- **Package Architecture & Boundaries (`@gev/economic`):**
+  - Literal workspace path: `packages/economic` with TypeScript configuration and pnpm workspace integration.
+  - Zero-I/O compliance verified by AST/regex boundary test: zero imports of `fs`, `http`, `https`, `fetch`, `undici`, `axios`, or `sqlite`.
+  - All source files strictly under the 500-line ceiling (ADR 0039 / rule 15).
+- **Economic Source Registry (`packages/economic/src/sourceRegistry.ts`):**
+  - Explicit typed metadata for 9 approved public economic sources: Census ACS, Census CBP/ZBP, BLS OEWS, BLS LAU, FEMA NRI/NFHL, USGS 3DEP, EPA AQS, DOT/BTS, and OSM commercial.
+  - Documents canonical URLs, terms URLs, license IDs, attribution notices, supported geographic levels, update cadences, suppression support, and MOE support.
+- **Pure Statistical & Domain Calculations:**
+  - `marginOfError.ts`: U.S. Census Bureau standard statistical formulas for ACS margin of error combination across sums, ratios, proportions (with positive/fallback radicands), products, and confidence level scaling (90%, 95%, 99%). Fast-check property tests verify subadditivity and confidence reversibility.
+  - `concentration.ts`: Herfindahl-Hirschman Index (HHI) and Four-Firm Concentration Ratio (CR4) with regulatory tier classifications (`unconcentrated`, `moderately_concentrated`, `highly_concentrated`). Fast-check tests verify boundary invariants [0, 10000].
+  - `specialization.ts`: Location Quotient (LQ) and classical Shift-Share Analysis decomposing regional growth into National Growth Effect, Industry Mix Effect, and Local Competitive Share. Identity sum `total_change = N + M + C` verified across random economic scenarios.
+  - `evidenceSynthesis.ts`: Pure evaluation of expected benchmarks vs observed signals detecting threshold-based disagreements (`warning` at 15%, `critical` at 35%) without overwriting either signal. Synthesizes `BusinessContextPreview` envelopes enforcing legal disclaimer, DataProvenance, and zero-coercion semantics.
+- **Verification & Quality Gates:**
+  - Vitest `@gev/economic` suite: 6/6 test files (38 tests passed), including fast-check property suites and architectural zero-I/O boundary checks.
+  - Turbo monorepo build, typecheck, test: 32/32 tasks passed across all 13 workspace projects.
+  - Biome lint: 0 errors across 339 files.
+  - Architecture drift check (`pnpm architecture:check`): PASSED (0 large files >500 lines).
+  - ADG check (`pnpm docs:check`): PASSED (73 doc files, 638 paths, 24 module symbols, 0 errors).
+  - Doc tests (`pnpm docs:test`): 17/17 tests passed.
+  - Provider registry check (`pnpm docs:providers:check`): PASSED.
+  - Bundle budgets check (`pnpm check:budgets`): PASSED (Total JS Gzip 1240.84 KB <= 3600 KB ceiling).
+- **Plan Advancement:** Task 8.2 complete (`[x]`). `CURRENT_PHASE=8`, `NEXT_TASK=8.3`, `NEXT_TASK_STATUS=READY`.
+- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 8.3. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
 

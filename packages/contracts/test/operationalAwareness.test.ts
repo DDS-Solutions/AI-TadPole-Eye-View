@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   AviationWeatherResponseSchema,
   CoastalConditionsResponsePayloadSchema,
+  COORDINATE_EPSILON,
+  LinearRingSchema,
+  NormalizedUtcTimestampSchema,
   NwsAlertCollectionPayloadSchema,
   OperationalAoiSchema,
   OperationalAreaGeometrySchema,
@@ -22,7 +25,7 @@ describe('operational-awareness contracts', () => {
     ).toThrow(/ANTIMERIDIAN_UNSUPPORTED/);
   });
 
-  it('requires closed, bounded polygon geometry', () => {
+  it('requires closed, bounded polygon geometry with floating-point tolerance', () => {
     expect(
       OperationalAreaGeometrySchema.safeParse({
         type: 'Polygon',
@@ -36,6 +39,25 @@ describe('operational-awareness contracts', () => {
         ],
       }).success
     ).toBe(true);
+
+    // Floating-point precision within epsilon (e.g. 0.1 + 0.2 === 0.30000000000000004)
+    const floatToleranceRing = [
+      [0.1 + 0.2, 0.5],
+      [1, 0],
+      [1, 1],
+      [0.3, 0.5],
+    ];
+    expect(LinearRingSchema.safeParse(floatToleranceRing).success).toBe(true);
+
+    // Coordinates diverging beyond epsilon must fail closure
+    const divergentRing = [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+      [0, COORDINATE_EPSILON * 10],
+    ];
+    expect(LinearRingSchema.safeParse(divergentRing).success).toBe(false);
+
     expect(
       OperationalAreaGeometrySchema.safeParse({
         type: 'Polygon',
@@ -49,6 +71,16 @@ describe('operational-awareness contracts', () => {
         ],
       }).success
     ).toBe(false);
+  });
+
+  it('validates normalized UTC timestamps with resilient fractional second precision', () => {
+    expect(NormalizedUtcTimestampSchema.safeParse('2024-08-25T10:00:00.000Z').success).toBe(true);
+    expect(NormalizedUtcTimestampSchema.safeParse('2024-08-25T10:00:00Z').success).toBe(true);
+    expect(NormalizedUtcTimestampSchema.safeParse('2024-08-25T10:00:00.123456Z').success).toBe(
+      true
+    );
+    expect(NormalizedUtcTimestampSchema.safeParse('2024-08-25T10:00:00+00:00').success).toBe(false);
+    expect(NormalizedUtcTimestampSchema.safeParse('2024-08-25 10:00:00').success).toBe(false);
   });
 
   it('preserves distinct CAP lifecycle times and reference times', () => {

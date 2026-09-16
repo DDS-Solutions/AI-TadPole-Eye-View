@@ -41,3 +41,4 @@ This directory records all significant architectural and structural decisions ma
 | [0049](./0049-registry-derived-layer-access-read-model.md) | Registry-derived Layer Access read model | Accepted | 2026-09-06 |
 | [0050](./0050-tenant-quota-rate-cache-killswitch-policy.md) | Tenant Quota, Rate Limit, Cache Partitioning, and Kill-Switch Policy | Accepted | 2026-09-15 |
 | [0051](./0051-lazy-intelligence-route-and-cesium-bundle-decoupling.md) | Lazy intelligence route and Cesium bundle decoupling architecture | Accepted | 2026-09-15 |
+| [0052](./0052-economic-analysis-package-path-and-architecture.md) | Economic analysis workspace package path and pure domain architecture | Accepted | 2026-09-16 |
