@@ -294,14 +294,20 @@ describe('Performance Threshold: Parsing Latency (Task 8.3)', () => {
       loadFixtureJson('osm-commercial-evidence-synthetic-v1.json'),
     ];
 
-    // Warm-up parse
-    for (const raw of rawFiles) {
-      JSON.parse(raw);
+    // Warm-up parse to ensure JIT compilation, schema initialization, and regex caching
+    for (let w = 0; w < 10; w++) {
+      for (let i = 0; i < rawFiles.length; i++) {
+        if (i === 5) {
+          parseOsmCommercialPoiFixture(rawFiles[i]);
+        } else {
+          parseEconomicFixtureDataset(rawFiles[i]);
+        }
+      }
     }
 
-    // Benchmark 100 runs
+    // Benchmark 200 runs
     const latencies: number[] = [];
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 200; i++) {
       const idx = i % rawFiles.length;
       const raw = rawFiles[idx];
       const start = performance.now();
