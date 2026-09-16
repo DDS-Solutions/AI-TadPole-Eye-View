@@ -8,6 +8,12 @@ const PROTECTED_OPS_ROUTES = [
   { method: 'GET', path: '/ops/audit/integrity' },
   { method: 'GET', path: '/ops/audit/stream' },
   { method: 'GET', path: '/ops/layer-access' },
+  { method: 'POST', path: '/ops/layer-access/credentials' },
+  { method: 'POST', path: '/ops/layer-access/credentials/validate' },
+  { method: 'POST', path: '/ops/layer-access/credentials/revoke' },
+  { method: 'DELETE', path: '/ops/layer-access/credentials/:providerId' },
+  { method: 'POST', path: '/ops/layer-access/terms' },
+  { method: 'POST', path: '/ops/layer-access/terms/revoke' },
   { method: 'POST', path: '/ops/budget/reconcile' },
   { method: 'POST', path: '/ops/cables/packs/activate' },
   { method: 'POST', path: '/ops/seed/reload' },
@@ -97,8 +103,10 @@ describe('operations route authentication coverage', () => {
         role,
         allowed:
           role === 'platform_admin' ||
+          ((route.path === '/ops/status' || route.path.startsWith('/ops/layer-access')) &&
+            role === 'tenant_admin') ||
           ((route.path === '/ops/status' || route.path === '/ops/layer-access') &&
-            (role === 'operator' || role === 'tenant_admin')),
+            role === 'operator'),
       })
     )
   );
@@ -175,9 +183,11 @@ describe('operations route authentication coverage', () => {
           headers: { Authorization: `Bearer ${OPS_TOKEN}` },
         });
 
-        expect(response.status).toBe(
-          path === '/ops/budget/reconcile' || path === '/ops/cables/packs/activate' ? 400 : 200
-        );
+        const expectsPayload =
+          path === '/ops/budget/reconcile' ||
+          path === '/ops/cables/packs/activate' ||
+          (path.startsWith('/ops/layer-access/') && (method === 'POST' || method === 'DELETE'));
+        expect(response.status).toBe(expectsPayload ? 400 : 200);
         if (path === '/ops/audit/stream') {
           expect(response.headers.get('content-type')).toContain('text/event-stream');
           await response.body?.cancel();

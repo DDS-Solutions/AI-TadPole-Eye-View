@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { LayerAccessEntry } from "@gev/contracts";
+  import LayerAccessAdminSection from "./LayerAccessAdminSection.svelte";
 
   let { entry }: { entry: LayerAccessEntry } = $props();
 
@@ -195,9 +196,7 @@
         <li>{instruction}</li>
       {/each}
     </ol>
-    <p class="write-lock">
-      Credential and terms changes remain disabled until Phase 7 administration.
-    </p>
+    <LayerAccessAdminSection {entry} />
   </section>
 
   <nav class="source-links" aria-label="Authoritative source links">
@@ -359,9 +358,6 @@
   .mono {
     font-family: ui-monospace, monospace;
     font-variant-numeric: tabular-nums;
-  }
-  .write-lock {
-    color: var(--hud-warning);
   }
   .source-links {
     display: flex;

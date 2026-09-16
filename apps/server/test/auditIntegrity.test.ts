@@ -36,7 +36,7 @@ describe('protected audit integrity inspection', () => {
       await expect(response.json()).resolves.toMatchObject({
         status: 'valid',
         chain_version: 'gev.audit.chain.v1',
-        schema_version: 5,
+        schema_version: 6,
         anchor_sequence: 0,
         head_sequence: 0,
       });

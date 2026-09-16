@@ -17,12 +17,15 @@ import {
   type TrustedApprovalKey,
 } from './signedApproval.js';
 
+import { SqliteTenantLayerAccessStore } from './tenantLayerAccessStore.js';
+
 export interface GovernanceRuntimeContext {
   clock: SimClock;
   auditSink: SqliteAuditSink;
   budgetGovernor: CapBudgetGovernor;
   budgetLedger: SqliteBudgetLedger;
   approvalGate: ApprovalGate;
+  tenantLayerAccessStore: SqliteTenantLayerAccessStore;
   startReaper(intervalMs?: number): { stop(): void };
   authority(): GovernanceAuthority;
   close(): void;
@@ -48,6 +51,8 @@ export interface GovernanceRuntimeContextOptions {
     trustedRetentionKeys?: readonly TrustedAuditRetentionKey[];
     retentionPolicy?: AuditRetentionPolicy;
   };
+  tenantLayerAccessStore?: SqliteTenantLayerAccessStore;
+  credentialEncryptionKey?: Buffer;
 }
 
 export function createGovernanceRuntimeContext(
@@ -133,6 +138,18 @@ export function createGovernanceRuntimeContext(
     throw error;
   }
 
+  const database =
+    opened?.db ??
+    (options.auditSink as unknown as { db?: import('node:sqlite').DatabaseSync })?.db ??
+    (options.budgetGovernor as unknown as { db?: import('node:sqlite').DatabaseSync })?.db;
+  const tenantLayerAccessStore =
+    options.tenantLayerAccessStore ??
+    (database
+      ? new SqliteTenantLayerAccessStore(database, clock, {
+          encryptionKey: options.credentialEncryptionKey,
+        })
+      : (undefined as unknown as SqliteTenantLayerAccessStore));
+
   let closed = false;
   const activeReapers = new Set<NodeJS.Timeout>();
 
@@ -142,6 +159,7 @@ export function createGovernanceRuntimeContext(
     budgetGovernor,
     budgetLedger,
     approvalGate,
+    tenantLayerAccessStore,
     startReaper: (intervalMs = 30_000) => {
       const timer = setInterval(() => {
         if (closed) return;

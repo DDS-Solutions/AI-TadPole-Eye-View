@@ -122,7 +122,7 @@ test('discovers every registry entry and distinguishes the complete Layer Access
 
   const panel = page.getByRole('dialog', { name: 'Layer Access' });
   await expect(panel).toBeVisible();
-  await expect(panel.getByRole('button').filter({ hasText: /.+/ })).toHaveCount(20);
+  await expect(panel.getByRole('button').filter({ hasText: /.+/ })).toHaveCount(22);
   await expect(page.locator('[id^="layer-access-entry-"]')).toHaveCount(19);
   await expect(page.locator('#layer-access-entry-opensky')).toHaveAttribute(
     'aria-label',
@@ -238,4 +238,68 @@ test('recovers from a bounded Layer Access read error without hiding the failure
   await expect(panel.getByRole('alert')).toContainText('Layer Access unavailable');
   await panel.getByRole('button', { name: 'Retry' }).click();
   await expect(page.locator('[id^="layer-access-entry-"]')).toHaveCount(19);
+});
+
+test('administers credentials and records terms acceptance via tenant admin controls', async ({
+  page,
+}) => {
+  let credentialSubmitted = false;
+  let termsAccepted = false;
+
+  await page.route('**/ops/layer-access/credentials', async (route) => {
+    if (route.request().method() === 'POST') {
+      credentialSubmitted = true;
+      const body = route.request().postDataJSON();
+      expect(body.secret_value).toBe('sk-test-admin-secret-token');
+      expect(body.provider_id).toBe('opensky');
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.route('**/ops/layer-access/terms', async (route) => {
+    if (route.request().method() === 'POST') {
+      termsAccepted = true;
+      const body = route.request().postDataJSON();
+      expect(body.provider_id).toBe('opensky');
+      expect(body.reviewed_url).toBeTruthy();
+      expect(body.version_digest).toBeTruthy();
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto('/');
+  await page.locator('#open-layer-access').click();
+  const panel = page.getByRole('dialog', { name: 'Layer Access' });
+  await expect(panel).toBeVisible();
+
+  await page.locator('#layer-access-entry-opensky').click();
+  await expect(panel.getByRole('heading', { name: 'Tenant Administration' })).toBeVisible();
+
+  // Test credential submission
+  const secretInput = panel.locator('#secret-input-opensky');
+  await secretInput.fill('sk-test-admin-secret-token');
+  await panel.getByRole('button', { name: /Save Credential|Rotate Credential/ }).click();
+  await expect.poll(() => credentialSubmitted).toBe(true);
+  await expect(panel.locator('.feedback-banner')).toContainText(
+    'Credential securely saved and encrypted.'
+  );
+
+  // Test recording terms acceptance
+  const versionInput = panel.locator('#version-digest-opensky');
+  await versionInput.fill('v2.1.0-audit-approved');
+  await panel.getByRole('button', { name: 'Record Terms Acceptance' }).click();
+  await expect.poll(() => termsAccepted).toBe(true);
+  await expect(panel.locator('.feedback-banner')).toContainText('Terms acceptance record logged.');
 });

@@ -151,7 +151,8 @@ export function createApp(options: CreateAppOptions = {}) {
   const satellitePropagator = new SatellitePropagator(clock);
 
   // One shared governance runtime is used by every server route and middleware.
-  const { auditSink, budgetGovernor, budgetLedger, approvalGate } = governanceContext;
+  const { auditSink, budgetGovernor, budgetLedger, approvalGate, tenantLayerAccessStore } =
+    governanceContext;
   const costGovernor = new CostGovernor({
     clock,
     budgetLedger,
@@ -315,11 +316,13 @@ export function createApp(options: CreateAppOptions = {}) {
 
   // Source elements are cached inside the adapter; positions are re-propagated at SimClock time.
   // Request limiting therefore stays separate from the response-caching cost governor.
+  const satelliteRateLimit =
+    Number(process.env.GEV_SATELLITE_RATE_LIMIT) || SATELLITE_REQUESTS_PER_MINUTE;
   app.use(
     '/api/satellites/*',
     createRateLimitMiddleware(rateLimiter, {
       bucket: 'satellites-read',
-      limit: SATELLITE_REQUESTS_PER_MINUTE,
+      limit: satelliteRateLimit,
       resolveClientId,
     })
   );
@@ -349,6 +352,9 @@ export function createApp(options: CreateAppOptions = {}) {
       clock,
       auditSink,
       budgetGovernor,
+      budgetLedger,
+      tenantLayerAccessStore: options.tenantLayerAccessStore ?? tenantLayerAccessStore,
+      credentialValidator: options.layerAccessCredentialValidator,
       getProviderRegistry: () => providerRegistry,
       ...(options.layerAccessAuthorizedLocalState
         ? { getAuthorizedLocalState: () => options.layerAccessAuthorizedLocalState ?? [] }

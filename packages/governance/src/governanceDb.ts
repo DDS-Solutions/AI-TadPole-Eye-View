@@ -4,7 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { type SimClock, SystemClock } from '@gev/core';
 import { migrateAuditChain } from './auditChainMigration.js';
 
-export const GOVERNANCE_SCHEMA_VERSION = 5;
+export const GOVERNANCE_SCHEMA_VERSION = 6;
 export const GOVERNANCE_BUSY_TIMEOUT_MS = 5_000;
 
 export interface GovernanceDatabaseOptions {
@@ -251,6 +251,48 @@ function migrateGovernanceDatabase(db: DatabaseSync, clock: SimClock): void {
           ON governance_tenant_budgets (stasis_active);
         INSERT INTO governance_schema_migrations (version, applied_at)
         VALUES (5, '${new Date(clock.now()).toISOString()}');
+      `);
+    }
+
+    if (versionRow.version < 6) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS governance_tenant_layer_credentials (
+          tenant_id TEXT NOT NULL,
+          provider_id TEXT NOT NULL,
+          secret_kind TEXT NOT NULL CHECK (secret_kind IN ('api_key', 'token', 'client_secret')),
+          encrypted_secret TEXT NOT NULL,
+          masked_fingerprint TEXT NOT NULL CHECK (length(masked_fingerprint) BETWEEN 8 AND 20),
+          status TEXT NOT NULL CHECK (status IN ('not_required', 'missing', 'pending_validation', 'valid', 'invalid', 'expired', 'revoked', 'scope_insufficient')),
+          validation_error TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          validated_at TEXT,
+          revoked_at TEXT,
+          PRIMARY KEY (tenant_id, provider_id)
+        );
+        CREATE INDEX IF NOT EXISTS governance_tenant_layer_credentials_status_idx
+          ON governance_tenant_layer_credentials (tenant_id, status);
+
+        CREATE TABLE IF NOT EXISTS governance_tenant_layer_terms (
+          tenant_id TEXT NOT NULL,
+          provider_id TEXT NOT NULL,
+          terms_id TEXT NOT NULL,
+          status TEXT NOT NULL CHECK (status IN ('not_required', 'unreviewed', 'pending_approval', 'approved', 'rejected', 'expired', 'superseded')),
+          reviewed_url TEXT NOT NULL,
+          version_digest TEXT NOT NULL,
+          approved_by TEXT NOT NULL,
+          approved_use_json TEXT NOT NULL,
+          approved_environments_json TEXT NOT NULL,
+          reviewed_at TEXT NOT NULL,
+          expires_at TEXT,
+          revoked_at TEXT,
+          PRIMARY KEY (tenant_id, provider_id)
+        );
+        CREATE INDEX IF NOT EXISTS governance_tenant_layer_terms_status_idx
+          ON governance_tenant_layer_terms (tenant_id, status);
+
+        INSERT INTO governance_schema_migrations (version, applied_at)
+        VALUES (6, '${new Date(clock.now()).toISOString()}');
       `);
     }
 

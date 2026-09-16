@@ -8,9 +8,15 @@ import {
   ProviderRegistrySchema,
 } from '@gev/contracts';
 import type { SimClock } from '@gev/core';
-import type { CapBudgetGovernor, SqliteAuditSink } from '@gev/governance';
+import type {
+  CapBudgetGovernor,
+  SqliteAuditSink,
+  SqliteBudgetLedger,
+  SqliteTenantLayerAccessStore,
+} from '@gev/governance';
 import { createLayerAccessReadModel } from '@gev/providers';
 import { Hono } from 'hono';
+import { createLayerAccessAdminRouter } from './layerAccessAdmin.js';
 
 const MAX_LAYER_ACCESS_RESPONSE_BYTES = 2 * 1024 * 1024;
 
@@ -18,9 +24,15 @@ export interface LayerAccessRouterOptions {
   clock: SimClock;
   auditSink: SqliteAuditSink;
   budgetGovernor: CapBudgetGovernor;
+  budgetLedger?: SqliteBudgetLedger;
+  tenantLayerAccessStore?: SqliteTenantLayerAccessStore;
   getProviderRegistry(): ProviderRegistry;
   environment?: Readonly<Record<string, string | undefined>>;
   getAuthorizedLocalState?: () => readonly LayerAccessProviderRuntimeInput[];
+  credentialValidator?: (
+    providerId: string,
+    secret: string
+  ) => Promise<{ valid: boolean; error?: string }>;
 }
 
 function policyState(
@@ -91,18 +103,42 @@ export function createLayerAccessRouter(options: LayerAccessRouterOptions): Hono
     try {
       const registry = ProviderRegistrySchema.parse(options.getProviderRegistry());
       const authenticated = identity.opsAuthenticated === true && identity.opsActor === 'human';
-      const stateByProvider = new Map(
-        (authenticated ? (options.getAuthorizedLocalState?.() ?? []) : []).map((state) => [
-          state.provider_id,
-          state,
-        ])
-      );
+      const tenantId =
+        (identity as unknown as { opsTenantId?: string }).opsTenantId ?? 'tenant-local';
+      const tenantInputs =
+        authenticated && options.tenantLayerAccessStore
+          ? options.tenantLayerAccessStore.getTenantRuntimeInputs(tenantId)
+          : [];
+      const authorizedLocalInputs =
+        authenticated && options.getAuthorizedLocalState ? options.getAuthorizedLocalState() : [];
+      const combinedInputs = [...authorizedLocalInputs, ...tenantInputs];
+      const stateByProvider = new Map(combinedInputs.map((state) => [state.provider_id, state]));
       const providers = publicRuntimeState(registry, environment).map((state) => ({
         ...state,
         ...(stateByProvider.get(state.provider_id) ?? {}),
         provider_id: state.provider_id,
       }));
+
       const governorState = options.budgetGovernor.state();
+      let tenantStasisActive = governorState.stasis_active;
+      let budgetRemainingUsd = Math.max(0, governorState.cap_usd - governorState.spent_usd);
+      if (options.budgetLedger && authenticated) {
+        const tenantBudget = options.budgetLedger.getTenantBudget(tenantId);
+        if (tenantBudget) {
+          if (tenantBudget.stasis_active === 1) {
+            tenantStasisActive = true;
+          }
+          const held = options.budgetLedger.getTenantHeldMicrousd(tenantId);
+          budgetRemainingUsd = Math.max(
+            0,
+            (tenantBudget.cap_microusd - tenantBudget.spent_microusd - held) / 1_000_000
+          );
+        }
+      }
+
+      const hasAuthority =
+        options.getAuthorizedLocalState !== undefined ||
+        (options.tenantLayerAccessStore !== undefined && tenantInputs.length > 0);
       const unavailableReason = authenticated
         ? 'No approved local credential-status authority is configured for this server'
         : 'Authenticate as the local human operator to read masked local access status';
@@ -110,13 +146,13 @@ export function createLayerAccessRouter(options: LayerAccessRouterOptions): Hono
         createLayerAccessReadModel(registry, {
           version: 1,
           observed_at: new Date(options.clock.now()).toISOString(),
-          stasis_active: governorState.stasis_active,
-          budget_remaining_usd: Math.max(0, governorState.cap_usd - governorState.spent_usd),
+          stasis_active: tenantStasisActive,
+          budget_remaining_usd: budgetRemainingUsd,
           authority: {
             kind: authenticated ? 'authenticated_local_operator' : 'local_seed',
             credential_status_access:
-              authenticated && options.getAuthorizedLocalState ? 'masked_status' : 'unavailable',
-            reason: authenticated && options.getAuthorizedLocalState ? null : unavailableReason,
+              authenticated && hasAuthority ? 'masked_status' : 'unavailable',
+            reason: authenticated && hasAuthority ? null : unavailableReason,
           },
           providers,
         })
@@ -154,6 +190,8 @@ export function createLayerAccessRouter(options: LayerAccessRouterOptions): Hono
       );
     }
   });
+
+  router.route('/', createLayerAccessAdminRouter(options));
 
   return router;
 }
