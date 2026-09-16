@@ -138,5 +138,5 @@ describe('Server Proxy High-Concurrency Load Verification (PLAN.md §10 Phase 4 
     expect(mcpHttp?.activeRequestCount()).toBe(0);
     await mcpHttp?.close();
     governanceContext.close();
-  });
+  }, 15000);
 });

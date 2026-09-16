@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-16
-**Status:** IN PROGRESS — Phase 8 tasks 8.1–8.3 complete; task 8.4 ready for review and authorization
+**Status:** IN PROGRESS — Phase 8 tasks 8.1–8.4 complete; task 8.5 ready for review and authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=8
-NEXT_TASK=8.4
+NEXT_TASK=8.5
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
@@ -1949,13 +1949,13 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
   redacted; invalid/revoked credentials and expired/superseded terms relock affected layers;
   direct route/reload works in the chosen hosting model.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 8.4
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 8.5
 
 ```text
-[SCOPE_CONTRACT] Implement protected, stateless BusinessContext preview HTTP route in apps/server and MCP tool in packages/ops-mcp through shared governance (packages/governance); wire pure economic analysis synthesis (@gev/economic) over validated fixtures/stores. Out of scope: persistent economic storage, background watchers, live provider network calls, or UI rendering.
-[PERFORMANCE_THRESHOLD] 100% test pass; stateless preview endpoint responds < 25ms p95; zero unauthenticated or cross-tenant leakage; zero persistence writes outside audit trail.
-[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2; ADRs 0031, 0041, 0050, 0052; stateless execution; mandatory tenant isolation and token authorization; legal disclaimer attached to all preview outputs.
-[FAILURE_MODES] Missing tenant auth or invalid capability returns 401/403 before execution; suppressed data never coerced to zero; rate limit breach trips governor safely without crashing.
+[SCOPE_CONTRACT] packages/economic/src/promptProtection.ts, packages/contracts/src/economicPrompt.ts, packages/ops-mcp/src/promptSafety.ts. Out of scope: live LLM API calls, model training, UI rendering.
+[PERFORMANCE_THRESHOLD] 100% test pass; prompt safety sanitizer executes < 5ms p95; zero injection leakage across all OWASP LLM01 test payloads.
+[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2; ADRs 0031, 0050, 0052, 0053; strict data/instruction separation; delimiter bounding; untrusted provider text sanitization.
+[FAILURE_MODES] Injected system override attempts (e.g. "Ignore previous instructions", role hijacking, jailbreak prefixes) are neutralized/escaped; missing provenance or unseparated text fails closed before context construction.
 ```
 
 ### Phase 8 — Economic R0: safe foundation
@@ -1963,7 +1963,7 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 - [x] 8.1 Add discriminated geography, estimate, provenance, evidence, and BusinessContext-preview contracts with malicious/limit tests.
 - [x] 8.2 Create a new workspace package for pure economic analysis with no I/O and an explicit source registry; reserve its literal path in the implementing ADR before creation.
 - [x] 8.3 Add licensed deterministic fixtures for ACS, CBP/ZBP, BLS, FEMA, and approved OSM examples; fixtures can never be labeled live.
-- [ ] 8.4 Implement a protected, stateless preview API and MCP tool through shared governance.
+- [x] 8.4 Implement a protected, stateless preview API and MCP tool through shared governance.
 - [ ] 8.5 Add content/instruction separation and prompt-injection tests before any provider/economic text enters an LLM/Tadpole context.
 - [ ] 8 exit: suppressed/unavailable/stale cases validate; provenance is required; no persistence or live calls; ADG and affected gates pass.
 
@@ -4112,6 +4112,37 @@ No later task is authorized merely because it appears in this plan.
   - Zero live network calls under `GEV_SEED_MODE=1` verified via socket & fetch spy.
 - **Plan Advancement:** Task 8.3 complete (`[x]`). `CURRENT_PHASE=8`, `NEXT_TASK=8.4`, `NEXT_TASK_STATUS=READY`.
 - **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 8.4. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 8.4 completion checkpoint — 2026-09-16
+
+- **Execution:** Completed on branch `codex/task-8.4-stateless-preview-mcp`.
+- **ADR 0053:** Formally accepted and registered `0053-protected-stateless-economic-preview-api-and-mcp-tool.md` documenting dual exposure (`apps/server` REST endpoints and `packages/ops-mcp` operator tool), shared governance runtime enforcement, fail-closed auth/tenancy, STASIS lockdown, and zero persistence outside SQLite WAL audit trail.
+- **Contracts (`packages/contracts`):**
+  - Added `PreviewBusinessContextInputSchema` and `PreviewBusinessContextOutputSchema` to `packages/contracts/src/toolSchemas.ts`.
+  - Registered `preview_business_context` in `OPERATOR_TOOLS` within `packages/contracts/src/toolRegistry.ts` requiring scope `['read.telemetry']`.
+  - Defined MCP tool presentation policy `{ destructiveHint: false, idempotentHint: true, openWorldHint: false }` in `packages/contracts/src/mcpPresentation.ts`.
+- **Fixture Ingestion (`packages/providers`):**
+  - Implemented `EconomicFixtureAdapter` in `packages/providers/src/economicFixtures.ts` loading and caching all 6 canonical synthetic fixtures (`census-acs`, `census-cbp-zbp`, `bls-oews`, `bls-lau`, `fema-nri`, `osm-commercial`).
+- **Operator MCP Tool (`packages/ops-mcp`):**
+  - Implemented `generateBusinessContextPreview` in `packages/ops-mcp/src/economicPreview.ts`, performing pure synthesis via `@gev/economic` routines, attaching `ECONOMIC_LEGAL_DISCLAIMER`, and preserving suppression semantics without numeric zero coercion.
+  - Implemented `preview_business_context` handler in `packages/ops-mcp/src/tools.ts` executing via `GovernedToolExecutor` with `audit.intent` and `audit.outcome` logging.
+- **Protected Server Endpoints (`apps/server`):**
+  - Implemented `createEconomicRouter` in `apps/server/src/routes/economic.ts` mounted at `/api/economic` handling `POST /preview` and `POST /business-context/preview`.
+  - Authenticated and authorized caller with `OpsAuthAdapter` requiring operator, admin, or AI copilot roles; rejected missing or invalid tokens with 401; rejected cross-tenant requests with 403 `TENANT_ACCESS_DENIED`.
+  - Enforced kill-switch guard immediately returning 503 `KILL_SWITCH_ACTIVE` when `isProviderEnabled('economic')` is false.
+  - Enforced STASIS: global lockdown returns 423 `STASIS_ACTIVE`; tenant-specific STASIS in `SqliteBudgetLedger` returns 423 `TENANT_STASIS_ACTIVE` without degrading other tenants.
+  - Enforced per-tenant token bucket rate limits returning 429 `RATE_LIMITED` with `Retry-After` header.
+  - Logged `audit.intent` before execution and `audit.outcome` after execution to SQLite WAL; zero database persistence outside audit trail.
+- **Verification & Quality Gates:**
+  - `apps/server/test/economicRoutes.test.ts`: 9/9 tests passed (auth fail closed, STASIS isolation, kill switch, tenant rate limits, WAL audit logging, suppression preservation, latency < 25ms p95).
+  - `packages/ops-mcp/test/previewBusinessContext.test.ts`: 5/5 tests passed (schema compliance, kill-switch, STASIS, stdio MCP JSON-RPC).
+  - `packages/providers/test/economicFixtures.test.ts`: 6/6 tests passed.
+  - Monorepo full turbo test suite: 18/18 tasks passed.
+  - Monorepo turbo typecheck: 19/19 tasks passed.
+  - ADG check (`pnpm docs:check`): PASSED (74 doc files, 696 paths, 30 module symbols, 0 errors).
+  - Architecture drift check (`pnpm architecture:check`): PASSED (0 large files >500 lines).
+- **Plan Advancement:** Task 8.4 complete (`[x]`). `CURRENT_PHASE=8`, `NEXT_TASK=8.5`, `NEXT_TASK_STATUS=READY`.
+- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 8.5. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
 

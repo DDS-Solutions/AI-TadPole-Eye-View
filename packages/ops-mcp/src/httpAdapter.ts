@@ -174,6 +174,20 @@ function toCallToolResult(execution: ToolExecutionResult): CallToolResult {
   };
 }
 
+const fromJsonSchemaCache = new WeakMap<
+  Record<string, unknown>,
+  ReturnType<typeof fromJsonSchema>
+>();
+
+function getCachedFromJsonSchema(schema: Record<string, unknown>) {
+  let cached = fromJsonSchemaCache.get(schema);
+  if (!cached) {
+    cached = fromJsonSchema<Record<string, unknown>>(schema as JsonSchemaType);
+    fromJsonSchemaCache.set(schema, cached);
+  }
+  return cached;
+}
+
 /**
  * Builds the isolated modern HTTP face. The official SDK owns protocol parsing,
  * modern-era validation, JSON/SSE response mechanics, and request cancellation.
@@ -197,12 +211,8 @@ export function createGevMcpHttpHandler(options: GevMcpHttpHandlerOptions): GevM
       const definitions = getMcpHttpToolDefinitions(authorizedToolNames);
 
       for (const definition of definitions) {
-        const inputSchema = fromJsonSchema<Record<string, unknown>>(
-          definition.inputSchema as JsonSchemaType
-        );
-        const outputSchema = fromJsonSchema<Record<string, unknown>>(
-          definition.outputSchema as JsonSchemaType
-        );
+        const inputSchema = getCachedFromJsonSchema(definition.inputSchema);
+        const outputSchema = getCachedFromJsonSchema(definition.outputSchema);
 
         server.registerTool(
           definition.name,

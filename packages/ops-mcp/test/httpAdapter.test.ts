@@ -143,6 +143,7 @@ describe('modern MCP HTTP SDK adapter', () => {
       'save_scene',
       'tail_logs',
       'set_flag',
+      'preview_business_context',
     ]);
     expect(result.tools).toEqual(getMcpHttpToolDefinitions(MCP_OPERATOR_TOOL_NAMES));
   });
@@ -421,7 +422,7 @@ describe('modern MCP HTTP SDK adapter', () => {
       ((await readJson(authorized)).result as { tools: Array<{ name: string }> }).tools.map(
         (tool) => tool.name
       )
-    ).toEqual(['get_feed_health', 'get_budget']);
+    ).toEqual(['get_feed_health', 'get_budget', 'preview_business_context']);
     expect(await readJson(unauthorized)).toMatchObject({ error: { code: -32601 } });
   });
 

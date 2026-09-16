@@ -19,3 +19,4 @@ export * from './satellites.js';
 export * from './registry.js';
 export * from './layerAccessProjection.js';
 export * from './provenance.js';
+export * from './economicFixtures.js';

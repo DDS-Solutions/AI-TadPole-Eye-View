@@ -85,6 +85,12 @@ const EXPECTED_ANNOTATIONS = {
     idempotentHint: true,
     openWorldHint: false,
   },
+  preview_business_context: {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
 } as const satisfies Record<OperatorToolName, McpToolAnnotations>;
 
 describe('server-only MCP presentation policy', () => {
