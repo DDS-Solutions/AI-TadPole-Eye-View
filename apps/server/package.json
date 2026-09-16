@@ -15,6 +15,7 @@
   "dependencies": {
     "@gev/contracts": "workspace:*",
     "@gev/core": "workspace:*",
+    "@gev/economic": "workspace:*",
     "@gev/governance": "workspace:*",
     "@gev/ops-mcp": "workspace:*",
     "@gev/providers": "workspace:*",

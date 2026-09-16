@@ -3,6 +3,7 @@ import { GevMcpServer } from './server.js';
 export * from './server.js';
 export * from './context.js';
 export * from './tools.js';
+export * from './economicPreview.js';
 
 // If executed directly as CLI or MCP worker, launch the server
 const isMain =

@@ -80,6 +80,11 @@ export const MCP_TOOL_PRESENTATION_POLICY = {
     idempotentHint: true,
     openWorldHint: false,
   },
+  preview_business_context: {
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
 } as const satisfies Record<OperatorToolName, ExplicitMcpToolSemantics>;
 
 export interface McpHttpToolDefinition {

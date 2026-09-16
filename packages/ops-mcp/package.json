@@ -24,6 +24,7 @@
   "dependencies": {
     "@gev/contracts": "workspace:*",
     "@gev/core": "workspace:*",
+    "@gev/economic": "workspace:*",
     "@gev/governance": "workspace:*",
     "@gev/providers": "workspace:*",
     "@gev/security": "workspace:*",

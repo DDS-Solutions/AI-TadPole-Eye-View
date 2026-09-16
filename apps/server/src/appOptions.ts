@@ -43,4 +43,5 @@ export interface CreateAppOptions {
     providerId: string,
     secret: string
   ) => Promise<{ valid: boolean; error?: string }>;
+  economicFixtureAdapter?: import('@gev/providers').EconomicFixtureAdapter;
 }

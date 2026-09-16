@@ -9,6 +9,8 @@ import type {
   LoadSceneInput,
   LoadSceneOutput,
   OperatorToolName,
+  PreviewBusinessContextInput,
+  PreviewBusinessContextOutput,
   RunDiagnosticsInput,
   RunDiagnosticsOutput,
   SaveSceneInput,
@@ -33,6 +35,7 @@ import {
   withDisabledProviders,
 } from '@gev/providers';
 import type { OperatorContext } from './context.js';
+import { generateBusinessContextPreview } from './economicPreview.js';
 
 export const MAX_SCENE_BYTES = 1024 * 1024;
 export const MCP_OPERATOR_TOOL_NAMES = [
@@ -43,6 +46,7 @@ export const MCP_OPERATOR_TOOL_NAMES = [
   'save_scene',
   'tail_logs',
   'set_flag',
+  'preview_business_context',
 ] as const satisfies readonly OperatorToolName[];
 export type McpOperatorToolName = (typeof MCP_OPERATOR_TOOL_NAMES)[number];
 const MCP_OPERATOR_TOOL_NAME_SET: ReadonlySet<string> = new Set(MCP_OPERATOR_TOOL_NAMES);
@@ -406,7 +410,30 @@ export async function handleSetFlag(
   };
 }
 
-/** Registers the seven local stdio implementations on the shared governed executor. */
+export async function handlePreviewBusinessContext(
+  ctx: OperatorContext,
+  input: PreviewBusinessContextInput,
+  executionContext: ToolExecutionContext = {}
+): Promise<PreviewBusinessContextOutput> {
+  if (ctx.budgetGovernor.state().stasis_active) {
+    throw new Error('STASIS: economic preview tool is suspended');
+  }
+  if (ctx.flags.get('economic.enabled') === false) {
+    throw new Error('Economic analysis engine is disabled by kill-switch policy');
+  }
+
+  const tenantId =
+    executionContext.tenant_id ??
+    (executionContext.identity ? executionContext.identity.tenant_id : 'tenant-local');
+
+  return generateBusinessContextPreview({
+    input,
+    tenantId,
+    clock: ctx.clock,
+  });
+}
+
+/** Registers the local stdio implementations on the shared governed executor. */
 export function registerOperatorToolHandlers(ctx: OperatorContext): void {
   ctx.toolExecutor
     .register('get_feed_health', (input) => handleGetFeedHealth(ctx, input))
@@ -421,7 +448,10 @@ export function registerOperatorToolHandlers(ctx: OperatorContext): void {
     .register('tail_logs', (input, executionContext) =>
       handleTailLogs(ctx, input, executionContext)
     )
-    .register('set_flag', (input) => handleSetFlag(ctx, input));
+    .register('set_flag', (input) => handleSetFlag(ctx, input))
+    .register('preview_business_context', (input, executionContext) =>
+      handlePreviewBusinessContext(ctx, input, executionContext)
+    );
 }
 
 /** Executes through the one core lifecycle; this function performs no governance itself. */

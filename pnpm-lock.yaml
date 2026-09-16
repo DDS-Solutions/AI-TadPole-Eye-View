@@ -47,6 +47,9 @@ importers:
       '@gev/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@gev/economic':
+        specifier: workspace:*
+        version: link:../../packages/economic
       '@gev/governance':
         specifier: workspace:*
         version: link:../../packages/governance
@@ -292,6 +295,9 @@ importers:
       '@gev/core':
         specifier: workspace:*
         version: link:../core
+      '@gev/economic':
+        specifier: workspace:*
+        version: link:../economic
       '@gev/governance':
         specifier: workspace:*
         version: link:../governance

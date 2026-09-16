@@ -189,7 +189,11 @@ describe('scoped MCP HTTP authorization', () => {
     ).tools;
     const auditTools = ((await readJson(auditList)).result as { tools: Array<{ name: string }> })
       .tools;
-    expect(telemetryTools.map((tool) => tool.name)).toEqual(['get_feed_health', 'get_budget']);
+    expect(telemetryTools.map((tool) => tool.name)).toEqual([
+      'get_feed_health',
+      'get_budget',
+      'preview_business_context',
+    ]);
     expect(auditTools.map((tool) => tool.name)).toEqual(['tail_logs']);
 
     const hidden = await app.request(

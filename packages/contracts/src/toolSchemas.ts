@@ -1,4 +1,10 @@
 import { z } from 'zod';
+import {
+  BusinessContextInputSchema,
+  type BusinessContextInput,
+  BusinessContextPreviewSchema,
+  type BusinessContextPreview,
+} from './economic.js';
 import { GovernanceAuthoritySchema } from './governance.js';
 import { AuditEntrySchema } from './ports.js';
 import {
@@ -227,3 +233,16 @@ export const SetSimTimeOutputSchema = z.object({
   updated: z.boolean(),
 });
 export type SetSimTimeOutput = z.infer<typeof SetSimTimeOutputSchema>;
+
+export const PreviewBusinessContextInputSchema = BusinessContextInputSchema;
+export type PreviewBusinessContextInput = BusinessContextInput;
+
+export const PreviewBusinessContextOutputSchema = BusinessContextPreviewSchema;
+export type PreviewBusinessContextOutput = BusinessContextPreview;
+
+export {
+  BusinessContextInputSchema,
+  type BusinessContextInput,
+  BusinessContextPreviewSchema,
+  type BusinessContextPreview,
+};

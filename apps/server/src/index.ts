@@ -7,6 +7,7 @@ import {
   CableAdapter,
   CablePackLoader,
   CctvAdapter,
+  EconomicFixtureAdapter,
   FirmsAdapter,
   GbfsAdapter,
   LaunchAdapter,
@@ -41,6 +42,7 @@ import { createCablePackActivationRouter } from './routes/cablePackActivation.js
 import { createCablesRouter } from './routes/cables.js';
 import { createCctvRouter } from './routes/cctv.js';
 import { CollabRoomManager, createCollabRouter } from './routes/collab.js';
+import { createEconomicRouter } from './routes/economic.js';
 import { createFirmsRouter } from './routes/firms.js';
 import { createFlightsRouter } from './routes/flights.js';
 import { createGbfsRouter } from './routes/gbfs.js';
@@ -149,6 +151,8 @@ export function createApp(options: CreateAppOptions = {}) {
     },
   });
   const satellitePropagator = new SatellitePropagator(clock);
+  const economicFixtureAdapter =
+    options.economicFixtureAdapter ?? new EconomicFixtureAdapter({ clock });
 
   // One shared governance runtime is used by every server route and middleware.
   const { auditSink, budgetGovernor, budgetLedger, approvalGate, tenantLayerAccessStore } =
@@ -277,6 +281,21 @@ export function createApp(options: CreateAppOptions = {}) {
     },
   });
   app.route('/api/operational', operationalAwarenessRouter);
+  app.route(
+    '/api/economic',
+    createEconomicRouter({
+      clock,
+      auth,
+      auditSink,
+      budgetGovernor,
+      budgetLedger,
+      rateLimiter,
+      resolveClientId,
+      isProviderEnabled: options.isProviderEnabled,
+      fixtureAdapter: economicFixtureAdapter,
+      requestsPerMinute: options.tenantRateLimits?.economic,
+    })
+  );
 
   app.route(
     '/api/feeds',
@@ -420,6 +439,7 @@ export function createApp(options: CreateAppOptions = {}) {
       cctv: cctvAdapter,
       cables: cableAdapter,
       satellites: satelliteAdapter,
+      economic: economicFixtureAdapter,
     },
   };
 }

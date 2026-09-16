@@ -11,6 +11,8 @@ import {
   InspectTelemetryOutputSchema,
   LoadSceneInputSchema,
   LoadSceneOutputSchema,
+  PreviewBusinessContextInputSchema,
+  PreviewBusinessContextOutputSchema,
   QueryAoiInputSchema,
   QueryAoiOutputSchema,
   RunDiagnosticsInputSchema,
@@ -198,6 +200,17 @@ export const OPERATOR_TOOLS = {
     inputSchema: SetSimTimeInputSchema,
     outputSchema: SetSimTimeOutputSchema,
   },
+  preview_business_context: {
+    ...NONBILLABLE_READ_POLICY,
+    name: 'preview_business_context',
+    description:
+      'Generate a stateless business context economic preview with evidence synthesis, summary estimates, and legal disclaimer',
+    is_mutating: false,
+    is_dangerous: false,
+    is_cacheable: false,
+    inputSchema: PreviewBusinessContextInputSchema,
+    outputSchema: PreviewBusinessContextOutputSchema,
+  },
 } as const satisfies Record<string, OperatorToolDefinition<string, z.ZodTypeAny, z.ZodTypeAny>>;
 
 export type OperatorToolName = keyof typeof OPERATOR_TOOLS;
@@ -217,6 +230,7 @@ export const OPERATOR_TOOL_REQUIRED_SCOPES = {
   inspect_telemetry: ['read.telemetry'],
   query_aoi: ['read.telemetry'],
   set_sim_time: ['operate.cesium'],
+  preview_business_context: ['read.telemetry'],
 } as const satisfies Record<OperatorToolName, readonly CapabilityScope[]>;
 
 const OPERATOR_TOOL_NAME_SET: ReadonlySet<string> = new Set(Object.keys(OPERATOR_TOOLS));
