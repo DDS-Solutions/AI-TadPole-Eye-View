@@ -111,8 +111,23 @@ export function createLayerAccessRouter(options: LayerAccessRouterOptions): Hono
           : [];
       const authorizedLocalInputs =
         authenticated && options.getAuthorizedLocalState ? options.getAuthorizedLocalState() : [];
-      const combinedInputs = [...authorizedLocalInputs, ...tenantInputs];
-      const stateByProvider = new Map(combinedInputs.map((state) => [state.provider_id, state]));
+      const stateByProvider = new Map<string, LayerAccessProviderRuntimeInput>();
+      for (const input of [...authorizedLocalInputs, ...tenantInputs]) {
+        const existing = stateByProvider.get(input.provider_id);
+        if (!existing) {
+          stateByProvider.set(input.provider_id, { ...input });
+        } else {
+          stateByProvider.set(input.provider_id, {
+            ...existing,
+            ...input,
+            credential: input.credential ?? existing.credential,
+            terms: input.terms ?? existing.terms,
+            configuration: input.configuration ?? existing.configuration,
+            policy: input.policy ?? existing.policy,
+            runtime: input.runtime ?? existing.runtime,
+          });
+        }
+      }
       const providers = publicRuntimeState(registry, environment).map((state) => ({
         ...state,
         ...(stateByProvider.get(state.provider_id) ?? {}),

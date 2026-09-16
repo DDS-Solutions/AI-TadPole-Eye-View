@@ -14,7 +14,7 @@ export interface StatusOptions {
   governanceDbPath?: string;
 }
 
-export const PROJECT_PHASE = 'Phase 7 — Identity, Tenancy, and Intelligence Routing';
+export const PROJECT_PHASE = 'Phase 8 — Economic R0: safe foundation';
 
 export async function runStatus(options: StatusOptions = {}): Promise<void> {
   const clock = new SystemClock();
