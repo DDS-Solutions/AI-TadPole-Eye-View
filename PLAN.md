@@ -2,8 +2,8 @@
 
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
-**Verified against repository:** 2026-09-15
-**Status:** IN PROGRESS — Phase 7 task 7.3 complete; task 7.4 ready for review and authorization
+**Verified against repository:** 2026-09-16
+**Status:** IN PROGRESS — Phase 7 complete (exit certified); Phase 8 task 8.1 ready for review and authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -19,12 +19,12 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 
 ```text
 PLAN_VERSION=3.0
-CURRENT_PHASE=7
-NEXT_TASK=7_EXIT
+CURRENT_PHASE=8
+NEXT_TASK=8.1
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
-LAST_VERIFIED_UTC=2026-09-15
+LAST_VERIFIED_UTC=2026-09-16
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
 IMPLEMENTATION_STARTED=YES
 ```
@@ -1945,9 +1945,18 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 [ARCHITECTURE_MODE] PLAN.md §2, §3, §7; ADRs 0031, 0049, 0050, 0051. Strict tenant isolation, fail-closed auth, immutable audit evidence.
 [FAILURE_MODES] Cross-tenant leakage or fallback to unauthenticated state fails closed immediately; invalid token/secret formats return 401/403 before execution.
 ```
-- [ ] 7 exit: cross-tenant access tests fail closed; private fields and provider secrets are
+- [x] 7 exit: cross-tenant access tests fail closed; private fields and provider secrets are
   redacted; invalid/revoked credentials and expired/superseded terms relock affected layers;
   direct route/reload works in the chosen hosting model.
+
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 8.1
+
+```text
+[SCOPE_CONTRACT] Add discriminated geography, estimate, provenance, evidence, and BusinessContext-preview contracts in packages/contracts. Include malicious/limit tests. Out of scope: actual economic calculation algorithms (Phase 9+), live data queries, or database persistence.
+[PERFORMANCE_THRESHOLD] Contract parsing and round-trip validation < 5ms p95; zero dependencies added; 100% test pass across all contract suites.
+[ARCHITECTURE_MODE] Pure TypeScript contracts with Zod schemas; strict discrimination of available/suppressed/unavailable/not_applicable estimate states; required DataProvenance metadata on all outputs per ADR 0035.
+[FAILURE_MODES] Coercing missing or suppressed economic data to zero is strictly forbidden; malformed geographic identifiers fail closed immediately.
+```
 
 ### Phase 8 — Economic R0: safe foundation
 
@@ -3971,7 +3980,48 @@ No later task is authorized merely because it appears in this plan.
   - `pnpm docs:check` (ADG) passed across 72 doc files, 591 paths, 24 module symbols with zero errors.
   - All files strictly adhere to the <= 500 lines ceiling (Rule 5).
 - **Plan Advancement:** Task 7.4 is marked complete (`[x]`). `CURRENT_PHASE=7`, `NEXT_TASK=7_EXIT`, `NEXT_TASK_STATUS=READY`. A ready-to-authorize 4-Pillar brief for Task 7_EXIT is provided.
-- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 7_EXIT. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Phase 7 Exit Evidence — Identity, Tenancy, and Intelligence Routing Certification
+
+- **Scope & Authorization:** The developer authorized the exact Phase 7 exit gate 4-Pillar brief. Verification certified tenant isolation, credential protection, deterministic access relocking, decoupled routing, and build/conformance quality across `apps/server`, `packages/governance`, `packages/contracts`, `apps/web`, and `e2e`. Out of scope: Phase 8 Economic R0 workspace creation or data fixtures.
+- **Cross-Tenant Access Fail-Closed Validation:**
+  - Added dedicated integration test suite `apps/server/test/phase7ExitGate.test.ts` (3 tests, 488 lines, <= 500 lines).
+  - Verified across 130 operations route matrix endpoints and dedicated suites:
+    - Cross-tenant header injection (`X-GEV-Tenant: tenant-b` with a `tenant-a` token) fails closed with HTTP 403 `TENANT_ACCESS_DENIED`.
+    - Unauthenticated requests to tenant layer-access operations fail closed with HTTP 401 `OPS_AUTH_REQUIRED` / `MISSING_BEARER_TOKEN`.
+    - Operator, viewer, and AI copilot identities attempting tenant admin mutations fail closed with HTTP 403 `ROLE_ACCESS_DENIED`.
+    - Tenant B reading Layer Access catalog/entries receives strictly tenant-isolated views with zero visibility into Tenant A's submitted credentials.
+- **Private Fields & Provider Secrets Redaction Audit:**
+  - Verified that high-entropy raw secrets submitted via `/ops/layer-access/credentials` are never leaked:
+    - Zero occurrences in HTTP submission responses (only masked fingerprint `•••••••• ABCD` returned).
+    - Zero occurrences in validation responses or upstream error messages.
+    - Zero occurrences in `GET /ops/layer-access` read model projections.
+    - Zero occurrences in `AuditSink` in-memory / WAL event streams (`audit_events`).
+    - Zero occurrences in raw SQLite tables (`governance_tenant_layer_credentials` stores only authenticated AES-256-GCM ciphertext `iv:tag:cipher` with tenant AAD).
+- **Deterministic Access Relocking:**
+  - In live requested mode (`requested_mode: 'live'`), verified that OpenSky layer access transitions deterministically:
+    - Starts locked (`setup_required` / `unavailable`) when unconfigured.
+    - Transitions to `available` (unlocked) upon successful credential validation and terms approval.
+    - Immediately relocks to `setup_required` with lock reason `credential-invalid` when credential validation fails.
+    - Immediately relocks to `setup_required` with lock reason `credential-revoked` upon credential revocation.
+    - Immediately relocks to `unavailable` upon credential deletion.
+    - Immediately relocks to `approval_required` with lock reason `terms-rejected` upon terms revocation.
+    - Immediately relocks to `approval_required` with lock reason `terms-expired` when sim-clock advances past `expires_at`.
+    - Immediately relocks ALL layers across the tenant to `stasis` with lock reason `stasis-active` when the tenant budget trips STASIS.
+  - Repaired `apps/server/src/routes/layerAccess.ts` so that authorized local state (`configuration: valid`) and tenant-submitted credentials/terms merge per-provider without clobbering.
+- **Direct Route & Reload in Dev/Preview Hosting Models:**
+  - Extended `e2e/intelligenceRoute.spec.ts` with direct route and page reload verification.
+  - Playwright test proves that navigating directly to `/#/intelligence` and reloading the page preserves route state, keeps Cesium completely unloaded (0 MB, 0 WebGL contexts, 0 Cesium network requests), and subsequently navigating to `#/` and reloading preserves tactical Cesium globe initialization.
+- **Quality Gates:**
+  - Turbo build, typecheck, test passed: 29/29 tasks across 11 packages.
+  - Vitest server suite passed: 26/26 test files (260 tests passed).
+  - Playwright e2e suite passed: 16/16 tests green across all specs in 6.3m.
+  - Architecture drift check (`pnpm architecture:check`): PASSED (0 large files >500 lines).
+  - ADG check (`pnpm docs:check`): PASSED (72 doc files, 617 paths, 24 module symbols, 0 errors).
+  - Bundle budgets check (`pnpm check:budgets`): PASSED (Total JS Gzip 1239.55 KB <= 3600 KB ceiling; Intelligence route chunk 2.95 KB <= 25 KB).
+  - Lint check (`pnpm lint`): PASSED (324 files, 0 errors).
+- **Plan Advancement:** Phase 7 exit gate is complete (`[x]`). `CURRENT_PHASE=8`, `NEXT_TASK=8.1`, `NEXT_TASK_STATUS=READY`. A ready-to-authorize 4-Pillar brief for Task 8.1 is provided.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 8.1. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
 

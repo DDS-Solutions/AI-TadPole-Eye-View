@@ -112,4 +112,50 @@ test.describe('Lazy /#/intelligence route, Cesium isolation, and navigation roun
     await expect(page.locator('#intelligence-view')).toBeVisible();
     await expect(page.locator('#nav-link-intelligence')).toHaveClass(/active/);
   });
+
+  test('reloads directly on /#/intelligence and /#/ preserving route state and Cesium decoupling', async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    const requestedUrls: string[] = [];
+
+    page.on('request', (req) => {
+      requestedUrls.push(req.url());
+    });
+
+    // 1. Direct navigation to /#/intelligence
+    await page.goto('/#/intelligence');
+    await expect(page.locator('#intelligence-view')).toBeVisible();
+    await expect(page.locator('#nav-link-intelligence')).toHaveClass(/active/);
+
+    // 2. Direct page reload at /#/intelligence
+    await page.reload();
+    await expect(page.locator('#intelligence-view')).toBeVisible();
+    await expect(page.locator('#nav-link-intelligence')).toHaveClass(/active/);
+
+    // 3. Confirm Cesium remains unloaded after reload
+    const hasGevBus = await page.evaluate(() => typeof window.__gev !== 'undefined');
+    expect(hasGevBus).toBe(false);
+    const cesiumRequests = requestedUrls.filter(
+      (url) =>
+        url.includes('vendor-cesium') ||
+        url.includes('@cesium') ||
+        url.includes('/cesium/Assets') ||
+        url.includes('/cesium/Workers') ||
+        url.includes('Cesium.js')
+    );
+    expect(cesiumRequests).toEqual([]);
+
+    // 4. Navigate to globe route and reload
+    await page.locator('#nav-link-globe').click();
+    await expect.poll(() => page.evaluate(() => window.location.hash)).toBe('#/');
+    await expect(page.locator('#globe-container')).toBeVisible();
+    await expect.poll(async () => page.evaluate(() => window.__gev?.isReady())).toBe(true);
+
+    // 5. Direct page reload at #/
+    await page.reload();
+    await expect(page.locator('#globe-container')).toBeVisible();
+    await expect.poll(async () => page.evaluate(() => window.__gev?.isReady())).toBe(true);
+    await expect(page.locator('#nav-link-globe')).toHaveClass(/active/);
+  });
 });
