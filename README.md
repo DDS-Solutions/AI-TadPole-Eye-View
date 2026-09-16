@@ -60,7 +60,7 @@ Most agent demos show swarm diagrams. This one shows a working product and the r
                                     BudgetGovernor, CapabilityIssuer, AgentEnvelope
 ```
 
-- **Monorepo:** `apps/web` (Svelte 5 SPA) | `apps/server` (Hono API and WebSocket Server) | `packages/{contracts, core, security, providers, cesium-kit, ops-mcp, governance, cli}`
+- **Monorepo:** `apps/web` (Svelte 5 SPA) | `apps/server` (Hono API and WebSocket Server) | `packages/{contracts, core, security, providers, cesium-kit, ops-mcp, governance, cli, economic}`
 - **Contracts-first:** Zod schemas define REST payloads, WebSocket messages, collaborative intent documents, capabilities, and AI tool definitions from a single source of truth (`packages/contracts`).
 - **Security by construction:** Product outbound HTTP goes through an SSRF-guarded, TLS-pinned fetcher with mandatory timeouts and byte limits (`packages/security`). Local MCP scene I/O is root-confined and size-bounded; the remaining collaboration boundaries are explicitly tracked as hardening work.
 
@@ -111,6 +111,7 @@ node scripts/adg.mjs  # run Active Documentation Guard
 - **`packages/security`:** pinned-fetch, SSRF defense, TLS socket pinning, the Overpass QL sanitizer, redirect rejection, and byte caps.
 - **`packages/core`:** pure math/domain modules, sim-clock, scene serialization, voice state machine, agent adapters, tool executor, and collaborative intent document.
 - **`packages/governance`:** shared SQLite audit chain, redaction and signed retention boundaries, M2 verifier/replay state, durable M3 ledger/STASIS, local approval stubs, and Ed25519 helpers.
+- **`packages/economic`:** pure zero-I/O economic analysis engine, typed Economic Source Registry (Census ACS, CBP/ZBP, BLS OEWS/LAU, FEMA NRI, OSM Commercial), deterministic statutory suppression preservation, bounds parsing, and zero-coercion semantics.
 - **`packages/providers`:** typed provider registry plus OpenSky, AIS, USGS, FIRMS, GBFS, Radio, CCTV, Launch, Weather, Cables, and Overpass adapters.
 - **`packages/cesium-kit`:** imperative globe and layer controllers, debug bus, and frame-budget monitor.
 - **`packages/ops-mcp`:** hand-written stdio MCP server exposing seven verified local tools. Browser-console-only tools are not advertised or executable over stdio; scene I/O is filename-only, size-bounded, and atomic beneath `.gev/scenes` (override with `GEV_MCP_SCENE_ROOT`).
@@ -118,8 +119,8 @@ node scripts/adg.mjs  # run Active Documentation Guard
 - **`apps/server`:** Hono provider proxies, media/voice/collaboration routes, audit SSE, feed health, telemetry, cost governor, and operations auth.
 - **`apps/web`:** Svelte 5 SPA and tactical HUD backed by Cesium layer controllers.
 - **`e2e/smoke.spec.ts`:** condition-wait Playwright smoke coverage exercises implemented layers, including cable and satellite toggles and locked satellite setup.
-- **`fixtures/` (9 datasets):** Recorded fixtures for implemented providers (including 1.25 MB OpenSky replay).
-- **Architecture Decisions & Documentation:** ADRs 0014–0030, 0034–0036, and 0039–0049 (31 decision records), DESIGN.md, SECURITY.md, RUNBOOK.md, DATA_SOURCES.md, AGENTS.md, PLAN.md.
+- **`fixtures/` (24 datasets):** Recorded and synthetic fixtures for all implemented providers (including 1.25 MB OpenSky replay, coastal/tropical observations, satellite ephemerides, and the full suite of economic and commercial POI baseline fixtures).
+- **Architecture Decisions & Documentation:** ADRs 0014–0032, 0034–0036, and 0039–0052 (36 decision records), DESIGN.md, SECURITY.md, RUNBOOK.md, DATA_SOURCES.md, AGENTS.md, PLAN.md.
 
 ### Partially built
 
@@ -127,10 +128,21 @@ node scripts/adg.mjs  # run Active Documentation Guard
 
 ### Not yet built (WIP Roadmap)
 
-- **M4 Runtime:** Live autonomous AI agent process operating the running console via ops-mcp under governance.
-- **T3 TAK/CoT bridge:** Post-parity roadmap item per PLAN.md section 9.
-- **k6 expansion:** `load/k6-proxies.js` exists with proxy thresholds; broader scenarios and CI execution are still pending.
-- **Full self-hosted telemetry stack:** GlitchTip / PostHog / Plausible referenced in PLAN.md. `ServerTelemetryManager` class exists in `apps/server` but external self-hosted services are not configured.
+#### Active Phased Roadmap (Governed by [PLAN.md](./PLAN.md))
+- **Phase 8: Economic Intelligence Foundation (In Progress):** Core `@gev/economic` analysis engine, synthetic baseline fixtures, and upcoming stateless BusinessContext preview APIs & MCP tools (Tasks 8.4–8.13).
+- **Phase 9: Automated Evidence & SMB Dossiers:** Multi-source evidence correlation, anomaly detection across physical and economic feeds, and automated export of audit-governed operational dossiers.
+- **Phase 10: Production Hardening & Multi-Tenant Boundaries:** Live M2 approval providers, external tenant identity provisioning, rate/quota policy enforcement, and multi-tenant isolation verification.
+- **Phase 11: Sovereign Deployment & Self-Hosted Telemetry:** GlitchTip/PostHog/Plausible self-hosted telemetry integration, automated air-gapped bundle builds, and production deployment runbooks.
+- **Phase 12: Autonomous Agent Loops & Ecosystem:** Full Tadpole M4 runtime with autonomous agents operating the console end-to-end, plus post-parity TAK/CoT bridge (PLAN.md §9).
+
+#### Future Horizons: Sovereign RF & Advanced Sensor Architecture
+*(Architectural research in sovereign sensing and cross-domain intelligence)*
+- **Sovereign Edge SDR Sensing (SDRangel Integration):** Ingesting local RF telemetry from headless `sdrangelsrv` nodes via Reverse API webhooks (`POST /api/sdr/events`) with zero quota consumption.
+- **Demodulated RF Telemetry Layers:** Direct tracking of APRS emergency nets (144.39 MHz), Radiosonde stratospheric sounding balloons (400 MHz), and Meshtastic/LoRa decentralized SMB campus meshes (868/915 MHz).
+- **3D RF Line-of-Sight & Audio DSP:** Line-of-sight coverage domes, dynamic aircraft-to-tower audio binding, Web Audio RMS squelch gate, and real-time spectrogram waterfall.
+- **Multi-Domain Hazard Intersection Engine:** 3D aircraft ray/polygon penetration against AWC SIGMETs and NWS convective polygons; vessel distance/bearing vs NHC cyclone tracks and tidal under-keel clearance alerts.
+- **Critical Infrastructure Protection (CIP) Corridors:** 3 NM geometric buffer loitering detection for submarine cables and NASA FIRMS fire plume projection intersecting OSM power grids and DOT CCTV cameras.
+- **High-Resolution Vector Radar & Lightning:** Replacing heavy raster exports with NOAA MRMS vector reflectivity GeoJSON contours and GOES-GLM flash density points.
 
 ## Documentation
 
@@ -140,7 +152,7 @@ node scripts/adg.mjs  # run Active Documentation Guard
 - [DATA_SOURCES.md](./DATA_SOURCES.md) — dataset provenance, rate limits, and honest labeling
 - [docs/LICENSES.md](./docs/LICENSES.md) — software, asset, and NC download pack licenses
 - [RUNBOOK.md](./RUNBOOK.md) — operational procedures including STASIS recovery
-- [docs/adr/INDEX.md](./docs/adr/INDEX.md) — Architecture Decision Records (ADRs 0014–0030, 0034–0036, and 0039–0049; 31 records)
+- [docs/adr/INDEX.md](./docs/adr/INDEX.md) — Architecture Decision Records (ADRs 0014–0032, 0034–0036, and 0039–0052; 36 records)
 
 ## Ethics
 
