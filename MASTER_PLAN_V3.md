@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-16
-**Status:** IN PROGRESS — Phase 7 complete (exit certified); Phase 8 task 8.1 ready for review and authorization
+**Status:** IN PROGRESS — Phase 8 task 8.1 complete; task 8.2 ready for review and authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=8
-NEXT_TASK=8.1
+NEXT_TASK=8.2
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
@@ -1949,18 +1949,18 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
   redacted; invalid/revoked credentials and expired/superseded terms relock affected layers;
   direct route/reload works in the chosen hosting model.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 8.1
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 8.2
 
 ```text
-[SCOPE_CONTRACT] Add discriminated geography, estimate, provenance, evidence, and BusinessContext-preview contracts in packages/contracts. Include malicious/limit tests. Out of scope: actual economic calculation algorithms (Phase 9+), live data queries, or database persistence.
-[PERFORMANCE_THRESHOLD] Contract parsing and round-trip validation < 5ms p95; zero dependencies added; 100% test pass across all contract suites.
-[ARCHITECTURE_MODE] Pure TypeScript contracts with Zod schemas; strict discrimination of available/suppressed/unavailable/not_applicable estimate states; required DataProvenance metadata on all outputs per ADR 0035.
-[FAILURE_MODES] Coercing missing or suppressed economic data to zero is strictly forbidden; malformed geographic identifiers fail closed immediately.
+[SCOPE_CONTRACT] Write ADR reserving the economic workspace package path; create the pure economic analysis workspace package with no I/O, pure domain math, explicit source registry contracts, and zero network/filesystem dependencies. Out of scope: live data queries, network calls, database persistence, or UI components.
+[PERFORMANCE_THRESHOLD] 100% test pass; deterministic frozen-clock property and unit tests; zero I/O execution; ADG and monorepo quality gates green.
+[ARCHITECTURE_MODE] PLAN.md §2 (rules 1, 6, 8), §8.2; ADR reserving literal package path; pure TypeScript calculation/domain models; all outputs carry required DataProvenance.
+[FAILURE_MODES] Introducing any direct network/HTTP call or I/O into the pure economic analysis package is strictly forbidden; undeclared package path without prior ADR reservation fails validation.
 ```
 
 ### Phase 8 — Economic R0: safe foundation
 
-- [ ] 8.1 Add discriminated geography, estimate, provenance, evidence, and BusinessContext-preview contracts with malicious/limit tests.
+- [x] 8.1 Add discriminated geography, estimate, provenance, evidence, and BusinessContext-preview contracts with malicious/limit tests.
 - [ ] 8.2 Create a new workspace package for pure economic analysis with no I/O and an explicit source registry; reserve its literal path in the implementing ADR before creation.
 - [ ] 8.3 Add licensed deterministic fixtures for ACS, CBP/ZBP, BLS, FEMA, and approved OSM examples; fixtures can never be labeled live.
 - [ ] 8.4 Implement a protected, stateless preview API and MCP tool through shared governance.
@@ -4020,8 +4020,36 @@ No later task is authorized merely because it appears in this plan.
   - ADG check (`pnpm docs:check`): PASSED (72 doc files, 617 paths, 24 module symbols, 0 errors).
   - Bundle budgets check (`pnpm check:budgets`): PASSED (Total JS Gzip 1239.55 KB <= 3600 KB ceiling; Intelligence route chunk 2.95 KB <= 25 KB).
   - Lint check (`pnpm lint`): PASSED (324 files, 0 errors).
-- **Plan Advancement:** Phase 7 exit gate is complete (`[x]`). `CURRENT_PHASE=8`, `NEXT_TASK=8.1`, `NEXT_TASK_STATUS=READY`. A ready-to-authorize 4-Pillar brief for Task 8.1 is provided.
-- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 8.1. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### 17.38 Task 8.1: Economic Contracts (Geography, Estimate, Provenance, Evidence, BusinessContext Preview)
+
+- **Execution:** Completed on branch `codex/task-8.1-economic-contracts`.
+- **Discriminated Geography Contracts (`EconomicGeographySchema`):**
+  - Fully discriminated union across 10 levels: `nation`, `state`, `county`, `tract`, `block_group`, `zcta`, `cbsa`, `place`, `point`, and `bounding_box`.
+  - Strict FIPS regex validation: state 2 digits (`/^[0-9]{2}$/`), county 5 digits (`/^[0-9]{5}$/`) with state-prefix match check, tract 11 digits (`/^[0-9]{11}$/`), block group 12 digits (`/^[0-9]{12}$/`), ZCTA 5 digits (`/^[0-9]{5}$/`), CBSA 5 digits (`/^[0-9]{5}$/`), place 7 digits (`/^[0-9]{7}$/`).
+  - Finite coordinate bounds (`latitude` in `[-90, 90]`, `longitude` in `[-180, 180]`), bounding box order validation (`min_lat <= max_lat`, `min_lon <= max_lon`).
+  - Malicious injection attempts (SQL injection, path traversal, script tags, non-numeric strings, NaN, Infinity) fail closed immediately.
+- **Discriminated Economic Estimate & Zero-Coercion Prohibition (`EconomicEstimateSchema`):**
+  - Discriminated union across 4 mandatory states: `available`, `suppressed`, `unavailable`, `not_applicable`.
+  - Strict schemas (`.strict()`) ensure `suppressed`, `unavailable`, and `not_applicable` records can never carry a `value` field.
+  - Implemented and verified `getNumericEstimateValue(estimate)`: returns `undefined` for `suppressed`, `unavailable`, or `not_applicable` estimates; never coerces to zero.
+  - Suppression metadata: `reason` (`disclosure_avoidance`, `small_sample`, `data_quality`, `administrative`), `detail`, and optional bounded intervals (`lower_bound <= upper_bound`).
+- **Evidence Disagreement & Provenance (`EconomicEvidenceRecordSchema`, `EconomicEvidenceBundleSchema`):**
+  - Modeled `EconomicDisagreementSchema` capturing prediction vs observation differences with expected/observed signals, severity (`info`, `warning`, `critical`), and delta description.
+  - Enforced required `DataProvenanceSchema` on all evidence records and bundles per ADR 0035; missing provenance fails closed.
+- **BusinessContext Input & Preview (`BusinessContextInputSchema`, `BusinessContextPreviewSchema`):**
+  - Validates NAICS codes (2-6 numeric digits), industry title, target geography, and optional bounds.
+  - Preview envelope enforces required legal disclaimer per PLAN.md §8.2: `"Economic results are decision-support signals, not guarantees, appraisals, legal advice, underwriting decisions, or automated employment decisions."`. Missing or modified disclaimer fails closed immediately.
+- **Verification & Quality Gates:**
+  - Vitest `@gev/contracts` suite: 13/13 test files (117 tests passed), including `economicContracts.test.ts` and `economicLimits.test.ts`.
+  - Performance benchmark: 1,000 round-trip parses of complex economic evidence records achieved p95 < 5ms (0.1ms actual).
+  - Monorepo turbo gate: 26/26 tasks passed across all packages.
+  - Monorepo lint: 0 errors across 327 files.
+  - Architecture check (`pnpm architecture:check`): 0 large files (all files <= 500 lines).
+  - ADG check (`pnpm docs:check`): 0 errors across 72 docs and 631 paths.
+  - Bundle budgets (`pnpm check:budgets`): PASSED (Total JS Gzip 1239.55 KB <= 3600 KB ceiling).
+- **Plan Advancement:** Task 8.1 complete (`[x]`). `CURRENT_PHASE=8`, `NEXT_TASK=8.2`, `NEXT_TASK_STATUS=READY`.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 8.2. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
 
