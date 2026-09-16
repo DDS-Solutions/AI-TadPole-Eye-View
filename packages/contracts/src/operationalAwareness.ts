@@ -11,11 +11,14 @@ export const NHC_KMZ_MAX_EXPANDED_BYTES = 20_971_520;
 export const COOPS_MAX_STATIONS = 100;
 export const COOPS_MAX_RECORDS = 10_000;
 
+export const COORDINATE_EPSILON = 1e-9;
+
 const IsoTimestampSchema = z.string().datetime({ offset: true });
-const NormalizedUtcTimestampSchema = z
+export const NormalizedUtcTimestampSchema = z
   .string()
   .regex(
-    /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d\.\d{3}Z$/
+    /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?Z$/,
+    'Timestamp must be an ISO-8601 UTC timestamp ending in Z'
   );
 const LongitudeSchema = z.number().finite().min(-180).max(180);
 const LatitudeSchema = z.number().finite().min(-90).max(90);
@@ -60,14 +63,19 @@ export const OperationalAoiSchema = z
   });
 export type OperationalAoi = z.infer<typeof OperationalAoiSchema>;
 
-const LinearRingSchema = z
+export const LinearRingSchema = z
   .array(CoordinateSchema)
   .min(4)
   .max(4096)
   .superRefine((ring, ctx) => {
     const first = ring[0];
     const last = ring[ring.length - 1];
-    if (first?.[0] !== last?.[0] || first?.[1] !== last?.[1]) {
+    if (
+      !first ||
+      !last ||
+      Math.abs(first[0] - last[0]) > COORDINATE_EPSILON ||
+      Math.abs(first[1] - last[1]) > COORDINATE_EPSILON
+    ) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Polygon rings must be closed' });
     }
   });
