@@ -31,10 +31,15 @@ test('resets intentional navigation, keeps rows bounded, and supports keyboard o
   });
 
   const { panel, rows, toggle, viewport } = await openTelemetryTable(page);
+  await expect
+    .poll(async () => {
+      const text = (await page.getByTestId('telemetry-count').textContent()) ?? '';
+      return Number(text.replace(/\D/g, ''));
+    })
+    .toBeGreaterThan(1_000);
   const totalItems = Number(
     ((await page.getByTestId('telemetry-count').textContent()) ?? '').replace(/\D/g, '')
   );
-  expect(totalItems).toBeGreaterThan(1_000);
 
   const rowLimit = await viewport.evaluate((element) => Math.ceil(element.clientHeight / 36) + 13);
   await expect.poll(() => rows.count()).toBeLessThanOrEqual(rowLimit);

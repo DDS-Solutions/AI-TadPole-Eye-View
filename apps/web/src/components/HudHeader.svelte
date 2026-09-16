@@ -43,6 +43,15 @@
     </div>
   </div>
 
+  <nav class="hud-nav-card" aria-label="Main Navigation">
+    <a href="#/" id="nav-link-globe" class="nav-btn active" title="Current: Tactical Globe">
+      <span class="nav-icon">🌐</span> Globe
+    </a>
+    <a href="#/intelligence" id="nav-link-intelligence" class="nav-btn" title="Navigate to Economic Intelligence">
+      <span class="nav-icon">📈</span> Intelligence
+    </a>
+  </nav>
+
   <div class="hud-stats-ribbon">
     <div class="stat-badge flight-channel" class:inactive={!layerStore.visibility.flights}>
       <span class="channel-dot flight-dot"></span>
@@ -120,7 +129,7 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    gap: 16px;
+    gap: 12px;
     pointer-events: none;
     z-index: 20;
   }
@@ -133,6 +142,7 @@
     padding: 10px 16px;
     pointer-events: auto;
     box-shadow: 0 4px 20px var(--hud-shadow-medium);
+    flex-shrink: 0;
   }
 
   .title-row {
@@ -159,6 +169,53 @@
     background: var(--hud-accent-soft);
     color: var(--hud-accent);
     border: 1px solid var(--hud-accent-border);
+  }
+
+  .hud-nav-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--hud-panel-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--hud-border);
+    border-radius: 8px;
+    padding: 6px 8px;
+    pointer-events: auto;
+    box-shadow: 0 4px 16px var(--hud-shadow-soft);
+    flex-shrink: 0;
+  }
+
+  .nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--hud-text-secondary);
+    text-decoration: none;
+    transition: all 0.15s ease-in-out;
+    cursor: pointer;
+  }
+
+  .nav-btn:hover {
+    color: var(--hud-text-primary);
+    background: var(--hud-chip-bg);
+    border-color: var(--hud-border);
+  }
+
+  .nav-btn.active {
+    background: var(--hud-accent-selected);
+    color: var(--hud-accent);
+    border-color: var(--hud-accent-border);
+    box-shadow: 0 0 8px var(--hud-accent-selected);
+  }
+
+  .nav-icon {
+    font-size: 0.75rem;
   }
 
   .table-toggle-btn {
@@ -290,5 +347,43 @@
     font-size: 0.88rem;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 720px) {
+    .hud-header {
+      left: 8px;
+      right: 8px;
+      gap: 6px;
+      flex-wrap: wrap;
+      max-width: calc(100vw - 16px);
+    }
+
+    .hud-title-card {
+      padding: 6px 10px;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    .title-row {
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    #app-title {
+      font-size: 0.95rem;
+    }
+
+    .hud-nav-card {
+      padding: 4px 6px;
+    }
+
+    .nav-btn {
+      padding: 2px 6px;
+      font-size: 0.68rem;
+    }
+
+    .hud-stats-ribbon {
+      display: none;
+    }
   }
 </style>

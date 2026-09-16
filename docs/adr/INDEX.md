@@ -40,3 +40,4 @@ This directory records all significant architectural and structural decisions ma
 | [0048](./0048-bounded-operational-imagery-spike.md) | Bounded operational-imagery spike | Accepted | 2026-09-06 |
 | [0049](./0049-registry-derived-layer-access-read-model.md) | Registry-derived Layer Access read model | Accepted | 2026-09-06 |
 | [0050](./0050-tenant-quota-rate-cache-killswitch-policy.md) | Tenant Quota, Rate Limit, Cache Partitioning, and Kill-Switch Policy | Accepted | 2026-09-15 |
+| [0051](./0051-lazy-intelligence-route-and-cesium-bundle-decoupling.md) | Lazy intelligence route and Cesium bundle decoupling architecture | Accepted | 2026-09-15 |
