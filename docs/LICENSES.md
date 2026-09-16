@@ -33,8 +33,14 @@ This document outlines the software licenses, open data terms, and 3D asset attr
 | NWS Active Alerts | NOAA / National Weather Service | U.S. Government source; disclaimer applies | Live use remains disabled pending a recorded source-policy approval and identified User-Agent |
 | Synthetic AWC METAR/TAF/SIGMET | DDS-Solutions procedural fixtures | MIT | Schema-shaped test products only; not valid for flight planning |
 | METAR/TAF/SIGMET | NOAA / NWS / Aviation Weather Center | U.S. Government source; disclaimer applies | Live use remains disabled pending a recorded source-policy approval and descriptive User-Agent |
+| Synthetic Census ACS 5-Year | U.S. Census Bureau / GEV synthetic (`fixtures/census-acs-synthetic-v1.json`) | Public Domain / MIT | Schema-shaped demographic benchmarks with 90% confidence MOE |
+| Synthetic Census CBP/ZBP | U.S. Census Bureau / GEV synthetic (`fixtures/census-cbp-zbp-synthetic-v1.json`) | Public Domain / MIT | Enterprise patterns with statutory disclosure avoidance suppression |
+| Synthetic BLS OEWS & LAU | U.S. Bureau of Labor Statistics / GEV synthetic (`fixtures/bls-oews-synthetic-v1.json`, `fixtures/bls-lau-synthetic-v1.json`) | Public Domain / MIT | Occupational wage distributions & monthly local unemployment benchmarks |
+| Synthetic FEMA NRI | FEMA / GEV synthetic (`fixtures/fema-nri-synthetic-v1.json`) | Public Domain / MIT | Natural hazard risk scores, social vulnerability, and expected annual loss |
+| Synthetic OSM Commercial POIs | OpenStreetMap contributors (`fixtures/osm-commercial-synthetic-v1.json`, `fixtures/osm-commercial-evidence-synthetic-v1.json`) | ODbL 1.0 | Sanitized commercial amenity points of interest and density metrics |
 
 ---
+
 
 ## 3. Non-Commercial Data Policy (PLAN.md §5)
 

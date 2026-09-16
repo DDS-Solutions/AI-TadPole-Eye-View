@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "fixture_id": "osm-commercial-evidence-synthetic-v1",
+  "source_id": "osm-commercial",
+  "title": "OSM Commercial POI Density & Footprint Synthetic Fixture",
+  "description": "Synthesized local commercial points of interest, dining, retail, and amenity density metrics derived from sanitized OpenStreetMap elements.",
+  "target_geography": {
+    "level": "bounding_box",
+    "min_lat": 30.25,
+    "max_lat": 30.28,
+    "min_lon": -97.76,
+    "max_lon": -97.73,
+    "name": "Austin Downtown Commercial District, TX"
+  },
+  "provenance": {
+    "schema_version": 1,
+    "source": {
+      "provider_id": "osm-commercial",
+      "feed_id": "overpass-commercial-poi",
+      "name": "OpenStreetMap Commercial & Amenity Infrastructure",
+      "canonical_url": "https://www.openstreetmap.org/"
+    },
+    "retrieved_at": "2026-09-16T12:00:00.000Z",
+    "observation_period": {
+      "status": "available",
+      "start": "2026-09-16T00:00:00.000Z",
+      "end": "2026-09-16T12:00:00.000Z"
+    },
+    "vintage": {
+      "status": "available",
+      "value": "OSM Planet 2026-09-16 via Overpass QL"
+    },
+    "mode": "seed",
+    "source_mode": "seed",
+    "license": {
+      "id": "odbl-1.0",
+      "name": "Open Database License (ODbL) 1.0"
+    },
+    "attribution": "© OpenStreetMap contributors (ODbL 1.0)",
+    "fixture_id": "osm-commercial-evidence-synthetic-v1",
+    "cache": null,
+    "freshness": {
+      "status": "fresh",
+      "age_seconds": 0,
+      "fresh_for_seconds": 86400
+    }
+  },
+  "records": [
+    {
+      "evidence_id": "ev-osm-food-drink-count-austin-downtown",
+      "source_id": "osm-commercial",
+      "metric_id": "food-and-beverage-poi-count",
+      "variable_name": "amenity=restaurant|cafe|bar",
+      "label": "Food & Beverage Commercial POI Density in Downtown AOI",
+      "geography": {
+        "level": "bounding_box",
+        "min_lat": 30.25,
+        "max_lat": 30.28,
+        "min_lon": -97.76,
+        "max_lon": -97.73,
+        "name": "Austin Downtown Commercial District, TX"
+      },
+      "estimate": {
+        "status": "available",
+        "value": 146,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "establishment",
+        "notes": "Direct crowd-sourced commercial amenity node count"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "osm-commercial",
+          "feed_id": "overpass-commercial-poi",
+          "name": "OpenStreetMap Commercial & Amenity Infrastructure",
+          "canonical_url": "https://www.openstreetmap.org/"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2026-09-16T00:00:00.000Z",
+          "end": "2026-09-16T12:00:00.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "OSM Planet 2026-09-16 via Overpass QL"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "odbl-1.0",
+          "name": "Open Database License (ODbL) 1.0"
+        },
+        "attribution": "© OpenStreetMap contributors (ODbL 1.0)",
+        "fixture_id": "osm-commercial-evidence-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 86400
+        }
+      },
+      "tags": ["osm", "poi", "dining", "retail", "amenity"]
+    },
+    {
+      "evidence_id": "ev-osm-supermarket-whole-harvest-20001",
+      "source_id": "osm-commercial",
+      "metric_id": "commercial-poi-point",
+      "variable_name": "shop=supermarket",
+      "label": "Whole Harvest Market Commercial Footprint",
+      "geography": {
+        "level": "point",
+        "latitude": 30.2672,
+        "longitude": -97.7431,
+        "name": "Whole Harvest Market (Node 20001)"
+      },
+      "estimate": {
+        "status": "available",
+        "value": 1,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "establishment",
+        "notes": "Verified retail grocery anchor point"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "osm-commercial",
+          "feed_id": "overpass-commercial-poi",
+          "name": "OpenStreetMap Commercial & Amenity Infrastructure",
+          "canonical_url": "https://www.openstreetmap.org/"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2026-09-16T00:00:00.000Z",
+          "end": "2026-09-16T12:00:00.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "OSM Planet 2026-09-16 via Overpass QL"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "odbl-1.0",
+          "name": "Open Database License (ODbL) 1.0"
+        },
+        "attribution": "© OpenStreetMap contributors (ODbL 1.0)",
+        "fixture_id": "osm-commercial-evidence-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 86400
+        }
+      },
+      "tags": ["osm", "poi", "supermarket", "retail"]
+    }
+  ]
+}

@@ -70,7 +70,7 @@ function runBundleBudgetCheck() {
     totalRawBytes += rawBytes;
     totalGzipBytes += gzipBytes;
 
-    const ext = path.extname(file);
+    const _ext = path.extname(file);
     let budgetKb = null;
     let category = 'Asset';
 
@@ -143,6 +143,7 @@ function runBundleBudgetCheck() {
     ` Total JS Gzip: ${formatKb(totalJsGzipBytes)} KB (Budget: <= ${BUDGETS.totalJsGzipKb} KB) -> ${totalPassed ? '✔ PASS' : '✖ BREACH'}`
   );
   console.log(` Total CSS Gzip: ${formatKb(totalCssGzipBytes)} KB`);
+  console.log(` Total Bundle Footprint (Raw): ${formatKb(totalRawBytes)} KB`);
   console.log(` Total Bundle Footprint (Gzip): ${formatKb(totalGzipBytes)} KB`);
   console.log('─────────────────────────────────────────────────────────────────────────────\n');
 

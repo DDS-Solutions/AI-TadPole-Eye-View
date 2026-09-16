@@ -8,6 +8,7 @@ import {
   EconomicEstimateSchema,
   EconomicEvidenceBundleSchema,
   EconomicEvidenceRecordSchema,
+  EconomicFixtureDatasetSchema,
   EconomicGeographySchema,
   getNumericEstimateValue,
 } from '../src/index.js';
@@ -303,5 +304,61 @@ describe('BusinessContext input & preview contracts', () => {
 
     expect(preview.disclaimer).toBe(ECONOMIC_LEGAL_DISCLAIMER);
     expect(preview.schema_version).toBe(1);
+  });
+});
+
+describe('EconomicFixtureDataset contract (Task 8.3)', () => {
+  it('validates a compliant seed fixture dataset', () => {
+    const validDataset = EconomicFixtureDatasetSchema.parse({
+      schema_version: 1,
+      fixture_id: 'acs-5yr-fixtures-v1',
+      source_id: 'census-acs',
+      title: 'ACS Seed Dataset',
+      description: 'Test seed dataset',
+      target_geography: { level: 'county', county_fips: '06075' },
+      provenance: mockProvenance,
+      records: [
+        {
+          evidence_id: 'ev-acs-001',
+          source_id: 'census-acs',
+          metric_id: 'median-income',
+          variable_name: 'B19013_001E',
+          label: 'Median Income',
+          geography: { level: 'county', county_fips: '06075' },
+          estimate: {
+            status: 'available',
+            value: 125000,
+            margin_of_error: 2500,
+            confidence_level: 0.9,
+            sample_size: 500,
+            unit: 'USD',
+          },
+          provenance: mockProvenance,
+        },
+      ],
+    });
+
+    expect(validDataset.fixture_id).toBe('acs-5yr-fixtures-v1');
+    expect(validDataset.records.length).toBe(1);
+  });
+
+  it('rejects fixture datasets labeled as live mode', () => {
+    expect(() =>
+      EconomicFixtureDatasetSchema.parse({
+        schema_version: 1,
+        fixture_id: 'acs-5yr-fixtures-v1',
+        source_id: 'census-acs',
+        title: 'Live Dataset',
+        description: 'Invalid live dataset in fixture schema',
+        target_geography: { level: 'county', county_fips: '06075' },
+        provenance: {
+          ...mockProvenance,
+          mode: 'live',
+          source_mode: 'live',
+          fixture_id: null,
+        },
+        records: [],
+      })
+    ).toThrow();
   });
 });

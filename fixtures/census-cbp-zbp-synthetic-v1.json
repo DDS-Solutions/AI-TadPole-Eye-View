@@ -1,0 +1,328 @@
+{
+  "schema_version": 1,
+  "fixture_id": "census-cbp-zbp-synthetic-v1",
+  "source_id": "census-cbp-zbp",
+  "title": "County & ZIP Code Business Patterns Synthetic Fixture",
+  "description": "Synthetic business enterprise patterns by NAICS code with statutory disclosure avoidance suppression preserved.",
+  "target_geography": {
+    "level": "county",
+    "county_fips": "48453",
+    "state_fips": "48",
+    "name": "Travis County, TX"
+  },
+  "provenance": {
+    "schema_version": 1,
+    "source": {
+      "provider_id": "census-cbp-zbp",
+      "feed_id": "cbp-zbp-annual",
+      "name": "U.S. Census Bureau County and ZIP Code Business Patterns",
+      "canonical_url": "https://api.census.gov/data"
+    },
+    "retrieved_at": "2026-09-16T12:00:00.000Z",
+    "observation_period": {
+      "status": "available",
+      "start": "2023-01-01T00:00:00.000Z",
+      "end": "2023-12-31T23:59:59.000Z"
+    },
+    "vintage": {
+      "status": "available",
+      "value": "2023 CBP/ZBP Annual Statistical Data Release"
+    },
+    "mode": "seed",
+    "source_mode": "seed",
+    "license": {
+      "id": "us-government-public-domain",
+      "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+    },
+    "attribution": "U.S. Census Bureau, County and ZIP Code Business Patterns",
+    "fixture_id": "census-cbp-zbp-synthetic-v1",
+    "cache": null,
+    "freshness": {
+      "status": "fresh",
+      "age_seconds": 0,
+      "fresh_for_seconds": 31536000
+    }
+  },
+  "records": [
+    {
+      "evidence_id": "ev-cbp-541511-est-48453-2023",
+      "source_id": "census-cbp-zbp",
+      "metric_id": "establishment-count",
+      "variable_name": "ESTAB",
+      "label": "Total Establishments in NAICS 541511 (Custom Computer Programming Services)",
+      "geography": {
+        "level": "county",
+        "county_fips": "48453",
+        "state_fips": "48",
+        "name": "Travis County, TX"
+      },
+      "estimate": {
+        "status": "available",
+        "value": 1420,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "count",
+        "notes": "Direct enterprise count"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "census-cbp-zbp",
+          "feed_id": "cbp-zbp-annual",
+          "name": "U.S. Census Bureau County and ZIP Code Business Patterns",
+          "canonical_url": "https://api.census.gov/data"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2023-01-01T00:00:00.000Z",
+          "end": "2023-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "2023 CBP/ZBP Annual Statistical Data Release"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Census Bureau, County and ZIP Code Business Patterns",
+        "fixture_id": "census-cbp-zbp-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 31536000
+        }
+      },
+      "tags": ["cbp", "establishments", "naics-541511", "tech"]
+    },
+    {
+      "evidence_id": "ev-cbp-541511-emp-48453-2023",
+      "source_id": "census-cbp-zbp",
+      "metric_id": "paid-employment",
+      "variable_name": "EMP",
+      "label": "Number of Paid Employees for Mid-March Pay Period in NAICS 541511",
+      "geography": {
+        "level": "county",
+        "county_fips": "48453",
+        "state_fips": "48",
+        "name": "Travis County, TX"
+      },
+      "estimate": {
+        "status": "available",
+        "value": 28400,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "count",
+        "notes": "Paid employees for pay period including March 12"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "census-cbp-zbp",
+          "feed_id": "cbp-zbp-annual",
+          "name": "U.S. Census Bureau County and ZIP Code Business Patterns",
+          "canonical_url": "https://api.census.gov/data"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2023-01-01T00:00:00.000Z",
+          "end": "2023-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "2023 CBP/ZBP Annual Statistical Data Release"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Census Bureau, County and ZIP Code Business Patterns",
+        "fixture_id": "census-cbp-zbp-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 31536000
+        }
+      },
+      "tags": ["cbp", "employment", "naics-541511", "tech"]
+    },
+    {
+      "evidence_id": "ev-cbp-541511-pay-48453-2023",
+      "source_id": "census-cbp-zbp",
+      "metric_id": "annual-payroll",
+      "variable_name": "PAYANN",
+      "label": "Annual Payroll ($1,000 USD) in NAICS 541511",
+      "geography": {
+        "level": "county",
+        "county_fips": "48453",
+        "state_fips": "48",
+        "name": "Travis County, TX"
+      },
+      "estimate": {
+        "status": "available",
+        "value": 3950000,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "USD_thousands",
+        "notes": "Annual payroll in thousands of dollars"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "census-cbp-zbp",
+          "feed_id": "cbp-zbp-annual",
+          "name": "U.S. Census Bureau County and ZIP Code Business Patterns",
+          "canonical_url": "https://api.census.gov/data"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2023-01-01T00:00:00.000Z",
+          "end": "2023-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "2023 CBP/ZBP Annual Statistical Data Release"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Census Bureau, County and ZIP Code Business Patterns",
+        "fixture_id": "census-cbp-zbp-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 31536000
+        }
+      },
+      "tags": ["cbp", "payroll", "naics-541511"]
+    },
+    {
+      "evidence_id": "ev-cbp-332710-emp-48453-2023",
+      "source_id": "census-cbp-zbp",
+      "metric_id": "paid-employment",
+      "variable_name": "EMP",
+      "label": "Number of Paid Employees in NAICS 332710 (Machine Shops)",
+      "geography": {
+        "level": "county",
+        "county_fips": "48453",
+        "state_fips": "48",
+        "name": "Travis County, TX"
+      },
+      "estimate": {
+        "status": "suppressed",
+        "reason": "disclosure_avoidance",
+        "detail": "Statutory disclosure avoidance suppression under 13 U.S.C. Section 9; employment noise flag c (100 to 249 employees)",
+        "bounds": {
+          "lower_bound": 100,
+          "upper_bound": 249
+        },
+        "unit": "count"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "census-cbp-zbp",
+          "feed_id": "cbp-zbp-annual",
+          "name": "U.S. Census Bureau County and ZIP Code Business Patterns",
+          "canonical_url": "https://api.census.gov/data"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2023-01-01T00:00:00.000Z",
+          "end": "2023-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "2023 CBP/ZBP Annual Statistical Data Release"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Census Bureau, County and ZIP Code Business Patterns",
+        "fixture_id": "census-cbp-zbp-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 31536000
+        }
+      },
+      "tags": ["cbp", "suppressed", "disclosure_avoidance", "naics-332710"]
+    },
+    {
+      "evidence_id": "ev-zbp-722511-est-78701-2023",
+      "source_id": "census-cbp-zbp",
+      "metric_id": "establishment-count",
+      "variable_name": "ESTAB",
+      "label": "Total Establishments in NAICS 722511 in ZCTA 78701",
+      "geography": {
+        "level": "zcta",
+        "zcta": "78701",
+        "name": "ZCTA 78701 (Austin Downtown, TX)"
+      },
+      "estimate": {
+        "status": "available",
+        "value": 84,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "count",
+        "notes": "ZIP Code Business Patterns direct establishment tabulation"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "census-cbp-zbp",
+          "feed_id": "cbp-zbp-annual",
+          "name": "U.S. Census Bureau County and ZIP Code Business Patterns",
+          "canonical_url": "https://api.census.gov/data"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2023-01-01T00:00:00.000Z",
+          "end": "2023-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "2023 CBP/ZBP Annual Statistical Data Release"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Census Bureau, County and ZIP Code Business Patterns",
+        "fixture_id": "census-cbp-zbp-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 31536000
+        }
+      },
+      "tags": ["zbp", "establishments", "restaurants", "zcta"]
+    }
+  ]
+}

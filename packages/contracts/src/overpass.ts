@@ -66,3 +66,46 @@ export const OverpassResponseSchema = OverpassResponsePayloadSchema.extend({
   provenance: DataProvenanceSchema,
 });
 export type OverpassResponse = z.infer<typeof OverpassResponseSchema>;
+
+// ============================================================================
+// OSM Commercial POI Schemas (PLAN.md §8.2, §10 Task 8.3 & Task 9.3)
+// ============================================================================
+
+export const OsmCommercialTagSchema = z
+  .object({
+    name: z.string().min(1).max(200),
+    amenity: z.string().min(1).max(100).optional(),
+    shop: z.string().min(1).max(100).optional(),
+    craft: z.string().min(1).max(100).optional(),
+    office: z.string().min(1).max(100).optional(),
+    commercial: z.string().min(1).max(100).optional(),
+    brand: z.string().min(1).max(100).optional(),
+    cuisine: z.string().min(1).max(100).optional(),
+  })
+  .passthrough();
+export type OsmCommercialTag = z.infer<typeof OsmCommercialTagSchema>;
+
+export const OsmCommercialElementSchema = z
+  .object({
+    type: z.enum(['node', 'way']),
+    id: z.number().int(),
+    lat: z.number().finite().min(-90).max(90),
+    lon: z.number().finite().min(-180).max(180),
+    tags: OsmCommercialTagSchema,
+  })
+  .passthrough();
+export type OsmCommercialElement = z.infer<typeof OsmCommercialElementSchema>;
+
+export const OsmCommercialPoiResponseSchema = OverpassResponsePayloadSchema.extend({
+  elements: z.array(OsmCommercialElementSchema),
+  provenance: DataProvenanceSchema,
+}).superRefine((data, ctx) => {
+  if (data.provenance.mode !== 'seed' || data.provenance.source_mode !== 'seed') {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['provenance', 'mode'],
+      message: 'fixture responses must be strictly marked as seed mode',
+    });
+  }
+});
+export type OsmCommercialPoiResponse = z.infer<typeof OsmCommercialPoiResponseSchema>;
