@@ -370,3 +370,50 @@ export const BusinessContextPreviewSchema = z
   })
   .strict();
 export type BusinessContextPreview = z.infer<typeof BusinessContextPreviewSchema>;
+
+// ============================================================================
+// Economic Fixture Dataset (ADR 0052 & PLAN.md §10 Task 8.3)
+// ============================================================================
+
+export const EconomicFixtureDatasetSchema = z
+  .object({
+    schema_version: z.literal(ECONOMIC_SCHEMA_VERSION),
+    fixture_id: EconomicIdentifierSchema,
+    source_id: EconomicIdentifierSchema,
+    title: z.string().min(1).max(256),
+    description: z.string().min(1).max(1000),
+    target_geography: EconomicGeographySchema,
+    provenance: DataProvenanceSchema,
+    records: z.array(EconomicEvidenceRecordSchema).min(1).max(1000),
+  })
+  .strict()
+  .superRefine((data, ctx) => {
+    if (data.provenance.mode !== 'seed' || data.provenance.source_mode !== 'seed') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['provenance', 'mode'],
+        message: 'fixture datasets must be strictly marked as seed mode',
+      });
+    }
+    if (data.provenance.fixture_id !== data.fixture_id) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['provenance', 'fixture_id'],
+        message: 'provenance.fixture_id must match dataset fixture_id',
+      });
+    }
+    for (let i = 0; i < data.records.length; i++) {
+      const record = data.records[i];
+      if (
+        record &&
+        (record.provenance.mode !== 'seed' || record.provenance.source_mode !== 'seed')
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['records', i, 'provenance', 'mode'],
+          message: 'all fixture records must be strictly marked as seed mode',
+        });
+      }
+    }
+  });
+export type EconomicFixtureDataset = z.infer<typeof EconomicFixtureDatasetSchema>;

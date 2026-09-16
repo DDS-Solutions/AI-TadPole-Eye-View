@@ -38,6 +38,7 @@ export const EconomicSourceMetadataSchema = z
     status: EconomicSourceStatusSchema,
     suppression_supported: z.boolean(),
     margin_of_error_supported: z.boolean(),
+    seed_fixture_id: z.string().min(1).max(128).optional(),
   })
   .strict();
 export type EconomicSourceMetadata = z.infer<typeof EconomicSourceMetadataSchema>;
@@ -66,9 +67,10 @@ export const ECONOMIC_SOURCE_REGISTRY: Record<EconomicSourceId, EconomicSourceMe
     update_cadence: 'Annual (5-year rolling pooling)',
     vintage_description:
       '5-year pooled survey estimates with explicit 90% confidence margins of error',
-    status: 'planned',
+    status: 'seed',
     suppression_supported: true,
     margin_of_error_supported: true,
+    seed_fixture_id: 'census-acs-synthetic-v1',
   },
   'census-cbp-zbp': {
     id: 'census-cbp-zbp',
@@ -83,9 +85,10 @@ export const ECONOMIC_SOURCE_REGISTRY: Record<EconomicSourceId, EconomicSourceMe
     supported_geographies: ['nation', 'state', 'county', 'zcta', 'cbsa'],
     update_cadence: 'Annual',
     vintage_description: 'Annual enterprise census with statutory disclosure avoidance suppression',
-    status: 'planned',
+    status: 'seed',
     suppression_supported: true,
     margin_of_error_supported: false,
+    seed_fixture_id: 'census-cbp-zbp-synthetic-v1',
   },
   'bls-oews': {
     id: 'bls-oews',
@@ -101,9 +104,10 @@ export const ECONOMIC_SOURCE_REGISTRY: Record<EconomicSourceId, EconomicSourceMe
     supported_geographies: ['nation', 'state', 'cbsa'],
     update_cadence: 'Annual (May survey release)',
     vintage_description: 'Annual occupational survey with percentile wage distributions',
-    status: 'planned',
+    status: 'seed',
     suppression_supported: true,
     margin_of_error_supported: false,
+    seed_fixture_id: 'bls-oews-synthetic-v1',
   },
   'bls-lau': {
     id: 'bls-lau',
@@ -119,9 +123,10 @@ export const ECONOMIC_SOURCE_REGISTRY: Record<EconomicSourceId, EconomicSourceMe
     update_cadence: 'Monthly',
     vintage_description:
       'Monthly model-based and administrative estimates with benchmark revisions',
-    status: 'planned',
+    status: 'seed',
     suppression_supported: false,
     margin_of_error_supported: false,
+    seed_fixture_id: 'bls-lau-synthetic-v1',
   },
   'fema-nri-nfhl': {
     id: 'fema-nri-nfhl',
@@ -136,10 +141,12 @@ export const ECONOMIC_SOURCE_REGISTRY: Record<EconomicSourceId, EconomicSourceMe
     supported_geographies: ['state', 'county', 'tract', 'bounding_box'],
     update_cadence: 'Periodic / Multi-year update',
     vintage_description: 'Census-tract level natural hazard risk index composite scores',
-    status: 'planned',
+    status: 'seed',
     suppression_supported: false,
     margin_of_error_supported: false,
+    seed_fixture_id: 'fema-nri-synthetic-v1',
   },
+
   'usgs-3dep': {
     id: 'usgs-3dep',
     name: '3D Elevation Program (3DEP)',
@@ -205,9 +212,10 @@ export const ECONOMIC_SOURCE_REGISTRY: Record<EconomicSourceId, EconomicSourceMe
     supported_geographies: ['bounding_box', 'point'],
     update_cadence: 'Real-time crowdsourced updates (queried via Overpass QL)',
     vintage_description: 'Vector geometries and tag attributes sanitized through Overpass QL',
-    status: 'planned',
+    status: 'seed',
     suppression_supported: false,
     margin_of_error_supported: false,
+    seed_fixture_id: 'osm-commercial-synthetic-v1',
   },
 };
 

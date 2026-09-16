@@ -21,6 +21,15 @@ describe('Economic Source Registry (ADR 0052)', () => {
       'osm-commercial',
     ];
 
+    const seedSources: EconomicSourceId[] = [
+      'census-acs',
+      'census-cbp-zbp',
+      'bls-oews',
+      'bls-lau',
+      'fema-nri-nfhl',
+      'osm-commercial',
+    ];
+
     for (const id of expectedSources) {
       expect(isEconomicSourceRegistered(id)).toBe(true);
       const source = getEconomicSource(id);
@@ -32,7 +41,14 @@ describe('Economic Source Registry (ADR 0052)', () => {
       expect(source.license_id.length).toBeGreaterThan(0);
       expect(source.attribution_notice.length).toBeGreaterThan(0);
       expect(source.supported_geographies.length).toBeGreaterThan(0);
-      expect(source.status).toBe('planned');
+
+      if (seedSources.includes(id)) {
+        expect(source.status).toBe('seed');
+        expect(source.seed_fixture_id).toBeDefined();
+        expect(source.seed_fixture_id?.length).toBeGreaterThan(0);
+      } else {
+        expect(source.status).toBe('planned');
+      }
     }
   });
 

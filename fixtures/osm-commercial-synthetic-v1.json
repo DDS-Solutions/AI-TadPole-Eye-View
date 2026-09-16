@@ -1,0 +1,139 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62 / GEV Seed Fixture",
+  "osm3s": {
+    "timestamp_osm_base": "2026-09-16T12:00:00.000Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org."
+  },
+  "elements": [
+    {
+      "type": "node",
+      "id": 20001,
+      "lat": 30.2672,
+      "lon": -97.7431,
+      "tags": {
+        "name": "Whole Harvest Market",
+        "shop": "supermarket",
+        "brand": "Whole Harvest",
+        "opening_hours": "Mo-Su 08:00-22:00"
+      }
+    },
+    {
+      "type": "node",
+      "id": 20002,
+      "lat": 30.2685,
+      "lon": -97.7418,
+      "tags": {
+        "name": "Congress Avenue Coffee",
+        "amenity": "cafe",
+        "cuisine": "coffee_shop",
+        "takeaway": "yes"
+      }
+    },
+    {
+      "type": "node",
+      "id": 20003,
+      "lat": 30.2654,
+      "lon": -97.7445,
+      "tags": {
+        "name": "Lone Star Bistro",
+        "amenity": "restaurant",
+        "cuisine": "regional",
+        "outdoor_seating": "yes"
+      }
+    },
+    {
+      "type": "node",
+      "id": 20004,
+      "lat": 30.2691,
+      "lon": -97.7398,
+      "tags": {
+        "name": "Apex Community Pharmacy",
+        "amenity": "pharmacy",
+        "dispensing": "yes",
+        "healthcare": "pharmacy"
+      }
+    },
+    {
+      "type": "node",
+      "id": 20005,
+      "lat": 30.2638,
+      "lon": -97.7472,
+      "tags": {
+        "name": "Capitol Hardware & Supply",
+        "shop": "hardware",
+        "building_supplies": "yes"
+      }
+    },
+    {
+      "type": "node",
+      "id": 20006,
+      "lat": 30.2619,
+      "lon": -97.7512,
+      "tags": {
+        "name": "Austin Precision Metal Fabrication",
+        "craft": "metal_construction",
+        "commercial": "light_industrial"
+      }
+    },
+    {
+      "type": "node",
+      "id": 20007,
+      "lat": 30.2678,
+      "lon": -97.7425,
+      "tags": {
+        "name": "Travis Community Credit Union",
+        "amenity": "bank",
+        "atm": "yes"
+      }
+    },
+    {
+      "type": "node",
+      "id": 20008,
+      "lat": 30.2704,
+      "lon": -97.7381,
+      "tags": {
+        "name": "Silicon Hills Coworking Hub",
+        "office": "coworking",
+        "internet_access": "wlan"
+      }
+    }
+  ],
+  "sanitization": {
+    "complexity_score": 18,
+    "timeout_sec": 25
+  },
+  "provenance": {
+    "schema_version": 1,
+    "source": {
+      "provider_id": "osm-commercial",
+      "feed_id": "overpass-commercial-poi",
+      "name": "OpenStreetMap Commercial & Amenity Infrastructure",
+      "canonical_url": "https://www.openstreetmap.org/"
+    },
+    "retrieved_at": "2026-09-16T12:00:00.000Z",
+    "observation_period": {
+      "status": "available",
+      "start": "2026-09-16T00:00:00.000Z",
+      "end": "2026-09-16T12:00:00.000Z"
+    },
+    "vintage": {
+      "status": "available",
+      "value": "OSM Planet 2026-09-16 via Overpass QL"
+    },
+    "mode": "seed",
+    "source_mode": "seed",
+    "license": {
+      "id": "odbl-1.0",
+      "name": "Open Database License (ODbL) 1.0"
+    },
+    "attribution": "© OpenStreetMap contributors (ODbL 1.0)",
+    "fixture_id": "osm-commercial-synthetic-v1",
+    "cache": null,
+    "freshness": {
+      "status": "fresh",
+      "age_seconds": 0,
+      "fresh_for_seconds": 86400
+    }
+  }
+}

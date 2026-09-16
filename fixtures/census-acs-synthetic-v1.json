@@ -1,0 +1,379 @@
+{
+  "schema_version": 1,
+  "fixture_id": "census-acs-synthetic-v1",
+  "source_id": "census-acs",
+  "title": "ACS 5-Year Socio-Economic Benchmark Synthetic Fixture",
+  "description": "Synthetic American Community Survey 5-year estimates across state, county, and tract geographies with explicit 90% confidence margins of error.",
+  "target_geography": {
+    "level": "county",
+    "county_fips": "48453",
+    "state_fips": "48",
+    "name": "Travis County, TX"
+  },
+  "provenance": {
+    "schema_version": 1,
+    "source": {
+      "provider_id": "census-acs",
+      "feed_id": "acs-5yr-profiles",
+      "name": "U.S. Census Bureau American Community Survey 5-Year Estimates",
+      "canonical_url": "https://api.census.gov/data"
+    },
+    "retrieved_at": "2026-09-16T12:00:00.000Z",
+    "observation_period": {
+      "status": "available",
+      "start": "2020-01-01T00:00:00.000Z",
+      "end": "2024-12-31T23:59:59.000Z"
+    },
+    "vintage": {
+      "status": "available",
+      "value": "2020-2024 ACS 5-Year Detailed Tables"
+    },
+    "mode": "seed",
+    "source_mode": "seed",
+    "license": {
+      "id": "us-government-public-domain",
+      "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+    },
+    "attribution": "U.S. Census Bureau, American Community Survey 5-Year Estimates",
+    "fixture_id": "census-acs-synthetic-v1",
+    "cache": null,
+    "freshness": {
+      "status": "fresh",
+      "age_seconds": 0,
+      "fresh_for_seconds": 31536000
+    }
+  },
+  "records": [
+    {
+      "evidence_id": "ev-acs-b19013-48453-2024",
+      "source_id": "census-acs",
+      "metric_id": "median-household-income",
+      "variable_name": "B19013_001E",
+      "label": "Median Household Income in the Past 12 Months (in 2024 Inflation-Adjusted Dollars)",
+      "geography": {
+        "level": "county",
+        "county_fips": "48453",
+        "state_fips": "48",
+        "name": "Travis County, TX"
+      },
+      "estimate": {
+        "status": "available",
+        "value": 92450,
+        "margin_of_error": 1850,
+        "confidence_level": 0.9,
+        "sample_size": 14200,
+        "unit": "USD",
+        "notes": "Margin of error computed at 90% confidence level"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "census-acs",
+          "feed_id": "acs-5yr-profiles",
+          "name": "U.S. Census Bureau American Community Survey 5-Year Estimates",
+          "canonical_url": "https://api.census.gov/data"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2020-01-01T00:00:00.000Z",
+          "end": "2024-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "2020-2024 ACS 5-Year Detailed Tables"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Census Bureau, American Community Survey 5-Year Estimates",
+        "fixture_id": "census-acs-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 31536000
+        }
+      },
+      "tags": ["income", "acs", "demographics", "county"]
+    },
+    {
+      "evidence_id": "ev-acs-b01003-48453-2024",
+      "source_id": "census-acs",
+      "metric_id": "total-population",
+      "variable_name": "B01003_001E",
+      "label": "Total Population",
+      "geography": {
+        "level": "county",
+        "county_fips": "48453",
+        "state_fips": "48",
+        "name": "Travis County, TX"
+      },
+      "estimate": {
+        "status": "available",
+        "value": 1326437,
+        "margin_of_error": 0,
+        "confidence_level": 0.9,
+        "sample_size": 1326437,
+        "unit": "count",
+        "notes": "Full-count administrative benchmark control"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "census-acs",
+          "feed_id": "acs-5yr-profiles",
+          "name": "U.S. Census Bureau American Community Survey 5-Year Estimates",
+          "canonical_url": "https://api.census.gov/data"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2020-01-01T00:00:00.000Z",
+          "end": "2024-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "2020-2024 ACS 5-Year Detailed Tables"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Census Bureau, American Community Survey 5-Year Estimates",
+        "fixture_id": "census-acs-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 31536000
+        }
+      },
+      "tags": ["population", "acs", "demographics", "county"]
+    },
+    {
+      "evidence_id": "ev-acs-b05002-48453-2024",
+      "source_id": "census-acs",
+      "metric_id": "foreign-born-population",
+      "variable_name": "B05002_003E",
+      "label": "Foreign-Born Population (Naturalized Citizen and Non-Citizen)",
+      "geography": {
+        "level": "county",
+        "county_fips": "48453",
+        "state_fips": "48",
+        "name": "Travis County, TX"
+      },
+      "estimate": {
+        "status": "available",
+        "value": 231450,
+        "margin_of_error": 3820,
+        "confidence_level": 0.9,
+        "sample_size": 14200,
+        "unit": "count",
+        "notes": "Includes both naturalized U.S. citizens and non-citizens per statutory Census definitions"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "census-acs",
+          "feed_id": "acs-5yr-profiles",
+          "name": "U.S. Census Bureau American Community Survey 5-Year Estimates",
+          "canonical_url": "https://api.census.gov/data"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2020-01-01T00:00:00.000Z",
+          "end": "2024-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "2020-2024 ACS 5-Year Detailed Tables"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Census Bureau, American Community Survey 5-Year Estimates",
+        "fixture_id": "census-acs-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 31536000
+        }
+      },
+      "tags": ["foreign-born", "demographics", "acs", "citizenship"]
+    },
+    {
+      "evidence_id": "ev-acs-b25077-48453-2024",
+      "source_id": "census-acs",
+      "metric_id": "median-housing-value",
+      "variable_name": "B25077_001E",
+      "label": "Median Value (Dollars) for Owner-Occupied Housing Units",
+      "geography": {
+        "level": "county",
+        "county_fips": "48453",
+        "state_fips": "48",
+        "name": "Travis County, TX"
+      },
+      "estimate": {
+        "status": "available",
+        "value": 524000,
+        "margin_of_error": 6500,
+        "confidence_level": 0.9,
+        "sample_size": 9800,
+        "unit": "USD",
+        "notes": "Owner-occupied real estate valuation benchmark"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "census-acs",
+          "feed_id": "acs-5yr-profiles",
+          "name": "U.S. Census Bureau American Community Survey 5-Year Estimates",
+          "canonical_url": "https://api.census.gov/data"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2020-01-01T00:00:00.000Z",
+          "end": "2024-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "2020-2024 ACS 5-Year Detailed Tables"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Census Bureau, American Community Survey 5-Year Estimates",
+        "fixture_id": "census-acs-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 31536000
+        }
+      },
+      "tags": ["housing", "real-estate", "acs", "county"]
+    },
+    {
+      "evidence_id": "ev-acs-b19013-48453001100-2024",
+      "source_id": "census-acs",
+      "metric_id": "median-household-income",
+      "variable_name": "B19013_001E",
+      "label": "Median Household Income in Census Tract 11",
+      "geography": {
+        "level": "tract",
+        "tract_fips": "48453001100",
+        "name": "Census Tract 11, Travis County, TX"
+      },
+      "estimate": {
+        "status": "available",
+        "value": 114200,
+        "margin_of_error": 9400,
+        "confidence_level": 0.9,
+        "sample_size": 650,
+        "unit": "USD",
+        "notes": "Tract-level estimate with larger relative margin of error"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "census-acs",
+          "feed_id": "acs-5yr-profiles",
+          "name": "U.S. Census Bureau American Community Survey 5-Year Estimates",
+          "canonical_url": "https://api.census.gov/data"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2020-01-01T00:00:00.000Z",
+          "end": "2024-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "2020-2024 ACS 5-Year Detailed Tables"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Census Bureau, American Community Survey 5-Year Estimates",
+        "fixture_id": "census-acs-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 31536000
+        }
+      },
+      "tags": ["income", "tract", "acs"]
+    },
+    {
+      "evidence_id": "ev-acs-b19001-48453001100-suppressed",
+      "source_id": "census-acs",
+      "metric_id": "specialized-bracket-income",
+      "variable_name": "B19001_017E",
+      "label": "Detailed Household Income Top Bracket Estimate",
+      "geography": {
+        "level": "tract",
+        "tract_fips": "48453001100",
+        "name": "Census Tract 11, Travis County, TX"
+      },
+      "estimate": {
+        "status": "suppressed",
+        "reason": "small_sample",
+        "detail": "Sample size below Census Bureau statistical reliability threshold for tract tabulation",
+        "unit": "USD"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "census-acs",
+          "feed_id": "acs-5yr-profiles",
+          "name": "U.S. Census Bureau American Community Survey 5-Year Estimates",
+          "canonical_url": "https://api.census.gov/data"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2020-01-01T00:00:00.000Z",
+          "end": "2024-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "2020-2024 ACS 5-Year Detailed Tables"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Census Bureau, American Community Survey 5-Year Estimates",
+        "fixture_id": "census-acs-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 31536000
+        }
+      },
+      "tags": ["suppressed", "small_sample", "acs", "tract"]
+    }
+  ]
+}

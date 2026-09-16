@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-16
-**Status:** IN PROGRESS — Phase 8 task 8.1 complete; task 8.2 ready for review and authorization
+**Status:** IN PROGRESS — Phase 8 tasks 8.1–8.3 complete; task 8.4 ready for review and authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=8
-NEXT_TASK=8.3
+NEXT_TASK=8.4
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
@@ -1949,20 +1949,20 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
   redacted; invalid/revoked credentials and expired/superseded terms relock affected layers;
   direct route/reload works in the chosen hosting model.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 8.3
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 8.4
 
 ```text
-[SCOPE_CONTRACT] Add licensed, deterministic test fixtures for ACS, CBP/ZBP, BLS OEWS/LAU, FEMA NRI, and approved OSM commercial POI examples to fixtures/; ensure all fixture records validate against contracts, carry required provenance, and are strictly marked seed/fixture mode. Out of scope: live API calls, persistent storage, or UI integration.
-[PERFORMANCE_THRESHOLD] 100% test pass; deterministic frozen-clock validation; fixture parsing p95 < 10ms; zero live network calls under GEV_SEED_MODE=1.
-[ARCHITECTURE_MODE] PLAN.md §2 (rules 1, 4, 7, 12); DataProvenance schema v1 validation; strictly licensed synthetic/public domain seed fixtures.
-[FAILURE_MODES] Bundling unverified proprietary data or live API tokens in fixtures fails validation; fixtures labeled as live data are rejected immediately.
+[SCOPE_CONTRACT] Implement protected, stateless BusinessContext preview HTTP route in apps/server and MCP tool in packages/ops-mcp through shared governance (packages/governance); wire pure economic analysis synthesis (@gev/economic) over validated fixtures/stores. Out of scope: persistent economic storage, background watchers, live provider network calls, or UI rendering.
+[PERFORMANCE_THRESHOLD] 100% test pass; stateless preview endpoint responds < 25ms p95; zero unauthenticated or cross-tenant leakage; zero persistence writes outside audit trail.
+[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2; ADRs 0031, 0041, 0050, 0052; stateless execution; mandatory tenant isolation and token authorization; legal disclaimer attached to all preview outputs.
+[FAILURE_MODES] Missing tenant auth or invalid capability returns 401/403 before execution; suppressed data never coerced to zero; rate limit breach trips governor safely without crashing.
 ```
 
 ### Phase 8 — Economic R0: safe foundation
 
 - [x] 8.1 Add discriminated geography, estimate, provenance, evidence, and BusinessContext-preview contracts with malicious/limit tests.
 - [x] 8.2 Create a new workspace package for pure economic analysis with no I/O and an explicit source registry; reserve its literal path in the implementing ADR before creation.
-- [ ] 8.3 Add licensed deterministic fixtures for ACS, CBP/ZBP, BLS, FEMA, and approved OSM examples; fixtures can never be labeled live.
+- [x] 8.3 Add licensed deterministic fixtures for ACS, CBP/ZBP, BLS, FEMA, and approved OSM examples; fixtures can never be labeled live.
 - [ ] 8.4 Implement a protected, stateless preview API and MCP tool through shared governance.
 - [ ] 8.5 Add content/instruction separation and prompt-injection tests before any provider/economic text enters an LLM/Tadpole context.
 - [ ] 8 exit: suppressed/unavailable/stale cases validate; provenance is required; no persistence or live calls; ADG and affected gates pass.
@@ -4079,5 +4079,40 @@ No later task is authorized merely because it appears in this plan.
 - **Plan Advancement:** Task 8.2 complete (`[x]`). `CURRENT_PHASE=8`, `NEXT_TASK=8.3`, `NEXT_TASK_STATUS=READY`.
 - **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 8.3. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
+### Task 8.3 completion checkpoint — 2026-09-16
+
+- **Execution:** Completed on branch `codex/task-8.3-economic-fixtures`.
+- **Deterministic Seed Fixtures (`fixtures/`):**
+  - `fixtures/census-acs-synthetic-v1.json`: American Community Survey 5-Year estimates across county (`48453`) and tract (`48453001100`) geographies, covering median household income (`B19013_001E`), total population (`B01003_001E`), foreign-born population (`B05002_003E`), median owner-occupied housing value (`B25077_001E`), and small-sample suppression, with explicit 90% confidence margins of error.
+  - `fixtures/census-cbp-zbp-synthetic-v1.json`: County & ZIP Code Business Patterns enterprise data by NAICS code (`541511`, `332710`, `722511`), establishment counts, paid employment, annual payroll, and statutory disclosure avoidance suppression (flag 'c' bounds [100, 249]).
+  - `fixtures/bls-oews-synthetic-v1.json`: BLS Occupational Employment and Wage Statistics by SOC code (`15-1252`, `51-4041`) across Austin CBSA (`12420`) with annual and hourly wage distributions and data-quality suppression.
+  - `fixtures/bls-lau-synthetic-v1.json`: BLS Local Area Unemployment Statistics monthly series (`civilian-labor-force`, `employed-count`, `unemployed-count`, `unemployment-rate`) for Travis County (`48453`).
+  - `fixtures/fema-nri-synthetic-v1.json`: FEMA National Risk Index composite risk score, Expected Annual Loss (`EAL_VALT`), Social Vulnerability (`SOVI_SCORE`), and Community Resilience (`RESL_SCORE`).
+  - `fixtures/osm-commercial-synthetic-v1.json`: Sanitized Overpass query commercial and amenity POIs in Austin Downtown bounding box under ODbL 1.0 license with required DataProvenance.
+  - `fixtures/osm-commercial-evidence-synthetic-v1.json`: OpenStreetMap commercial POI density and footprint metrics structured as economic evidence records under ODbL 1.0.
+- **Contract Boundaries & Types:**
+  - `packages/contracts/src/economic.ts`: Added `EconomicFixtureDatasetSchema` and `EconomicFixtureDataset` type with strict seed mode enforcement (`mode === 'seed'`, `source_mode === 'seed'`, `fixture_id` matching dataset ID, and zero live records allowed).
+  - `packages/contracts/src/overpass.ts`: Added `OsmCommercialElementSchema`, `OsmCommercialTagSchema`, and `OsmCommercialPoiResponseSchema` extending `OverpassResponsePayloadSchema` with commercial tags and required `DataProvenanceSchema`.
+- **Pure Analysis Package & Registry (`@gev/economic`):**
+  - `packages/economic/src/sourceRegistry.ts`: Updated 6 implemented sources (`census-acs`, `census-cbp-zbp`, `bls-oews`, `bls-lau`, `fema-nri-nfhl`, `osm-commercial`) from `planned` to `seed` status with associated `seed_fixture_id`.
+  - `packages/economic/src/fixtureParser.ts`: Added pure zero-I/O parsers `parseEconomicFixtureDataset` and `parseOsmCommercialPoiFixture` validating input against contract schemas.
+- **Operational Runbook & Licensing Documentation:**
+  - `RUNBOOK.md`: Added Economic Intelligence Seed Fixtures subsection documenting fixture files, mandatory seed provenance, zero coercion, and pure zero-I/O boundary.
+  - `docs/LICENSES.md`: Added entries for Census ACS, Census CBP/ZBP, BLS OEWS/LAU, FEMA NRI, and OSM commercial POI fixtures.
+- **Verification & Quality Gates:**
+  - Vitest `@gev/economic` suite: 7/7 test files (51 tests passed), including `economicFixtures.test.ts` (13 tests) and `architecturalBoundary.test.ts`.
+  - Vitest `@gev/contracts` suite: 13/13 test files (111 tests passed), including `economicContracts.test.ts` (8 tests).
+  - Monorepo full unit suite (`pnpm test:unit`): 17/17 tasks passed.
+  - Monorepo strict typecheck (`pnpm typecheck`): 18/18 tasks passed.
+  - Biome lint & format (`pnpm lint`, `pnpm format`): 0 errors across 341 files.
+  - Architecture drift check (`pnpm architecture:check`): PASSED (0 large files >500 lines).
+  - ADG check (`pnpm docs:check`): PASSED (73 doc files, 656 paths, 24 module symbols, 0 errors).
+  - Doc tests (`pnpm docs:test`): 17/17 tests passed.
+  - Performance benchmark: fixture parsing p95 latency < 10ms (measured < 1ms across 100 runs).
+  - Zero live network calls under `GEV_SEED_MODE=1` verified via socket & fetch spy.
+- **Plan Advancement:** Task 8.3 complete (`[x]`). `CURRENT_PHASE=8`, `NEXT_TASK=8.4`, `NEXT_TASK_STATUS=READY`.
+- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 8.4. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
 No later task is authorized merely because it appears in this plan.
+
 

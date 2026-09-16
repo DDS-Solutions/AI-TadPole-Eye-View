@@ -244,6 +244,22 @@ See [Solar Context](./docs/data-sources/solar-context.md),
 
 See [ADR 0049](./docs/adr/0049-registry-derived-layer-access-read-model.md).
 
+### Economic intelligence seed fixtures
+
+- Economic analysis operates under `GEV_SEED_MODE=1` by default using checked-in deterministic fixtures in `fixtures/`:
+  - `census-acs-synthetic-v1.json` (Census ACS 5-Year Estimates)
+  - `census-cbp-zbp-synthetic-v1.json` (County & ZIP Code Business Patterns)
+  - `bls-oews-synthetic-v1.json` (BLS Occupational Employment and Wage Statistics)
+  - `bls-lau-synthetic-v1.json` (BLS Local Area Unemployment Statistics)
+  - `fema-nri-synthetic-v1.json` (FEMA National Risk Index)
+  - `osm-commercial-synthetic-v1.json` and `osm-commercial-evidence-synthetic-v1.json` (OpenStreetMap Commercial POIs)
+- Every fixture record carries mandatory `DataProvenance` with `mode: "seed"` and `source_mode: "seed"`. Fixtures labeled with live mode are rejected immediately by contract validation.
+- Missing, suppressed, or low-sample economic estimates retain their explicit discriminated status (`suppressed`, `unavailable`, `not_applicable`) and are never coerced to zero.
+- Pure domain algorithms in `@gev/economic` maintain a zero-I/O boundary and consume only in-memory records and injected clocks.
+
+See [ADR 0052](./docs/adr/0052-economic-analysis-package-path-and-architecture.md).
+
+
 ---
 
 ## 3. Keyless Cesium 3D Globe Baseline & Fallbacks
