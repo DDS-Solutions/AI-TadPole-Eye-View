@@ -24,3 +24,4 @@ export * from './provenance.js';
 export * from './cables.js';
 export * from './satellites.js';
 export * from './identity.js';
+export * from './layerAccessAdmin.js';

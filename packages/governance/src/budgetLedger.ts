@@ -369,6 +369,10 @@ export class SqliteBudgetLedger implements BudgetLedger {
     return this.transaction(() => this.store.ensureTenantBudget(tenantId));
   }
 
+  getTenantHeldMicrousd(tenantId: string): number {
+    return this.transaction(() => this.store.activeHeldMicrousdForTenant(tenantId));
+  }
+
   setTenantCap(tenantId: string, capMicrousd: number): void {
     if (!Number.isSafeInteger(capMicrousd) || capMicrousd <= 0) {
       throw new Error('Tenant cap must be a positive integer micro-USD amount');
@@ -381,6 +385,17 @@ export class SqliteBudgetLedger implements BudgetLedger {
       throw new Error('STASIS resume requires a human actor');
     }
     this.transaction(() => this.store.resumeTenant(tenantId, resumedBy));
+  }
+
+  tripTenant(
+    tenantId: string,
+    reason: 'BUDGET_BREACH' | 'COMPLIANCE_DRIFT' = 'BUDGET_BREACH',
+    message = 'Tenant quota exceeded'
+  ): void {
+    this.transaction(() => {
+      this.store.ensureTenantBudget(tenantId);
+      this.store.writeTenantTrip(tenantId, reason, message);
+    });
   }
 
   close(): void {

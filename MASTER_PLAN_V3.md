@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=7
-NEXT_TASK=7.4
+NEXT_TASK=7_EXIT
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
@@ -1932,18 +1932,19 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 
 - [x] 7.3 Add the lazy `/#/intelligence` view and navigation without Cesium; document any new dependency and enforce bundle delta.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 7.4
-
-```text
-[SCOPE_CONTRACT] Activate tenant-scoped Layer Access administration in apps/server, packages/governance, packages/contracts, and apps/web. In scope: secure credential submission, masked status, bounded credential validation, rotation/revocation/deletion, versioned terms acceptance evidence, approval ownership, and deterministic relocking through the shared audit/approval/budget/STASIS path. Out of scope: collecting provider passwords (only tokens/API keys), returning unmasked secrets, live production writes, or Phase 8 economic analytics.
-[PERFORMANCE_THRESHOLD] Credential validation requests bounded <= 5s timeout; secret masking constant-time; zero plain-text secrets in logs or responses; all unit, integration, and e2e tests green.
-[ARCHITECTURE_MODE] PLAN.md §2 rules 1, 3, 5, 10; §3; ADR 0031; ADR 0049; ADR 0050. Authenticated tenant context strictly enforced; secrets encrypted/masked; fail-closed audit before/after mutation.
-[FAILURE_MODES] Never expose decrypted credentials in responses or logs; never allow cross-tenant credential manipulation; handle expired/revoked credentials by deterministic relocking with audit evidence.
-```
-- [ ] 7.4 Activate tenant-scoped Layer Access administration: secure credential submission,
+- [x] 7.4 Activate tenant-scoped Layer Access administration: secure credential submission,
   masked status, bounded validation, rotation/revocation/deletion, versioned terms evidence,
   approval ownership, and deterministic relocking through the shared audit/approval/budget/
   STASIS path. No provider password is collected and no submitted secret is readable later.
+
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 7_EXIT
+
+```text
+[SCOPE_CONTRACT] Phase 7 exit gate verification across apps/server, packages/governance, packages/contracts, apps/web, and e2e. In scope: cross-tenant access fail-closed validation, private fields/secrets redaction audit, deterministic relocking on invalid/revoked credentials and expired/superseded terms, direct route/reload testing in dev/preview hosting models. Out of scope: Phase 8 Economic R0 workspace creation or data fixtures.
+[PERFORMANCE_THRESHOLD] All unit, property, and integration suites pass 100% green; zero leaked secrets in telemetry/logs/payloads; bundle budgets and ADG checks pass with zero errors.
+[ARCHITECTURE_MODE] PLAN.md §2, §3, §7; ADRs 0031, 0049, 0050, 0051. Strict tenant isolation, fail-closed auth, immutable audit evidence.
+[FAILURE_MODES] Cross-tenant leakage or fallback to unauthenticated state fails closed immediately; invalid token/secret formats return 401/403 before execution.
+```
 - [ ] 7 exit: cross-tenant access tests fail closed; private fields and provider secrets are
   redacted; invalid/revoked credentials and expired/superseded terms relock affected layers;
   direct route/reload works in the chosen hosting model.
@@ -3932,6 +3933,46 @@ No later task is authorized merely because it appears in this plan.
   - `pnpm gev status` verified clean SEED MODE / STASIS_INACTIVE status.
 - **Plan Advancement:** Task 7.3 is marked complete (`[x]`). `CURRENT_PHASE=7`, `NEXT_TASK=7.4`, `NEXT_TASK_STATUS=READY`. A ready-to-authorize 4-Pillar brief for Task 7.4 is provided.
 - Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 7.4. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 7.4 Exit Evidence — Tenant-Scoped Layer Access Administration
+
+- **Scope & Authorization:** Developer authorized the exact Task 7.4 four-pillar brief. In scope: tenant-scoped credential submission (API keys and tokens only; provider passwords strictly forbidden), masked status, bounded credential validation (<= 5s), rotation/revocation/deletion, versioned terms acceptance evidence, approval ownership (tenant_admin/platform_admin, human only, AI forbidden), and deterministic access relocking through the shared audit/approval/budget/STASIS path.
+- **Contract & Boundary Definitions (`@gev/contracts`):**
+  - Added `packages/contracts/src/layerAccessAdmin.ts` with strict schemas:
+    - `TenantLayerCredentialSubmissionSchema` (forbids passwords, allows only `api_key` and `token`),
+    - `TenantLayerCredentialRevocationSchema`,
+    - `TenantLayerCredentialValidationSchema`,
+    - `TenantLayerTermsAcceptanceSchema` (enforcing valid HTTPS URL in `reviewed_url`, non-empty `version_digest`, `approved_use`, and `approved_environments`).
+  - Exported through `packages/contracts/src/index.ts`. All 95 contract unit tests pass green.
+- **Governance & Crypto Layer (`@gev/governance`):**
+  - Added Migration 6 in `packages/governance/src/governanceDb.ts` creating `governance_tenant_layer_credentials` and `governance_tenant_layer_terms` tables with foreign key constraints, revision tracking, and indexing.
+  - Implemented `packages/governance/src/layerAccessCrypto.ts` providing authenticated AES-256-GCM encryption with 12-byte random IVs, 16-byte authentication tags, tenant-isolated additional authenticated data (AAD: `gev:tenant-layer-secret:${tenantId}`), constant-time secret masking (`••••••••${lastFour}`), and SHA-256 digest computation.
+  - Implemented `SqliteTenantLayerAccessStore` (`packages/governance/src/tenantLayerAccessStore.ts`) providing tenant-scoped credential submission, rotation, revocation, deletion, terms acceptance attestation, and runtime input transformation (`getTenantRuntimeInputs`).
+  - Added public `tripTenant`, `getTenantBudget`, and `getTenantHeldMicrousd` methods to `SqliteBudgetLedger`.
+  - All 61 governance unit and property tests pass green.
+- **Server Router & Security Middleware (`apps/server`):**
+  - Implemented `createLayerAccessAdminRouter` (`apps/server/src/routes/layerAccessAdmin.ts`, <= 500 lines):
+    - Router-level fail-closed auth middleware: rejects unauthenticated requests (401), AI actors (403), non-admin roles (403), and cross-tenant header mismatches (403) before route handlers, parameters, or request bodies are parsed.
+    - Path parameter validation: validates `:provider_id` path param using `ProviderRegistryIdSchema` and returns 404 when target does not exist.
+    - Single `auditedAction` runner executing fail-closed audit intent and outcome logging (`layer_access.credential_submit`, `layer_access.credential_rotate`, `layer_access.credential_revoke`, `layer_access.credential_delete`, `layer_access.terms_accept`, `layer_access.credential_validate`), stripping raw secrets and recording only masked status.
+    - Strict 5s validation timeout enforcement.
+  - Added integration suite `apps/server/test/layerAccessAdmin.test.ts` (5 tests): verifies credential submission/rotation without plaintext leaks, bounded validation <= 5s, terms acceptance, role matrix enforcement, and deterministic access relocking on credential revocation or tenant STASIS trip.
+  - All 25 server test files (257 tests) pass green.
+- **Web UI & State Management (`apps/web`):**
+  - Refactored `apps/web/src/stores/layerAccess.svelte.ts` (250 lines) with structured error parsing and non-flashing background state refreshes.
+  - Refactored `apps/web/src/components/LayerAccessAdminSection.svelte` (406 lines):
+    - Replaced `$effect` synchronization with `{#key entry.id}` and initial state bindings to avoid state pollution and feedback banner resets.
+    - Fixed prompt cancellation behavior (aborts immediately on Cancel/Esc and enforces non-empty justification).
+    - Enforces user-supplied version digest and valid HTTPS URL for terms review.
+    - Strictly compliant with `docs/DESIGN.md` design tokens (`var(--hud-...)`) with zero raw color literals.
+- **Playwright E2E Verification (`e2e`):**
+  - All 4 Playwright tests in `e2e/layerAccess.spec.ts` pass green (`4 passed (1.2m)`), verifying complete interactive credential submission, masking, terms acceptance, and status reflection.
+- **Quality Gates & Verification:**
+  - `pnpm turbo run build typecheck test` passed 29/29 tasks across all 11 packages.
+  - `pnpm docs:check` (ADG) passed across 72 doc files, 591 paths, 24 module symbols with zero errors.
+  - All files strictly adhere to the <= 500 lines ceiling (Rule 5).
+- **Plan Advancement:** Task 7.4 is marked complete (`[x]`). `CURRENT_PHASE=7`, `NEXT_TASK=7_EXIT`, `NEXT_TASK_STATUS=READY`. A ready-to-authorize 4-Pillar brief for Task 7_EXIT is provided.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 7_EXIT. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
 

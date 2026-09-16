@@ -38,4 +38,9 @@ export interface CreateAppOptions {
   isProviderEnabled?: (providerName: string) => boolean;
   costGovernorOptions?: Partial<CostGovernorOptions>;
   tenantRateLimits?: Record<string, number>;
+  tenantLayerAccessStore?: import('@gev/governance').SqliteTenantLayerAccessStore;
+  layerAccessCredentialValidator?: (
+    providerId: string,
+    secret: string
+  ) => Promise<{ valid: boolean; error?: string }>;
 }

@@ -71,6 +71,7 @@ describe('durable shared budget and STASIS state', () => {
       { version: 2 },
       { version: 3 },
       { version: 4 },
+      { version: 5 },
       { version: GOVERNANCE_SCHEMA_VERSION },
     ]);
     db.close();
