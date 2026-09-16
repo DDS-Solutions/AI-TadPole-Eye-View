@@ -211,7 +211,7 @@
     background: var(--hud-accent-selected);
     color: var(--hud-accent);
     border-color: var(--hud-accent-border);
-    box-shadow: 0 0 8px rgba(56, 189, 248, 0.25);
+    box-shadow: 0 0 8px var(--hud-accent-selected);
   }
 
   .nav-icon {

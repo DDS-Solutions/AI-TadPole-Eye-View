@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import { runtimeClock } from '../../runtimeClock.js';
+  import EconomicModuleCard from './EconomicModuleCard.svelte';
+  import { economicModules } from './economicModulesData.js';
 
   let currentTime = $state(new Date(runtimeClock.now()).toUTCString());
   let timer: ReturnType<typeof setInterval> | null = null;
@@ -17,65 +19,6 @@
       timer = null;
     }
   });
-
-  const economicModules = [
-    {
-      id: 'phase-8',
-      phase: 'Phase 8',
-      title: 'Economic R0: Foundation & Core Contracts',
-      badge: 'CORE CONTRACTS',
-      status: 'PLANNED',
-      statusReason: 'Phase 8 implementation planned. Contracts, schemas, and deterministic fixtures pending.',
-      sources: ['Discriminated Geography', 'Economic Estimates', 'DataProvenance', 'BusinessContext Preview'],
-      metrics: [
-        { label: 'SCHEMA VALIDATION', value: 'STRICT ZOD' },
-        { label: 'FIXTURES MODE', value: 'SEED ONLY' },
-        { label: 'NETWORK ACCESS', value: 'DENIED' },
-      ],
-    },
-    {
-      id: 'phase-9',
-      phase: 'Phase 9',
-      title: 'Economic R1: Market & Business Footprint',
-      badge: 'CENSUS ACS / CBP / ZBP',
-      status: 'PLANNED',
-      statusReason: 'Phase 9 implementation planned. Census 5-Year ACS and County/ZIP Business Patterns pending.',
-      sources: ['US Census ACS 5-Year', 'Census CBP', 'Census ZBP', 'OSM Boundaries'],
-      metrics: [
-        { label: 'ESTIMATES TYPE', value: 'DISCLOSED / SUPPRESSED' },
-        { label: 'PROVENANCE', value: 'MANDATORY' },
-        { label: 'VINTAGE', value: 'MULTI-YEAR' },
-      ],
-    },
-    {
-      id: 'phase-10',
-      phase: 'Phase 10',
-      title: 'Economic R2: Workforce & Labor Dynamics',
-      badge: 'BLS OEWS / LAU',
-      status: 'PLANNED',
-      statusReason: 'Phase 10 implementation planned. Bureau of Labor Statistics OEWS and LAU series pending.',
-      sources: ['BLS OEWS', 'BLS LAU', 'Area Occupation Matrix'],
-      metrics: [
-        { label: 'WAGE BENCHMARK', value: 'PERCENTILE HOURLY/ANNUAL' },
-        { label: 'EMPLOYMENT SIGNAL', value: 'AREA STATISTICAL' },
-        { label: 'PII EXPOSURE', value: 'ZERO' },
-      ],
-    },
-    {
-      id: 'phase-11',
-      phase: 'Phase 11',
-      title: 'Economic R3: Risk, Resilience & Accessibility',
-      badge: 'FEMA NRI / NFHL',
-      status: 'PLANNED',
-      statusReason: 'Phase 11 implementation planned. FEMA National Risk Index and Flood Hazard Layer pending.',
-      sources: ['FEMA NRI Hazard Ratings', 'FEMA NFHL Vector Layers', 'Resilience Scores'],
-      metrics: [
-        { label: 'HAZARD RATING', value: 'EAL / SOVI RATINGS' },
-        { label: 'COMMUNITY RESILIENCE', value: 'HVRA INDEX' },
-        { label: 'FLOOD BOUNDARY', value: '100-YR / 500-YR' },
-      ],
-    },
-  ];
 </script>
 
 <div class="intelligence-layout" id="intelligence-view">
@@ -156,40 +99,7 @@
 
       <div class="cards-grid">
         {#each economicModules as mod (mod.id)}
-          <article class="module-card" id={`card-${mod.id}`}>
-            <div class="card-header">
-              <span class="phase-tag mono">{mod.phase}</span>
-              <span class="status-badge status-planned mono">{mod.status}</span>
-            </div>
-            <h3 class="card-title">{mod.title}</h3>
-            <div class="card-badge-row">
-              <span class="domain-badge mono">{mod.badge}</span>
-            </div>
-
-            <!-- Empty State per DESIGN.md §5.1 -->
-            <div class="empty-state-box">
-              <span class="empty-state-code mono">STATE: {mod.status}</span>
-              <p class="empty-state-text">{mod.statusReason}</p>
-            </div>
-
-            <div class="data-sources-section">
-              <span class="sources-label">PLANNED DATA SOURCES</span>
-              <ul class="sources-list">
-                {#each mod.sources as src}
-                  <li class="source-item mono">{src}</li>
-                {/each}
-              </ul>
-            </div>
-
-            <div class="card-metrics-grid">
-              {#each mod.metrics as m}
-                <div class="card-metric">
-                  <span class="card-metric-label">{m.label}</span>
-                  <span class="card-metric-value mono">{m.value}</span>
-                </div>
-              {/each}
-            </div>
-          </article>
+          <EconomicModuleCard module={mod} />
         {/each}
       </div>
     </section>
@@ -310,7 +220,7 @@
     background: var(--hud-accent-selected);
     color: var(--hud-accent);
     border-color: var(--hud-accent-border);
-    box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+    box-shadow: 0 0 10px var(--hud-accent-selected);
   }
 
   .nav-icon {
@@ -493,156 +403,6 @@
     gap: 16px;
   }
 
-  .module-card {
-    background: var(--hud-panel-bg);
-    backdrop-filter: blur(12px);
-    border: 1px solid var(--hud-border);
-    border-radius: 8px;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    transition: transform 0.15s ease, border-color 0.15s ease;
-  }
-
-  .module-card:hover {
-    border-color: var(--hud-border-prominent);
-    transform: translateY(-2px);
-  }
-
-  .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .phase-tag {
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: var(--hud-accent);
-  }
-
-  .status-badge {
-    font-size: 0.65rem;
-    font-weight: 700;
-    padding: 2px 7px;
-    border-radius: 4px;
-    letter-spacing: 0.06em;
-  }
-
-  .status-planned {
-    background: var(--hud-chip-bg);
-    border: 1px solid var(--hud-chip-border);
-    color: var(--hud-text-secondary);
-  }
-
-  .card-title {
-    margin: 0;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--hud-text-primary);
-  }
-
-  .card-badge-row {
-    display: flex;
-  }
-
-  .domain-badge {
-    font-size: 0.65rem;
-    background: var(--hud-surface-dark-soft);
-    border: 1px solid var(--hud-border-muted);
-    color: var(--hud-text-mid);
-    padding: 2px 6px;
-    border-radius: 4px;
-  }
-
-  /* Empty state box */
-  .empty-state-box {
-    background: var(--hud-row-bg);
-    border: 1px dashed var(--hud-border);
-    border-radius: 6px;
-    padding: 10px 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .empty-state-code {
-    font-size: 0.65rem;
-    font-weight: 700;
-    color: var(--hud-warning);
-    letter-spacing: 0.06em;
-  }
-
-  .empty-state-text {
-    margin: 0;
-    font-size: 0.74rem;
-    color: var(--hud-text-secondary);
-    line-height: 1.35;
-  }
-
-  .data-sources-section {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .sources-label {
-    font-size: 0.62rem;
-    font-weight: 700;
-    color: var(--hud-text-dim);
-    letter-spacing: 0.06em;
-  }
-
-  .sources-list {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .source-item {
-    font-size: 0.72rem;
-    color: var(--hud-text-mid);
-    padding-left: 10px;
-    position: relative;
-  }
-
-  .source-item::before {
-    content: '•';
-    position: absolute;
-    left: 0;
-    color: var(--hud-accent);
-  }
-
-  .card-metrics-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-    gap: 8px;
-    padding-top: 6px;
-    border-top: 1px solid var(--hud-divider);
-  }
-
-  .card-metric {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .card-metric-label {
-    font-size: 0.58rem;
-    font-weight: 700;
-    color: var(--hud-text-dim);
-    letter-spacing: 0.05em;
-  }
-
-  .card-metric-value {
-    font-size: 0.68rem;
-    color: var(--hud-text-panel);
-    font-weight: 500;
-  }
 
   /* Footer */
   .intel-footer {
