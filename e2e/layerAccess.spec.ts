@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { LayerAccessEntry, LayerAccessReadModel } from '../packages/contracts/src/index.js';
+import type { LayerAccessEntry, LayerAccessReadModel } from '@gev/contracts';
 import { expect, test } from '@playwright/test';
 
 const RESULTS_DIR = path.resolve('test-results');

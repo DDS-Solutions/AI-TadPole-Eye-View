@@ -316,11 +316,13 @@ export function createApp(options: CreateAppOptions = {}) {
 
   // Source elements are cached inside the adapter; positions are re-propagated at SimClock time.
   // Request limiting therefore stays separate from the response-caching cost governor.
+  const satelliteRateLimit =
+    Number(process.env.GEV_SATELLITE_RATE_LIMIT) || SATELLITE_REQUESTS_PER_MINUTE;
   app.use(
     '/api/satellites/*',
     createRateLimitMiddleware(rateLimiter, {
       bucket: 'satellites-read',
-      limit: SATELLITE_REQUESTS_PER_MINUTE,
+      limit: satelliteRateLimit,
       resolveClientId,
     })
   );

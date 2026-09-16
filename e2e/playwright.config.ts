@@ -11,7 +11,7 @@ export default defineConfig({
   workers: 1,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: 'http://127.0.0.1:5180',
+    baseURL: 'http://localhost:5180',
     trace: {
       mode: 'retain-on-failure',
       screenshots: false,
@@ -38,19 +38,20 @@ export default defineConfig({
   webServer: [
     {
       command: 'pnpm --filter @gev/server start',
-      url: 'http://127.0.0.1:3000/api/health',
+      url: 'http://localhost:3000/api/health',
       reuseExistingServer: false,
-      timeout: 20000,
+      timeout: 60000,
       env: {
         GEV_SEED_MODE: '1',
         GEV_SEED_SIM_TIME_MS: String(Date.parse('2024-08-25T10:00:00.000Z')),
+        GEV_SATELLITE_RATE_LIMIT: '1000',
       },
     },
     {
       command: 'pnpm --filter @gev/web preview --port 5180',
-      url: 'http://127.0.0.1:5180',
+      url: 'http://localhost:5180',
       reuseExistingServer: false,
-      timeout: 20000,
+      timeout: 60000,
     },
   ],
 });
