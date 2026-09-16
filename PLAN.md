@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-15
-**Status:** IN PROGRESS — Phase 7 task 7.2 complete; task 7.3 ready for review and authorization
+**Status:** IN PROGRESS — Phase 7 task 7.3 complete; task 7.4 ready for review and authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=7
-NEXT_TASK=7.3
+NEXT_TASK=7.4
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
@@ -1930,19 +1930,16 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 
 - [x] 7.2 Protect quota-consuming provider/economic calls and add per-tenant rate, cache, budget, and kill-switch policy.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 7.3
+- [x] 7.3 Add the lazy `/#/intelligence` view and navigation without Cesium; document any new dependency and enforce bundle delta.
+
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 7.4
 
 ```text
-[SCOPE_CONTRACT] Add the lazy `/#/intelligence` view and navigation in apps/web without importing or initializing Cesium. In scope: apps/web/src/routes/intelligence or equivalent lazy route, navigation links, design tokens compliant with docs/DESIGN.md, bundle budget enforcement, and Playwright verification. Out of scope: live Cesium globe loading on the intelligence route, economic analytics implementation (Phase 8), Layer Access admin (task 7.4), or tasks 7.4+.
-
-[PERFORMANCE_THRESHOLD] Initial bundle size does not increase by more than 15 KB gzip; lazy route chunk loads only when navigated to; Cesium is not downloaded or initialized on `/#/intelligence`; all tests green.
-
-[ARCHITECTURE_MODE] PLAN.md §2 rules 8, 9; §3; §5; docs/DESIGN.md. Design tokens are law. Strict Svelte 5 runes; components do not own Cesium objects; no Tailwind.
-
-[FAILURE_MODES] Do not eagerly load Cesium or intelligence assets; do not introduce arbitrary colors outside docs/DESIGN.md; do not exceed bundle limits.
+[SCOPE_CONTRACT] Activate tenant-scoped Layer Access administration in apps/server, packages/governance, packages/contracts, and apps/web. In scope: secure credential submission, masked status, bounded credential validation, rotation/revocation/deletion, versioned terms acceptance evidence, approval ownership, and deterministic relocking through the shared audit/approval/budget/STASIS path. Out of scope: collecting provider passwords (only tokens/API keys), returning unmasked secrets, live production writes, or Phase 8 economic analytics.
+[PERFORMANCE_THRESHOLD] Credential validation requests bounded <= 5s timeout; secret masking constant-time; zero plain-text secrets in logs or responses; all unit, integration, and e2e tests green.
+[ARCHITECTURE_MODE] PLAN.md §2 rules 1, 3, 5, 10; §3; ADR 0031; ADR 0049; ADR 0050. Authenticated tenant context strictly enforced; secrets encrypted/masked; fail-closed audit before/after mutation.
+[FAILURE_MODES] Never expose decrypted credentials in responses or logs; never allow cross-tenant credential manipulation; handle expired/revoked credentials by deterministic relocking with audit evidence.
 ```
-
-- [ ] 7.3 Add the lazy `/#/intelligence` view and navigation without Cesium; document any new dependency and enforce bundle delta.
 - [ ] 7.4 Activate tenant-scoped Layer Access administration: secure credential submission,
   masked status, bounded validation, rotation/revocation/deletion, versioned terms evidence,
   approval ownership, and deterministic relocking through the shared audit/approval/budget/
@@ -3907,7 +3904,34 @@ No later task is authorized merely because it appears in this plan.
   - ADG check (`pnpm docs:check`) passed across 71 doc files, 547 paths, 18 module symbols; `pnpm docs:test` passed 17/17.
   - Monorepo turbo build, typecheck, and tests passed 29/29 tasks.
 - **Plan Advancement:** Task 7.2 is marked complete (`[x]`). `CURRENT_PHASE=7`, `NEXT_TASK=7.3`, `NEXT_TASK_STATUS=READY`. A ready-to-authorize 4-Pillar brief for Task 7.3 is provided.
-- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 7.3. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 7.3 Exit Evidence — Lazy /#/intelligence view and Cesium bundle decoupling
+
+- **Scope & Authorization:** The developer authorized the exact Task 7.3 four-pillar brief. Accepted [ADR 0051](./docs/adr/0051-lazy-intelligence-route-and-cesium-bundle-decoupling.md) establishes the architectural design for hash-based route splitting (`App.svelte`), dynamic route imports (`GlobeRoute.svelte` vs `IntelligenceRoute.svelte`), strict isolation of `@cesium/engine` and `node_modules/cesium` into `vendor-cesium` without leaking shared `@gev/core` modules, and deterministic bundle budget validation.
+- **Bundle Decoupling & Budgets:**
+  - Evaluated and verified via `scripts/check-bundle-budgets.mjs`:
+    - Entry JS (`index-*.js`): 1.97 KB gzip (budget: 150 KB, reduced by >98% from baseline 126.84 KB).
+    - Lazy Intelligence Route JS chunk (`IntelligenceRoute-*.js`): 2.86 KB gzip (budget: 25 KB).
+    - Lazy Intelligence Route CSS chunk (`IntelligenceRoute-*.css`): 1.63 KB gzip.
+    - Total Intelligence Route delta: 4.49 KB gzip (well within the 15 KB ceiling).
+    - Globe Route JS chunk (`GlobeRoute-*.js`): 106.08 KB gzip (budget: 150 KB).
+    - Total JS gzip footprint: 1236.20 KB (budget: <= 3600 KB).
+  - All chunks pass deterministic CI budget checks (`node scripts/check-bundle-budgets.mjs`).
+- **Surface Implementation & Design Tokens:**
+  - Implemented `apps/web/src/routes/intelligence/IntelligenceRoute.svelte` strictly compliant with `docs/DESIGN.md` design tokens: void surface (`#030712`), panel glass (`rgba(15, 23, 42, 0.85)`), cyan accents (`#38bdf8`), monospace metrics, and `PLANNED` status badges for Economic R0–R3 (Phases 8–11).
+  - Added runtime telemetry banner demonstrating clean zero-Cesium decoupling (`Cesium Engine: DECOUPLED / UNLOADED`, `Memory Footprint: MINIMAL`, `WebGL Context: ZERO CONTEXTS`).
+  - Added responsive HUD layout support in `apps/web/src/components/HudHeader.svelte` with `@media (max-width: 720px)` and ensured `:global(html, body)` and `.globe-layout` prevent horizontal page scroll offsets at 360x640 mobile viewports.
+- **Verification & Test Coverage:**
+  - Added `e2e/intelligenceRoute.spec.ts` (2 tests) verifying:
+    1. Direct navigation to `/#/intelligence` downloads zero Cesium assets or worker scripts, does not create or import `vendor-cesium`, and leaves `window.__gev` undefined.
+    2. Seamless round-trip navigation from `/#/intelligence` to Tactical Globe (`#/`) dynamically loads Cesium, initializes `window.__gev`, and returns back cleanly.
+  - Hardened `e2e/telemetryTable.spec.ts` (2 tests) with `expect.poll` and mobile viewport containment validation at 360x640.
+  - Complete Playwright e2e suite passed: 14/14 tests across `intelligenceRoute.spec.ts`, `layerAccess.spec.ts`, `operationalStates.spec.ts`, `smoke.spec.ts`, `telemetryTable.spec.ts`, and `voiceControl.spec.ts` in 5.5m.
+  - Monorepo turbo build, typecheck, and test passed 37/37 tasks.
+  - ADG check passed (`pnpm docs:check`: 72 doc files, 577 paths, 24 module symbols) and `pnpm docs:test` passed 17/17.
+  - `pnpm gev status` verified clean SEED MODE / STASIS_INACTIVE status.
+- **Plan Advancement:** Task 7.3 is marked complete (`[x]`). `CURRENT_PHASE=7`, `NEXT_TASK=7.4`, `NEXT_TASK_STATUS=READY`. A ready-to-authorize 4-Pillar brief for Task 7.4 is provided.
+- Recommended new-chat instruction: `Resume PLAN.md at NEXT_TASK 7.4. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
 

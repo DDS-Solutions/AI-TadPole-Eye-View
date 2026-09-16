@@ -24,6 +24,10 @@ const BUDGETS = {
   vizGzipKb: 70,
   // Cesium WebGL Engine vendor chunk
   cesiumGzipKb: 3200,
+  // Lazy Intelligence route chunk (Task 7.3 performance threshold)
+  intelligenceRouteGzipKb: 25,
+  // Globe route chunk
+  globeRouteGzipKb: 150,
   // Primary CSS bundle
   cssGzipKb: 50,
   // Total overall JS gzip footprint
@@ -89,6 +93,14 @@ function runBundleBudgetCheck() {
     } else if (file.startsWith('index') && file.endsWith('.js')) {
       category = 'App Entry JS';
       budgetKb = BUDGETS.mainEntryGzipKb;
+      totalJsGzipBytes += gzipBytes;
+    } else if (file.startsWith('IntelligenceRoute') && file.endsWith('.js')) {
+      category = 'Lazy Intelligence Route';
+      budgetKb = BUDGETS.intelligenceRouteGzipKb;
+      totalJsGzipBytes += gzipBytes;
+    } else if (file.startsWith('GlobeRoute') && file.endsWith('.js')) {
+      category = 'Globe Route Chunk';
+      budgetKb = BUDGETS.globeRouteGzipKb;
       totalJsGzipBytes += gzipBytes;
     } else if (file.endsWith('.js')) {
       category = 'App Chunk JS';

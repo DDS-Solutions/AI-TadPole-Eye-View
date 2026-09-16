@@ -1,407 +1,102 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import {
-    GlobeController,
-    CableLayerController,
-    SatelliteLayerController,
-    SolarContextLayerController,
-    NwsAlertLayerController,
-    AviationWeatherLayerController,
-    TropicalCycloneLayerController,
-    CoastalConditionsLayerController,
-    FlightLayerController,
-    MarineLayerController,
-    QuakeLayerController,
-    FirmsLayerController,
-    GbfsLayerController,
-    CctvLayerController,
-    RadioLayerController,
-    LaunchLayerController,
-    WeatherLayerController,
-    CollabLayerController,
-    FrameBudgetMonitor,
-    attachDebugBus,
-  } from '@gev/cesium-kit';
-  import { parseSceneFromUrl } from '@gev/core';
-  import { pollVisibleFeeds } from './feedPolling.js';
-  import { layerStore } from './stores/layers.svelte.js';
-  import { voiceStore } from './stores/voice.svelte.js';
-  import { collabStore } from './stores/collab.svelte.js';
-  import { runtimeClock } from './runtimeClock.js';
-  import HudHeader from './components/HudHeader.svelte';
-  import LayerControlPanel from './components/LayerControlPanel.svelte';
-  import EntityInfoCard from './components/EntityInfoCard.svelte';
-  import VirtualizedTelemetryTable from './components/VirtualizedTelemetryTable.svelte';
-  import VoiceControlOrb from './components/VoiceControlOrb.svelte';
-  import CollabBar from './components/CollabBar.svelte';
-  import OperationalAwarenessPanel from './components/OperationalAwarenessPanel.svelte';
-  import { JulianDate, type Entity } from 'cesium';
+  import { onMount, type Component } from 'svelte';
 
-  let globeContainer: HTMLDivElement;
-  let globe: GlobeController | null = null;
-  let frameMonitor: FrameBudgetMonitor | null = null;
+  type RouteKey = 'globe' | 'intelligence';
 
-  let flightLayer: FlightLayerController | null = null;
-  let marineLayer: MarineLayerController | null = null;
-  let quakeLayer: QuakeLayerController | null = null;
-  let firmsLayer: FirmsLayerController | null = null;
-  let gbfsLayer: GbfsLayerController | null = null;
-  let cctvLayer: CctvLayerController | null = null;
-  let radioLayer: RadioLayerController | null = null;
-  let launchLayer: LaunchLayerController | null = null;
-  let weatherLayer: WeatherLayerController | null = null;
-  let cableLayer: CableLayerController | null = null;
-  let satelliteLayer: SatelliteLayerController | null = null;
-  let collabLayer: CollabLayerController | null = null;
-  let solarLayer: SolarContextLayerController | null = null;
-  let nwsAlertLayer: NwsAlertLayerController | null = null;
-  let aviationWeatherLayer: AviationWeatherLayerController | null = null;
-  let tropicalCycloneLayer: TropicalCycloneLayerController | null = null;
-  let coastalConditionsLayer: CoastalConditionsLayerController | null = null;
-
-  let pollInterval: ReturnType<typeof setInterval> | null = null;
-  let abortController: AbortController | null = null;
-
-  async function pollAllFeeds() {
-    abortController?.abort();
-    abortController = new AbortController();
-    await pollVisibleFeeds({
-      flights: flightLayer,
-      marine: marineLayer,
-      quakes: quakeLayer,
-      firms: firmsLayer,
-      gbfs: gbfsLayer,
-      cctv: cctvLayer,
-      radio: radioLayer,
-      launches: launchLayer,
-      weather: weatherLayer,
-      cables: cableLayer,
-      satellites: satelliteLayer,
-      solar: solarLayer,
-      alerts: nwsAlertLayer,
-      aviationWeather: aviationWeatherLayer,
-      tropicalCyclones: tropicalCycloneLayer,
-      coastalConditions: coastalConditionsLayer,
-    }, abortController.signal);
+  function getRoute(): RouteKey {
+    if (typeof window === 'undefined') return 'globe';
+    const hash = window.location.hash;
+    if (hash.startsWith('#/intelligence')) {
+      return 'intelligence';
+    }
+    return 'globe';
   }
 
-  function handleEntitySelected(entity: Entity | null) {
-    if (!entity) {
-      layerStore.clearSelection();
-      collabStore.syncSelectedEntity(null);
-      return;
-    }
+  let currentRoute = $state<RouteKey>(getRoute());
+  let GlobeComponent = $state<Component | null>(null);
+  let IntelligenceComponent = $state<Component | null>(null);
+  let isLoading = $state(true);
+  let loadError = $state<string | null>(null);
 
-    const props: Record<string, unknown> = {};
-    if (entity.properties) {
-      const propertyNames = entity.properties.propertyNames;
-      const now = JulianDate.fromIso8601(runtimeClock.iso());
-      for (const name of propertyNames) {
-        props[name] = entity.properties.getValue(now)?.[name];
+  async function syncRouteComponent(route: RouteKey) {
+    loadError = null;
+    if (route === 'intelligence') {
+      if (!IntelligenceComponent) {
+        try {
+          isLoading = true;
+          const mod = await import('./routes/intelligence/IntelligenceRoute.svelte');
+          IntelligenceComponent = mod.default;
+        } catch (err) {
+          loadError = err instanceof Error ? err.message : String(err);
+        } finally {
+          isLoading = false;
+        }
+      }
+    } else {
+      if (!GlobeComponent) {
+        try {
+          isLoading = true;
+          const mod = await import('./routes/GlobeRoute.svelte');
+          GlobeComponent = mod.default;
+        } catch (err) {
+          loadError = err instanceof Error ? err.message : String(err);
+        } finally {
+          isLoading = false;
+        }
       }
     }
-
-    const kind =
-      (props.entityKind as
-        | 'flight'
-        | 'marine'
-        | 'quake'
-        | 'firms'
-        | 'gbfs'
-        | 'cctv'
-        | 'radio'
-        | 'launch'
-        | 'weather'
-        | 'cable'
-        | 'satellite'
-        | 'solar-context'
-        | 'nws-alert'
-        | 'aviation-weather'
-        | 'tropical-cyclone'
-        | 'coastal-condition') || 'flight';
-
-    layerStore.selectEntity({
-      kind,
-      id: String(entity.id),
-      name: String(entity.name || entity.id),
-      data: props,
-    });
-
-    collabStore.syncSelectedEntity({ layer: kind, id: String(entity.id) });
   }
 
-  // Register Voice / Co-User Tool Actuators
-  function setupToolExecutors() {
-    voiceStore.executor.register('fly_to_location', (input) => {
-      if (globe) {
-        globe.flyToLocation(input.lat, input.lon, input.altitude_m, input.duration_s);
-      }
-      return {
-        moved: true,
-        target: {
-          lat: input.lat,
-          lon: input.lon,
-          altitude_m: input.altitude_m ?? 500000,
-        },
-      };
-    });
+  // Start loading the initial route immediately
+  syncRouteComponent(getRoute());
 
-    voiceStore.executor.register('toggle_layer', (input) => {
-      const key = input.layer as keyof typeof layerStore.visibility;
-      if (key in layerStore.visibility) {
-        layerStore.visibility[key] = input.enabled;
-        collabStore.syncLayerToggle(input.layer, input.enabled);
-        return { layer: input.layer, enabled: input.enabled, updated: true };
-      }
-      return { layer: input.layer, enabled: input.enabled, updated: false };
-    });
-
-    voiceStore.executor.register('select_entity', (input) => {
-      const key = input.layer as keyof typeof layerStore.rawEntities;
-      const list = (layerStore.rawEntities[key] || []) as Array<Record<string, unknown>>;
-      const found = list.find((item) => String(item.id || item.icao24 || item.mmsi || item.station_id) === input.id);
-      if (found) {
-        layerStore.selectEntity({
-          kind: input.layer as any,
-          id: input.id,
-          name: String(found.name || found.callsign || input.id),
-          data: found,
-        });
-        if (input.track_camera && globe && typeof found.latitude === 'number' && typeof found.longitude === 'number') {
-          globe.flyToLocation(found.latitude, found.longitude, 50000, 2);
-        }
-        return { selected: true, layer: input.layer, id: input.id, entity_found: true };
-      }
-      return { selected: false, layer: input.layer, id: input.id, entity_found: false };
-    });
-
-    voiceStore.executor.register('inspect_telemetry', (input) => {
-      const key = input.layer as keyof typeof layerStore.rawEntities;
-      const list = (layerStore.rawEntities[key] || []) as Array<Record<string, unknown>>;
-      const found = list.find((item) => String(item.id || item.icao24 || item.mmsi || item.station_id) === input.id);
-      return {
-        layer: input.layer,
-        id: input.id,
-        found: Boolean(found),
-        data: found,
-      };
-    });
-
-    voiceStore.executor.register('query_aoi', (input) => {
-      const counts: Record<string, number> = {};
-      let total = 0;
-      for (const [layer, list] of Object.entries(layerStore.rawEntities)) {
-        if (!input.layers || input.layers.includes(layer)) {
-          const inBounds = (list as Array<Record<string, unknown>>).filter((item) => {
-            const lat = Number(item.latitude || item.lat);
-            const lon = Number(item.longitude || item.lon);
-            return lat >= input.south && lat <= input.north && lon >= input.west && lon <= input.east;
-          });
-          counts[layer] = inBounds.length;
-          total += inBounds.length;
-        }
-      }
-      return {
-        total_entities: total,
-        counts_by_layer: counts,
-        bounds: { south: input.south, west: input.west, north: input.north, east: input.east },
-      };
-    });
-  }
-
-  // Svelte 5 $effect to synchronize UI store visibility and filters to Cesium layers
   $effect(() => {
-    flightLayer?.setVisible(layerStore.visibility.flights);
-    marineLayer?.setVisible(layerStore.visibility.marine);
-    quakeLayer?.setVisible(layerStore.visibility.quakes);
-    firmsLayer?.setVisible(layerStore.visibility.firms);
-    gbfsLayer?.setVisible(layerStore.visibility.gbfs);
-    cctvLayer?.setVisible(layerStore.visibility.cctv);
-    radioLayer?.setVisible(layerStore.visibility.radio);
-    launchLayer?.setVisible(layerStore.visibility.launches);
-    weatherLayer?.setVisible(layerStore.visibility.weather);
-    cableLayer?.setVisible(layerStore.visibility.cables);
-    satelliteLayer?.setVisible(layerStore.visibility.satellites);
-    solarLayer?.setVisible(layerStore.visibility.solar);
-    nwsAlertLayer?.setVisible(layerStore.visibility.alerts);
-    aviationWeatherLayer?.setVisible(layerStore.visibility.aviationWeather);
-
-    quakeLayer?.setMinMagnitude(layerStore.filters.quakes.minMagnitude);
-    firmsLayer?.setMinFrp(layerStore.filters.firms.minFrp);
-    firmsLayer?.setConfidenceFilter(layerStore.filters.firms.confidence);
-    marineLayer?.setVesselTypeFilter(layerStore.filters.marine.vesselType);
-    gbfsLayer?.setMinBikesAvailable(layerStore.filters.gbfs.minBikes);
-    cctvLayer?.setAgencyFilter(layerStore.filters.cctv.agency);
-    radioLayer?.setCategoryFilter(layerStore.filters.radio.category);
+    syncRouteComponent(currentRoute);
   });
 
-  // Synchronize remote collaborative presence to Cesium
-  $effect(() => {
-    collabLayer?.updatePresences(collabStore.state.presences);
-    collabLayer?.setFollowLeader(collabStore.state.followLeaderId);
-  });
-
-  // Svelte 5 $effect to handle flyTo camera transitions from table or HUD
-  $effect(() => {
-    const target = layerStore.flyToTarget;
-    if (target && globe) {
-      globe.setCameraPose({
-        longitude: target.lon,
-        latitude: target.lat,
-        altitude: Math.max(2500, target.alt * 1.5),
-        pitch: -55,
-      });
-      layerStore.clearFlyTo();
-    }
-  });
-
-  onMount(async () => {
-    try {
-      globe = new GlobeController({
-        container: globeContainer,
-        onEntitySelected: handleEntitySelected,
-      });
-
-      frameMonitor = new FrameBudgetMonitor({
-        targetBudgetMs: 16.666,
-        targetFps: 60,
-        sampleWindowSize: 120,
-      });
-
-      if (globe.viewer.scene) {
-        frameMonitor.attachToScene(globe.viewer.scene);
-      }
-
-      flightLayer = new FlightLayerController({ viewer: globe.viewer });
-      marineLayer = new MarineLayerController({ viewer: globe.viewer });
-      quakeLayer = new QuakeLayerController({ viewer: globe.viewer });
-      firmsLayer = new FirmsLayerController({ viewer: globe.viewer });
-      gbfsLayer = new GbfsLayerController({ viewer: globe.viewer });
-      cctvLayer = new CctvLayerController({ viewer: globe.viewer });
-      radioLayer = new RadioLayerController({ viewer: globe.viewer });
-      launchLayer = new LaunchLayerController({ viewer: globe.viewer });
-      weatherLayer = new WeatherLayerController({ viewer: globe.viewer });
-      cableLayer = new CableLayerController({ viewer: globe.viewer });
-      satelliteLayer = new SatelliteLayerController({ viewer: globe.viewer });
-      collabLayer = new CollabLayerController({ viewer: globe.viewer });
-      solarLayer = new SolarContextLayerController({ viewer: globe.viewer });
-      nwsAlertLayer = new NwsAlertLayerController({ viewer: globe.viewer });
-      aviationWeatherLayer = new AviationWeatherLayerController({ viewer: globe.viewer });
-      tropicalCycloneLayer = new TropicalCycloneLayerController({ viewer: globe.viewer });
-      coastalConditionsLayer = new CoastalConditionsLayerController({ viewer: globe.viewer });
-
-      setupToolExecutors();
-
-      attachDebugBus(
-        globe,
-        {
-          flight: flightLayer,
-          marine: marineLayer,
-          quakes: quakeLayer,
-          firms: firmsLayer,
-          gbfs: gbfsLayer,
-          cctv: cctvLayer,
-          radio: radioLayer,
-          launches: launchLayer,
-          weather: weatherLayer,
-          cables: cableLayer,
-          satellites: satelliteLayer,
-          solar: solarLayer,
-          alerts: nwsAlertLayer,
-          aviationWeather: aviationWeatherLayer,
-          tropicalCyclones: tropicalCycloneLayer,
-          coastalConditions: coastalConditionsLayer,
-        },
-        {
-          frameMonitor,
-          attachToWindow:
-            import.meta.env.DEV ||
-            (typeof window !== 'undefined' &&
-              (window.location.hostname === 'localhost' ||
-                window.location.hostname === '127.0.0.1' ||
-                window.location.search.includes('gev_debug=1'))),
-        }
-      );
-
-      // Deep link inspection
-      if (typeof window !== 'undefined' && window.location.href) {
-        const sceneFromUrl = parseSceneFromUrl(window.location.href);
-        if (sceneFromUrl) {
-          globe.setCameraPose(sceneFromUrl.camera);
-          layerStore.statusText = 'Loaded scene from deep link';
-        }
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const roomParam = urlParams.get('room');
-        if (roomParam) {
-          collabStore.joinRoom(roomParam);
-        }
-      }
-
-      // Initial poll immediately across all feeds
-      await pollAllFeeds();
-
-      // Poll at 5-second human-rate cadence (ADR-0015)
-      pollInterval = setInterval(pollAllFeeds, 5000);
-    } catch (err: unknown) {
-      layerStore.statusText = `Init Error: ${err instanceof Error ? err.message : 'Unknown'}`;
-    }
-  });
-
-  onDestroy(() => {
-    abortController?.abort();
-    abortController = null;
-    if (pollInterval) {
-      clearInterval(pollInterval);
-      pollInterval = null;
-    }
-    frameMonitor?.detach();
-    flightLayer?.destroy();
-    marineLayer?.destroy();
-    quakeLayer?.destroy();
-    firmsLayer?.destroy();
-    gbfsLayer?.destroy();
-    cctvLayer?.destroy();
-    radioLayer?.destroy();
-    launchLayer?.destroy();
-    weatherLayer?.destroy();
-    cableLayer?.destroy();
-    satelliteLayer?.destroy();
-    collabLayer?.destroy();
-    solarLayer?.destroy();
-    nwsAlertLayer?.destroy();
-    aviationWeatherLayer?.destroy();
-    tropicalCycloneLayer?.destroy();
-    coastalConditionsLayer?.destroy();
-    globe?.destroy();
+  onMount(() => {
+    const onHashChange = () => {
+      currentRoute = getRoute();
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => {
+      window.removeEventListener('hashchange', onHashChange);
+    };
   });
 </script>
 
-<main class="app-layout">
-  <div bind:this={globeContainer} id="globe-container" class="globe-viewport"></div>
-
-  <!-- HUD Overlays -->
-  <HudHeader />
-  <div class="collab-overlay">
-    <CollabBar />
+{#if loadError}
+  <div class="route-error" role="alert">
+    <h2>Failed to load view</h2>
+    <p>{loadError}</p>
+    <a href="#/" class="error-home-link">Return to Tactical Globe</a>
   </div>
-  <LayerControlPanel />
-  <OperationalAwarenessPanel />
-  <EntityInfoCard />
-  <VirtualizedTelemetryTable />
-  <VoiceControlOrb />
-
-  <!-- OpenStreetMap Mandatory Attribution (Rule 3 & DESIGN.md §5) -->
-  <footer id="osm-attribution" class="attribution-badge">
-    Map data &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors
-  </footer>
-</main>
+{:else if currentRoute === 'intelligence'}
+  {#if IntelligenceComponent}
+    <IntelligenceComponent />
+  {:else if isLoading}
+    <div class="route-loading" aria-live="polite">
+      <div class="loading-spinner"></div>
+      <span>Loading Economic Intelligence Surface...</span>
+    </div>
+  {/if}
+{:else}
+  {#if GlobeComponent}
+    <GlobeComponent />
+  {:else if isLoading}
+    <div class="route-loading" aria-live="polite">
+      <div class="loading-spinner"></div>
+      <span>Initializing Tactical Globe Console...</span>
+    </div>
+  {/if}
+{/if}
 
 <style>
-  :global(body) {
+  :global(html, body) {
     margin: 0;
     padding: 0;
     width: 100vw;
+    max-width: 100vw;
     height: 100vh;
     overflow: hidden;
     background-color: var(--hud-surface-dark);
@@ -409,52 +104,61 @@
     color: var(--hud-text-primary);
   }
 
-  .app-layout {
-    position: relative;
+  .route-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
     width: 100vw;
     height: 100vh;
-  }
-
-  .globe-viewport {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-  }
-
-  .collab-overlay {
-    position: absolute;
-    top: 64px;
-    left: 20px;
-    z-index: 10;
-  }
-
-  :global(body.layer-access-modal-open) .collab-overlay {
-    visibility: hidden;
-  }
-
-  .attribution-badge {
-    position: absolute;
-    bottom: 8px;
-    left: 16px;
-    background: var(--hud-panel-bg-muted);
-    backdrop-filter: blur(8px);
-    border: 1px solid var(--hud-chip-border);
-    border-radius: 4px;
-    padding: 4px 8px;
-    font-size: 0.68rem;
+    background: var(--hud-surface-dark);
     color: var(--hud-text-secondary);
-    pointer-events: auto;
-    z-index: 10;
+    font-size: 0.85rem;
+    font-weight: 500;
   }
 
-  .attribution-badge a {
+  .loading-spinner {
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--hud-chip-border);
+    border-top-color: var(--hud-accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .route-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: 100vw;
+    height: 100vh;
+    background: var(--hud-surface-dark);
+    color: var(--hud-danger);
+    padding: 20px;
+    box-sizing: border-box;
+    text-align: center;
+  }
+
+  .error-home-link {
     color: var(--hud-accent);
+    font-size: 0.85rem;
     text-decoration: none;
+    padding: 6px 12px;
+    border: 1px solid var(--hud-accent-border);
+    border-radius: 4px;
+    background: var(--hud-accent-faint);
   }
 
-  .attribution-badge a:hover {
-    text-decoration: underline;
+  .error-home-link:hover {
+    background: var(--hud-accent-selected);
   }
 </style>
