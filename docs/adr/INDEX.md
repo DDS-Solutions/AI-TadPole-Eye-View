@@ -43,3 +43,5 @@ This directory records all significant architectural and structural decisions ma
 | [0051](./0051-lazy-intelligence-route-and-cesium-bundle-decoupling.md) | Lazy intelligence route and Cesium bundle decoupling architecture | Accepted | 2026-09-15 |
 | [0052](./0052-economic-analysis-package-path-and-architecture.md) | Economic analysis workspace package path and pure domain architecture | Accepted | 2026-09-16 |
 | [0053](./0053-protected-stateless-economic-preview-api-and-mcp-tool.md) | Protected stateless economic preview API and MCP operator tool through shared governance | Accepted | 2026-09-16 |
+| [0054](./0054-content-instruction-separation-and-prompt-injection-defense.md) | Content/instruction separation and prompt-injection defense | Accepted | 2026-09-16 |
+

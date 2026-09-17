@@ -4,3 +4,4 @@ export * from './concentration.js';
 export * from './specialization.js';
 export * from './evidenceSynthesis.js';
 export * from './fixtureParser.js';
+export * from './promptProtection.js';

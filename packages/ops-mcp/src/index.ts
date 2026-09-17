@@ -4,6 +4,7 @@ export * from './server.js';
 export * from './context.js';
 export * from './tools.js';
 export * from './economicPreview.js';
+export * from './promptSafety.js';
 
 // If executed directly as CLI or MCP worker, launch the server
 const isMain =
