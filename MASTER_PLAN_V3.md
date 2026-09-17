@@ -2,8 +2,8 @@
 
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
-**Verified against repository:** 2026-09-16
-**Status:** IN PROGRESS — Phase 8 tasks 8.1–8.5 complete; task 8 exit ready for review and authorization
+**Verified against repository:** 2026-09-17
+**Status:** IN PROGRESS — Phase 9: task 9.1 ready for review and authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -19,12 +19,12 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 
 ```text
 PLAN_VERSION=3.0
-CURRENT_PHASE=8
-NEXT_TASK=8_EXIT
+CURRENT_PHASE=9
+NEXT_TASK=9.1
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
-LAST_VERIFIED_UTC=2026-09-16
+LAST_VERIFIED_UTC=2026-09-17
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
 IMPLEMENTATION_STARTED=YES
 ```
@@ -1965,7 +1965,16 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 - [x] 8.3 Add licensed deterministic fixtures for ACS, CBP/ZBP, BLS, FEMA, and approved OSM examples; fixtures can never be labeled live.
 - [x] 8.4 Implement a protected, stateless preview API and MCP tool through shared governance.
 - [x] 8.5 Add content/instruction separation and prompt-injection tests before any provider/economic text enters an LLM/Tadpole context.
-- [ ] 8 exit: suppressed/unavailable/stale cases validate; provenance is required; no persistence or live calls; ADG and affected gates pass.
+- [x] 8 exit: suppressed/unavailable/stale cases validate; provenance is required; no persistence or live calls; ADG and affected gates pass.
+
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 9.1
+
+```text
+[SCOPE_CONTRACT] packages/contracts, packages/providers, packages/economic. In scope: Census ACS adapter and variable dictionary mapping across ACS 5-year estimates (county, tract, zcta, place), preserving estimate/MOE/geography/vintage and correct foreign-born statistical definitions (B05002); pure validation and caching; seed mode enforcement. Out of scope: live Census API requests without explicit developer authorization, CBP/ZBP implementation (Task 9.2).
+[PERFORMANCE_THRESHOLD] ACS contract and adapter unit tests pass 100% green; synthetic/seed ACS dataset parse and query < 10ms p95; zero live calls under GEV_SEED_MODE=1.
+[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2, §9.1; ADRs 0035, 0050, 0052; pure domain engine; contract boundary validation; mandatory DataProvenance; zero numeric zero-coercion.
+[FAILURE_MODES] Missing or malformed FIPS codes, invalid MOEs, unvalidated vintages, or missing provenance fail closed immediately; network calls in seed mode abort execution.
+```
 
 ### Phase 9 — Economic R1: market and business footprint
 
@@ -4175,6 +4184,49 @@ No later task is authorized merely because it appears in this plan.
   - Biome linter (`pnpm lint`): PASSED (0 errors).
 - **Plan Advancement:** Task 8.5 complete (`[x]`). `CURRENT_PHASE=8`, `NEXT_TASK=8_EXIT`, `NEXT_TASK_STATUS=READY`.
 - **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 8_EXIT. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Phase 8 Exit Evidence — Economic R0 Foundation Certification
+
+- **Scope & Authorization:** The developer authorized the exact Phase 8 exit gate 4-Pillar brief. Verification certified non-coercion of suppressed/unavailable/not_applicable estimates, mandatory DataProvenance enforcement across all economic structures, zero persistence outside SQLite WAL audit trail, zero live network calls in seed/test mode, prompt injection defense, cross-tenant isolation, STASIS lockdown, and quality/performance benchmarks.
+- **Suppressed/Unavailable/Not_Applicable Non-Coercion Validation:**
+  - `getNumericEstimateValue(estimate)` returns `undefined` for `suppressed`, `unavailable`, and `not_applicable` estimates; never coerces to numeric zero.
+  - Strict `EconomicEstimateSchema` rejects any `suppressed`, `unavailable`, or `not_applicable` record containing a numeric `value` field.
+  - Mathematical calculations (`calculateLocationQuotient`, `calculateHhiFromShares`, `synthesizeBusinessContextPreview`) preserve suppression honestly without numeric zero coercion.
+  - Prompt protection context renders explicit honest suppression tags (`[SUPPRESSED: disclosure_avoidance - ...]`) and never coerces to numeric zero.
+- **Mandatory DataProvenance Fail-Closed Enforcement:**
+  - Enforced across `EconomicEvidenceRecordSchema`, `EconomicEvidenceBundleSchema`, `EconomicFixtureDatasetSchema`, `SandboxedDataBlockSchema`, `SanitizedPromptContextSchema`, `BusinessContextPreviewSchema`, and `PreviewBusinessContextOutputSchema`.
+  - Omitted or invalid provenance fails closed immediately via Zod validation or `PromptProtectionError`.
+- **Zero Persistence Outside SQLite WAL Audit Trail:**
+  - Verified via direct SQLite schema inspection (`sqlite_master`): zero new tables created by `/api/economic/preview` or MCP operator tool (no temporary, cache, or business context tables).
+  - Verified that only `audit_events` receives entries (`audit.intent` before, `audit.outcome` after) with action `economic.business_context.preview`, tenant target, valid IDs, and duration.
+- **Zero Live Network Calls & Seed Mode Adherence:**
+  - Spied on `net.Socket.prototype.connect` and `globalThis.fetch`.
+  - Loaded all 6 synthetic fixtures (`census-acs`, `census-cbp-zbp`, `bls-oews`, `bls-lau`, `fema-nri`, `osm-commercial`), executed preview API, and assembled prompt context.
+  - Proved 0 socket connects and 0 HTTP fetches occurred; all fixtures strictly report `mode: 'seed'` and `source_mode: 'seed'`.
+- **Content/Instruction Separation & Injection Defense:**
+  - Verified neutralization and defanging of hostile injection payloads (`Ignore previous instructions`, `<|im_start|>`, `\u202E`, `\u200B`) and delimiter bounding.
+  - Verified system instruction carries mandatory security laws preventing LLM execution of data block contents.
+- **Cross-Tenant Isolation, STASIS, and Kill-Switch Guards:**
+  - Cross-tenant header injection fails closed with HTTP 403 `TENANT_ACCESS_DENIED`.
+  - Global STASIS halts execution with HTTP 423 `STASIS_ACTIVE`.
+  - Tenant STASIS halts the tripped tenant with HTTP 423 `TENANT_STASIS_ACTIVE` while unaffected tenants continue.
+  - Provider kill-switch returns HTTP 503 `KILL_SWITCH_ACTIVE`.
+- **Performance Thresholds:**
+  - Prompt protection executed at p95 < 5ms across 1,000 iterations (0.044ms actual).
+  - Stateless preview API responded at p95 < 25ms across 50 requests (measured < 20ms actual).
+- **Monorepo Quality Gates:**
+  - Dedicated exit gate integration suite: `apps/server/test/phase8ExitGate.test.ts` (7/7 tests passed, 483 lines <= 500 lines).
+  - `@gev/server` suite: 28/28 test files passed (276 tests passed).
+  - Affected turbo suite: 12/12 tasks passed across `@gev/contracts`, `@gev/economic`, `@gev/providers`, `@gev/ops-mcp`, `@gev/server`.
+  - Typecheck: 19/19 tasks passed (`pnpm typecheck`).
+  - Lint: 0 errors across 354 files (`pnpm lint`).
+  - Active Documentation Guard (`pnpm docs:check`): 75 doc files, 765 paths, 42 symbols, 0 errors.
+  - Architecture check (`pnpm architecture:check`): 0 large files > 500 lines, 0 unclassified clock paths.
+  - Bundle budgets (`pnpm check:budgets`): Total JS Gzip 1241.46 KB <= 3600 KB ceiling, Intelligence chunk 2.95 KB <= 25 KB.
+  - Doc tests (`pnpm docs:test`): 17/17 tests passed.
+  - Provider registry check (`pnpm docs:providers:check`): PASSED.
+- **Plan Advancement:** Task 8 exit complete (`[x]`). `CURRENT_PHASE=9`, `NEXT_TASK=9.1`, `NEXT_TASK_STATUS=READY`.
+- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 9.1. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
 
