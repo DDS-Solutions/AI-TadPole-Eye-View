@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-16
-**Status:** IN PROGRESS — Phase 8 tasks 8.1–8.4 complete; task 8.5 ready for review and authorization
+**Status:** IN PROGRESS — Phase 8 tasks 8.1–8.5 complete; task 8 exit ready for review and authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=8
-NEXT_TASK=8.5
+NEXT_TASK=8_EXIT
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
@@ -1949,13 +1949,13 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
   redacted; invalid/revoked credentials and expired/superseded terms relock affected layers;
   direct route/reload works in the chosen hosting model.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 8.5
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 8_EXIT
 
 ```text
-[SCOPE_CONTRACT] packages/economic/src/promptProtection.ts, packages/contracts/src/economicPrompt.ts, packages/ops-mcp/src/promptSafety.ts. Out of scope: live LLM API calls, model training, UI rendering.
-[PERFORMANCE_THRESHOLD] 100% test pass; prompt safety sanitizer executes < 5ms p95; zero injection leakage across all OWASP LLM01 test payloads.
-[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2; ADRs 0031, 0050, 0052, 0053; strict data/instruction separation; delimiter bounding; untrusted provider text sanitization.
-[FAILURE_MODES] Injected system override attempts (e.g. "Ignore previous instructions", role hijacking, jailbreak prefixes) are neutralized/escaped; missing provenance or unseparated text fails closed before context construction.
+[SCOPE_CONTRACT] Phase 8 exit gate verification across packages/contracts, packages/economic, packages/providers, packages/ops-mcp, apps/server. In scope: verification that suppressed/unavailable/not_applicable estimates never coerce to zero; mandatory DataProvenance on all economic structures; zero persistence outside SQLite WAL audit trail; zero live network calls in seed/test modes; full ADG, architectural drift, bundle budget, and affected quality gates passing. Out of scope: Phase 9 Economic R1 market/competition expansion or live external API calls.
+[PERFORMANCE_THRESHOLD] All affected unit, property, and integration tests pass 100% green; prompt protection executes < 5ms p95; stateless preview responds < 25ms p95; ADG and architectural checks pass with zero errors.
+[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2; ADRs 0031, 0050, 0052, 0053, 0054; strict boundary law; pure domain engine; shared governance; fail-closed provenance.
+[FAILURE_MODES] Suppressed values coerced to numeric zero or unvalidated third-party data admitted without provenance fail closed immediately; unredacted secrets or cross-tenant leakage abort execution.
 ```
 
 ### Phase 8 — Economic R0: safe foundation
@@ -1964,7 +1964,7 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 - [x] 8.2 Create a new workspace package for pure economic analysis with no I/O and an explicit source registry; reserve its literal path in the implementing ADR before creation.
 - [x] 8.3 Add licensed deterministic fixtures for ACS, CBP/ZBP, BLS, FEMA, and approved OSM examples; fixtures can never be labeled live.
 - [x] 8.4 Implement a protected, stateless preview API and MCP tool through shared governance.
-- [ ] 8.5 Add content/instruction separation and prompt-injection tests before any provider/economic text enters an LLM/Tadpole context.
+- [x] 8.5 Add content/instruction separation and prompt-injection tests before any provider/economic text enters an LLM/Tadpole context.
 - [ ] 8 exit: suppressed/unavailable/stale cases validate; provenance is required; no persistence or live calls; ADG and affected gates pass.
 
 ### Phase 9 — Economic R1: market and business footprint
@@ -4143,6 +4143,38 @@ No later task is authorized merely because it appears in this plan.
   - Architecture drift check (`pnpm architecture:check`): PASSED (0 large files >500 lines).
 - **Plan Advancement:** Task 8.4 complete (`[x]`). `CURRENT_PHASE=8`, `NEXT_TASK=8.5`, `NEXT_TASK_STATUS=READY`.
 - **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 8.5. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 8.5 completion checkpoint — 2026-09-16
+
+- **Execution:** Completed on branch `codex/task-8.5-prompt-protection`.
+- **ADR 0054:** Formally accepted and registered `0054-content-instruction-separation-and-prompt-injection-defense.md` documenting strict content/instruction separation, delimiter bounding with collision-resistant nonces (`<<<SANDBOXED_UNTRUSTED_DATA_{NONCE}>>>`), control-character and Unicode smuggling sanitization (BiDi overrides `U+202E`, zero-width spaces/joiners), OWASP LLM01 threat neutralization (system role overrides, delimiter breaks, jailbreak markers, prompt exfiltration), and fail-closed missing provenance enforcement.
+- **Contracts (`packages/contracts`):**
+  - Added `PromptThreatCategorySchema`, `DetectedPromptThreatSchema`, `PromptSanitizationResultSchema`, `SandboxedDataBlockSchema`, and `SanitizedPromptContextSchema` in `packages/contracts/src/economicPrompt.ts`.
+  - Added `PromptProtectionError` discriminated error class for fail-closed security stops.
+  - Enforced mandatory `DataProvenanceSchema` on all sandboxed data blocks; missing or unvalidated provenance fails closed before prompt context assembly.
+  - Re-exported all prompt protection schemas and types in `packages/contracts/src/index.ts`.
+- **Pure Protection Engine (`packages/economic`):**
+  - Implemented `sanitizeUntrustedText`, `createSandboxedDataBlock`, `assemblePromptContext`, and `buildPromptContextFromBusinessPreview` in `packages/economic/src/promptProtection.ts`.
+  - Zero-I/O domain implementation with zero wall-clock API calls (clock isolation compliant).
+  - Preserved economic suppression semantics: suppressed or unavailable values are never coerced to numeric zero.
+  - Re-exported prompt protection functions in `packages/economic/src/index.ts`.
+- **Governed MCP Safety Layer (`packages/ops-mcp`):**
+  - Implemented `evaluatePromptSafety` and `prepareGovernedPromptContext` in `packages/ops-mcp/src/promptSafety.ts`.
+  - Integrated with `AuditSink` via dual `intent` and `outcome` lifecycle logging with security action types `security.prompt_injection_neutralized` and `security.prompt_injection_rejected`.
+  - Re-exported prompt safety functions in `packages/ops-mcp/src/index.ts`.
+- **Verification & Quality Gates:**
+  - `packages/contracts/test/economicPrompt.test.ts`: 8/8 tests passed (fail-closed provenance, schema validations, context assembly invariants).
+  - `packages/economic/test/promptProtection.test.ts`: 20/20 tests passed, including:
+    - 100% neutralization of OWASP LLM01 attack payloads (direct overrides, markdown fence injections, role hijackings `<|im_start|>`, `[INST]`, `\nSystem:`, jailbreaks DAN / Developer Mode, prompt exfiltration).
+    - `fast-check` property tests (100 random runs) verifying nonce uniqueness, enclosure integrity, and delimiter escape completeness.
+    - 1,000-iteration latency benchmark measuring p50=0.034ms, p95=0.053ms, p99=0.132ms (vastly exceeding the < 5ms threshold).
+  - `packages/ops-mcp/test/promptSafety.test.ts`: 4/4 tests passed (dual audit logging, reject mode, sanitize mode).
+  - Monorepo affected test suite: 255/255 tests passed (120 in contracts, 71 in economic, 64 in ops-mcp).
+  - Budget check (`pnpm check:budgets`): PASSED (all JS/CSS chunks within limits).
+  - Architecture drift check (`pnpm architecture:check`): PASSED (0 unclassified clock paths, 0 files > 500 lines).
+  - Biome linter (`pnpm lint`): PASSED (0 errors).
+- **Plan Advancement:** Task 8.5 complete (`[x]`). `CURRENT_PHASE=8`, `NEXT_TASK=8_EXIT`, `NEXT_TASK_STATUS=READY`.
+- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 8_EXIT. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
 

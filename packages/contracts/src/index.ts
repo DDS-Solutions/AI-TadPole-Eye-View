@@ -26,3 +26,4 @@ export * from './satellites.js';
 export * from './identity.js';
 export * from './layerAccessAdmin.js';
 export * from './economic.js';
+export * from './economicPrompt.js';
