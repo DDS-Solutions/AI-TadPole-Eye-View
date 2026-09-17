@@ -380,3 +380,25 @@ request-local principal, tenant, and role context:
   and the requested resource (e.g. `X-GEV-Tenant` header or MCP execution context). Cross-tenant requests
   fail closed before handler dispatch or audit generation.
 
+## 11. Economic Intelligence R0 Governance, Seed Mode, and Prompt Protection (ADR 0052, 0053, 0054)
+
+The Phase 8 Economic Intelligence R0 foundation operates under strict deterministic constraints:
+
+- **Non-Coercion Law:** Suppressed (`suppressed`), unavailable (`unavailable`), and not applicable
+  (`not_applicable`) estimates must never coerce to numeric zero (`0` or `0.0`). Mathematical domain
+  calculations (`calculateLocationQuotient`, `calculateHhiFromShares`, `combineMarginsOfError`)
+  must propagate suppression honestly.
+- **Zero Persistence Law:** Economic preview operations and domain calculations are strictly stateless.
+  Zero tables, caches, or files may be persisted in SQLite or disk outside the durable `audit_events` WAL.
+- **Mandatory DataProvenance:** Every economic evidence record, bundle, fixture, and preview payload
+  requires full `DataProvenance` metadata (provider ID, mode, retrieval timestamp, license, attribution).
+  Missing or malformed provenance fails closed immediately.
+- **Strict Seed Mode Adherence:** In dev/test/seed environments (`GEV_SEED_MODE=1`), all economic data
+  is served from verified deterministic seed fixtures (`fixtures/`). Zero live outbound sockets or HTTP
+  fetch requests may occur.
+- **Content/Instruction Separation:** All untrusted provider, POI, or economic text entering an LLM or
+  Tadpole agent context must be passed through `sanitizeUntrustedText`, enclosed in nonced
+  `<untrusted_data_block>` delimiter tags, and accompanied by the canonical security directive.
+  Delimiter breaks, control characters, BiDi overrides, and role-spoofing markers are neutralized or rejected.
+
+
