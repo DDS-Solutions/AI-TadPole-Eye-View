@@ -259,6 +259,16 @@ See [ADR 0049](./docs/adr/0049-registry-derived-layer-access-read-model.md).
 
 See [ADR 0052](./docs/adr/0052-economic-analysis-package-path-and-architecture.md).
 
+### Census ACS adapter & variable dictionary (Task 9.1)
+
+- The Census ACS adapter (`CensusAcsAdapter` in `@gev/providers`) provides deterministic demographic and economic benchmarks across county, tract, ZCTA, place, state, and nation geographies.
+- Versioned dictionary `CENSUS_ACS_VARIABLE_DICTIONARY_V1` in `@gev/economic` manages variable definitions and strictly enforces the statutory Census Bureau definition for Table `B05002` (foreign-born population must include both naturalized citizens and non-citizens; never non-citizens only).
+- Raw Census cell parser `parseAcsRawEstimate` converts Census Bureau negative suppression codes (`-666666666` -> `small_sample`, `-888888888` -> `unavailable`, `-999999999` -> `data_quality`, `-555555555` -> null MOE) without numeric zero-coercion.
+- Strict seed mode is enforced by default (`GEV_SEED_MODE=1` or `seedMode: true`). Live queries to `api.census.gov` are fail-closed and throw `CensusAcsSeedModeViolationError` unless explicit developer authorization is granted.
+- Kill-switch policy: set `GEV_CENSUS_ACS_ENABLED=0` to immediately disable the adapter with `CensusAcsProviderDisabledError`.
+
+See [ADR 0055](./docs/adr/0055-census-acs-variable-dictionary-and-adapter-architecture.md).
+
 
 ---
 

@@ -20,6 +20,7 @@
   "dependencies": {
     "@gev/contracts": "workspace:*",
     "@gev/core": "workspace:*",
+    "@gev/economic": "workspace:*",
     "@gev/security": "workspace:*",
     "zod": "^4.6.5"
   },
