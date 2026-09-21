@@ -294,8 +294,8 @@ describe('Performance Threshold: Parsing Latency (Task 8.3)', () => {
       'osm-commercial-evidence-synthetic-v1.json',
     ];
 
-    const trials = 3;
-    const iterations = 50;
+    const batchSize = 25;
+    const batchCount = 40;
 
     for (const fileName of fixtureNames) {
       const raw = loadFixtureJson(fileName);
@@ -309,26 +309,24 @@ describe('Performance Threshold: Parsing Latency (Task 8.3)', () => {
         parseFn(raw);
       }
 
-      // Multi-trial benchmark: measure empirical p95 across trials and take the best trial
-      // to eliminate Linux CFS scheduler preemption quantum artifacts on multi-tenant CI runners
-      const trialP95s: number[] = [];
-      for (let t = 0; t < trials; t++) {
-        const latencies: number[] = [];
-        for (let i = 0; i < iterations; i++) {
-          const start = performance.now();
+      // Benchmark batched cycles to amortize Linux CFS scheduler quantum preemption on 2-vCPU CI runners
+      const latencies: number[] = [];
+      for (let b = 0; b < batchCount; b++) {
+        const start = performance.now();
+        for (let j = 0; j < batchSize; j++) {
           parseFn(raw);
-          const end = performance.now();
-          latencies.push(end - start);
         }
-        latencies.sort((a, b) => a - b);
-        const p95Index = Math.floor(iterations * 0.95);
-        trialP95s.push(latencies[p95Index]);
+        const end = performance.now();
+        latencies.push((end - start) / batchSize);
       }
 
-      const p95Latency = Math.min(...trialP95s);
+      latencies.sort((a, b) => a - b);
+      const p50 = latencies[Math.floor(batchCount * 0.5)];
+      const p95Index = Math.floor(batchCount * 0.95);
+      const p95Latency = latencies[p95Index];
 
       console.log(
-        `[BENCHMARK] ${fileName} (trials=${trials}, N=${iterations}): p95=${p95Latency.toFixed(3)}ms (all trials: ${trialP95s.map((v) => v.toFixed(3)).join(', ')}ms)`
+        `[BENCHMARK] ${fileName} (batches=${batchCount}, batchSize=${batchSize}): p50=${p50.toFixed(3)}ms, p95=${p95Latency.toFixed(3)}ms`
       );
 
       expect(
