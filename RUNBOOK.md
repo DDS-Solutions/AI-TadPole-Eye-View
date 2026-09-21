@@ -411,4 +411,23 @@ The Phase 8 Economic Intelligence R0 foundation operates under strict determinis
   `<untrusted_data_block>` delimiter tags, and accompanied by the canonical security directive.
   Delimiter breaks, control characters, BiDi overrides, and role-spoofing markers are neutralized or rejected.
 
+## 12. Census ACS 5-Year Estimates Operations (ADR 0055)
+
+The Census ACS adapter (`packages/providers/src/censusAcs.ts`) and pure domain dictionary (`packages/economic/src/censusAcsDictionary.ts`) enforce strict statistical standards:
+
+- **Foreign-Born Statutory Definition (Table B05002):** Under Census Bureau methodology, foreign-born includes all individuals not U.S. citizens at birth—comprising both naturalized citizens and non-citizens. Any prompt, label, or summary must preserve this definition and never conflate foreign-born with non-citizens only.
+- **Suppression Code Handling:** Negative Census suppression codes (`-666666666`, `-888888888`, `-999999999`) must map to discriminated `suppressed` (`small_sample` or `data_quality`) or `unavailable` statuses and never coerce to numeric zero.
+- **Geographic Validation:** Queries validate exact FIPS lengths (county: 5 digits, tract: 11 digits, zcta: 5 digits, place: 7 digits, state: 2 digits) and county/state prefix consistency.
+- **Kill-Switch & Seed Enforcement:** Controlled by `GEV_CENSUS_ACS_ENABLED` (default: 1) and `GEV_SEED_MODE=1`. Outbound live calls without explicit authorization abort immediately.
+
+## 13. Census CBP and ZBP Operations & Statutory Suppression Preservation (ADR 0056)
+
+The County Business Patterns (CBP) and ZIP Code Business Patterns (ZBP) adapter (`packages/providers/src/censusCbpZbp.ts`) and dictionary (`packages/economic/src/censusCbpZbpDictionary.ts`) enforce statutory disclosure avoidance and annual statistical benchmark definitions:
+
+- **Statutory Disclosure Avoidance (13 U.S.C. Section 9):** To prevent disclosing operations of individual businesses, employment and payroll counts are withheld by the Census Bureau. Employment noise flags (`a` through `m`) represent employment size classes and must map to explicit `bounds: { lower_bound, upper_bound }` in `EconomicEstimateSuppressed`. They must never be coerced to numeric zero.
+- **Four Core Variables:** Directly tabulates total establishments (`ESTAB`), mid-March paid employment (`EMP`), annual payroll (`PAYANN`, in $1,000 USD), and first-quarter payroll (`PAYQTR1`, in $1,000 USD).
+- **Mandatory Annual Estimate Disclaimer:** All CBP/ZBP outputs must preserve the statutory notice: "County Business Patterns (CBP) and ZIP Code Business Patterns (ZBP) are annual statistical benchmark estimates derived from administrative records and business register surveys, not real-time operational headcounts, exact current payroll records, or commercial credit evaluations."
+- **Geographies & NAICS:** Supports county, ZCTA, CBSA, state, and nation. Tract and place levels are unsupported and fail closed. NAICS codes must be 2 to 6 numeric digits.
+- **Kill-Switch & Seed Enforcement:** Governed by `GEV_CENSUS_CBP_ENABLED` (default: 1) and `GEV_SEED_MODE=1`. Live calls require explicit developer authorization.
+
 

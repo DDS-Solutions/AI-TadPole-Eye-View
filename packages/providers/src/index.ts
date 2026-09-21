@@ -21,3 +21,4 @@ export * from './layerAccessProjection.js';
 export * from './provenance.js';
 export * from './economicFixtures.js';
 export * from './censusAcs.js';
+export * from './censusCbpZbp.js';
