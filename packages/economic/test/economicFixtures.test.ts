@@ -294,8 +294,11 @@ describe('Performance Threshold: Parsing Latency (Task 8.3)', () => {
       'osm-commercial-evidence-synthetic-v1.json',
     ];
 
-    const batchSize = 25;
-    const batchCount = 40;
+    // Tuned for 2-vCPU CI runners: batchSize=10 amortizes CFS quantum (~4ms),
+    // batchCount=30 gives a meaningful p95 (29th of 30 sorted values),
+    // total work ~2121 parses fits well within the 15s timeout.
+    const batchSize = 10;
+    const batchCount = 30;
 
     for (const fileName of fixtureNames) {
       const raw = loadFixtureJson(fileName);
@@ -304,12 +307,12 @@ describe('Performance Threshold: Parsing Latency (Task 8.3)', () => {
           ? parseOsmCommercialPoiFixture
           : parseEconomicFixtureDataset;
 
-      // Warm-up parse to ensure JIT compilation, schema initialization, and regex caching
-      for (let w = 0; w < 20; w++) {
+      // Warm-up: 3 iterations for JIT compilation and schema/regex caching
+      for (let w = 0; w < 3; w++) {
         parseFn(raw);
       }
 
-      // Benchmark batched cycles to amortize Linux CFS scheduler quantum preemption on 2-vCPU CI runners
+      // Benchmark batched cycles to amortize Linux CFS scheduler quantum preemption
       const latencies: number[] = [];
       for (let b = 0; b < batchCount; b++) {
         const start = performance.now();
@@ -334,5 +337,6 @@ describe('Performance Threshold: Parsing Latency (Task 8.3)', () => {
         `P95 parse latency for ${fileName} (${p95Latency.toFixed(2)}ms) must be strictly less than 10ms`
       ).toBeLessThan(10);
     }
-  });
+  }, 15_000); // Explicit 15s timeout for CI runner contention
 });
+
