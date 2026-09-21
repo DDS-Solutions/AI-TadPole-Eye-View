@@ -30,3 +30,4 @@ export * from './economicPrompt.js';
 export * from './censusAcs.js';
 export * from './censusCbpZbp.js';
 export * from './osmCommercial.js';
+export * from './marketAnalysis.js';

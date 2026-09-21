@@ -440,5 +440,11 @@ The OpenStreetMap Commercial Enrichment adapter (`packages/providers/src/osmComm
 - **Prompt Protection (ADR 0054):** Crowdsourced POI names, operator strings, and tags are untrusted content. They must be wrapped in delimiter-sandboxed blocks with nonces (`sanitizeOsmFeatureForPromptContext`) before exposure to LLM or Tadpole agent contexts.
 - **Kill-Switch & Seed Enforcement:** Governed by `GEV_OSM_COMMERCIAL_ENABLED` (default: 1) and `GEV_SEED_MODE=1`. Live calls require explicit developer authorization.
 
+## 15. Deterministic Market Analysis & Disagreement State Operations (ADR 0058)
 
+The deterministic market, competition, and location-comparison engines (`packages/economic/src/marketAnalysis.ts`, `competitionAnalysis.ts`, `locationComparison.ts`, `disagreementState.ts`, `multiSourceEvidence.ts`) enforce strict statistical and provenance integrity:
 
+- **Source-Linked Disagreement Preservation:** When administrative benchmark surveys (e.g. Census CBP) diverge from current physical observations (e.g. OSM active POIs) beyond threshold (divergence factor > 1.5), both signals must be preserved under `resolution_state: 'unresolved_preserved'` with explicit `SourceVariableLink` provenance. AI agents and operators must never average, discard, or silently arbitrate conflicting signals.
+- **Strict Non-Coercion in Derived Metrics:** Derived calculations such as average annual wage per employee (`deriveAverageWagePerEmployee`) or population per establishment must honestly return `status: 'suppressed'` or `unavailable` if underlying variables are suppressed or missing. Suppressed Census estimates must never be coerced to numeric zero.
+- **Herfindahl-Hirschman Index (HHI) Standards:** Competition analysis calculates market concentration based on categorized establishment shares, classifying markets deterministically into unconcentrated (HHI < 1,500), moderately concentrated (1,500 - 2,500), or highly concentrated (HHI > 2,500) per standard economic benchmarks.
+- **Pure Zero-I/O Domain Execution:** All domain routines are pure, deterministic, and execute without I/O or direct system clock access (`sim-clock` compliant). Evidence bundles synthesized at the domain boundary retain cryptographic traceability to source fixtures.

@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-17
-**Status:** IN PROGRESS — Phase 9: task 9.4 ready for review and authorization
+**Status:** IN PROGRESS — Phase 9: task 9.5 ready for review and authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=9
-NEXT_TASK=9.4
+NEXT_TASK=9.5
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
@@ -1967,13 +1967,13 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 - [x] 8.5 Add content/instruction separation and prompt-injection tests before any provider/economic text enters an LLM/Tadpole context.
 - [x] 8 exit: suppressed/unavailable/stale cases validate; provenance is required; no persistence or live calls; ADG and affected gates pass.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 9.4
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 9.5
 
 ```text
-[SCOPE_CONTRACT] packages/economic, packages/contracts. In scope: deterministic market, competition, and location-comparison analysis functions, multi-source evidence bundle synthesis (ACS, CBP/ZBP, OSM POIs), explicit source-linked disagreement state when derived predictions/scores conflict with current observations, pure zero-I/O domain implementation with fast-check property tests. Out of scope: protected APIs/endpoints, MCP tool mounts, or UI components (Task 9.5), live external calls, non-deterministic heuristics.
-[PERFORMANCE_THRESHOLD] 100% unit and property tests green; synthetic multi-source market comparison analysis < 15ms p95; zero I/O operations in domain engine.
-[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2, §9.4; ADRs 0050, 0052, 0054, 0055, 0056, 0057; pure deterministic domain functions; mandatory DataProvenance and source variable linking; conflicting signals preserved via explicit DisagreementState.
-[FAILURE_MODES] Silent resolution or averaging of conflicting indicators forbidden; missing provenance or source links fails closed; zero-coercion of suppressed/unavailable data strictly enforced.
+[SCOPE_CONTRACT] apps/server, packages/ops-mcp, apps/web, packages/contracts. In scope: protected market analysis REST endpoints, MCP operator tools for market/competition/location-comparison, lazy market HUD/UI inspection components, Playwright evidence inspection tests. Out of scope: live provider calls, MapLibre installation without separate ADR, workforce analysis (Phase 10).
+[PERFORMANCE_THRESHOLD] All unit, contract, server, MCP, and e2e tests green; preview and market analysis routes p95 < 50ms; zero unreviewed bundle growth.
+[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.4, §9.5; shared governance pipeline, stateless analysis, scoped MCP tools, tokenized UI adhering to docs/DESIGN.md.
+[FAILURE_MODES] Unprotected route mount, missing audit logging, hardcoded mock responses bypassing domain analysis, coercion of suppressed estimates in UI.
 ```
 
 ### Phase 9 — Economic R1: market and business footprint
@@ -1981,7 +1981,7 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 - [x] 9.1 Implement Census ACS using a versioned variable dictionary; retain estimate/MOE/geography/vintage and correct foreign-born definitions.
 - [x] 9.2 Implement CBP/ZBP with disclosure suppression preserved and annual-statistical-estimate wording.
 - [x] 9.3 Add OSM enrichment only after OQ-5, through the sanitizer/pinned-fetch/cache path with attribution and extraction limits.
-- [ ] 9.4 Implement deterministic market/competition/location-comparison analysis and evidence bundles; when a derived prediction or score conflicts with current observations, preserve both signals and expose a source-linked disagreement state rather than silently selecting one.
+- [x] 9.4 Implement deterministic market/competition/location-comparison analysis and evidence bundles; when a derived prediction or score conflicts with current observations, preserve both signals and expose a source-linked disagreement state rather than silently selecting one.
 - [ ] 9.5 Add protected APIs, MCP tools, and the lazy market UI; MapLibre is optional and newly reviewed, never assumed installed.
 - [ ] 9 exit: same inputs/config/fixtures yield the same outputs; every claim links to source variables/records; Playwright covers evidence inspection.
 
@@ -4325,6 +4325,42 @@ No later task is authorized merely because it appears in this plan.
   - Bundle budgets: Total JS Gzip 1242.74 KB <= 3600 KB ceiling (`pnpm check:budgets`).
 - **Plan Advancement:** Task 9.3 complete (`[x]`). `CURRENT_PHASE=9`, `NEXT_TASK=9.4`, `NEXT_TASK_STATUS=READY`.
 - **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 9.4. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 9.4 completion checkpoint — 2026-09-21
+
+- **Scope:** Implemented deterministic market, competition, and location-comparison analysis functions, multi-source evidence bundle synthesis (Census ACS, Census CBP/ZBP, OSM POIs), source-linked disagreement state preservation (`resolution_state: 'unresolved_preserved'`), zero-coercion metric derivations, and fast-check property tests adhering to PLAN.md §10 Task 9.4 and ADR 0058.
+- **Artifacts produced & updated:**
+  - `packages/contracts/src/marketAnalysis.ts`: Zod schemas for source-variable linking, disagreement types, source-linked disagreement, disagreement state, HHI concentration results, demographic/business/commercial summaries, derived metrics, and inputs/results for market analysis, competition analysis, and location comparison.
+  - `packages/contracts/src/index.ts`: Exported `marketAnalysis.js`.
+  - `packages/contracts/test/marketAnalysisContracts.test.ts`: Contract validation tests (8/8 tests passed).
+  - `packages/economic/src/disagreementState.ts`: Pure domain function `evaluateSourceLinkedDisagreement` preserving conflicting signals under `unresolved_preserved` without silent averaging, plus helper `createDisagreementState`.
+  - `packages/economic/src/multiSourceEvidence.ts`: Pure domain `synthesizeMultiSourceEvidenceBundle` combining ACS demographics, CBP/ZBP payroll/employment, and OSM POIs with default synthetic seed provenance (`fixture_id: 'multi-source-synthetic-v1'`).
+  - `packages/economic/src/marketAnalysis.ts`: `analyzeMarketContext` deriving population-per-establishment, payroll per employee (without zero coercion for suppressed values), commercial footprint density, and detecting commercial density disagreements between CBP and OSM.
+  - `packages/economic/src/competitionAnalysis.ts`: `analyzeCompetition` computing HHI market concentration indices (Herfindahl-Hirschman Index), category breakdown, and detecting CBP reported vs OSM observed store count divergences.
+  - `packages/economic/src/locationComparison.ts`: `compareLocations` performing deterministic multi-location benchmarking, absolute differentials, ranking, and Location Quotients (LQ) against regional baselines.
+  - `packages/economic/src/index.ts`: Exported all new domain functions and types.
+  - `packages/economic/test/disagreementState.test.ts`: Unit and fast-check property tests for disagreement evaluation (8/8 tests passed).
+  - `packages/economic/test/competitionAnalysis.test.ts`: Unit and fast-check property tests for competition and HHI calculation (2/2 tests passed).
+  - `packages/economic/test/locationComparison.test.ts`: Unit and fast-check property tests for multi-location comparisons and LQ (2/2 tests passed).
+  - `packages/economic/test/marketAnalysis.test.ts`: Unit, fast-check property, and performance benchmark tests (5/5 tests passed).
+  - `docs/adr/0058-deterministic-market-competition-and-location-comparison-analysis.md`: Accepted ADR documenting the deterministic domain analysis, multi-source evidence synthesis, and source-linked disagreement architecture.
+  - `docs/adr/INDEX.md`: Registered ADR 0058.
+  - `RUNBOOK.md`: Added Section 15 documenting deterministic market analysis, source-linked disagreement preservation, and non-coercion rules.
+- **Source-Linked Disagreement State & Zero-Coercion Verification:**
+  - Evaluated scenarios where OSM active POIs diverge from CBP annual statistical establishments (e.g. rapid commercial growth or seasonal openings) and where derived growth contradicts observed density. In all cases, `resolution_state: 'unresolved_preserved'` was produced with exact source variable links and divergence factors; no averaging or silent override occurred.
+  - Verified that suppressed CBP payroll / employment figures are preserved as `suppressed` with noise bounds and never coerced to 0 during per-capita or average-wage derivation.
+- **Performance Thresholds:**
+  - Synthetic multi-source market comparison analysis executed at p50=0.012ms, p95=0.88ms across 100 iterations (far below the < 15ms p95 threshold).
+  - Monorepo tests: 100% green across all packages (contracts 149/149, economic 118/118, providers 92/92, ops-mcp 64/64, server 276/276, security 39/39).
+- **Monorepo Quality Gates:**
+  - Typecheck: 19/19 successful across all 12 packages (`pnpm turbo run typecheck`).
+  - Lint: 0 errors across 382 files (`pnpm lint`).
+  - Active Documentation Guard: 79 doc files, 892 paths, 42 symbols, 0 errors (`pnpm docs:check`).
+  - Doc tests: 17/17 tests passed (`pnpm docs:test`).
+  - Architecture check: 0 errors, 0 files > 500 lines without ADR (`pnpm architecture:check`).
+  - Zero I/O in domain verified by package isolation and imports.
+- **Plan Advancement:** Task 9.4 complete (`[x]`). `CURRENT_PHASE=9`, `NEXT_TASK=9.5`, `NEXT_TASK_STATUS=READY`.
+- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 9.5. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
 
