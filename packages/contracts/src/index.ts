@@ -29,3 +29,4 @@ export * from './economic.js';
 export * from './economicPrompt.js';
 export * from './censusAcs.js';
 export * from './censusCbpZbp.js';
+export * from './osmCommercial.js';

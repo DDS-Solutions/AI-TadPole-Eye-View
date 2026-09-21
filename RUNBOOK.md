@@ -430,4 +430,15 @@ The County Business Patterns (CBP) and ZIP Code Business Patterns (ZBP) adapter 
 - **Geographies & NAICS:** Supports county, ZCTA, CBSA, state, and nation. Tract and place levels are unsupported and fail closed. NAICS codes must be 2 to 6 numeric digits.
 - **Kill-Switch & Seed Enforcement:** Governed by `GEV_CENSUS_CBP_ENABLED` (default: 1) and `GEV_SEED_MODE=1`. Live calls require explicit developer authorization.
 
+## 14. OpenStreetMap Commercial Enrichment Operations & ODbL Compliance (ADR 0057)
+
+The OpenStreetMap Commercial Enrichment adapter (`packages/providers/src/osmCommercial.ts`), Overpass sanitizer (`packages/security/src/osmCommercialSanitizer.ts`), and pure domain categorizer (`packages/economic/src/osmCommercialCategorizer.ts`) enforce strict licensing, security, and extraction boundaries resolving OQ-5:
+
+- **ODbL 1.0 Attribution & Collective Database Classification:** Commercial POI extraction and density aggregation for SMB digital twins are classified as a Collective Database under ODbL 1.0. Every output, evidence record, and preview must visibly preserve: `© OpenStreetMap contributors (ODbL 1.0)` with a link to `https://www.openstreetmap.org/copyright` and the statutory disclaimer `OSM_ODBL_LEGAL_DISCLAIMER`. Responses lacking valid attribution fail closed immediately.
+- **Extraction Limits & Tag Whitelisting:** Queries enforce maximum bounding box span of 0.5° (~35 km), 25s timeout cap, polite rate limiting (>= 1,000ms between calls), and strict tag whitelisting (`amenity`, `shop`, `craft`, `office`, `commercial`, `tourism`, `healthcare`). Arbitrary unwhitelisted Overpass QL execution (e.g. power, military, boundary) is rejected immediately.
+- **Query Sanitization & Pinned-Fetch:** All queries pass through `sanitizeOverpassQuery` in `packages/security`, preventing ReDoS and statement overload. Live queries execute through `pinnedFetch` with TLS pinning and allowed host verification (`overpass-api.de`, `overpass.kumi.systems`).
+- **Prompt Protection (ADR 0054):** Crowdsourced POI names, operator strings, and tags are untrusted content. They must be wrapped in delimiter-sandboxed blocks with nonces (`sanitizeOsmFeatureForPromptContext`) before exposure to LLM or Tadpole agent contexts.
+- **Kill-Switch & Seed Enforcement:** Governed by `GEV_OSM_COMMERCIAL_ENABLED` (default: 1) and `GEV_SEED_MODE=1`. Live calls require explicit developer authorization.
+
+
 
