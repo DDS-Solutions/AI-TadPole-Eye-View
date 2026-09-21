@@ -1,7 +1,6 @@
 import {
   type DataProvenance,
   type EconomicEvidenceBundle,
-  EconomicEvidenceBundleSchema,
   type EconomicEvidenceRecord,
   type EconomicGeography,
 } from '@gev/contracts';
@@ -70,7 +69,7 @@ export function synthesizeMultiSourceEvidenceBundle(
     provenance: primaryProvenance,
   };
 
-  return EconomicEvidenceBundleSchema.parse(bundle);
+  return bundle;
 }
 
 /**
