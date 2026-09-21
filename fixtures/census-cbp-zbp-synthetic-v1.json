@@ -323,6 +323,280 @@
         }
       },
       "tags": ["zbp", "establishments", "restaurants", "zcta"]
+    },
+    {
+      "evidence_id": "ev-cbp-541511-payqtr1-48453-2023",
+      "source_id": "census-cbp-zbp",
+      "metric_id": "first-quarter-payroll",
+      "variable_name": "PAYQTR1",
+      "label": "First-Quarter Payroll ($1,000 USD) in NAICS 541511",
+      "geography": {
+        "level": "county",
+        "county_fips": "48453",
+        "state_fips": "48",
+        "name": "Travis County, TX"
+      },
+      "estimate": {
+        "status": "available",
+        "value": 980000,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "USD_thousands",
+        "notes": "First-quarter payroll (January-March) in thousands of dollars"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "census-cbp-zbp",
+          "feed_id": "cbp-zbp-annual",
+          "name": "U.S. Census Bureau County and ZIP Code Business Patterns",
+          "canonical_url": "https://api.census.gov/data"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2023-01-01T00:00:00.000Z",
+          "end": "2023-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "2023 CBP/ZBP Annual Statistical Data Release"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Census Bureau, County and ZIP Code Business Patterns",
+        "fixture_id": "census-cbp-zbp-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 31536000
+        }
+      },
+      "tags": ["cbp", "payroll", "first-quarter", "naics-541511"]
+    },
+    {
+      "evidence_id": "ev-cbp-332710-payann-48453-2023",
+      "source_id": "census-cbp-zbp",
+      "metric_id": "annual-payroll",
+      "variable_name": "PAYANN",
+      "label": "Annual Payroll ($1,000 USD) in NAICS 332710 (Machine Shops)",
+      "geography": {
+        "level": "county",
+        "county_fips": "48453",
+        "state_fips": "48",
+        "name": "Travis County, TX"
+      },
+      "estimate": {
+        "status": "suppressed",
+        "reason": "disclosure_avoidance",
+        "detail": "Statutory disclosure avoidance suppression under 13 U.S.C. Section 9; annual payroll withheld to avoid disclosing operations of individual companies",
+        "unit": "USD_thousands"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "census-cbp-zbp",
+          "feed_id": "cbp-zbp-annual",
+          "name": "U.S. Census Bureau County and ZIP Code Business Patterns",
+          "canonical_url": "https://api.census.gov/data"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2023-01-01T00:00:00.000Z",
+          "end": "2023-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "2023 CBP/ZBP Annual Statistical Data Release"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Census Bureau, County and ZIP Code Business Patterns",
+        "fixture_id": "census-cbp-zbp-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 31536000
+        }
+      },
+      "tags": ["cbp", "payroll", "suppressed", "disclosure_avoidance", "naics-332710"]
+    },
+    {
+      "evidence_id": "ev-zbp-722511-emp-78701-2023",
+      "source_id": "census-cbp-zbp",
+      "metric_id": "paid-employment",
+      "variable_name": "EMP",
+      "label": "Number of Paid Employees for Mid-March Pay Period in NAICS 722511 in ZCTA 78701",
+      "geography": {
+        "level": "zcta",
+        "zcta": "78701",
+        "name": "ZCTA 78701 (Austin Downtown, TX)"
+      },
+      "estimate": {
+        "status": "available",
+        "value": 1250,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "count",
+        "notes": "ZIP Code Business Patterns mid-March paid employment"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "census-cbp-zbp",
+          "feed_id": "cbp-zbp-annual",
+          "name": "U.S. Census Bureau County and ZIP Code Business Patterns",
+          "canonical_url": "https://api.census.gov/data"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2023-01-01T00:00:00.000Z",
+          "end": "2023-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "2023 CBP/ZBP Annual Statistical Data Release"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Census Bureau, County and ZIP Code Business Patterns",
+        "fixture_id": "census-cbp-zbp-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 31536000
+        }
+      },
+      "tags": ["zbp", "employment", "restaurants", "zcta"]
+    },
+    {
+      "evidence_id": "ev-zbp-722511-pay-78701-2023",
+      "source_id": "census-cbp-zbp",
+      "metric_id": "annual-payroll",
+      "variable_name": "PAYANN",
+      "label": "Annual Payroll ($1,000 USD) in NAICS 722511 in ZCTA 78701",
+      "geography": {
+        "level": "zcta",
+        "zcta": "78701",
+        "name": "ZCTA 78701 (Austin Downtown, TX)"
+      },
+      "estimate": {
+        "status": "available",
+        "value": 42000,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "USD_thousands",
+        "notes": "ZIP Code Business Patterns annual payroll in thousands of dollars"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "census-cbp-zbp",
+          "feed_id": "cbp-zbp-annual",
+          "name": "U.S. Census Bureau County and ZIP Code Business Patterns",
+          "canonical_url": "https://api.census.gov/data"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2023-01-01T00:00:00.000Z",
+          "end": "2023-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "2023 CBP/ZBP Annual Statistical Data Release"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Census Bureau, County and ZIP Code Business Patterns",
+        "fixture_id": "census-cbp-zbp-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 31536000
+        }
+      },
+      "tags": ["zbp", "payroll", "restaurants", "zcta"]
+    },
+    {
+      "evidence_id": "ev-zbp-722511-payqtr1-78701-2023",
+      "source_id": "census-cbp-zbp",
+      "metric_id": "first-quarter-payroll",
+      "variable_name": "PAYQTR1",
+      "label": "First-Quarter Payroll ($1,000 USD) in NAICS 722511 in ZCTA 78701",
+      "geography": {
+        "level": "zcta",
+        "zcta": "78701",
+        "name": "ZCTA 78701 (Austin Downtown, TX)"
+      },
+      "estimate": {
+        "status": "available",
+        "value": 10500,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "USD_thousands",
+        "notes": "ZIP Code Business Patterns first-quarter payroll in thousands of dollars"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "census-cbp-zbp",
+          "feed_id": "cbp-zbp-annual",
+          "name": "U.S. Census Bureau County and ZIP Code Business Patterns",
+          "canonical_url": "https://api.census.gov/data"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2023-01-01T00:00:00.000Z",
+          "end": "2023-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "2023 CBP/ZBP Annual Statistical Data Release"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Census Bureau, County and ZIP Code Business Patterns",
+        "fixture_id": "census-cbp-zbp-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 31536000
+        }
+      },
+      "tags": ["zbp", "payroll", "first-quarter", "restaurants", "zcta"]
     }
   ]
 }

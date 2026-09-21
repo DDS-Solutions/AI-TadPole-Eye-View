@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-17
-**Status:** IN PROGRESS — Phase 9: task 9.2 ready for review and authorization
+**Status:** IN PROGRESS — Phase 9: task 9.3 ready for review and authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=9
-NEXT_TASK=9.2
+NEXT_TASK=9.3
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
@@ -1967,19 +1967,19 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 - [x] 8.5 Add content/instruction separation and prompt-injection tests before any provider/economic text enters an LLM/Tadpole context.
 - [x] 8 exit: suppressed/unavailable/stale cases validate; provenance is required; no persistence or live calls; ADG and affected gates pass.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 9.2
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 9.3
 
 ```text
-[SCOPE_CONTRACT] packages/contracts, packages/providers, packages/economic. In scope: County Business Patterns (CBP) and ZIP Code Business Patterns (ZBP) adapter and contract mapping across NAICS industry classifications, preserving statutory disclosure avoidance suppression (with noise bounds/flags), establishment counts, annual payroll, and first-quarter payroll; strict annual-statistical-estimate wording; seed mode enforcement. Out of scope: live Census CBP API calls without authorization, OSM enrichment (Task 9.3).
-[PERFORMANCE_THRESHOLD] CBP/ZBP contract and adapter unit tests pass 100% green; synthetic/seed CBP/ZBP dataset query < 10ms p95; zero live calls under GEV_SEED_MODE=1.
-[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2, §9.2; ADRs 0035, 0050, 0052; pure domain engine; contract boundary validation; mandatory DataProvenance; zero numeric zero-coercion.
-[FAILURE_MODES] Missing or malformed FIPS/NAICS codes, unpreserved disclosure avoidance suppression, or missing provenance fail closed immediately; network calls in seed mode abort execution.
+[SCOPE_CONTRACT] packages/security, packages/providers, packages/economic. In scope: OSM commercial enrichment adapter and pipeline through the existing Overpass sanitizer, pinned-fetch, and cache path; boundary contracts for OSM POI/business features; mandatory ODbL attribution notice and extraction bounds (rate, bounding-box, tag whitelisting); content/instruction separation; seed mode enforcement with verified fixtures. Out of scope: live Overpass API calls in seed mode or without explicit authorization, unwhitelisted arbitrary Overpass QL execution, market comparison synthesis (Task 9.4).
+[PERFORMANCE_THRESHOLD] Unit and contract tests 100% green; synthetic OSM feature extraction and cache query < 10ms p95; zero live calls under GEV_SEED_MODE=1.
+[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2, §9.3; ADRs 0021, 0035, 0050, 0052, 0054; sanitized Overpass queries; mandatory DataProvenance (ODbL attribution); data/instruction separation.
+[FAILURE_MODES] Overpass queries bypassing sanitizer, missing ODbL attribution, or missing provenance fail closed immediately; unescaped OSM text in instruction contexts rejected.
 ```
 
 ### Phase 9 — Economic R1: market and business footprint
 
 - [x] 9.1 Implement Census ACS using a versioned variable dictionary; retain estimate/MOE/geography/vintage and correct foreign-born definitions.
-- [ ] 9.2 Implement CBP/ZBP with disclosure suppression preserved and annual-statistical-estimate wording.
+- [x] 9.2 Implement CBP/ZBP with disclosure suppression preserved and annual-statistical-estimate wording.
 - [ ] 9.3 Add OSM enrichment only after OQ-5, through the sanitizer/pinned-fetch/cache path with attribution and extraction limits.
 - [ ] 9.4 Implement deterministic market/competition/location-comparison analysis and evidence bundles; when a derived prediction or score conflicts with current observations, preserve both signals and expose a source-linked disagreement state rather than silently selecting one.
 - [ ] 9.5 Add protected APIs, MCP tools, and the lazy market UI; MapLibre is optional and newly reviewed, never assumed installed.
@@ -4257,7 +4257,37 @@ No later task is authorized merely because it appears in this plan.
   - Active Documentation Guard: 76 doc files, 774 paths, 42 symbols, 0 errors (`pnpm docs:check`).
   - Doc tests: 17/17 tests passed (`pnpm docs:test`).
 - **Plan Advancement:** Task 9.1 complete (`[x]`). `CURRENT_PHASE=9`, `NEXT_TASK=9.2`, `NEXT_TASK_STATUS=READY`.
-- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 9.2. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 9.2 completion checkpoint — 2026-09-21
+
+- **Scope:** Implemented County Business Patterns (CBP) and ZIP Code Business Patterns (ZBP) boundary contracts, pure domain variable dictionary, zero-coercion estimate parser preserving 13 U.S.C. Section 9 disclosure avoidance suppression, seed fixture adapter, and tests adhering to PLAN.md §10 Task 9.2 and ADR 0056.
+- **Artifacts produced & updated:**
+  - `packages/contracts/src/censusCbpZbp.ts`: Zod contracts for CBP/ZBP variables (`ESTAB`, `EMP`, `PAYANN`, `PAYQTR1`), employment noise flags `a` through `m` and bounds table (`CENSUS_CBP_EMPLOYMENT_NOISE_BOUNDS`), NAICS code validation (2 to 6 numeric digits), vintage validation, variable definition and dictionary schemas, query schema across county, ZCTA, CBSA, state, and nation, and statutory annual statistical estimate disclaimer (`CENSUS_CBP_ANNUAL_STATISTICAL_DISCLAIMER`).
+  - `packages/contracts/src/index.ts`: Exported `censusCbpZbp.js`.
+  - `packages/contracts/test/censusCbpZbpContracts.test.ts`: Contract validation tests (7/7 tests passed).
+  - `packages/economic/src/censusCbpZbpDictionary.ts`: Pure domain `CENSUS_CBP_VARIABLE_DICTIONARY_V1` with 4 core benchmark variables, geography validation `validateCbpGeography` (county, zcta, cbsa, state, nation), NAICS validation `validateCbpNaicsCode`, noise bounds lookup `getEmploymentNoiseBounds`, and `parseCbpRawEstimate` converting publication symbols (`D` -> `disclosure_avoidance` with noise bounds, `S` -> `data_quality`, `N` -> `unavailable`) without numeric zero-coercion.
+  - `packages/economic/src/index.ts`: Exported `censusCbpZbpDictionary.js`.
+  - `packages/economic/test/censusCbpZbpDictionary.test.ts`: Pure domain unit and property tests (9/9 tests passed). Zero I/O verified via boundary checks.
+  - `packages/providers/src/censusCbpZbp.ts`: `CensusCbpZbpAdapter` implementing seed mode ingestion, in-memory dual indexing by geography key and NAICS code prefix, fail-closed validation, convenience query methods (`getEstablishments`, `getPaidEmployment`, `getPayroll`, `getEvidenceByNaics`, `getEvidenceByGeography`), and strict seed mode enforcement.
+  - `packages/providers/src/index.ts`: Exported `censusCbpZbp.js`.
+  - `packages/providers/test/censusCbpZbp.test.ts`: Unit tests and performance benchmark across county and ZCTA geographies (10/10 tests passed).
+  - `fixtures/census-cbp-zbp-synthetic-v1.json`: Extended with records for `PAYQTR1` (county), suppressed `PAYANN` (county), and `EMP`, `PAYANN`, `PAYQTR1` (ZCTA) with seed provenance and statutory disclosure avoidance detail.
+  - `docs/adr/0056-census-cbp-zbp-adapter-architecture.md`: Accepted ADR documenting the Census CBP & ZBP architecture.
+  - `docs/adr/INDEX.md`: Registered ADR 0056.
+  - `RUNBOOK.md`: Added section 13 for Census CBP and ZBP operations, statutory disclosure avoidance suppression preservation, and annual estimate disclaimers.
+- **Statutory Disclosure Avoidance & Disclaimer Verification:**
+  - Preserves 13 U.S.C. Section 9 disclosure avoidance noise flags `a` through `m` as explicit numeric bounds in `EconomicEstimateSuppressed`. Placeholder 0s accompanied by noise flags are never coerced to 0.
+  - Mandatory annual statistical estimate disclaimer preserved in all outputs.
+- **Performance Thresholds:**
+  - In-memory indexed query latency: p50=0.024ms, p95=0.058ms across 100 iterations (far below the < 10ms p95 budget).
+  - Monorepo tests: 100% green across all packages (contracts 134/134, economic 93/93, providers 81/81, ops-mcp 64/64, server 276/276, security 34/34).
+- **Monorepo Quality Gates:**
+  - Typecheck: 19/19 successful across all 12 packages (`pnpm turbo run typecheck`).
+  - Lint: 0 errors across 366 files (`pnpm lint`).
+  - Active Documentation Guard: 77 doc files, 810 paths, 42 symbols, 0 errors (`pnpm docs:check`).
+  - Doc tests: 17/17 tests passed (`pnpm docs:test`).
+- **Plan Advancement:** Task 9.2 complete (`[x]`). `CURRENT_PHASE=9`, `NEXT_TASK=9.3`, `NEXT_TASK_STATUS=READY`.
+- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 9.3. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
 

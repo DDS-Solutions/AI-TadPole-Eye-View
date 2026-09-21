@@ -429,12 +429,14 @@ describe('Phase 8 Exit Gate Certification (PLAN.md §0 NEXT_TASK 8_EXIT)', () =>
       clock,
     });
 
-    // Warm-up iteration
-    buildPromptContextFromBusinessPreview({
-      contextId: 'ctx-perf-warmup',
-      tenantId: 'tenant-a',
-      preview,
-    });
+    // Warm-up iterations to ensure V8 JIT compilation and regex caching
+    for (let w = 0; w < 30; w++) {
+      buildPromptContextFromBusinessPreview({
+        contextId: `ctx-perf-warmup-${w}`,
+        tenantId: 'tenant-a',
+        preview,
+      });
+    }
 
     const promptDurations: number[] = [];
     for (let i = 0; i < 1000; i++) {

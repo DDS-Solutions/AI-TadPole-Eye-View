@@ -45,4 +45,5 @@ This directory records all significant architectural and structural decisions ma
 | [0053](./0053-protected-stateless-economic-preview-api-and-mcp-tool.md) | Protected stateless economic preview API and MCP operator tool through shared governance | Accepted | 2026-09-16 |
 | [0054](./0054-content-instruction-separation-and-prompt-injection-defense.md) | Content/instruction separation and prompt-injection defense | Accepted | 2026-09-16 |
 | [0055](./0055-census-acs-variable-dictionary-and-adapter-architecture.md) | Census ACS variable dictionary, boundary contracts, and seed adapter architecture | Accepted | 2026-09-21 |
+| [0056](./0056-census-cbp-zbp-adapter-architecture.md) | Census CBP & ZBP variable dictionary, boundary contracts, disclosure suppression preservation, and seed adapter architecture | Accepted | 2026-09-21 |
 
