@@ -6,6 +6,7 @@ import { generateBusinessContextPreview } from '@gev/ops-mcp';
 import { EconomicFixtureAdapter } from '@gev/providers';
 import { type Context, Hono } from 'hono';
 import type { InMemoryRateLimiter, OpsAuthAdapter } from '../middleware/opsAuth.js';
+import { createMarketAnalysisRouter } from './marketAnalysisRoutes.js';
 
 export const DEFAULT_ECONOMIC_RATE_LIMIT = 60;
 
@@ -35,6 +36,7 @@ export function createEconomicRouter(options: EconomicRouterOptions): Hono {
     // 1. Authenticate caller & authorize tenant resource
     const decision = await options.auth.authenticate(authHeader, requestedTenant, {
       allowedRoles: ['operator', 'tenant_admin', 'platform_admin', 'ai_copilot'],
+      allowLocalSeed: true,
     });
 
     if (!decision.allowed) {
@@ -215,6 +217,8 @@ export function createEconomicRouter(options: EconomicRouterOptions): Hono {
 
   router.post('/preview', handlePreview);
   router.post('/business-context/preview', handlePreview);
+
+  router.route('/', createMarketAnalysisRouter(options));
 
   return router;
 }

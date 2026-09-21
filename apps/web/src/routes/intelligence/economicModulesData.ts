@@ -40,10 +40,10 @@ export const economicModules: readonly EconomicModule[] = [
     phase: 'Phase 9',
     title: 'Economic R1: Market & Business Footprint',
     badge: 'CENSUS ACS / CBP / ZBP',
-    status: 'PLANNED',
+    status: 'INSPECTION READY',
     statusReason:
-      'Phase 9 implementation planned. Census 5-Year ACS and County/ZIP Business Patterns pending.',
-    sources: ['US Census ACS 5-Year', 'Census CBP', 'Census ZBP', 'OSM Boundaries'],
+      'Phase 9 active. Census 5-Year ACS, CBP/ZBP, and OSM Commercial Footprint inspection ready.',
+    sources: ['US Census ACS 5-Year', 'Census CBP', 'Census ZBP', 'OSM Commercial Footprint'],
     metrics: [
       { label: 'ESTIMATES TYPE', value: 'DISCLOSED / SUPPRESSED' },
       { label: 'PROVENANCE', value: 'MANDATORY' },

@@ -91,6 +91,24 @@ const EXPECTED_ANNOTATIONS = {
     idempotentHint: true,
     openWorldHint: false,
   },
+  analyze_market_context: {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
+  analyze_competition: {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
+  compare_locations: {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
 } as const satisfies Record<OperatorToolName, McpToolAnnotations>;
 
 describe('server-only MCP presentation policy', () => {

@@ -193,6 +193,9 @@ describe('scoped MCP HTTP authorization', () => {
       'get_feed_health',
       'get_budget',
       'preview_business_context',
+      'analyze_market_context',
+      'analyze_competition',
+      'compare_locations',
     ]);
     expect(auditTools.map((tool) => tool.name)).toEqual(['tail_logs']);
 

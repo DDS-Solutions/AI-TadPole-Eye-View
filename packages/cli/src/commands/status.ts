@@ -14,7 +14,7 @@ export interface StatusOptions {
   governanceDbPath?: string;
 }
 
-export const PROJECT_PHASE = 'Phase 9 — Economic R1: market and business footprint';
+export const PROJECT_PHASE = 'Phase 10 — Economic R2: workforce';
 
 export async function runStatus(options: StatusOptions = {}): Promise<void> {
   const clock = new SystemClock();

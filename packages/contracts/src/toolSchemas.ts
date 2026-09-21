@@ -6,6 +6,20 @@ import {
   type BusinessContextPreview,
 } from './economic.js';
 import { GovernanceAuthoritySchema } from './governance.js';
+import {
+  CompetitionAnalysisInputSchema,
+  type CompetitionAnalysisInput,
+  CompetitionAnalysisResultSchema,
+  type CompetitionAnalysisResult,
+  LocationComparisonInputSchema,
+  type LocationComparisonInput,
+  LocationComparisonResultSchema,
+  type LocationComparisonResult,
+  MarketAnalysisInputSchema,
+  type MarketAnalysisInput,
+  MarketAnalysisResultSchema,
+  type MarketAnalysisResult,
+} from './marketAnalysis.js';
 import { AuditEntrySchema } from './ports.js';
 import {
   ProviderHealthSchema,
@@ -240,9 +254,36 @@ export type PreviewBusinessContextInput = BusinessContextInput;
 export const PreviewBusinessContextOutputSchema = BusinessContextPreviewSchema;
 export type PreviewBusinessContextOutput = BusinessContextPreview;
 
+export const AnalyzeMarketContextInputSchema = MarketAnalysisInputSchema;
+export type AnalyzeMarketContextInput = MarketAnalysisInput;
+export const AnalyzeMarketContextOutputSchema = MarketAnalysisResultSchema;
+export type AnalyzeMarketContextOutput = MarketAnalysisResult;
+
+export const AnalyzeCompetitionInputSchema = CompetitionAnalysisInputSchema;
+export type AnalyzeCompetitionInput = CompetitionAnalysisInput;
+export const AnalyzeCompetitionOutputSchema = CompetitionAnalysisResultSchema;
+export type AnalyzeCompetitionOutput = CompetitionAnalysisResult;
+
+export const CompareLocationsInputSchema = LocationComparisonInputSchema;
+export type CompareLocationsInput = LocationComparisonInput;
+export const CompareLocationsOutputSchema = LocationComparisonResultSchema;
+export type CompareLocationsOutput = LocationComparisonResult;
+
 export {
   BusinessContextInputSchema,
   type BusinessContextInput,
   BusinessContextPreviewSchema,
   type BusinessContextPreview,
+  MarketAnalysisInputSchema,
+  type MarketAnalysisInput,
+  MarketAnalysisResultSchema,
+  type MarketAnalysisResult,
+  CompetitionAnalysisInputSchema,
+  type CompetitionAnalysisInput,
+  CompetitionAnalysisResultSchema,
+  type CompetitionAnalysisResult,
+  LocationComparisonInputSchema,
+  type LocationComparisonInput,
+  LocationComparisonResultSchema,
+  type LocationComparisonResult,
 };

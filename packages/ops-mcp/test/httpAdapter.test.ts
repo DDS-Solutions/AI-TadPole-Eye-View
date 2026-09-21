@@ -135,16 +135,7 @@ describe('modern MCP HTTP SDK adapter', () => {
     const result = body.result as { tools: Array<Record<string, unknown> & { name: string }> };
 
     expect(response.status).toBe(200);
-    expect(result.tools.map((tool) => tool.name)).toEqual([
-      'get_feed_health',
-      'get_budget',
-      'run_diagnostics',
-      'load_scene',
-      'save_scene',
-      'tail_logs',
-      'set_flag',
-      'preview_business_context',
-    ]);
+    expect(result.tools.map((tool) => tool.name)).toEqual([...MCP_OPERATOR_TOOL_NAMES]);
     expect(result.tools).toEqual(getMcpHttpToolDefinitions(MCP_OPERATOR_TOOL_NAMES));
   });
 
@@ -422,7 +413,14 @@ describe('modern MCP HTTP SDK adapter', () => {
       ((await readJson(authorized)).result as { tools: Array<{ name: string }> }).tools.map(
         (tool) => tool.name
       )
-    ).toEqual(['get_feed_health', 'get_budget', 'preview_business_context']);
+    ).toEqual([
+      'get_feed_health',
+      'get_budget',
+      'preview_business_context',
+      'analyze_market_context',
+      'analyze_competition',
+      'compare_locations',
+    ]);
     expect(await readJson(unauthorized)).toMatchObject({ error: { code: -32601 } });
   });
 

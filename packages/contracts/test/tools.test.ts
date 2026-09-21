@@ -147,6 +147,9 @@ describe('Phase 3 Tool & Collab Contracts (@gev/contracts)', () => {
         'inspect_telemetry',
         'query_aoi',
         'preview_business_context',
+        'analyze_market_context',
+        'analyze_competition',
+        'compare_locations',
       ]);
       expect(getAuthorizedOperatorToolNames(['read.audit'])).toEqual(['tail_logs']);
       expect(getAuthorizedOperatorToolNames(['read.telemetry', 'read.audit'])).toEqual([
@@ -157,6 +160,9 @@ describe('Phase 3 Tool & Collab Contracts (@gev/contracts)', () => {
         'inspect_telemetry',
         'query_aoi',
         'preview_business_context',
+        'analyze_market_context',
+        'analyze_competition',
+        'compare_locations',
       ]);
       expect(getAuthorizedOperatorToolNames(['agent.voice'])).toEqual([]);
       expect(

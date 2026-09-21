@@ -36,6 +36,11 @@ import {
 } from '@gev/providers';
 import type { OperatorContext } from './context.js';
 import { generateBusinessContextPreview } from './economicPreview.js';
+import {
+  handleAnalyzeCompetition,
+  handleAnalyzeMarketContext,
+  handleCompareLocations,
+} from './marketAnalysisTools.js';
 
 export const MAX_SCENE_BYTES = 1024 * 1024;
 export const MCP_OPERATOR_TOOL_NAMES = [
@@ -47,6 +52,9 @@ export const MCP_OPERATOR_TOOL_NAMES = [
   'tail_logs',
   'set_flag',
   'preview_business_context',
+  'analyze_market_context',
+  'analyze_competition',
+  'compare_locations',
 ] as const satisfies readonly OperatorToolName[];
 export type McpOperatorToolName = (typeof MCP_OPERATOR_TOOL_NAMES)[number];
 const MCP_OPERATOR_TOOL_NAME_SET: ReadonlySet<string> = new Set(MCP_OPERATOR_TOOL_NAMES);
@@ -451,6 +459,15 @@ export function registerOperatorToolHandlers(ctx: OperatorContext): void {
     .register('set_flag', (input) => handleSetFlag(ctx, input))
     .register('preview_business_context', (input, executionContext) =>
       handlePreviewBusinessContext(ctx, input, executionContext)
+    )
+    .register('analyze_market_context', (input, executionContext) =>
+      handleAnalyzeMarketContext(ctx, input, executionContext)
+    )
+    .register('analyze_competition', (input, executionContext) =>
+      handleAnalyzeCompetition(ctx, input, executionContext)
+    )
+    .register('compare_locations', (input, executionContext) =>
+      handleCompareLocations(ctx, input, executionContext)
     );
 }
 

@@ -169,15 +169,15 @@ export type MarketDerivedMetrics = z.infer<typeof MarketDerivedMetricsSchema>;
 export const MarketAnalysisInputSchema = z
   .object({
     analysis_id: z.string().min(1).max(128).optional(),
-    tenant_id: TenantIdSchema,
+    tenant_id: TenantIdSchema.default('tenant-local'),
     target_geography: EconomicGeographySchema,
     naics_code: z
       .string()
       .regex(/^[0-9]{2,6}$/, 'NAICS code must be 2 to 6 numeric digits')
       .optional(),
     industry_title: z.string().min(1).max(200).optional(),
-    acs_evidence: z.array(EconomicEvidenceRecordSchema).max(200),
-    cbp_evidence: z.array(EconomicEvidenceRecordSchema).max(200),
+    acs_evidence: z.array(EconomicEvidenceRecordSchema).max(200).default([]),
+    cbp_evidence: z.array(EconomicEvidenceRecordSchema).max(200).default([]),
     osm_footprint: OsmCommercialFootprintSummarySchema.optional(),
     osm_evidence: z.array(EconomicEvidenceRecordSchema).max(200).optional(),
     benchmark_density_expectation: z.number().finite().positive().optional(),
@@ -211,12 +211,12 @@ export type MarketAnalysisResult = z.infer<typeof MarketAnalysisResultSchema>;
 export const CompetitionAnalysisInputSchema = z
   .object({
     analysis_id: z.string().min(1).max(128).optional(),
-    tenant_id: TenantIdSchema,
+    tenant_id: TenantIdSchema.default('tenant-local'),
     target_geography: EconomicGeographySchema,
     naics_code: z.string().regex(/^[0-9]{2,6}$/, 'NAICS code must be 2 to 6 numeric digits'),
     industry_title: z.string().min(1).max(200),
-    cbp_evidence: z.array(EconomicEvidenceRecordSchema).max(200),
-    osm_poi_features: z.array(OsmCommercialPoiFeatureSchema).max(2000),
+    cbp_evidence: z.array(EconomicEvidenceRecordSchema).max(200).default([]),
+    osm_poi_features: z.array(OsmCommercialPoiFeatureSchema).max(2000).default([]),
     osm_footprint: OsmCommercialFootprintSummarySchema.optional(),
     firm_shares_or_sizes: z.array(z.number().finite().nonnegative()).max(500).optional(),
   })
@@ -254,8 +254,8 @@ export const LocationProfileInputSchema = z
     location_key: z.string().min(1).max(64),
     label: z.string().min(1).max(200),
     geography: EconomicGeographySchema,
-    acs_evidence: z.array(EconomicEvidenceRecordSchema).max(200),
-    cbp_evidence: z.array(EconomicEvidenceRecordSchema).max(200),
+    acs_evidence: z.array(EconomicEvidenceRecordSchema).max(200).default([]),
+    cbp_evidence: z.array(EconomicEvidenceRecordSchema).max(200).default([]),
     osm_footprint: OsmCommercialFootprintSummarySchema.optional(),
     osm_evidence: z.array(EconomicEvidenceRecordSchema).max(200).optional(),
   })
@@ -265,7 +265,7 @@ export type LocationProfileInput = z.infer<typeof LocationProfileInputSchema>;
 export const LocationComparisonInputSchema = z
   .object({
     comparison_id: z.string().min(1).max(128).optional(),
-    tenant_id: TenantIdSchema,
+    tenant_id: TenantIdSchema.default('tenant-local'),
     locations: z.array(LocationProfileInputSchema).min(2).max(10),
     benchmark_location_key: z.string().min(1).max(64).optional(),
     naics_code: z

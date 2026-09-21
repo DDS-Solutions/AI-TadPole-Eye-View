@@ -438,6 +438,15 @@ describe('Phase 8 Exit Gate Certification (PLAN.md §0 NEXT_TASK 8_EXIT)', () =>
       });
     }
 
+    // JIT warm-up
+    for (let i = 0; i < 50; i++) {
+      buildPromptContextFromBusinessPreview({
+        contextId: `ctx-warmup-${i}`,
+        tenantId: 'tenant-a',
+        preview,
+      });
+    }
+
     const promptDurations: number[] = [];
     for (let i = 0; i < 1000; i++) {
       const t0 = performance.now();
