@@ -278,8 +278,8 @@ describe('Location Comparison Engine & Benchmark (Task 9.4 & ADR 0058)', () => {
         osm_footprint: mockOsmFootprint,
       };
 
-      // Warmup
-      for (let i = 0; i < 20; i++) {
+      // Warmup JIT
+      for (let i = 0; i < 50; i++) {
         compareLocations(
           {
             tenant_id: 'tenant-perf',

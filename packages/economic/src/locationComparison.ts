@@ -7,7 +7,6 @@ import {
   LocationComparisonInputSchema,
   type LocationComparisonMetricRow,
   type LocationComparisonResult,
-  LocationComparisonResultSchema,
   type LocationComparisonValue,
   type LocationSpecializationComparison,
   getNumericEstimateValue,
@@ -239,5 +238,5 @@ export function compareLocations(
     disclaimer: ECONOMIC_LEGAL_DISCLAIMER,
   };
 
-  return LocationComparisonResultSchema.parse(result);
+  return result;
 }
