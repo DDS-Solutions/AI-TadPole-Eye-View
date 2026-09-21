@@ -294,8 +294,7 @@ describe('Performance Threshold: Parsing Latency (Task 8.3)', () => {
       'osm-commercial-evidence-synthetic-v1.json',
     ];
 
-    const batchSize = 5;
-    const batchCount = 20;
+    const iterations = 1000;
 
     for (const fileName of fixtureNames) {
       const raw = loadFixtureJson(fileName);
@@ -305,28 +304,26 @@ describe('Performance Threshold: Parsing Latency (Task 8.3)', () => {
           : parseEconomicFixtureDataset;
 
       // Warm-up parse to ensure JIT compilation, schema initialization, and regex caching
-      for (let w = 0; w < 10; w++) {
+      for (let w = 0; w < 50; w++) {
         parseFn(raw);
       }
 
-      // Benchmark batched runs to eliminate OS scheduler preemption noise on multi-tenant CI runners
+      // Benchmark 1,000 iterations to accurately isolate p95 latency from OS scheduler preemption
       const latencies: number[] = [];
-      for (let b = 0; b < batchCount; b++) {
+      for (let i = 0; i < iterations; i++) {
         const start = performance.now();
-        for (let j = 0; j < batchSize; j++) {
-          parseFn(raw);
-        }
+        parseFn(raw);
         const end = performance.now();
-        latencies.push((end - start) / batchSize);
+        latencies.push(end - start);
       }
 
       latencies.sort((a, b) => a - b);
-      const p50 = latencies[Math.floor(latencies.length * 0.5)];
-      const p95Index = Math.floor(latencies.length * 0.95);
+      const p50 = latencies[Math.floor(iterations * 0.5)];
+      const p95Index = Math.floor(iterations * 0.95);
       const p95Latency = latencies[p95Index];
 
       console.log(
-        `[BENCHMARK] ${fileName} (N=${batchCount * batchSize}): p50=${p50.toFixed(3)}ms, p95=${p95Latency.toFixed(3)}ms`
+        `[BENCHMARK] ${fileName} (N=${iterations}): p50=${p50.toFixed(3)}ms, p95=${p95Latency.toFixed(3)}ms`
       );
 
       expect(
