@@ -339,4 +339,3 @@ describe('Performance Threshold: Parsing Latency (Task 8.3)', () => {
     }
   }, 15_000); // Explicit 15s timeout for CI runner contention
 });
-
