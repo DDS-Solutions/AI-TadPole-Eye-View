@@ -46,4 +46,5 @@ This directory records all significant architectural and structural decisions ma
 | [0054](./0054-content-instruction-separation-and-prompt-injection-defense.md) | Content/instruction separation and prompt-injection defense | Accepted | 2026-09-16 |
 | [0055](./0055-census-acs-variable-dictionary-and-adapter-architecture.md) | Census ACS variable dictionary, boundary contracts, and seed adapter architecture | Accepted | 2026-09-21 |
 | [0056](./0056-census-cbp-zbp-adapter-architecture.md) | Census CBP & ZBP variable dictionary, boundary contracts, disclosure suppression preservation, and seed adapter architecture | Accepted | 2026-09-21 |
+| [0057](./0057-osm-commercial-enrichment-adapter-architecture.md) | OpenStreetMap commercial enrichment adapter, boundary contracts, sanitizer integration, ODbL attribution, and seed pipeline | Accepted | 2026-09-21 |
 

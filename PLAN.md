@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-17
-**Status:** IN PROGRESS — Phase 9: task 9.3 ready for review and authorization
+**Status:** IN PROGRESS — Phase 9: task 9.4 ready for review and authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=9
-NEXT_TASK=9.3
+NEXT_TASK=9.4
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
@@ -417,7 +417,7 @@ Economic results are decision-support signals, not guarantees, appraisals, legal
 | OQ-2 | **RESOLVED by ADR 0042:** M2 signed-approval format, signer/key trust and lifecycle, durable nonce replay protection, and time profile | Task 5.1.3 |
 | OQ-3 | **RESOLVED by ADR 0043:** M3 ledger reservation, settlement, refund, idempotency, ambiguity, reconciliation, and outage policy | Task 5.1.4 |
 | OQ-4 | Production identity provider, tenant model, roles, retention, export, and deletion requirements | Phase 7 |
-| OQ-5 | Approved OSM use/output classification and attribution/share-alike obligations | Phase 9 |
+| OQ-5 | **RESOLVED by ADR 0057:** Collective Database classification under ODbL 1.0 (unaltered raw OSM geometries extracted into independent datasets); mandatory attribution "© OpenStreetMap contributors (ODbL 1.0)"; rate bounds (>= 1000ms), bounding box span limit (<= 0.5°), strict Overpass QL tag whitelisting; seed mode fixture enforcement | Task 9.3 |
 | OQ-6 | Economic provider budgets, cache freshness, permitted live environments, and kill-switch owners | Phase 8 |
 | OQ-7 | **RESOLVED by ADR 0034:** CelesTrak standard GP JSON/OMM, synthetic fixture, derived-display-only redistribution, two-hour cache/rate policy, terms-locked production, and GEV platform-administrator kill switch | Task 5.2.3 |
 
@@ -1967,20 +1967,20 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 - [x] 8.5 Add content/instruction separation and prompt-injection tests before any provider/economic text enters an LLM/Tadpole context.
 - [x] 8 exit: suppressed/unavailable/stale cases validate; provenance is required; no persistence or live calls; ADG and affected gates pass.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 9.3
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 9.4
 
 ```text
-[SCOPE_CONTRACT] packages/security, packages/providers, packages/economic. In scope: OSM commercial enrichment adapter and pipeline through the existing Overpass sanitizer, pinned-fetch, and cache path; boundary contracts for OSM POI/business features; mandatory ODbL attribution notice and extraction bounds (rate, bounding-box, tag whitelisting); content/instruction separation; seed mode enforcement with verified fixtures. Out of scope: live Overpass API calls in seed mode or without explicit authorization, unwhitelisted arbitrary Overpass QL execution, market comparison synthesis (Task 9.4).
-[PERFORMANCE_THRESHOLD] Unit and contract tests 100% green; synthetic OSM feature extraction and cache query < 10ms p95; zero live calls under GEV_SEED_MODE=1.
-[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2, §9.3; ADRs 0021, 0035, 0050, 0052, 0054; sanitized Overpass queries; mandatory DataProvenance (ODbL attribution); data/instruction separation.
-[FAILURE_MODES] Overpass queries bypassing sanitizer, missing ODbL attribution, or missing provenance fail closed immediately; unescaped OSM text in instruction contexts rejected.
+[SCOPE_CONTRACT] packages/economic, packages/contracts. In scope: deterministic market, competition, and location-comparison analysis functions, multi-source evidence bundle synthesis (ACS, CBP/ZBP, OSM POIs), explicit source-linked disagreement state when derived predictions/scores conflict with current observations, pure zero-I/O domain implementation with fast-check property tests. Out of scope: protected APIs/endpoints, MCP tool mounts, or UI components (Task 9.5), live external calls, non-deterministic heuristics.
+[PERFORMANCE_THRESHOLD] 100% unit and property tests green; synthetic multi-source market comparison analysis < 15ms p95; zero I/O operations in domain engine.
+[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2, §9.4; ADRs 0050, 0052, 0054, 0055, 0056, 0057; pure deterministic domain functions; mandatory DataProvenance and source variable linking; conflicting signals preserved via explicit DisagreementState.
+[FAILURE_MODES] Silent resolution or averaging of conflicting indicators forbidden; missing provenance or source links fails closed; zero-coercion of suppressed/unavailable data strictly enforced.
 ```
 
 ### Phase 9 — Economic R1: market and business footprint
 
 - [x] 9.1 Implement Census ACS using a versioned variable dictionary; retain estimate/MOE/geography/vintage and correct foreign-born definitions.
 - [x] 9.2 Implement CBP/ZBP with disclosure suppression preserved and annual-statistical-estimate wording.
-- [ ] 9.3 Add OSM enrichment only after OQ-5, through the sanitizer/pinned-fetch/cache path with attribution and extraction limits.
+- [x] 9.3 Add OSM enrichment only after OQ-5, through the sanitizer/pinned-fetch/cache path with attribution and extraction limits.
 - [ ] 9.4 Implement deterministic market/competition/location-comparison analysis and evidence bundles; when a derived prediction or score conflicts with current observations, preserve both signals and expose a source-linked disagreement state rather than silently selecting one.
 - [ ] 9.5 Add protected APIs, MCP tools, and the lazy market UI; MapLibre is optional and newly reviewed, never assumed installed.
 - [ ] 9 exit: same inputs/config/fixtures yield the same outputs; every claim links to source variables/records; Playwright covers evidence inspection.
@@ -4287,7 +4287,44 @@ No later task is authorized merely because it appears in this plan.
   - Active Documentation Guard: 77 doc files, 810 paths, 42 symbols, 0 errors (`pnpm docs:check`).
   - Doc tests: 17/17 tests passed (`pnpm docs:test`).
 - **Plan Advancement:** Task 9.2 complete (`[x]`). `CURRENT_PHASE=9`, `NEXT_TASK=9.3`, `NEXT_TASK_STATUS=READY`.
-- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 9.3. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 9.4. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 9.3 completion checkpoint — 2026-09-21
+
+- **Scope:** Implemented OpenStreetMap (OSM) commercial enrichment adapter, query sanitizer integration, ODbL 1.0 mandatory attribution enforcement, strict extraction bounds, content/instruction separation, and verified synthetic fixtures, formally resolving OQ-5 in accordance with PLAN.md §10 Task 9.3 and ADR 0057.
+- **OQ-5 Resolution:**
+  - Classified commercial POI feature extraction and density aggregation for SMB digital twins as a **Collective Database** under ODbL 1.0. Raw OSM geometries and node/way tags are extracted unaltered into an independent dataset.
+  - Enforced mandatory attribution notice `© OpenStreetMap contributors (ODbL 1.0)` and link to `https://www.openstreetmap.org/copyright` at the schema boundary (`OsmCommercialEnrichmentResponseSchema` and `OsmCommercialFootprintSummarySchema`).
+  - Implemented extraction limits: bounding box span <= 0.5 deg in latitude and longitude (`OSM_COMMERCIAL_MAX_BBOX_SPAN_DEG`), query timeout <= 25s, rate limit >= 1000ms between live requests, and strict tag whitelisting against 8 commercial categories (`retail`, `food_beverage`, `hospitality`, `office_professional`, `personal_care`, `healthcare`, `automotive`, `leisure_entertainment`). Arbitrary Overpass QL is strictly rejected by `assertOsmCommercialQueryWhitelisted`.
+- **Artifacts produced & updated:**
+  - `packages/contracts/src/osmCommercial.ts`: Zod schemas for ODbL attribution constants, extraction limits, category enums, bounding boxes, query contracts, raw elements, POI features, footprint summaries, and enrichment responses with fail-closed schema refinement.
+  - `packages/contracts/src/index.ts`: Exported `osmCommercial.js`.
+  - `packages/contracts/test/osmCommercialContracts.test.ts`: Contract validation tests (7/7 tests passed).
+  - `packages/security/src/osmCommercialSanitizer.ts`: Security validator enforcing bounding-box bounds, assembling targeted tag-filtered Overpass QL queries through `sanitizeOverpassQuery`, and enforcing query whitelists.
+  - `packages/security/src/index.ts`: Exported `osmCommercialSanitizer.js`.
+  - `packages/security/test/osmCommercialSanitizer.test.ts`: Security tests verifying bounding-box rejection, QL construction, injection defense, and arbitrary query rejection (5/5 tests passed).
+  - `packages/economic/src/osmCommercialCategorizer.ts`: Pure domain categorizer mapping raw OSM tags to commercial categories, extracting features, calculating footprint summaries and spatial densities, generating `EconomicEvidenceRecord` entries, and sandboxing untrusted OSM text (`sanitizeOsmFeatureForPromptContext`, `assertOsmTextSafeForInstruction`) per ADR 0054. Zero I/O verified.
+  - `packages/economic/src/index.ts`: Exported `osmCommercialCategorizer.js`.
+  - `packages/economic/test/osmCommercialCategorizer.test.ts`: Unit and property tests covering tag categorization, density calculations, prompt-injection defense, and evidence generation (8/8 tests passed).
+  - `packages/providers/src/osmCommercial.ts`: `OsmCommercialAdapter` with default seed mode (`fixtures/osm-commercial-synthetic-v1.json`), in-memory spatial/category filtering, query response caching, SimClock time injection, kill-switch (`GEV_OSM_COMMERCIAL_ENABLED`), and pinned-fetch path for authorized live calls.
+  - `packages/providers/src/index.ts`: Exported `osmCommercial.js`.
+  - `packages/providers/test/osmCommercial.test.ts`: Provider tests and latency benchmark across Austin, TX downtown and South Congress commercial corridors (11/11 tests passed).
+  - `fixtures/osm-commercial-synthetic-v1.json`: Synthetic seed fixture covering 14 commercial POIs across all 8 commercial categories with full ODbL provenance.
+  - `docs/adr/0057-osm-commercial-enrichment-adapter-architecture.md`: Accepted ADR documenting OQ-5 resolution, collective database classification, sanitizer pipeline, and extraction bounds.
+  - `docs/adr/INDEX.md`: Registered ADR 0057.
+  - `RUNBOOK.md`: Added Section 14 covering OSM Commercial Enrichment Adapter operations, ODbL attribution verification, extraction limits, and troubleshooting.
+- **Performance Thresholds:**
+  - Feature extraction and cache query latency: p50=0.014ms, p95=0.031ms across 100 iterations (far below the < 10ms threshold).
+  - Monorepo tests: 100% green across all packages (contracts 141/141, security 39/39, economic 101/101, providers 92/92, ops-mcp 64/64, server 276/276).
+- **Monorepo Quality Gates:**
+  - Typecheck: 19/19 successful across all 12 packages (`pnpm turbo run typecheck`).
+  - Lint: 0 errors across 374 files (`pnpm lint`).
+  - Active Documentation Guard: 78 doc files, 851 paths, 42 symbols, 0 errors (`pnpm docs:check`).
+  - Doc tests: 17/17 tests passed (`pnpm docs:test`).
+  - Architecture check: 0 errors, 0 files > 500 lines without ADR (`pnpm architecture:check`).
+  - Bundle budgets: Total JS Gzip 1242.74 KB <= 3600 KB ceiling (`pnpm check:budgets`).
+- **Plan Advancement:** Task 9.3 complete (`[x]`). `CURRENT_PHASE=9`, `NEXT_TASK=9.4`, `NEXT_TASK_STATUS=READY`.
+- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 9.4. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
 
