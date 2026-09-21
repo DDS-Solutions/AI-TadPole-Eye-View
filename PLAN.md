@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-17
-**Status:** IN PROGRESS — Phase 9: task 9.1 ready for review and authorization
+**Status:** IN PROGRESS — Phase 9: task 9.2 ready for review and authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,11 +20,11 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=9
-NEXT_TASK=9.1
+NEXT_TASK=9.2
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
-LAST_VERIFIED_UTC=2026-09-17
+LAST_VERIFIED_UTC=2026-09-21
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
 IMPLEMENTATION_STARTED=YES
 ```
@@ -1967,18 +1967,18 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 - [x] 8.5 Add content/instruction separation and prompt-injection tests before any provider/economic text enters an LLM/Tadpole context.
 - [x] 8 exit: suppressed/unavailable/stale cases validate; provenance is required; no persistence or live calls; ADG and affected gates pass.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 9.1
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 9.2
 
 ```text
-[SCOPE_CONTRACT] packages/contracts, packages/providers, packages/economic. In scope: Census ACS adapter and variable dictionary mapping across ACS 5-year estimates (county, tract, zcta, place), preserving estimate/MOE/geography/vintage and correct foreign-born statistical definitions (B05002); pure validation and caching; seed mode enforcement. Out of scope: live Census API requests without explicit developer authorization, CBP/ZBP implementation (Task 9.2).
-[PERFORMANCE_THRESHOLD] ACS contract and adapter unit tests pass 100% green; synthetic/seed ACS dataset parse and query < 10ms p95; zero live calls under GEV_SEED_MODE=1.
-[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2, §9.1; ADRs 0035, 0050, 0052; pure domain engine; contract boundary validation; mandatory DataProvenance; zero numeric zero-coercion.
-[FAILURE_MODES] Missing or malformed FIPS codes, invalid MOEs, unvalidated vintages, or missing provenance fail closed immediately; network calls in seed mode abort execution.
+[SCOPE_CONTRACT] packages/contracts, packages/providers, packages/economic. In scope: County Business Patterns (CBP) and ZIP Code Business Patterns (ZBP) adapter and contract mapping across NAICS industry classifications, preserving statutory disclosure avoidance suppression (with noise bounds/flags), establishment counts, annual payroll, and first-quarter payroll; strict annual-statistical-estimate wording; seed mode enforcement. Out of scope: live Census CBP API calls without authorization, OSM enrichment (Task 9.3).
+[PERFORMANCE_THRESHOLD] CBP/ZBP contract and adapter unit tests pass 100% green; synthetic/seed CBP/ZBP dataset query < 10ms p95; zero live calls under GEV_SEED_MODE=1.
+[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2, §9.2; ADRs 0035, 0050, 0052; pure domain engine; contract boundary validation; mandatory DataProvenance; zero numeric zero-coercion.
+[FAILURE_MODES] Missing or malformed FIPS/NAICS codes, unpreserved disclosure avoidance suppression, or missing provenance fail closed immediately; network calls in seed mode abort execution.
 ```
 
 ### Phase 9 — Economic R1: market and business footprint
 
-- [ ] 9.1 Implement Census ACS using a versioned variable dictionary; retain estimate/MOE/geography/vintage and correct foreign-born definitions.
+- [x] 9.1 Implement Census ACS using a versioned variable dictionary; retain estimate/MOE/geography/vintage and correct foreign-born definitions.
 - [ ] 9.2 Implement CBP/ZBP with disclosure suppression preserved and annual-statistical-estimate wording.
 - [ ] 9.3 Add OSM enrichment only after OQ-5, through the sanitizer/pinned-fetch/cache path with attribution and extraction limits.
 - [ ] 9.4 Implement deterministic market/competition/location-comparison analysis and evidence bundles; when a derived prediction or score conflicts with current observations, preserve both signals and expose a source-linked disagreement state rather than silently selecting one.
@@ -4227,6 +4227,37 @@ No later task is authorized merely because it appears in this plan.
   - Provider registry check (`pnpm docs:providers:check`): PASSED.
 - **Plan Advancement:** Task 8 exit complete (`[x]`). `CURRENT_PHASE=9`, `NEXT_TASK=9.1`, `NEXT_TASK_STATUS=READY`.
 - **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 9.1. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 9.1 completion checkpoint — 2026-09-21
+
+- **Scope:** Implemented Census ACS contracts, pure domain variable dictionary, seed fixture adapter, and tests adhering to PLAN.md §10 Task 9.1 and ADR 0055.
+- **Artifacts produced & updated:**
+  - `packages/contracts/src/censusAcs.ts`: Zod contracts for Census ACS variable ID, table ID, vintage, variable definition, versioned dictionary, query contract, and Census special annotation codes.
+  - `packages/contracts/src/index.ts`: Exported `censusAcs.js`.
+  - `packages/contracts/test/censusAcsContracts.test.ts`: Contract validation tests (7/7 tests passed).
+  - `packages/economic/src/censusAcsDictionary.ts`: Pure domain `CENSUS_ACS_VARIABLE_DICTIONARY_V1` with 10 core benchmark variables, geographic validation (enforcing exact FIPS lengths and state/county matching), and `parseAcsRawEstimate` converting Census Bureau negative suppression codes (`-666666666` -> `small_sample`, `-888888888` -> `unavailable`, `-999999999` -> `data_quality`, `-555555555` -> null MOE) without numeric zero-coercion.
+  - `packages/economic/src/index.ts`: Exported `censusAcsDictionary.js`.
+  - `packages/economic/test/censusAcsDictionary.test.ts`: Pure domain tests and fast-check property tests (13/13 tests passed). Zero I/O verified via `architecturalBoundary.test.ts`.
+  - `packages/providers/src/censusAcs.ts`: `CensusAcsAdapter` implementing seed mode ingestion, in-memory indexing by geography key, fail-closed validation, and strict seed mode enforcement.
+  - `packages/providers/src/index.ts`: Exported `censusAcs.js`.
+  - `packages/providers/test/censusAcs.test.ts`: Unit tests and performance benchmark across county, tract, ZCTA, and place geographies (11/11 tests passed).
+  - `packages/providers/package.json`: Added `@gev/economic: workspace:*`.
+  - `fixtures/census-acs-synthetic-v1.json`: Extended with explicit records for ZCTA (`78701`) and Place (`4805000` Austin city, TX) with 90% confidence MOE, seed provenance, and statutory B05002 definition notes.
+  - `docs/adr/0055-census-acs-variable-dictionary-and-adapter-architecture.md`: Accepted ADR documenting the Census ACS architecture.
+  - `docs/adr/INDEX.md`: Registered ADR 0055.
+  - `RUNBOOK.md`: Added operational section for Census ACS adapter, variable dictionary, seed mode, and kill switch.
+- **Foreign-Born Statistical Definition Verification:**
+  - Table `B05002` / `B05002_003E` (`foreign-born-population`) explicitly incorporates both naturalized U.S. citizens and non-citizens per statutory Census definitions; definitions omitting either are rejected by schema and adapter boundary validation.
+- **Performance Thresholds:**
+  - In-memory indexed query latency: p50=0.019ms, p95=0.059ms across 100 iterations (far below the < 10ms p95 budget).
+  - Monorepo tests: 100% green across all packages (contracts 127/127, economic 84/84, providers 71/71, ops-mcp 64/64, server 276/276, security 34/34).
+- **Monorepo Quality Gates:**
+  - Typecheck: 19/19 successful across all 12 packages (`pnpm turbo run typecheck`).
+  - Lint: 0 errors across 360 files (`pnpm lint`).
+  - Active Documentation Guard: 76 doc files, 774 paths, 42 symbols, 0 errors (`pnpm docs:check`).
+  - Doc tests: 17/17 tests passed (`pnpm docs:test`).
+- **Plan Advancement:** Task 9.1 complete (`[x]`). `CURRENT_PHASE=9`, `NEXT_TASK=9.2`, `NEXT_TASK_STATUS=READY`.
+- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 9.2. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
 

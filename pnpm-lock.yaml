@@ -332,6 +332,9 @@ importers:
       '@gev/core':
         specifier: workspace:*
         version: link:../core
+      '@gev/economic':
+        specifier: workspace:*
+        version: link:../economic
       '@gev/security':
         specifier: workspace:*
         version: link:../security
