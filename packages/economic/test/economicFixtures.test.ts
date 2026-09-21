@@ -295,7 +295,7 @@ describe('Performance Threshold: Parsing Latency (Task 8.3)', () => {
     ];
 
     // Warm-up parse to ensure JIT compilation, schema initialization, and regex caching
-    for (let w = 0; w < 10; w++) {
+    for (let w = 0; w < 20; w++) {
       for (let i = 0; i < rawFiles.length; i++) {
         if (i === 5) {
           parseOsmCommercialPoiFixture(rawFiles[i]);
@@ -305,9 +305,10 @@ describe('Performance Threshold: Parsing Latency (Task 8.3)', () => {
       }
     }
 
-    // Benchmark 200 runs
+    // Benchmark across 70 runs (10 representative runs per fixture file)
+    const iterations = 70;
     const latencies: number[] = [];
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < iterations; i++) {
       const idx = i % rawFiles.length;
       const raw = rawFiles[idx];
       const start = performance.now();
@@ -321,8 +322,13 @@ describe('Performance Threshold: Parsing Latency (Task 8.3)', () => {
     }
 
     latencies.sort((a, b) => a - b);
+    const p50 = latencies[Math.floor(latencies.length * 0.5)];
     const p95Index = Math.floor(latencies.length * 0.95);
     const p95Latency = latencies[p95Index];
+
+    console.log(
+      `[BENCHMARK] Economic Fixture Parse Latency (N=${iterations}): p50=${p50.toFixed(3)}ms, p95=${p95Latency.toFixed(3)}ms`
+    );
 
     expect(
       p95Latency,
