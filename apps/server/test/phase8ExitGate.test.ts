@@ -429,19 +429,10 @@ describe('Phase 8 Exit Gate Certification (PLAN.md §0 NEXT_TASK 8_EXIT)', () =>
       clock,
     });
 
-    // Warm-up iterations to ensure V8 JIT compilation and regex caching
-    for (let w = 0; w < 30; w++) {
+    // JIT warm-up to ensure V8 JIT compilation and regex caching
+    for (let w = 0; w < 50; w++) {
       buildPromptContextFromBusinessPreview({
-        contextId: `ctx-perf-warmup-${w}`,
-        tenantId: 'tenant-a',
-        preview,
-      });
-    }
-
-    // JIT warm-up
-    for (let i = 0; i < 50; i++) {
-      buildPromptContextFromBusinessPreview({
-        contextId: `ctx-warmup-${i}`,
+        contextId: `ctx-warmup-${w}`,
         tenantId: 'tenant-a',
         preview,
       });
@@ -464,6 +455,9 @@ describe('Phase 8 Exit Gate Certification (PLAN.md §0 NEXT_TASK 8_EXIT)', () =>
     }
     promptDurations.sort((a, b) => a - b);
     const promptP95 = promptDurations[Math.floor(promptBatchCount * 0.95)]!;
+    console.log(
+      `[BENCHMARK] Phase 8 Prompt Context Assembly (${promptBatchSize * promptBatchCount} iterations): p95=${promptP95.toFixed(3)}ms`
+    );
     expect(promptP95).toBeLessThan(5.0);
 
     const reqBody = JSON.stringify(validPayload);

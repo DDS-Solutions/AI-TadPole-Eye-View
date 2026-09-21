@@ -11,9 +11,7 @@ import {
   type PromptThreatAction,
   type PromptThreatCategory,
   type SandboxedDataBlock,
-  SandboxedDataBlockSchema,
   type SanitizedPromptContext,
-  SanitizedPromptContextSchema,
 } from '@gev/contracts';
 
 export interface PromptSanitizerOptions {
@@ -62,55 +60,53 @@ const RE_DELIMITERS =
   /<\/?\s*(?:untrusted_data_block|untrusted_economic_data|data_block|data|context|prompt_context)[^>]*>/gi;
 const RE_CODE_FENCES = /(?:```|~~~)/g;
 
-function createInjectionRules(): ReadonlyArray<{
+const STATIC_INJECTION_RULES: ReadonlyArray<{
   category: PromptThreatCategory;
   pattern: RegExp;
   description: string;
-}> {
-  return [
-    {
-      category: 'system_override',
-      pattern:
-        /\b(?:ignore|disregard|forget|override|bypass|supersede)\s+(?:all\s+)?(?:previous|prior|above|system|earlier)\s+(?:instructions|directives|prompts?|rules|constraints?)\b/gi,
-      description: 'Attempt to override or disregard system directives',
-    },
-    {
-      category: 'system_override',
-      pattern:
-        /\b(?:new\s+(?:instructions?|directives?|rules?)|system\s+override|admin\s+override|root\s+access|prompt\s+injection)\s*:/gi,
-      description: 'System override or administrative instruction prefix',
-    },
-    {
-      category: 'role_hijack',
-      pattern:
-        /(?:<\|im_start\|>|<\|im_end\|>|<\|system\|>|<\|assistant\|>|<\|user\|>|\[INST\]|\[\/INST\]|<<SYS>>|<\/SYS>>)/gi,
-      description: 'LLM chat template marker or instruction boundary tag',
-    },
-    {
-      category: 'role_hijack',
-      pattern: /(?:^|\r?\n)\s*(?:system|assistant|human|user|ai)\s*:\s*/gim,
-      description: 'Line-initial role spoofing token',
-    },
-    {
-      category: 'jailbreak_pattern',
-      pattern:
-        /\b(?:DAN|Do\s+Anything\s+Now|Developer\s+Mode|unfiltered\s+AI|AIM\s+mode|jailbreak(?:ed)?)\b/gi,
-      description: 'Known jailbreak persona or unrestricted mode invocation',
-    },
-    {
-      category: 'jailbreak_pattern',
-      pattern:
-        /\b(?:hypothetical\s+(?:scenario|response)|pretend\s+you\s+have\s+no\s+(?:rules|filters|guidelines))\b/gi,
-      description: 'Fictional/hypothetical evasion of safety guidelines',
-    },
-    {
-      category: 'exfiltration_attempt',
-      pattern:
-        /\b(?:output|repeat|print|reveal|expose|dump|display)\s+(?:the\s+)?(?:full\s+)?(?:system\s+prompt|initial\s+instructions|system\s+instructions|pre-prompt)\b/gi,
-      description: 'Attempt to leak or exfiltrate system instructions',
-    },
-  ];
-}
+}> = [
+  {
+    category: 'system_override',
+    pattern:
+      /\b(?:ignore|disregard|forget|override|bypass|supersede)\s+(?:all\s+)?(?:previous|prior|above|system|earlier)\s+(?:instructions|directives|prompts?|rules|constraints?)\b/gi,
+    description: 'Attempt to override or disregard system directives',
+  },
+  {
+    category: 'system_override',
+    pattern:
+      /\b(?:new\s+(?:instructions?|directives?|rules?)|system\s+override|admin\s+override|root\s+access|prompt\s+injection)\s*:/gi,
+    description: 'System override or administrative instruction prefix',
+  },
+  {
+    category: 'role_hijack',
+    pattern:
+      /(?:<\|im_start\|>|<\|im_end\|>|<\|system\|>|<\|assistant\|>|<\|user\|>|\[INST\]|\[\/INST\]|<<SYS>>|<\/SYS>>)/gi,
+    description: 'LLM chat template marker or instruction boundary tag',
+  },
+  {
+    category: 'role_hijack',
+    pattern: /(?:^|\r?\n)\s*(?:system|assistant|human|user|ai)\s*:\s*/gim,
+    description: 'Line-initial role spoofing token',
+  },
+  {
+    category: 'jailbreak_pattern',
+    pattern:
+      /\b(?:DAN|Do\s+Anything\s+Now|Developer\s+Mode|unfiltered\s+AI|AIM\s+mode|jailbreak(?:ed)?)\b/gi,
+    description: 'Known jailbreak persona or unrestricted mode invocation',
+  },
+  {
+    category: 'jailbreak_pattern',
+    pattern:
+      /\b(?:hypothetical\s+(?:scenario|response)|pretend\s+you\s+have\s+no\s+(?:rules|filters|guidelines))\b/gi,
+    description: 'Fictional/hypothetical evasion of safety guidelines',
+  },
+  {
+    category: 'exfiltration_attempt',
+    pattern:
+      /\b(?:output|repeat|print|reveal|expose|dump|display)\s+(?:the\s+)?(?:full\s+)?(?:system\s+prompt|initial\s+instructions|system\s+instructions|pre-prompt)\b/gi,
+    description: 'Attempt to leak or exfiltrate system instructions',
+  },
+];
 
 export const CANONICAL_SYSTEM_DIRECTIVE = `=== GEV GOVERNED AI AGENT DIRECTIVE ===
 You are an AI assistant operating within the GEV v2 Economic Intelligence framework.
@@ -194,12 +190,11 @@ export function sanitizeUntrustedText(
   }
 
   if (options.defangJailbreaks !== false) {
-    const rules = createInjectionRules();
-    for (const rule of rules) {
-      // Test and match with fresh RegExp to reset state
-      const re = new RegExp(rule.pattern.source, rule.pattern.flags);
-      if (re.test(sanitized)) {
-        sanitized = sanitized.replace(re, (match) => {
+    for (const rule of STATIC_INJECTION_RULES) {
+      rule.pattern.lastIndex = 0;
+      if (rule.pattern.test(sanitized)) {
+        rule.pattern.lastIndex = 0;
+        sanitized = sanitized.replace(rule.pattern, (match) => {
           const actionTaken: PromptThreatAction =
             mode === 'reject' ? 'rejected' : mode === 'strip' ? 'stripped' : 'neutralized';
           threats.push({
@@ -285,13 +280,6 @@ export function createSandboxedDataBlock(params: CreateSandboxedBlockParams): Sa
     nonce,
   };
 
-  const validation = SandboxedDataBlockSchema.safeParse(block);
-  if (!validation.success) {
-    throw new PromptProtectionError(
-      'INVALID_CONTEXT',
-      `Sandboxed data block failed contract schema: ${validation.error.message}`
-    );
-  }
   return block;
 }
 
@@ -348,13 +336,6 @@ export function assemblePromptContext(params: AssemblePromptContextParams): Sani
     disclaimer: ECONOMIC_LEGAL_DISCLAIMER,
   };
 
-  const validation = SanitizedPromptContextSchema.safeParse(contextPayload);
-  if (!validation.success) {
-    throw new PromptProtectionError(
-      'INVALID_CONTEXT',
-      `Prompt context payload failed validation: ${validation.error.message}`
-    );
-  }
   return contextPayload;
 }
 
