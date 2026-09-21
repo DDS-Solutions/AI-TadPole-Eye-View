@@ -27,10 +27,10 @@ afterEach(() => {
 });
 
 describe('operator consumer parity through the shared executor', () => {
-  it('registers exactly the eight stdio capabilities on the context-owned executor', () => {
+  it('registers exactly the eleven stdio capabilities on the context-owned executor', () => {
     const context = createContext();
 
-    expect(MCP_OPERATOR_TOOL_NAMES).toHaveLength(8);
+    expect(MCP_OPERATOR_TOOL_NAMES).toHaveLength(11);
     for (const name of MCP_OPERATOR_TOOL_NAMES) {
       expect(context.toolExecutor.hasHandler(name)).toBe(true);
     }

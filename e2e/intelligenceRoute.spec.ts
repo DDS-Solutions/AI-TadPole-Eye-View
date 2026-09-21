@@ -43,12 +43,16 @@ test.describe('Lazy /#/intelligence route, Cesium isolation, and navigation roun
     const webglMetric = page.locator('#webgl-context-metric');
     await expect(webglMetric).toHaveText('0 ACTIVE');
 
-    // 5. Verify the 4 roadmap cards and PLANNED states (DESIGN.md §5.1)
+    // 5. Verify the 4 roadmap cards (DESIGN.md §5.1)
     for (const phaseId of ['phase-8', 'phase-9', 'phase-10', 'phase-11']) {
       const card = page.locator(`#card-${phaseId}`);
       await expect(card).toBeVisible();
       const statusBadge = card.locator('.status-badge');
-      await expect(statusBadge).toHaveText('PLANNED');
+      if (phaseId === 'phase-9') {
+        await expect(statusBadge).toHaveText('INSPECTION READY');
+      } else {
+        await expect(statusBadge).toHaveText('PLANNED');
+      }
     }
 
     // 6. Assert Cesium was never initialized (window.__gev is undefined)

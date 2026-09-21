@@ -269,6 +269,38 @@ See [ADR 0052](./docs/adr/0052-economic-analysis-package-path-and-architecture.m
 
 See [ADR 0055](./docs/adr/0055-census-acs-variable-dictionary-and-adapter-architecture.md).
 
+### Census CBP & ZBP adapter (Task 9.2)
+
+- The Census CBP/ZBP adapter (`CensusCbpZbpAdapter` in `@gev/providers`) provides deterministic county and ZIP-code establishment, employment, and payroll records.
+- Enforces strict preservation of Census Bureau disclosure noise flags (`f_estabs`, `f_emp`, `f_ap`) without zero-coercion.
+- Seed mode is default (`GEV_SEED_MODE=1`); kill-switch is `GEV_CENSUS_CBP_ENABLED=0`.
+
+See [ADR 0056](./docs/adr/0056-census-cbp-zbp-adapter-architecture.md).
+
+### OpenStreetMap commercial enrichment adapter (Task 9.3)
+
+- The OSM commercial adapter (`OsmCommercialAdapter` in `@gev/providers`) provides POI and commercial footprint summaries.
+- Validates all Overpass queries through `OverpassSanitizer` in `@gev/security`.
+- Enforces mandatory ODbL 1.0 attribution (`© OpenStreetMap contributors (ODbL 1.0)`) across all outputs.
+- Seed mode is default (`GEV_SEED_MODE=1`); kill-switch is `GEV_OSM_COMMERCIAL_ENABLED=0`.
+
+See [ADR 0057](./docs/adr/0057-osm-commercial-enrichment-adapter-architecture.md).
+
+### Deterministic market, competition, and location analysis (Task 9.4)
+
+- Pure zero-I/O domain functions in `@gev/economic`: `analyzeMarketContext`, `analyzeCompetition`, `compareLocations`.
+- Synthesizes multi-source evidence bundles with mandatory `DataProvenance`.
+- Conflicting signals (e.g. predictions vs. observations, or CBP establishments vs. OSM POIs) are explicitly preserved in `DisagreementState` (`UNRESOLVED_PRESERVED`) and never silently averaged.
+
+See [ADR 0058](./docs/adr/0058-deterministic-market-competition-and-location-comparison-analysis.md).
+
+### Protected market analysis APIs, MCP tools, and lazy UI (Task 9.5)
+
+- REST endpoints (`/api/economic/market-analysis`, `/api/economic/competition-analysis`, `/api/economic/location-comparison`) are protected by shared governance (`OpsAuthAdapter`, per-tenant rate limits, kill-switch, STASIS).
+- Governed MCP operator tools (`analyze_market_context`, `analyze_competition`, `compare_locations`) expose read-only analysis scoped to `read.telemetry`.
+- Client inspection UI (`MarketAnalysisInspector.svelte`) is lazy-loaded at `/#/intelligence` and maintains strict non-coercion formatting for suppressed/unavailable indicators.
+
+See [ADR 0059](./docs/adr/0059-protected-market-analysis-apis-mcp-tools-and-lazy-ui.md).
 
 ---
 

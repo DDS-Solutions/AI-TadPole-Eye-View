@@ -3,6 +3,7 @@
   import { runtimeClock } from '../../runtimeClock.js';
   import EconomicModuleCard from './EconomicModuleCard.svelte';
   import { economicModules } from './economicModulesData.js';
+  import MarketAnalysisInspector from './MarketAnalysisInspector.svelte';
 
   let currentTime = $state(new Date(runtimeClock.now()).toUTCString());
   let timer: ReturnType<typeof setInterval> | null = null;
@@ -88,6 +89,11 @@
           <span class="metric-value mono" id="provider-mode-metric">SEED FIXTURES</span>
         </div>
       </div>
+    </section>
+
+    <!-- Phase 9 Market & Business Footprint Inspector -->
+    <section class="inspector-section" aria-label="Market and Business Footprint Inspector">
+      <MarketAnalysisInspector />
     </section>
 
     <!-- Economic Domain Modules Section -->

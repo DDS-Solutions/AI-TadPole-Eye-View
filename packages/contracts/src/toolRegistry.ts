@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { type CapabilityScope, CostEstimate } from './ports.js';
 import {
+  AnalyzeCompetitionInputSchema,
+  AnalyzeCompetitionOutputSchema,
+  AnalyzeMarketContextInputSchema,
+  AnalyzeMarketContextOutputSchema,
+  CompareLocationsInputSchema,
+  CompareLocationsOutputSchema,
   FlyToLocationInputSchema,
   FlyToLocationOutputSchema,
   GetBudgetInputSchema,
@@ -211,6 +217,39 @@ export const OPERATOR_TOOLS = {
     inputSchema: PreviewBusinessContextInputSchema,
     outputSchema: PreviewBusinessContextOutputSchema,
   },
+  analyze_market_context: {
+    ...NONBILLABLE_READ_POLICY,
+    name: 'analyze_market_context',
+    description:
+      'Run deterministic market context analysis with demographic and commercial footprint summaries and source-linked disagreement detection',
+    is_mutating: false,
+    is_dangerous: false,
+    is_cacheable: false,
+    inputSchema: AnalyzeMarketContextInputSchema,
+    outputSchema: AnalyzeMarketContextOutputSchema,
+  },
+  analyze_competition: {
+    ...NONBILLABLE_READ_POLICY,
+    name: 'analyze_competition',
+    description:
+      'Run deterministic competition analysis with Herfindahl-Hirschman Index (HHI) concentration, competitor density, and POI divergence detection',
+    is_mutating: false,
+    is_dangerous: false,
+    is_cacheable: false,
+    inputSchema: AnalyzeCompetitionInputSchema,
+    outputSchema: AnalyzeCompetitionOutputSchema,
+  },
+  compare_locations: {
+    ...NONBILLABLE_READ_POLICY,
+    name: 'compare_locations',
+    description:
+      'Run deterministic multi-location comparison analysis with benchmarking, ranking, and Location Quotients (LQ)',
+    is_mutating: false,
+    is_dangerous: false,
+    is_cacheable: false,
+    inputSchema: CompareLocationsInputSchema,
+    outputSchema: CompareLocationsOutputSchema,
+  },
 } as const satisfies Record<string, OperatorToolDefinition<string, z.ZodTypeAny, z.ZodTypeAny>>;
 
 export type OperatorToolName = keyof typeof OPERATOR_TOOLS;
@@ -231,6 +270,9 @@ export const OPERATOR_TOOL_REQUIRED_SCOPES = {
   query_aoi: ['read.telemetry'],
   set_sim_time: ['operate.cesium'],
   preview_business_context: ['read.telemetry'],
+  analyze_market_context: ['read.telemetry'],
+  analyze_competition: ['read.telemetry'],
+  compare_locations: ['read.telemetry'],
 } as const satisfies Record<OperatorToolName, readonly CapabilityScope[]>;
 
 const OPERATOR_TOOL_NAME_SET: ReadonlySet<string> = new Set(Object.keys(OPERATOR_TOOLS));

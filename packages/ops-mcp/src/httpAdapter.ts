@@ -188,12 +188,21 @@ function getCachedFromJsonSchema(schema: Record<string, unknown>) {
   return cached;
 }
 
+function warmSchemaCache() {
+  const definitions = getMcpHttpToolDefinitions(MCP_OPERATOR_TOOL_NAMES);
+  for (const def of definitions) {
+    getCachedFromJsonSchema(def.inputSchema);
+    getCachedFromJsonSchema(def.outputSchema);
+  }
+}
+
 /**
  * Builds the isolated modern HTTP face. The official SDK owns protocol parsing,
  * modern-era validation, JSON/SSE response mechanics, and request cancellation.
  * Domain execution remains exclusively in the shared governed executor.
  */
 export function createGevMcpHttpHandler(options: GevMcpHttpHandlerOptions): GevMcpHttpHandler {
+  warmSchemaCache();
   const executionObservers = new WeakMap<Request, McpHttpExecutionObserver>();
   const handler = createMcpHandler(
     (requestContext) => {

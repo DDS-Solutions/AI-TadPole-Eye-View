@@ -85,6 +85,21 @@ export const MCP_TOOL_PRESENTATION_POLICY = {
     idempotentHint: true,
     openWorldHint: false,
   },
+  analyze_market_context: {
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
+  analyze_competition: {
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
+  compare_locations: {
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
 } as const satisfies Record<OperatorToolName, ExplicitMcpToolSemantics>;
 
 export interface McpHttpToolDefinition {
