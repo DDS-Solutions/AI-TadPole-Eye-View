@@ -5,6 +5,8 @@ import {
   AnalyzeCompetitionOutputSchema,
   AnalyzeMarketContextInputSchema,
   AnalyzeMarketContextOutputSchema,
+  AnalyzeWorkforceContextInputSchema,
+  AnalyzeWorkforceContextOutputSchema,
   CompareLocationsInputSchema,
   CompareLocationsOutputSchema,
   FlyToLocationInputSchema,
@@ -250,6 +252,17 @@ export const OPERATOR_TOOLS = {
     inputSchema: CompareLocationsInputSchema,
     outputSchema: CompareLocationsOutputSchema,
   },
+  analyze_workforce_context: {
+    ...NONBILLABLE_READ_POLICY,
+    name: 'analyze_workforce_context',
+    description:
+      'Run deterministic workforce analysis with labor-market concentration, wage differentials, occupational specialization (LQ), and unemployment dynamics',
+    is_mutating: false,
+    is_dangerous: false,
+    is_cacheable: false,
+    inputSchema: AnalyzeWorkforceContextInputSchema,
+    outputSchema: AnalyzeWorkforceContextOutputSchema,
+  },
 } as const satisfies Record<string, OperatorToolDefinition<string, z.ZodTypeAny, z.ZodTypeAny>>;
 
 export type OperatorToolName = keyof typeof OPERATOR_TOOLS;
@@ -273,6 +286,7 @@ export const OPERATOR_TOOL_REQUIRED_SCOPES = {
   analyze_market_context: ['read.telemetry'],
   analyze_competition: ['read.telemetry'],
   compare_locations: ['read.telemetry'],
+  analyze_workforce_context: ['read.telemetry'],
 } as const satisfies Record<OperatorToolName, readonly CapabilityScope[]>;
 
 const OPERATOR_TOOL_NAME_SET: ReadonlySet<string> = new Set(Object.keys(OPERATOR_TOOLS));

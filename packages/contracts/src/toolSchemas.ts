@@ -20,6 +20,12 @@ import {
   MarketAnalysisResultSchema,
   type MarketAnalysisResult,
 } from './marketAnalysis.js';
+import {
+  WorkforceAnalysisInputSchema,
+  type WorkforceAnalysisInput,
+  WorkforceAnalysisResultSchema,
+  type WorkforceAnalysisResult,
+} from './workforceAnalysis.js';
 import { AuditEntrySchema } from './ports.js';
 import {
   ProviderHealthSchema,
@@ -269,6 +275,11 @@ export type CompareLocationsInput = LocationComparisonInput;
 export const CompareLocationsOutputSchema = LocationComparisonResultSchema;
 export type CompareLocationsOutput = LocationComparisonResult;
 
+export const AnalyzeWorkforceContextInputSchema = WorkforceAnalysisInputSchema;
+export type AnalyzeWorkforceContextInput = WorkforceAnalysisInput;
+export const AnalyzeWorkforceContextOutputSchema = WorkforceAnalysisResultSchema;
+export type AnalyzeWorkforceContextOutput = WorkforceAnalysisResult;
+
 export {
   BusinessContextInputSchema,
   type BusinessContextInput,
@@ -286,4 +297,8 @@ export {
   type LocationComparisonInput,
   LocationComparisonResultSchema,
   type LocationComparisonResult,
+  WorkforceAnalysisInputSchema,
+  type WorkforceAnalysisInput,
+  WorkforceAnalysisResultSchema,
+  type WorkforceAnalysisResult,
 };

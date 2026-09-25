@@ -15,3 +15,4 @@ export * from './marketAnalysis.js';
 export * from './competitionAnalysis.js';
 export * from './blsOewsDictionary.js';
 export * from './blsLauDictionary.js';
+export * from './workforceAnalysis.js';

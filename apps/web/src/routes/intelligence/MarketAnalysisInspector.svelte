@@ -3,13 +3,15 @@
   import type {
     AnalyzeCompetitionOutput,
     AnalyzeMarketContextOutput,
+    AnalyzeWorkforceContextOutput,
     CompareLocationsOutput,
     EconomicGeography,
   } from '@gev/contracts';
   import MarketContextTab from './MarketContextTab.svelte';
   import LocationComparisonTab from './LocationComparisonTab.svelte';
+  import WorkforceTab from './WorkforceTab.svelte';
 
-  type TabId = 'market' | 'competition' | 'comparison';
+  type TabId = 'market' | 'competition' | 'comparison' | 'workforce';
 
   const GEOGRAPHY_PRESETS: Array<{ id: string; label: string; geo: EconomicGeography }> = [
     {
@@ -35,8 +37,16 @@
     { code: '44-45', title: 'Retail Trade' },
   ];
 
+  const SOC_PRESETS = [
+    { code: '15-1252', title: 'Software Developers' },
+    { code: '29-1141', title: 'Registered Nurses' },
+    { code: '35-2014', title: 'Cooks, Restaurant' },
+    { code: '00-0000', title: 'All Occupations' },
+  ];
+
   let selectedGeoId = $state('travis-county');
   let selectedNaicsCode = $state('722511');
+  let selectedSocCode = $state('15-1252');
   let activeTab = $state<TabId>('market');
 
   let loading = $state(false);
@@ -45,12 +55,16 @@
   let marketResult = $state<AnalyzeMarketContextOutput | null>(null);
   let competitionResult = $state<AnalyzeCompetitionOutput | null>(null);
   let comparisonResult = $state<CompareLocationsOutput | null>(null);
+  let workforceResult = $state<AnalyzeWorkforceContextOutput | null>(null);
 
   const currentGeo = $derived(
     GEOGRAPHY_PRESETS.find((p) => p.id === selectedGeoId)?.geo ?? GEOGRAPHY_PRESETS[0].geo
   );
   const currentNaics = $derived(
     NAICS_PRESETS.find((p) => p.code === selectedNaicsCode) ?? NAICS_PRESETS[0]
+  );
+  const currentSoc = $derived(
+    SOC_PRESETS.find((s) => s.code === selectedSocCode) ?? SOC_PRESETS[0]
   );
 
   async function postEconomic<T>(endpoint: string, payload: unknown): Promise<T> {
@@ -105,6 +119,15 @@
             cbp_evidence: [],
           })),
         });
+      } else if (activeTab === 'workforce') {
+        workforceResult = await postEconomic<AnalyzeWorkforceContextOutput>('workforce-analysis', {
+          tenant_id: 'tenant-local',
+          target_geography: currentGeo,
+          soc_code: currentSoc.code,
+          occupation_title: currentSoc.title,
+          oews_evidence: [],
+          lau_evidence: [],
+        });
       }
     } catch (err) {
       errorMessage = err instanceof Error ? err.message : 'Analysis failed';
@@ -126,7 +149,7 @@
 <div class="market-inspector-container" id="market-analysis-inspector">
   <div class="inspector-header">
     <div class="header-left">
-      <span class="chip-badge">PHASE 9 OPERATOR HUD</span>
+      <span class="chip-badge">PHASE 9 &amp; 10 OPERATOR HUD</span>
       <h3 class="inspector-title" id="market-inspector-title">Market &amp; Business Footprint Inspector</h3>
       <span class="inspector-subtitle">Governed demographic, establishment, and commercial footprint telemetry</span>
     </div>
@@ -155,6 +178,14 @@
       >
         Location Comparison
       </button>
+      <button
+        id="tab-btn-workforce"
+        class="tab-btn"
+        class:active={activeTab === 'workforce'}
+        onclick={() => handleTabChange('workforce')}
+      >
+        Workforce &amp; Wages
+      </button>
     </div>
   </div>
 
@@ -172,18 +203,33 @@
       </select>
     </div>
 
-    <div class="filter-group">
-      <label for="market-inspector-naics-select">INDUSTRY / NAICS</label>
-      <select
-        id="market-inspector-naics-select"
-        bind:value={selectedNaicsCode}
-        onchange={executeAnalysis}
-      >
-        {#each NAICS_PRESETS as preset (preset.code)}
-          <option value={preset.code}>{preset.code} - {preset.title}</option>
-        {/each}
-      </select>
-    </div>
+    {#if activeTab === 'workforce'}
+      <div class="filter-group">
+        <label for="workforce-inspector-soc-select">OCCUPATION / SOC</label>
+        <select
+          id="workforce-inspector-soc-select"
+          bind:value={selectedSocCode}
+          onchange={executeAnalysis}
+        >
+          {#each SOC_PRESETS as preset (preset.code)}
+            <option value={preset.code}>{preset.code} - {preset.title}</option>
+          {/each}
+        </select>
+      </div>
+    {:else}
+      <div class="filter-group">
+        <label for="market-inspector-naics-select">INDUSTRY / NAICS</label>
+        <select
+          id="market-inspector-naics-select"
+          bind:value={selectedNaicsCode}
+          onchange={executeAnalysis}
+        >
+          {#each NAICS_PRESETS as preset (preset.code)}
+            <option value={preset.code}>{preset.code} - {preset.title}</option>
+          {/each}
+        </select>
+      </div>
+    {/if}
 
     <button
       id="market-inspector-run-btn"
@@ -191,7 +237,7 @@
       disabled={loading}
       onclick={executeAnalysis}
     >
-      {loading ? 'CALCULATING...' : 'RUN MARKET ANALYSIS'}
+      {loading ? 'CALCULATING...' : activeTab === 'workforce' ? 'RUN WORKFORCE ANALYSIS' : 'RUN MARKET ANALYSIS'}
     </button>
   </div>
 
@@ -252,6 +298,10 @@
 
   {#if activeTab === 'comparison' && comparisonResult}
     <LocationComparisonTab result={comparisonResult} />
+  {/if}
+
+  {#if activeTab === 'workforce' && workforceResult}
+    <WorkforceTab result={workforceResult} />
   {/if}
 </div>
 
@@ -349,19 +399,8 @@
     border: 1px solid var(--hud-border);
   }
 
-  .filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .filter-group label {
-    font-size: 0.62rem;
-    font-weight: 700;
-    color: var(--hud-text-dim);
-    letter-spacing: 0.06em;
-  }
-
+  .filter-group { display: flex; flex-direction: column; gap: 4px; }
+  .filter-group label { font-size: 0.62rem; font-weight: 700; color: var(--hud-text-dim); letter-spacing: 0.06em; }
   select {
     background: var(--hud-surface-dark-strong);
     color: var(--hud-text-primary);
@@ -371,11 +410,7 @@
     font-size: 0.78rem;
     outline: none;
   }
-
-  select:focus {
-    border-color: var(--hud-accent);
-  }
-
+  select:focus { border-color: var(--hud-accent); }
   .run-btn {
     background: var(--hud-accent);
     color: var(--hud-surface-dark);
@@ -388,16 +423,8 @@
     cursor: pointer;
     transition: filter 0.15s ease-in-out;
   }
-
-  .run-btn:hover:not(:disabled) {
-    filter: brightness(1.1);
-  }
-
-  .run-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
+  .run-btn:hover:not(:disabled) { filter: brightness(1.1); }
+  .run-btn:disabled { opacity: 0.6; cursor: not-allowed; }
   .error-banner {
     display: flex;
     align-items: center;
@@ -409,7 +436,6 @@
     color: var(--hud-text-primary);
     font-size: 0.78rem;
   }
-
   .retry-btn {
     margin-left: auto;
     background: transparent;
@@ -419,13 +445,7 @@
     border-radius: 3px;
     cursor: pointer;
   }
-
-  .metrics-cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 14px;
-  }
-
+  .metrics-cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
   .metric-card {
     background: var(--hud-panel-bg);
     border: 1px solid var(--hud-border);
@@ -435,7 +455,6 @@
     flex-direction: column;
     gap: 8px;
   }
-
   .card-title-row {
     display: flex;
     align-items: center;
@@ -446,35 +465,10 @@
     border-bottom: 1px solid var(--hud-divider);
     padding-bottom: 6px;
   }
-
-  .metric-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    font-size: 0.76rem;
-  }
-
-  .metric-name {
-    color: var(--hud-text-secondary);
-  }
-
-  .metric-val {
-    color: var(--hud-text-primary);
-    font-weight: 600;
-  }
-
-  .badge-tier {
-    background: var(--hud-accent-selected);
-    color: var(--hud-accent);
-    padding: 2px 6px;
-    border-radius: 3px;
-  }
-
-  .mono {
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
-  }
-
-  .font-bold {
-    font-weight: 700;
-  }
+  .metric-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.76rem; }
+  .metric-name { color: var(--hud-text-secondary); }
+  .metric-val { color: var(--hud-text-primary); font-weight: 600; }
+  .badge-tier { background: var(--hud-accent-selected); color: var(--hud-accent); padding: 2px 6px; border-radius: 3px; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .font-bold { font-weight: 700; }
 </style>

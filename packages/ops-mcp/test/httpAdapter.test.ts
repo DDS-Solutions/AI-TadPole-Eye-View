@@ -420,6 +420,7 @@ describe('modern MCP HTTP SDK adapter', () => {
       'analyze_market_context',
       'analyze_competition',
       'compare_locations',
+      'analyze_workforce_context',
     ]);
     expect(await readJson(unauthorized)).toMatchObject({ error: { code: -32601 } });
   });
