@@ -50,4 +50,5 @@ This directory records all significant architectural and structural decisions ma
 | [0058](./0058-deterministic-market-competition-and-location-comparison-analysis.md) | Deterministic market, competition, and location-comparison analysis, source-linked disagreement preservation, and multi-source evidence bundles | Accepted | 2026-09-21 |
 | [0059](./0059-protected-market-analysis-apis-mcp-tools-and-lazy-ui.md) | Protected market analysis REST endpoints, governed MCP operator tools, and lazy market HUD/UI inspection components | Accepted | 2026-09-21 |
 | [0060](./0060-bls-oews-and-lau-workforce-adapters-architecture.md) | BLS OEWS and LAU workforce adapters, variable dictionaries, suppression preservation, anti-PII defense, and seed adapter architecture | Accepted | 2026-09-24 |
+| [0061](./0061-workforce-analysis-engine-api-mcp-ui-architecture.md) | Pure workforce analysis engine, protected REST APIs, governed MCP operator tools, and lazy workforce HUD inspector | Accepted | 2026-09-24 |
 

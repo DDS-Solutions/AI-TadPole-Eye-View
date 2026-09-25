@@ -1,8 +1,8 @@
-import {
-  type DataProvenance,
-  type EconomicEvidenceBundle,
-  type EconomicEvidenceRecord,
-  type EconomicGeography,
+import type {
+  DataProvenance,
+  EconomicEvidenceBundle,
+  EconomicEvidenceRecord,
+  EconomicGeography,
 } from '@gev/contracts';
 
 // ============================================================================

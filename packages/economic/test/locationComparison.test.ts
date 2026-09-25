@@ -1,7 +1,7 @@
-import {
-  type EconomicEvidenceRecord,
-  type EconomicGeography,
-  type OsmCommercialFootprintSummary,
+import type {
+  EconomicEvidenceRecord,
+  EconomicGeography,
+  OsmCommercialFootprintSummary,
 } from '@gev/contracts';
 import { describe, expect, it } from 'vitest';
 import { compareLocations } from '../src/locationComparison.js';

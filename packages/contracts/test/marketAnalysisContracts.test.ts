@@ -1,13 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   CompetitionAnalysisInputSchema,
-  CompetitionAnalysisResultSchema,
   DisagreementStateSchema,
   ECONOMIC_LEGAL_DISCLAIMER,
   ECONOMIC_SCHEMA_VERSION,
   HhiConcentrationResultSchema,
   LocationComparisonInputSchema,
-  LocationComparisonResultSchema,
   MarketAnalysisInputSchema,
   MarketAnalysisResultSchema,
   SourceLinkedDisagreementSchema,

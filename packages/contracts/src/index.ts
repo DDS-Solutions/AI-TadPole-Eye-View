@@ -33,3 +33,4 @@ export * from './osmCommercial.js';
 export * from './marketAnalysis.js';
 export * from './blsOews.js';
 export * from './blsLau.js';
+export * from './workforceAnalysis.js';

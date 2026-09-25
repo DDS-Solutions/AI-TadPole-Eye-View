@@ -41,6 +41,7 @@ import {
   handleAnalyzeMarketContext,
   handleCompareLocations,
 } from './marketAnalysisTools.js';
+import { handleAnalyzeWorkforceContext } from './workforceAnalysisTools.js';
 
 export const MAX_SCENE_BYTES = 1024 * 1024;
 export const MCP_OPERATOR_TOOL_NAMES = [
@@ -55,6 +56,7 @@ export const MCP_OPERATOR_TOOL_NAMES = [
   'analyze_market_context',
   'analyze_competition',
   'compare_locations',
+  'analyze_workforce_context',
 ] as const satisfies readonly OperatorToolName[];
 export type McpOperatorToolName = (typeof MCP_OPERATOR_TOOL_NAMES)[number];
 const MCP_OPERATOR_TOOL_NAME_SET: ReadonlySet<string> = new Set(MCP_OPERATOR_TOOL_NAMES);
@@ -468,6 +470,9 @@ export function registerOperatorToolHandlers(ctx: OperatorContext): void {
     )
     .register('compare_locations', (input, executionContext) =>
       handleCompareLocations(ctx, input, executionContext)
+    )
+    .register('analyze_workforce_context', (input, executionContext) =>
+      handleAnalyzeWorkforceContext(ctx, input, executionContext)
     );
 }
 

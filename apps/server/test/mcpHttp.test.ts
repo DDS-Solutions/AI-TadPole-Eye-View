@@ -245,7 +245,7 @@ describe('local modern MCP HTTP route', () => {
     expect(list.status).toBe(200);
     const listedTools = ((await json(list)).result as { tools: Array<Record<string, unknown>> })
       .tools;
-    expect(listedTools).toHaveLength(11);
+    expect(listedTools).toHaveLength(12);
     expect(listedTools.find((tool) => tool.name === 'get_budget')).toMatchObject({
       annotations: {
         readOnlyHint: true,
