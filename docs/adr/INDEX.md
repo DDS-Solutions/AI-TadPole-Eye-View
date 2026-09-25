@@ -49,4 +49,5 @@ This directory records all significant architectural and structural decisions ma
 | [0057](./0057-osm-commercial-enrichment-adapter-architecture.md) | OpenStreetMap commercial enrichment adapter, boundary contracts, sanitizer integration, ODbL attribution, and seed pipeline | Accepted | 2026-09-21 |
 | [0058](./0058-deterministic-market-competition-and-location-comparison-analysis.md) | Deterministic market, competition, and location-comparison analysis, source-linked disagreement preservation, and multi-source evidence bundles | Accepted | 2026-09-21 |
 | [0059](./0059-protected-market-analysis-apis-mcp-tools-and-lazy-ui.md) | Protected market analysis REST endpoints, governed MCP operator tools, and lazy market HUD/UI inspection components | Accepted | 2026-09-21 |
+| [0060](./0060-bls-oews-and-lau-workforce-adapters-architecture.md) | BLS OEWS and LAU workforce adapters, variable dictionaries, suppression preservation, anti-PII defense, and seed adapter architecture | Accepted | 2026-09-24 |
 

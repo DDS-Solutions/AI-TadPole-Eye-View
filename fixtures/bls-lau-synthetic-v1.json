@@ -267,6 +267,229 @@
         }
       },
       "tags": ["lau", "rate", "unemployment-rate", "county"]
+    },
+    {
+      "evidence_id": "ev-lau-rate-48453-202606",
+      "source_id": "bls-lau",
+      "metric_id": "unemployment-rate",
+      "variable_name": "LAU_RATE",
+      "label": "Unemployment Rate (Percent) in Travis County (June 2026)",
+      "geography": {
+        "level": "county",
+        "county_fips": "48453",
+        "state_fips": "48",
+        "name": "Travis County, TX"
+      },
+      "estimate": {
+        "status": "available",
+        "value": 3.5,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "percent",
+        "notes": "Prior month benchmark rate"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "bls-lau",
+          "feed_id": "lau-monthly",
+          "name": "U.S. Bureau of Labor Statistics LAU",
+          "canonical_url": "https://www.bls.gov/lau/"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2026-06-01T00:00:00.000Z",
+          "end": "2026-06-30T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "June 2026 Benchmark LAU Monthly Release"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Bureau of Labor Statistics, Local Area Unemployment Statistics",
+        "fixture_id": "bls-lau-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 2592000
+        }
+      },
+      "tags": ["lau", "rate", "unemployment-rate", "county", "202606"]
+    },
+    {
+      "evidence_id": "ev-lau-labor-force-48453-202606",
+      "source_id": "bls-lau",
+      "metric_id": "civilian-labor-force",
+      "variable_name": "LAU_LABOR_FORCE",
+      "label": "Civilian Labor Force in Travis County (June 2026)",
+      "geography": {
+        "level": "county",
+        "county_fips": "48453",
+        "state_fips": "48",
+        "name": "Travis County, TX"
+      },
+      "estimate": {
+        "status": "available",
+        "value": 808900,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "count",
+        "notes": "Civilian labor force for prior month"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "bls-lau",
+          "feed_id": "lau-monthly",
+          "name": "U.S. Bureau of Labor Statistics LAU",
+          "canonical_url": "https://www.bls.gov/lau/"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2026-06-01T00:00:00.000Z",
+          "end": "2026-06-30T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "June 2026 Benchmark LAU Monthly Release"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Bureau of Labor Statistics, Local Area Unemployment Statistics",
+        "fixture_id": "bls-lau-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 2592000
+        }
+      },
+      "tags": ["lau", "labor-force", "county", "202606"]
+    },
+    {
+      "evidence_id": "ev-lau-rate-12420-202607",
+      "source_id": "bls-lau",
+      "metric_id": "unemployment-rate",
+      "variable_name": "LAU_RATE",
+      "label": "Unemployment Rate (Percent) in Austin CBSA (July 2026)",
+      "geography": {
+        "level": "cbsa",
+        "cbsa_code": "12420",
+        "name": "Austin-Round Rock-Georgetown, TX"
+      },
+      "estimate": {
+        "status": "available",
+        "value": 3.6,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "percent",
+        "notes": "Metropolitan area unemployment rate"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "bls-lau",
+          "feed_id": "lau-monthly",
+          "name": "U.S. Bureau of Labor Statistics LAU",
+          "canonical_url": "https://www.bls.gov/lau/"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2026-07-01T00:00:00.000Z",
+          "end": "2026-07-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "July 2026 Benchmark LAU Monthly Release"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Bureau of Labor Statistics, Local Area Unemployment Statistics",
+        "fixture_id": "bls-lau-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 2592000
+        }
+      },
+      "tags": ["lau", "rate", "cbsa", "202607"]
+    },
+    {
+      "evidence_id": "ev-lau-rate-48-202607",
+      "source_id": "bls-lau",
+      "metric_id": "unemployment-rate",
+      "variable_name": "LAU_RATE",
+      "label": "Unemployment Rate (Percent) in Texas (July 2026)",
+      "geography": {
+        "level": "state",
+        "state_fips": "48",
+        "name": "Texas"
+      },
+      "estimate": {
+        "status": "available",
+        "value": 4.1,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "percent",
+        "notes": "Statewide unemployment rate"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "bls-lau",
+          "feed_id": "lau-monthly",
+          "name": "U.S. Bureau of Labor Statistics LAU",
+          "canonical_url": "https://www.bls.gov/lau/"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2026-07-01T00:00:00.000Z",
+          "end": "2026-07-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "July 2026 Benchmark LAU Monthly Release"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Bureau of Labor Statistics, Local Area Unemployment Statistics",
+        "fixture_id": "bls-lau-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 2592000
+        }
+      },
+      "tags": ["lau", "rate", "state", "202607"]
     }
   ]
 }
+
