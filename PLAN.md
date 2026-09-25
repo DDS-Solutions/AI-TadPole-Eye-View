@@ -2,8 +2,8 @@
 
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
-**Verified against repository:** 2026-09-17
-**Status:** IN PROGRESS — Phase 10: task 10.1 ready for review and authorization
+**Verified against repository:** 2026-09-24
+**Status:** IN PROGRESS — Phase 10: task 10.2 ready for review and authorization
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,11 +20,11 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=10
-NEXT_TASK=10.1
+NEXT_TASK=10.2
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
-LAST_VERIFIED_UTC=2026-09-21
+LAST_VERIFIED_UTC=2026-09-24
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
 IMPLEMENTATION_STARTED=YES
 ```
@@ -1967,13 +1967,13 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 - [x] 8.5 Add content/instruction separation and prompt-injection tests before any provider/economic text enters an LLM/Tadpole context.
 - [x] 8 exit: suppressed/unavailable/stale cases validate; provenance is required; no persistence or live calls; ADG and affected gates pass.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 10.1
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 10.2
 
 ```text
-[SCOPE_CONTRACT] packages/contracts, packages/providers, packages/economic. In scope: BLS OEWS (Occupational Employment and Wage Statistics) and LAU (Local Area Unemployment Statistics) adapters, variable dictionaries, synthetic seed fixtures, suppression/noise preservation, rate limits, caching, and provenance. Out of scope: workforce analysis domain engine (Task 10.2), live BLS queries without explicit authorization, employee/applicant PII.
-[PERFORMANCE_THRESHOLD] 100% unit and property tests green; parser throughput < 50ms p95; zero live calls under GEV_SEED_MODE=1.
-[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2, §10.1; ADR 0052; versioned BLS series IDs, strict DataProvenance, no PII ingestion.
-[FAILURE_MODES] Unmapped BLS series codes, numeric coercion of suppressed wage/employment data, unversioned API assumptions.
+[SCOPE_CONTRACT] packages/economic, apps/server, packages/ops-mcp, apps/web. In scope: pure workforce analysis engine (labor-market concentration, wage differentials, occupational specialization), protected REST APIs (/api/economic/workforce-analysis), governed MCP operator tools (analyze_workforce_context), lazy workforce HUD/UI inspection components in /#/intelligence with "labor-market signal" language, and Playwright verification. Out of scope: employee/applicant PII, unverified external labor claims, automatic hiring decisions.
+[PERFORMANCE_THRESHOLD] 100% unit and property tests green; workforce analysis execution < 15ms p95; zero live calls under GEV_SEED_MODE=1.
+[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2, §10.2; ADR 0052, ADR 0060; pure domain workforce analysis, "labor-market signal" framing, non-coercion of suppressed data.
+[FAILURE_MODES] Conflating occupational survey estimates with live job listings, numeric coercion of suppressed wage data, leaking employee/applicant PII into agent prompts or UI.
 ```
 
 ### Phase 9 — Economic R1: market and business footprint
@@ -1987,7 +1987,7 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 
 ### Phase 10 — Economic R2: workforce
 
-- [ ] 10.1 Implement BLS OEWS and LAU adapters respecting registered/unregistered request limits, periods, area codes, suppression, caching, and provenance.
+- [x] 10.1 Implement BLS OEWS and LAU adapters respecting registered/unregistered request limits, periods, area codes, suppression, caching, and provenance.
 - [ ] 10.2 Add pure workforce analysis, protected API/MCP tools, and UI with “labor-market signal” language.
 - [ ] 10 exit: exact BLS series/occupation/area/period identifiers are present; no employee/applicant PII enters the path.
 
@@ -4396,7 +4396,41 @@ No later task is authorized merely because it appears in this plan.
   - Active Documentation Guard (`pnpm docs:check`): 0 errors across 79 doc files and 920 paths.
   - Doc tests (`pnpm docs:test`): 17/17 tests passed.
 - **Plan Advancement:** Task 9.5 and Phase 9 Exit complete (`[x]`). `CURRENT_PHASE=10`, `NEXT_TASK=10.1`, `NEXT_TASK_STATUS=READY`.
-- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 10.1. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 10.1 completion checkpoint — 2026-09-24
+
+- **Scope:** Implemented BLS OEWS (Occupational Employment and Wage Statistics) and LAU (Local Area Unemployment Statistics) boundary contracts, pure domain variable dictionaries, zero-coercion estimate parsers, series ID builders/parsers, synthetic seed fixtures, strict anti-PII defense, registered vs unregistered rate limits, and provider adapters adhering to PLAN.md §10 Task 10.1 and ADR 0060.
+- **Artifacts produced & updated:**
+  - `packages/contracts/src/blsOews.ts`: Zod schemas for SOC codes (`BlsSocCodeSchema`), variable definitions, dictionaries, queries, registered/unregistered request limits (`BLS_API_LIMITS_UNREGISTERED`, `BLS_API_LIMITS_REGISTERED`), and `BLS_OEWS_ANNUAL_STATISTICAL_DISCLAIMER`.
+  - `packages/contracts/src/blsLau.ts`: Zod schemas for LAU measures (`03`, `04`, `05`, `06`), variable definitions, dictionaries, monthly periods (`M01`–`M12`, `M13`), canonical 17-character series IDs (`BlsLauSeriesIdSchema`), and `BLS_LAU_MONTHLY_STATISTICAL_DISCLAIMER`.
+  - `packages/contracts/src/index.ts`: Re-exported BLS OEWS and LAU contracts.
+  - `packages/contracts/test/blsContracts.test.ts`: Contract unit tests verifying SOC codes, measure codes, periods, series IDs, rate limits, disclaimers, and anti-PII defense (6/6 tests passed).
+  - `packages/economic/src/blsOewsDictionary.ts`: Pure domain dictionary (`BLS_OEWS_VARIABLE_DICTIONARY_V1`), lookups, geography/SOC validation, and zero-coercion parser (`parseOewsRawEstimate`) preserving top-coded wage limits and data quality suppression (RSE > 50%).
+  - `packages/economic/src/blsLauDictionary.ts`: Pure domain dictionary (`BLS_LAU_VARIABLE_DICTIONARY_V1`), lookups, geography validation, deterministic series ID builder (`buildLauSeriesId`), parser (`parseLauSeriesId`), and zero-coercion parser (`parseLauRawEstimate`).
+  - `packages/economic/src/index.ts`: Re-exported BLS OEWS and LAU dictionaries.
+  - `packages/economic/test/blsOewsDictionary.test.ts`: Unit and fast-check property tests for OEWS dictionary, lookups, geography/SOC validation, and zero-coercion parser (10/10 tests passed).
+  - `packages/economic/test/blsLauDictionary.test.ts`: Unit and fast-check property tests for LAU dictionary, series ID round-trips, and zero-coercion parser (8/8 tests passed).
+  - `packages/providers/src/blsOews.ts`: `BlsOewsAdapter` with default seed mode (`bls-oews-synthetic-v1.json`), dual indexing by geography and SOC code, anti-PII defense (`BlsPiiIngestionError`), rate limit enforcement (`BlsRateLimitExceededError`), kill-switch (`GEV_BLS_OEWS_ENABLED`), and convenience query methods.
+  - `packages/providers/src/blsLau.ts`: `BlsLauAdapter` with default seed mode (`bls-lau-synthetic-v1.json`), indexing by geography, period, and measure, anti-PII defense (`BlsLauPiiIngestionError`), rate limit enforcement, kill-switch (`GEV_BLS_LAU_ENABLED`), and convenience query methods.
+  - `packages/providers/src/index.ts`: Re-exported BLS adapters.
+  - `packages/providers/test/blsOews.test.ts`: Unit, anti-PII, rate limit, seed mode, kill switch, and query benchmark tests (11/11 tests passed).
+  - `packages/providers/test/blsLau.test.ts`: Unit, anti-PII, rate limit, seed mode, kill switch, and query benchmark tests (10/10 tests passed).
+  - `fixtures/bls-oews-synthetic-v1.json`: Enriched with hourly median wages, percentile distributions (10th, 90th), top-coded suppression (Chief Executives 11-1011), and Texas state records.
+  - `fixtures/bls-lau-synthetic-v1.json`: Enriched with June 2026 prior month data, Austin CBSA (12420) records, and Texas state (48) records.
+  - `docs/adr/0060-bls-oews-and-lau-workforce-adapters-architecture.md`: Accepted ADR documenting the architecture.
+  - `docs/adr/INDEX.md`: Registered ADR 0060.
+  - `RUNBOOK.md`: Added Section 16 covering operational procedures, anti-PII boundaries, suppression preservation, and BLS request limits.
+- **Verification Evidence & Performance:**
+  - Query latency benchmarks: BLS OEWS query latency p50=0.027ms, p95=0.066ms; BLS LAU query latency p50=0.027ms, p95=0.060ms (both far below the < 50ms p95 threshold).
+  - Unit & Property tests: 100% green across all packages (contracts 158/158, economic 136/136, providers 113/113, core 73/73, server 284/284, cesium-kit 17/17, ops-mcp 69/69, security 39/39; 18/18 turbo test tasks successful).
+  - TypeScript: 19/19 tasks clean across monorepo (`pnpm turbo run typecheck`).
+  - Biome lint: 0 errors across 402 files (`pnpm lint`).
+  - Architecture check: 0 errors, 0 files > 500 lines without ADR (`pnpm architecture:check`).
+  - Active Documentation Guard (ADG): 81 doc files, 983 paths, 42 symbols, 0 errors (`pnpm docs:check`).
+  - Doc tests: 17/17 tests passed (`pnpm docs:test`).
+  - Bundle budgets: all within limits (`pnpm check:budgets`).
+- **Plan Advancement:** Task 10.1 complete (`[x]`). `CURRENT_PHASE=10`, `NEXT_TASK=10.2`, `NEXT_TASK_STATUS=READY`.
+- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 10.2. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
 
