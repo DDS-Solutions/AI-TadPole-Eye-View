@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-24
-**Status:** IN PROGRESS — Phase 10: task 10.2 ready for review and authorization
+**Status:** IN PROGRESS — Phase 10: task 10.2 complete; phase 10 exit gate ready
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=10
-NEXT_TASK=10.2
+NEXT_TASK=10_EXIT
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
@@ -1967,13 +1967,13 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 - [x] 8.5 Add content/instruction separation and prompt-injection tests before any provider/economic text enters an LLM/Tadpole context.
 - [x] 8 exit: suppressed/unavailable/stale cases validate; provenance is required; no persistence or live calls; ADG and affected gates pass.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 10.2
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 10_EXIT
 
 ```text
-[SCOPE_CONTRACT] packages/economic, apps/server, packages/ops-mcp, apps/web. In scope: pure workforce analysis engine (labor-market concentration, wage differentials, occupational specialization), protected REST APIs (/api/economic/workforce-analysis), governed MCP operator tools (analyze_workforce_context), lazy workforce HUD/UI inspection components in /#/intelligence with "labor-market signal" language, and Playwright verification. Out of scope: employee/applicant PII, unverified external labor claims, automatic hiring decisions.
-[PERFORMANCE_THRESHOLD] 100% unit and property tests green; workforce analysis execution < 15ms p95; zero live calls under GEV_SEED_MODE=1.
-[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2, §10.2; ADR 0052, ADR 0060; pure domain workforce analysis, "labor-market signal" framing, non-coercion of suppressed data.
-[FAILURE_MODES] Conflating occupational survey estimates with live job listings, numeric coercion of suppressed wage data, leaking employee/applicant PII into agent prompts or UI.
+[SCOPE_CONTRACT] packages/economic, packages/providers, packages/contracts, apps/server, apps/web. In scope: Phase 10 exit gate verification, verifying exact BLS series/occupation/area/period identifiers across OEWS and LAU, zero employee/applicant PII enters any path, non-coercion of suppressed data, Playwright and performance verification. Out of scope: Phase 11 (FEMA NRI/NFHL).
+[PERFORMANCE_THRESHOLD] 100% unit and property tests green; p95 parser latency < 50ms, p95 analysis latency < 15ms; zero live calls under GEV_SEED_MODE=1.
+[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2, §10 exit; ADR 0060, ADR 0061; strict DataProvenance, zero worker PII, non-coercion.
+[FAILURE_MODES] Missing provenance or vintage identifiers, suppressed data coercion, PII leakage into agent prompts or UI.
 ```
 
 ### Phase 9 — Economic R1: market and business footprint
@@ -1988,7 +1988,7 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 ### Phase 10 — Economic R2: workforce
 
 - [x] 10.1 Implement BLS OEWS and LAU adapters respecting registered/unregistered request limits, periods, area codes, suppression, caching, and provenance.
-- [ ] 10.2 Add pure workforce analysis, protected API/MCP tools, and UI with “labor-market signal” language.
+- [x] 10.2 Add pure workforce analysis, protected API/MCP tools, and UI with “labor-market signal” language.
 - [ ] 10 exit: exact BLS series/occupation/area/period identifiers are present; no employee/applicant PII enters the path.
 
 ### Phase 11 — Economic R3: risk, resilience, and accessibility
@@ -4431,6 +4431,46 @@ No later task is authorized merely because it appears in this plan.
   - Bundle budgets: all within limits (`pnpm check:budgets`).
 - **Plan Advancement:** Task 10.1 complete (`[x]`). `CURRENT_PHASE=10`, `NEXT_TASK=10.2`, `NEXT_TASK_STATUS=READY`.
 - **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 10.2. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 10.2 completion checkpoint — 2026-09-24
+
+- **Scope:** Implemented pure domain workforce analysis engine (`packages/economic`), protected REST APIs (`apps/server`), governed MCP operator tool (`packages/ops-mcp`), lazy workforce HUD/UI inspection components in `/#/intelligence` (`apps/web`), contract Zod schemas (`packages/contracts`), synthetic fixtures, Playwright verification, ADR 0061, and RUNBOOK Section 17 adhering to PLAN.md §10 Task 10.2, ADR 0052, ADR 0060, and ADR 0061.
+- **Artifacts produced & updated:**
+  - `packages/contracts/src/workforceAnalysis.ts`: Zod schemas for `WorkforceAnalysisInputSchema`, `WorkforceAnalysisResultSchema`, `WorkforceWageDifferentialSummarySchema`, `WorkforceOccupationalSpecializationSchema`, `WorkforceConcentrationMetricSchema`, `WorkforceUnemploymentSummarySchema`, anti-PII defense (`guardNoPii`), and `WORKFORCE_LABOR_MARKET_SIGNAL_DISCLAIMER`.
+  - `packages/contracts/src/toolSchemas.ts`: Schema for `analyze_workforce_context` operator tool.
+  - `packages/contracts/src/toolRegistry.ts`: Registered `analyze_workforce_context` with telemetry scope in tool definitions.
+  - `packages/contracts/src/mcpPresentation.ts`: Registered `analyze_workforce_context` presentation mapping.
+  - `packages/contracts/src/index.ts`: Re-exported workforce analysis contracts.
+  - `packages/contracts/test/workforceAnalysisContracts.test.ts`: Contract unit tests verifying input/output schemas, anti-PII guards, and disclaimer formatting (12/12 tests passed).
+  - `packages/economic/src/workforceAnalysis.ts`: Pure domain workforce analysis engine (433 lines, strictly < 500 lines) with wage percentile analysis, reciprocal annual/hourly wage conversion (standard 2,080 annual work hours), 90/10 and 75/25 wage dispersion ratios, occupational specialization (location quotient), occupational HHI concentration metric, LAU monthly unemployment dynamics, and source-linked disagreement detection.
+  - `packages/economic/src/index.ts`: Re-exported `analyzeWorkforceContext`.
+  - `packages/economic/test/workforceAnalysis.test.ts`: Unit, fast-check property, and amortized benchmark tests (10/10 tests passed; p50=1.077ms, p95=1.891ms, far below the 15ms ceiling).
+  - `fixtures/bls-oews-synthetic-v1.json`: Enriched synthetic fixture dataset (25 records) including national baseline (`nation: US`), All Occupations benchmark (`00-0000`), Registered Nurses (`29-1141`), and hourly percentiles (`H_PCT10`, `H_PCT25`, `H_PCT75`, `H_PCT90`).
+  - `apps/server/src/routes/workforceAnalysisRoutes.ts`: Protected REST routes (`/api/economic/workforce-analysis` and `/api/economic/workforce/analyze`) with `opsAuth`, tenant isolation, STASIS check, rate limiting, audit logging (`audit.intent` before, `audit.outcome` after), geographic resolution (`resolveWorkforceOewsGeography`, `resolveWorkforceLauGeography`), and evidence deduplication.
+  - `apps/server/src/routes/economic.ts`: Mounted workforce analysis routes under `/economic`.
+  - `apps/server/test/workforceAnalysisRoutes.test.ts`: Route tests for authentication, tenant isolation, STASIS lockdown, rate limiting, and analysis computation (7/7 tests passed).
+  - `packages/ops-mcp/src/workforceAnalysisTools.ts`: Governed MCP operator tool `analyze_workforce_context` with STASIS check, kill-switch (`GEV_WORKFORCE_ANALYSIS_ENABLED`), geographic resolution, and evidence deduplication.
+  - `packages/ops-mcp/src/tools.ts`: Registered `analyze_workforce_context` in MCP server router.
+  - `packages/ops-mcp/test/workforceAnalysisTools.test.ts`: MCP tool tests covering success, STASIS rejection, kill-switch rejection, and evidence deduplication (4/4 tests passed).
+  - `apps/web/src/routes/intelligence/WorkforceTab.svelte`: 376-line HUD inspection component strictly using design tokens from `docs/DESIGN.md`, rendering statutory Labor-Market Signal Banner, unemployment rate comparison, wage percentiles table with non-coercion, occupational specialization (LQ) badge, and inspectable evidence drawer.
+  - `apps/web/src/routes/intelligence/MarketAnalysisInspector.svelte`: Added tab button `#tab-btn-workforce`, SOC presets selector `#workforce-inspector-soc-select`, and reactive dispatch.
+  - `apps/web/src/routes/intelligence/economicModulesData.ts`: Advanced Phase 10 status to `INSPECTION READY`.
+  - `e2e/workforceAnalysisInspector.spec.ts`: Playwright browser test verifying tab switching, SOC preset selection, labor-market signal banner, non-coercion of suppressed wages, evidence drawer, and capturing visual screenshot.
+  - `docs/adr/0061-workforce-analysis-engine-api-mcp-ui-architecture.md`: Accepted ADR documenting the architecture.
+  - `docs/adr/INDEX.md`: Registered ADR 0061.
+  - `RUNBOOK.md`: Added Section 17 covering workforce analysis operational procedures, labor-market signal disclaimers, and PII protection boundaries.
+- **Verification Evidence & Performance:**
+  - Workforce analysis execution benchmark: p50=1.077ms, p95=1.891ms (threshold < 15ms p95).
+  - Playwright E2E: 100% green with condition-waits only; screenshot captured and verified.
+  - Unit & Property tests: 100% green across all packages (contracts 170/170, economic 146/146, providers 113/113, core 73/73, server 291/291, cesium-kit 17/17, ops-mcp 73/73, security 39/39; 18/18 turbo test tasks successful).
+  - TypeScript: 19/19 tasks clean across monorepo (`pnpm turbo run typecheck`).
+  - Biome lint: 0 errors across 408 files (`pnpm lint`).
+  - Architecture check: 0 errors, 0 files > 500 lines without ADR (`pnpm architecture:check`).
+  - Active Documentation Guard (ADG): 82 doc files, 1002 paths, 42 symbols, 0 errors (`pnpm docs:check`).
+  - Doc tests: 17/17 tests passed (`pnpm docs:test`).
+  - Bundle budgets: all within limits (`pnpm check:budgets`).
+- **Plan Advancement:** Task 10.2 complete (`[x]`). `CURRENT_PHASE=10`, `NEXT_TASK=10_EXIT`, `NEXT_TASK_STATUS=READY`.
+- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 10_EXIT. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
 

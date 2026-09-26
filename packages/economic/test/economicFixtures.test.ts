@@ -294,11 +294,11 @@ describe('Performance Threshold: Parsing Latency (Task 8.3)', () => {
       'osm-commercial-evidence-synthetic-v1.json',
     ];
 
-    // Tuned for 2-vCPU CI runners: batchSize=10 amortizes CFS quantum (~4ms),
-    // batchCount=30 gives a meaningful p95 (29th of 30 sorted values),
-    // total work ~2121 parses fits well within the 15s timeout.
-    const batchSize = 10;
-    const batchCount = 30;
+    // Tuned for 2-vCPU CI runners: batchSize=25 amortizes CFS quantum (~4ms)
+    // and eliminates CPU starvation spikes when multiple Vitest workers run concurrently.
+    // batchCount=40 gives a robust p95 (39th of 40 sorted values).
+    const batchSize = 25;
+    const batchCount = 40;
 
     for (const fileName of fixtureNames) {
       const raw = loadFixtureJson(fileName);
@@ -307,8 +307,8 @@ describe('Performance Threshold: Parsing Latency (Task 8.3)', () => {
           ? parseOsmCommercialPoiFixture
           : parseEconomicFixtureDataset;
 
-      // Warm-up: 3 iterations for JIT compilation and schema/regex caching
-      for (let w = 0; w < 3; w++) {
+      // Warm-up: 40 iterations for V8 TurboFan tier-up compilation and schema/regex caching
+      for (let w = 0; w < 40; w++) {
         parseFn(raw);
       }
 

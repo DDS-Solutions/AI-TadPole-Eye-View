@@ -55,9 +55,9 @@ export const economicModules: readonly EconomicModule[] = [
     phase: 'Phase 10',
     title: 'Economic R2: Workforce & Labor Dynamics',
     badge: 'BLS OEWS / LAU',
-    status: 'PLANNED',
+    status: 'INSPECTION READY',
     statusReason:
-      'Phase 10 implementation planned. Bureau of Labor Statistics OEWS and LAU series pending.',
+      'Phase 10 active. Bureau of Labor Statistics OEWS wage percentiles and LAU unemployment dynamics ready.',
     sources: ['BLS OEWS', 'BLS LAU', 'Area Occupation Matrix'],
     metrics: [
       { label: 'WAGE BENCHMARK', value: 'PERCENTILE HOURLY/ANNUAL' },

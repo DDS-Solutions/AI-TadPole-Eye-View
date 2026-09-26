@@ -48,7 +48,7 @@ test.describe('Lazy /#/intelligence route, Cesium isolation, and navigation roun
       const card = page.locator(`#card-${phaseId}`);
       await expect(card).toBeVisible();
       const statusBadge = card.locator('.status-badge');
-      if (phaseId === 'phase-9') {
+      if (phaseId === 'phase-9' || phaseId === 'phase-10') {
         await expect(statusBadge).toHaveText('INSPECTION READY');
       } else {
         await expect(statusBadge).toHaveText('PLANNED');
