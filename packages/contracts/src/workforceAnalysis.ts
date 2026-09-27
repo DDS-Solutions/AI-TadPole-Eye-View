@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { BlsLauPeriodSchema, BlsLauSeriesIdSchema } from './blsLau.js';
-import { BlsSocCodeSchema } from './blsOews.js';
+import { BlsSocCodeSchema, PROHIBITED_WORKER_PII_FIELDS } from './blsOews.js';
 import {
   ECONOMIC_LEGAL_DISCLAIMER,
   ECONOMIC_SCHEMA_VERSION,
@@ -22,21 +22,14 @@ export const WORKFORCE_LABOR_MARKET_SIGNAL_DISCLAIMER =
 
 // Prohibited worker-level PII fields
 const PROHIBITED_WORKER_PII_KEYS = [
-  'ssn',
+  ...PROHIBITED_WORKER_PII_FIELDS,
   'social_security',
-  'applicant_id',
-  'candidate_id',
-  'employee_id',
-  'worker_name',
-  'first_name',
-  'last_name',
   'personal_email',
   'home_address',
-  'date_of_birth',
-  'dob',
   'wage_slip',
   'paystub',
   'individual_compensation',
+  'worker_name',
 ] as const;
 
 export function checkForWorkerPii(data: Record<string, unknown>, path: string = ''): void {

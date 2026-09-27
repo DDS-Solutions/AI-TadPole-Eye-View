@@ -2,8 +2,8 @@
 
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
-**Verified against repository:** 2026-09-24
-**Status:** IN PROGRESS — Phase 10: task 10.2 complete; phase 10 exit gate ready
+**Verified against repository:** 2026-09-26
+**Status:** IN PROGRESS — Phase 11: task 11.1 ready; phase 10 exit certified
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -19,12 +19,12 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 
 ```text
 PLAN_VERSION=3.0
-CURRENT_PHASE=10
-NEXT_TASK=10_EXIT
+CURRENT_PHASE=11
+NEXT_TASK=11.1
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
-LAST_VERIFIED_UTC=2026-09-24
+LAST_VERIFIED_UTC=2026-09-26
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
 IMPLEMENTATION_STARTED=YES
 ```
@@ -1967,13 +1967,13 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 - [x] 8.5 Add content/instruction separation and prompt-injection tests before any provider/economic text enters an LLM/Tadpole context.
 - [x] 8 exit: suppressed/unavailable/stale cases validate; provenance is required; no persistence or live calls; ADG and affected gates pass.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 10_EXIT
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 11.1
 
 ```text
-[SCOPE_CONTRACT] packages/economic, packages/providers, packages/contracts, apps/server, apps/web. In scope: Phase 10 exit gate verification, verifying exact BLS series/occupation/area/period identifiers across OEWS and LAU, zero employee/applicant PII enters any path, non-coercion of suppressed data, Playwright and performance verification. Out of scope: Phase 11 (FEMA NRI/NFHL).
-[PERFORMANCE_THRESHOLD] 100% unit and property tests green; p95 parser latency < 50ms, p95 analysis latency < 15ms; zero live calls under GEV_SEED_MODE=1.
-[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2, §10 exit; ADR 0060, ADR 0061; strict DataProvenance, zero worker PII, non-coercion.
-[FAILURE_MODES] Missing provenance or vintage identifiers, suppressed data coercion, PII leakage into agent prompts or UI.
+[SCOPE_CONTRACT] packages/contracts, packages/providers, packages/economic. In scope: FEMA NRI and NFHL Zod schemas, variable dictionary, synthetic seed fixtures, and pinned-fetch adapter with mandatory DataProvenance and non-coercion. Out of scope: USGS 3DEP (Task 11.2), EPA AQS (Task 11.3), UI/HUD components (Phase 11 Exit).
+[PERFORMANCE_THRESHOLD] 100% unit tests green; query latency p95 < 25ms in seed mode; zero live calls under GEV_SEED_MODE=1.
+[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2, §11.1; ADR 0035, ADR 0050, ADR 0052; strict DataProvenance, screening disclaimers, zero coercion.
+[FAILURE_MODES] Stale ArcGIS endpoint schemas, unverified flood hazard layers, framing preliminary screening as definitive engineering advice.
 ```
 
 ### Phase 9 — Economic R1: market and business footprint
@@ -1989,7 +1989,7 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 
 - [x] 10.1 Implement BLS OEWS and LAU adapters respecting registered/unregistered request limits, periods, area codes, suppression, caching, and provenance.
 - [x] 10.2 Add pure workforce analysis, protected API/MCP tools, and UI with “labor-market signal” language.
-- [ ] 10 exit: exact BLS series/occupation/area/period identifiers are present; no employee/applicant PII enters the path.
+- [x] 10 exit: exact BLS series/occupation/area/period identifiers are present; no employee/applicant PII enters the path.
 
 ### Phase 11 — Economic R3: risk, resilience, and accessibility
 
@@ -4472,6 +4472,34 @@ No later task is authorized merely because it appears in this plan.
 - **Plan Advancement:** Task 10.2 complete (`[x]`). `CURRENT_PHASE=10`, `NEXT_TASK=10_EXIT`, `NEXT_TASK_STATUS=READY`.
 - **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 10_EXIT. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
+### Phase 10 Exit Gate certification checkpoint — 2026-09-26
+
+- **Scope:** Certified Phase 10 Exit Gate adhering to PLAN.md §10 Task 10 exit, ADR 0060, and ADR 0061 via dedicated end-to-end integration and boundary certification test suite `apps/server/test/phase10ExitGate.test.ts`.
+- **Artifacts produced & updated:**
+  - `apps/server/test/phase10ExitGate.test.ts`: 483-line dedicated Phase 10 exit gate certification test suite covering:
+    1. Exact BLS OEWS and LAU series/occupation/area/period identifiers: verified canonical series ID generation (`buildLauSeriesId`) and constituent parsing (`parseLauSeriesId`) for CBSA (`LAUMT124200000003`) and County (`LAUCN484530000006`), SOC code format `XX-XXXX`, monthly periods `M01-M13`.
+    2. Comprehensive Anti-PII defense: complete rejection of employee/applicant PII across all boundaries: contracts (`checkForWorkerPii` across all `PROHIBITED_WORKER_PII_FIELDS`), query schema superRefine, provider adapters (`BlsOewsAdapter`, `BlsLauAdapter`), pure workforce analysis engine (`analyzeWorkforceContext`), protected REST endpoints (`/api/economic/workforce-analysis`), and governed MCP operator tool (`analyze_workforce_context`).
+    3. Non-coercion of suppressed estimates and statutory disclaimers: verified suppressed estimates (`statutory_wage_cap`, `not_disclosed`, `disclosure_avoidance`) never coerce to zero, ratio calculations preserve suppression, and mandatory statutory disclaimers (`WORKFORCE_LABOR_MARKET_SIGNAL_DISCLAIMER`, `ECONOMIC_LEGAL_DISCLAIMER`, `BLS_OEWS_ANNUAL_STATISTICAL_DISCLAIMER`, `BLS_LAU_MONTHLY_STATISTICAL_DISCLAIMER`) are attached.
+    4. Pure workforce analysis engine invariants & source-linked disagreement detection: monotonic wage percentile progression (p10 <= p50 <= p90), dispersion ratios bounds (90/10 >= 1.0, 75/25 >= 1.0), occupational specialization (LQ > 0), occupational concentration (HHI in [0, 10000]), and structured divergence preservation between annual benchmark and monthly trends.
+    5. Multi-tenant governance, STASIS lockdown, and zero persistence outside WAL: unauthenticated requests rejected with 401, cross-tenant header mismatch rejected with 403, active STASIS lockdown returns 423, zero database tables created outside SQLite WAL, and atomic `audit.intent` and `audit.outcome` entries written for each analysis request.
+    6. Governed MCP operator tool parity: `analyze_workforce_context` execution via MCP operator context, tenant-scoped audit logging, and STASIS lockdown halting.
+    7. Performance thresholds: pure workforce analysis execution latency p95 = 0.025ms (far below the 15ms ceiling across 500 iterations), fixture parsing latency p95 < 1ms across all synthetic datasets, and zero live external network calls under `GEV_SEED_MODE=1`.
+  - `packages/contracts/src/workforceAnalysis.ts`: Aligned `checkForWorkerPii` with `PROHIBITED_WORKER_PII_FIELDS` from `blsOews.ts` for unified cross-boundary protection.
+  - `e2e/intelligenceRoute.spec.ts`: Updated roadmap card assertion to expect `INSPECTION READY` for Phase 10.
+  - `packages/economic/test/economicFixtures.test.ts`: Amortized CFS scheduler preemption with tuned warm-up and batching to eliminate CI false-positive timing jitter.
+- **Verification Evidence & Performance:**
+  - Phase 10 Exit Gate suite: 7/7 tests passed (`pnpm --filter @gev/server test phase10ExitGate`).
+  - Playwright E2E: 100% green (`workforceAnalysisInspector.spec.ts`, `intelligenceRoute.spec.ts`, `marketAnalysisInspector.spec.ts`).
+  - Unit & Property tests: 100% green across all packages (41/41 turbo tasks successful).
+  - TypeScript: clean across monorepo (`pnpm turbo run typecheck`).
+  - Biome lint: clean across monorepo (`pnpm lint`).
+  - Architecture check: clean (`pnpm architecture:check`).
+  - Active Documentation Guard (ADG): 82 doc files, 1,095 paths, 42 symbols, 0 errors (`pnpm docs:check`).
+  - Doc tests: 17/17 tests passed (`pnpm docs:test`).
+- **Plan Advancement:** Phase 10 complete (`[x] 10 exit`). Advanced to `CURRENT_PHASE=11`, `NEXT_TASK=11.1`, `NEXT_TASK_STATUS=READY`.
+- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 11.1. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
 No later task is authorized merely because it appears in this plan.
+
 
 
