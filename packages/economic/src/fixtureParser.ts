@@ -3,6 +3,8 @@ import {
   EconomicFixtureDatasetSchema,
   type OsmCommercialPoiResponse,
   OsmCommercialPoiResponseSchema,
+  type FemaNfhlFeaturesDataset,
+  FemaNfhlFeaturesDatasetSchema,
 } from '@gev/contracts';
 
 /**
@@ -21,4 +23,13 @@ export function parseEconomicFixtureDataset(rawJson: string | unknown): Economic
 export function parseOsmCommercialPoiFixture(rawJson: string | unknown): OsmCommercialPoiResponse {
   const parsed = typeof rawJson === 'string' ? JSON.parse(rawJson) : rawJson;
   return OsmCommercialPoiResponseSchema.parse(parsed);
+}
+
+/**
+ * Pure parser validating a FEMA NFHL features dataset against FemaNfhlFeaturesDatasetSchema.
+ * Strictly enforces zero I/O, contract validation, and seed mode provenance.
+ */
+export function parseFemaNfhlFeaturesFixture(rawJson: string | unknown): FemaNfhlFeaturesDataset {
+  const parsed = typeof rawJson === 'string' ? JSON.parse(rawJson) : rawJson;
+  return FemaNfhlFeaturesDatasetSchema.parse(parsed);
 }
