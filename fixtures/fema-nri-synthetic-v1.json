@@ -267,6 +267,280 @@
         }
       },
       "tags": ["fema", "resilience", "county"]
+    },
+    {
+      "evidence_id": "ev-fema-rfld-risk-48453-2023",
+      "source_id": "fema-nri-nfhl",
+      "metric_id": "riverine-flooding-risk-score",
+      "variable_name": "RFLD_RISKS",
+      "label": "Riverine Flooding Risk Score (0-100 scale)",
+      "geography": {
+        "level": "county",
+        "county_fips": "48453",
+        "state_fips": "48",
+        "name": "Travis County, TX"
+      },
+      "estimate": {
+        "status": "available",
+        "value": 32.1,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "index_score",
+        "notes": "Rating: Relatively Moderate riverine flood risk"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "fema-nri-nfhl",
+          "feed_id": "nri-composite",
+          "name": "FEMA National Risk Index",
+          "canonical_url": "https://www.fema.gov/flood-maps/products-tools/national-risk-index"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2023-01-01T00:00:00.000Z",
+          "end": "2023-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "FEMA NRI August 2023 Release"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "Federal Emergency Management Agency (FEMA), National Risk Index",
+        "fixture_id": "fema-nri-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 31536000
+        }
+      },
+      "tags": ["fema", "flooding", "riverine", "hazard-risk", "county"]
+    },
+    {
+      "evidence_id": "ev-fema-wdfr-risk-48453-2023",
+      "source_id": "fema-nri-nfhl",
+      "metric_id": "wildfire-risk-score",
+      "variable_name": "WDFR_RISKS",
+      "label": "Wildfire Risk Score (0-100 scale)",
+      "geography": {
+        "level": "county",
+        "county_fips": "48453",
+        "state_fips": "48",
+        "name": "Travis County, TX"
+      },
+      "estimate": {
+        "status": "available",
+        "value": 28.5,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "index_score",
+        "notes": "Rating: Relatively Moderate wildfire risk in wildland-urban interface"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "fema-nri-nfhl",
+          "feed_id": "nri-composite",
+          "name": "FEMA National Risk Index",
+          "canonical_url": "https://www.fema.gov/flood-maps/products-tools/national-risk-index"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2023-01-01T00:00:00.000Z",
+          "end": "2023-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "FEMA NRI August 2023 Release"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "Federal Emergency Management Agency (FEMA), National Risk Index",
+        "fixture_id": "fema-nri-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 31536000
+        }
+      },
+      "tags": ["fema", "wildfire", "wui", "hazard-risk", "county"]
+    },
+    {
+      "evidence_id": "ev-fema-erqk-risk-48453-2023",
+      "source_id": "fema-nri-nfhl",
+      "metric_id": "earthquake-risk-score",
+      "variable_name": "ERQK_RISKS",
+      "label": "Earthquake Risk Score (0-100 scale)",
+      "geography": {
+        "level": "county",
+        "county_fips": "48453",
+        "state_fips": "48",
+        "name": "Travis County, TX"
+      },
+      "estimate": {
+        "status": "available",
+        "value": 2.1,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "index_score",
+        "notes": "Rating: Very Low seismic shaking hazard"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "fema-nri-nfhl",
+          "feed_id": "nri-composite",
+          "name": "FEMA National Risk Index",
+          "canonical_url": "https://www.fema.gov/flood-maps/products-tools/national-risk-index"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2023-01-01T00:00:00.000Z",
+          "end": "2023-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "FEMA NRI August 2023 Release"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "Federal Emergency Management Agency (FEMA), National Risk Index",
+        "fixture_id": "fema-nri-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 31536000
+        }
+      },
+      "tags": ["fema", "earthquake", "seismic", "hazard-risk", "county"]
+    },
+    {
+      "evidence_id": "ev-fema-tsun-risk-48453-2023",
+      "source_id": "fema-nri-nfhl",
+      "metric_id": "tsunami-risk-score",
+      "variable_name": "TSUN_RISKS",
+      "label": "Tsunami Risk Score",
+      "geography": {
+        "level": "county",
+        "county_fips": "48453",
+        "state_fips": "48",
+        "name": "Travis County, TX"
+      },
+      "estimate": {
+        "status": "not_applicable",
+        "reason": "Hazard not applicable for inland geography"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "fema-nri-nfhl",
+          "feed_id": "nri-composite",
+          "name": "FEMA National Risk Index",
+          "canonical_url": "https://www.fema.gov/flood-maps/products-tools/national-risk-index"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2023-01-01T00:00:00.000Z",
+          "end": "2023-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "FEMA NRI August 2023 Release"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "Federal Emergency Management Agency (FEMA), National Risk Index",
+        "fixture_id": "fema-nri-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 31536000
+        }
+      },
+      "tags": ["fema", "tsunami", "hazard-risk", "county"]
+    },
+    {
+      "evidence_id": "ev-fema-risk-score-48453000101-2023",
+      "source_id": "fema-nri-nfhl",
+      "metric_id": "nri-risk-score",
+      "variable_name": "RISK_SCORE",
+      "label": "FEMA National Risk Index Composite Risk Score (Tract 48453000101)",
+      "geography": {
+        "level": "tract",
+        "tract_fips": "48453000101",
+        "name": "Census Tract 1.01, Travis County, TX"
+      },
+      "estimate": {
+        "status": "available",
+        "value": 21.2,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "index_score",
+        "notes": "Rating: Relatively Low natural hazard risk"
+      },
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "fema-nri-nfhl",
+          "feed_id": "nri-composite",
+          "name": "FEMA National Risk Index",
+          "canonical_url": "https://www.fema.gov/flood-maps/products-tools/national-risk-index"
+        },
+        "retrieved_at": "2026-09-16T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2023-01-01T00:00:00.000Z",
+          "end": "2023-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "FEMA NRI August 2023 Release"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "Federal Emergency Management Agency (FEMA), National Risk Index",
+        "fixture_id": "fema-nri-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 31536000
+        }
+      },
+      "tags": ["fema", "nri", "risk", "tract"]
     }
   ]
 }

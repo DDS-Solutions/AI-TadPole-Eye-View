@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "fixture_id": "fema-nfhl-features-synthetic-v1",
+  "source_id": "fema-nri-nfhl",
+  "title": "FEMA National Flood Hazard Layer (NFHL) Raw Feature Set",
+  "description": "Synthetic NFHL digital flood insurance rate map (DFIRM) flood hazard features across Travis County / Austin, TX.",
+  "provenance": {
+    "schema_version": 1,
+    "source": {
+      "provider_id": "fema-nri-nfhl",
+      "feed_id": "nfhl-flood-hazards",
+      "name": "FEMA National Flood Hazard Layer",
+      "canonical_url": "https://hazards.fema.gov/gis/nfhl/rest/services/public/NFHL/MapServer"
+    },
+    "retrieved_at": "2026-09-26T12:00:00.000Z",
+    "observation_period": {
+      "status": "available",
+      "start": "2024-01-01T00:00:00.000Z",
+      "end": "2024-09-26T23:59:59.000Z"
+    },
+    "vintage": {
+      "status": "available",
+      "value": "NFHL Status Active (September 2024)"
+    },
+    "mode": "seed",
+    "source_mode": "seed",
+    "license": {
+      "id": "us-government-public-domain",
+      "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+    },
+    "attribution": "Federal Emergency Management Agency (FEMA), National Flood Hazard Layer",
+    "fixture_id": "fema-nfhl-features-synthetic-v1",
+    "cache": null,
+    "freshness": {
+      "status": "fresh",
+      "age_seconds": 0,
+      "fresh_for_seconds": 2592000
+    }
+  },
+  "features": [
+    {
+      "dfirm_id": "48453C",
+      "fld_ar_id": "48453C_001",
+      "fld_zone": "AE",
+      "zone_subty": "FLOODWAY",
+      "sfha_tf": true,
+      "static_bfe": {
+        "status": "available",
+        "value": 432.0,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "feet",
+        "notes": "Vertical Datum: NAVD88"
+      },
+      "v_datum": "NAVD88",
+      "depth": {
+        "status": "not_applicable",
+        "reason": "Depth only applicable in AO/AH sheet flow zones"
+      },
+      "study_typ": "NP Detailed Study with BFE",
+      "source_cit": "DFIRM Panel 48453C0465H",
+      "bounding_box": [-97.76, 30.25, -97.73, 30.27]
+    },
+    {
+      "dfirm_id": "48453C",
+      "fld_ar_id": "48453C_002",
+      "fld_zone": "X",
+      "zone_subty": "0.2 PCT ANNUAL CHANCE FLOOD HAZARD",
+      "sfha_tf": false,
+      "static_bfe": {
+        "status": "not_applicable",
+        "reason": "Base Flood Elevation is not defined for 500-year moderate risk zones"
+      },
+      "v_datum": null,
+      "depth": {
+        "status": "not_applicable",
+        "reason": "Depth not applicable outside flood hazard areas"
+      },
+      "study_typ": "NP Detailed Study without BFE",
+      "source_cit": "DFIRM Panel 48453C0470H",
+      "bounding_box": [-97.72, 30.26, -97.68, 30.29]
+    },
+    {
+      "dfirm_id": "48453C",
+      "fld_ar_id": "48453C_003",
+      "fld_zone": "X",
+      "zone_subty": "AREA OF MINIMAL FLOOD HAZARD",
+      "sfha_tf": false,
+      "static_bfe": {
+        "status": "not_applicable",
+        "reason": "Base Flood Elevation is not defined for Zone X minimal flood hazard areas"
+      },
+      "v_datum": null,
+      "depth": {
+        "status": "not_applicable",
+        "reason": "Depth not applicable outside flood hazard areas"
+      },
+      "study_typ": "NP Unstudied Minimal Flood Hazard",
+      "source_cit": "DFIRM Panel 48453C0235H",
+      "bounding_box": [-97.74, 30.39, -97.71, 30.42]
+    },
+    {
+      "dfirm_id": "48453C",
+      "fld_ar_id": "48453C_004",
+      "fld_zone": "D",
+      "zone_subty": null,
+      "sfha_tf": false,
+      "static_bfe": {
+        "status": "not_applicable",
+        "reason": "Possible but undetermined flood hazard; no flood analysis conducted"
+      },
+      "v_datum": null,
+      "depth": {
+        "status": "not_applicable",
+        "reason": "Depth not applicable in undetermined hazard areas"
+      },
+      "study_typ": "Unstudied Undetermined Hazard",
+      "source_cit": "DFIRM Panel 48453C0100H",
+      "bounding_box": [-98.05, 30.4, -97.95, 30.5]
+    }
+  ]
+}

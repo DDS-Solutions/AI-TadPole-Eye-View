@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { EconomicFixtureAdapter } from '../src/economicFixtures.js';
 
 describe('EconomicFixtureAdapter (@gev/providers)', () => {
-  it('loads all 6 economic fixture datasets and validates contract schemas', () => {
+  it('loads all 7 economic fixture datasets and validates contract schemas', () => {
     const adapter = new EconomicFixtureAdapter();
     const datasets = adapter.loadDatasets();
 
-    expect(datasets.length).toBe(6);
+    expect(datasets.length).toBe(7);
     for (const dataset of datasets) {
       expect(dataset.schema_version).toBe(1);
       expect(dataset.provenance.mode).toBe('seed');

@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=11
-NEXT_TASK=11.1
+NEXT_TASK=11.2
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
@@ -1967,13 +1967,13 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 - [x] 8.5 Add content/instruction separation and prompt-injection tests before any provider/economic text enters an LLM/Tadpole context.
 - [x] 8 exit: suppressed/unavailable/stale cases validate; provenance is required; no persistence or live calls; ADG and affected gates pass.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 11.1
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 11.2
 
 ```text
-[SCOPE_CONTRACT] packages/contracts, packages/providers, packages/economic. In scope: FEMA NRI and NFHL Zod schemas, variable dictionary, synthetic seed fixtures, and pinned-fetch adapter with mandatory DataProvenance and non-coercion. Out of scope: USGS 3DEP (Task 11.2), EPA AQS (Task 11.3), UI/HUD components (Phase 11 Exit).
+[SCOPE_CONTRACT] packages/contracts, packages/providers, packages/economic. In scope: USGS 3DEP Elevation Point Query Service Zod schemas, elevation and vertical datum contracts, synthetic seed fixtures, pure coordinate and elevation units conversion, pinned-fetch adapter using the modern EPQS REST endpoint (https://epqs.nationalmap.gov/v1/json), kill switch (GEV_USGS_3DEP_ENABLED), and non-coercion of invalid/off-coverage points. Out of scope: the retired pqs.php endpoint, EPA AQS (Task 11.3), UI/HUD components (Phase 11 Exit).
 [PERFORMANCE_THRESHOLD] 100% unit tests green; query latency p95 < 25ms in seed mode; zero live calls under GEV_SEED_MODE=1.
-[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2, §11.1; ADR 0035, ADR 0050, ADR 0052; strict DataProvenance, screening disclaimers, zero coercion.
-[FAILURE_MODES] Stale ArcGIS endpoint schemas, unverified flood hazard layers, framing preliminary screening as definitive engineering advice.
+[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2, §11.2; ADR 0035, ADR 0050, ADR 0052; strict DataProvenance, modern EPQS v1/json REST endpoint only, zero coercion of ocean/off-coverage nulls.
+[FAILURE_MODES] Using retired pqs.php endpoint, coercing -1000000 or null off-coverage elevations to 0.0 sea level, making live requests under seed mode.
 ```
 
 ### Phase 9 — Economic R1: market and business footprint
@@ -1993,7 +1993,7 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 
 ### Phase 11 — Economic R3: risk, resilience, and accessibility
 
-- [ ] 11.1 Verify and implement FEMA NRI and NFHL products from current official service catalogs.
+- [x] 11.1 Verify and implement FEMA NRI and NFHL products from current official service catalogs.
 - [ ] 11.2 Implement USGS 3DEP via the current Elevation Point Query Service; do not use the retired `pqs.php` URL.
 - [ ] 11.3 Implement EPA AQS as historical/regulatory monitoring data; never label it real-time AQI. Treat AirNow as separate future scope if current conditions are approved.
 - [ ] 11.4 Implement approved DOT/BTS accessibility context and pure site-risk functions with provenance and screening disclaimers.
@@ -4498,6 +4498,36 @@ No later task is authorized merely because it appears in this plan.
   - Doc tests: 17/17 tests passed (`pnpm docs:test`).
 - **Plan Advancement:** Phase 10 complete (`[x] 10 exit`). Advanced to `CURRENT_PHASE=11`, `NEXT_TASK=11.1`, `NEXT_TASK_STATUS=READY`.
 - **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 11.1. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 11.1 Implementation & Verification Checkpoint — 2026-09-26
+
+- **Scope:** Implemented and verified FEMA NRI and NFHL products from official service catalogs adhering to PLAN.md §10 Task 11.1, ADR 0035, ADR 0050, ADR 0052, and ADR 0062.
+- **Artifacts produced & updated:**
+  - `packages/contracts/src/fema.ts`: Strict Zod contracts for FEMA NRI (18 hazard types, composite scores, qualitative risk ratings, EAL totals, query schema, screening disclaimer) and NFHL (flood zones A, AE, AH, AO, AR, A99, V, VE, X, D, risk categories, bounding box, flood hazard features, summary schema, advisory disclaimer).
+  - `packages/contracts/test/femaContracts.test.ts`: Contract round-trip and non-coercion validation tests (8/8 tests passed).
+  - `packages/economic/src/femaNriVariables.ts`: Pure zero-I/O definitions of 18 hazard variables, EAL totals, SoVI, and BRIC (`FEMA_NRI_VARIABLES_V1` and `FEMA_NRI_VARIABLE_DICTIONARY_V1`).
+  - `packages/economic/src/femaDictionary.ts`: Pure spatial and statistical domain functions (`validateFemaNriGeography`, `classifyNfhlFloodRisk`, `parseNriRiskRating`, `parseNriRawEstimate`, `parseNfhlStaticBfe`, `parseNfhlDepth`).
+  - `packages/economic/test/femaDictionary.test.ts`: Fast-check property and unit tests for FEMA dictionaries and non-coercion invariants (8/8 tests passed).
+  - `fixtures/fema-nri-synthetic-v1.json`: Comprehensive synthetic seed fixture containing composite risk scores, EAL totals, SoVI, BRIC, riverine flooding, wildfire, earthquake, and not-applicable inland tsunami ratings across Travis County and Census Tract 48453000101.
+  - `fixtures/fema-nfhl-synthetic-v1.json`: Strict economic evidence fixture dataset for NFHL flood determinations.
+  - `fixtures/fema-nfhl-features-synthetic-v1.json`: Raw NFHL DFIRM features containing Lady Bird Lake Zone AE with BFE 432.0 NAVD88, Shoal Creek 500-year Zone X, minimal Zone X, and unstudied Zone D in Western Travis County.
+  - `packages/providers/src/femaNri.ts`: `FemaNriAdapter` with seed mode loading, geography indexing, screening disclaimer, kill switch (`GEV_FEMA_NRI_ENABLED`), convenience queries, and pinned-fetch live integration.
+  - `packages/providers/src/femaNfhl.ts`: `FemaNfhlAdapter` with seed mode loading, spatial point-in-bbox / bbox-intersection queries, dominant zone prioritization (SFHA > 500-yr > Zone D > minimal), non-coercion of Zone D and null BFEs, advisory disclaimer, kill switch (`GEV_FEMA_NFHL_ENABLED`), and pinned-fetch ArcGIS MapServer integration.
+  - `packages/providers/test/femaNri.test.ts`: Unit and benchmark tests for `FemaNriAdapter` (9/9 passed; query latency p95 < 0.1ms).
+  - `packages/providers/test/femaNfhl.test.ts`: Unit and benchmark tests for `FemaNfhlAdapter` (10/10 passed; query latency p95 < 0.1ms).
+  - `docs/adr/0062-fema-nri-and-nfhl-adapters-architecture.md`: Documented architecture decision and registered in `docs/adr/INDEX.md`.
+  - `RUNBOOK.md`: Added Section 18 for FEMA NRI and NFHL operations, non-coercion of Zone D and absent BFEs, and mandatory screening/advisory disclaimers.
+- **Verification Evidence & Performance:**
+  - `@gev/contracts` test suite: 21 files, 173 tests passed.
+  - `@gev/economic` test suite: 19 files, 150 tests passed.
+  - `@gev/providers` test suite: 20 files, 132 tests passed.
+  - `@gev/server` test suite: 31 files, 296 tests passed.
+  - Full typecheck and linting: 31/31 turbo tasks successful, 0 errors.
+  - Active Documentation Guard (ADG): 83 doc files, 1,118 paths, 42 symbols, 0 errors (`pnpm docs:check`).
+  - Doc tests: 17/17 tests passed (`pnpm docs:test`).
+  - Architecture check: clean (`pnpm architecture:check`).
+- **Plan Advancement:** Task 11.1 complete (`[x] 11.1`). Advanced to `CURRENT_PHASE=11`, `NEXT_TASK=11.2`, `NEXT_TASK_STATUS=READY`.
+- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 11.2. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
 

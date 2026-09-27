@@ -15,6 +15,7 @@ export const ECONOMIC_FIXTURE_FILES = [
   'bls-oews-synthetic-v1.json',
   'bls-lau-synthetic-v1.json',
   'fema-nri-synthetic-v1.json',
+  'fema-nfhl-synthetic-v1.json',
   'osm-commercial-evidence-synthetic-v1.json',
 ] as const;
 

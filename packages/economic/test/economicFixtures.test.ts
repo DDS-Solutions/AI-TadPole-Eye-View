@@ -145,6 +145,25 @@ describe('Economic Seed Fixtures Contract Validation (Task 8.3)', () => {
     }
   });
 
+  it('validates FEMA NFHL fixture with flood hazard zones, non-coerced BFE, and provenance', () => {
+    const raw = loadFixtureJson('fema-nfhl-synthetic-v1.json');
+    const dataset = parseEconomicFixtureDataset(raw);
+
+    expect(dataset.fixture_id).toBe('fema-nfhl-synthetic-v1');
+    expect(dataset.source_id).toBe('fema-nri-nfhl');
+    expect(dataset.provenance.mode).toBe('seed');
+    expect(dataset.provenance.license.id).toBe('us-government-public-domain');
+
+    const zoneAe = dataset.records.find((r) => r.evidence_id === 'ev-fema-nfhl-zone-ae-48453-2024');
+    expect(zoneAe).toBeDefined();
+    expect(zoneAe?.tags).toContain('sfha');
+    expect(zoneAe?.tags).toContain('zone-ae');
+
+    const zoneD = dataset.records.find((r) => r.evidence_id === 'ev-fema-nfhl-zone-d-48453-2024');
+    expect(zoneD).toBeDefined();
+    expect(zoneD?.tags).toContain('undetermined');
+  });
+
   it('validates OSM commercial POI Overpass fixture with ODbL 1.0 license and sanitization', () => {
     const raw = loadFixtureJson('osm-commercial-synthetic-v1.json');
     const poiResponse = parseOsmCommercialPoiFixture(raw);
@@ -227,6 +246,7 @@ describe('Failure Modes & Security Guards (Task 8.3)', () => {
       'bls-oews-synthetic-v1.json',
       'bls-lau-synthetic-v1.json',
       'fema-nri-synthetic-v1.json',
+      'fema-nfhl-synthetic-v1.json',
       'osm-commercial-synthetic-v1.json',
       'osm-commercial-evidence-synthetic-v1.json',
     ];
@@ -261,6 +281,7 @@ describe('Failure Modes & Security Guards (Task 8.3)', () => {
       'bls-oews-synthetic-v1.json',
       'bls-lau-synthetic-v1.json',
       'fema-nri-synthetic-v1.json',
+      'fema-nfhl-synthetic-v1.json',
       'osm-commercial-synthetic-v1.json',
       'osm-commercial-evidence-synthetic-v1.json',
     ];
@@ -290,6 +311,7 @@ describe('Performance Threshold: Parsing Latency (Task 8.3)', () => {
       'bls-oews-synthetic-v1.json',
       'bls-lau-synthetic-v1.json',
       'fema-nri-synthetic-v1.json',
+      'fema-nfhl-synthetic-v1.json',
       'osm-commercial-synthetic-v1.json',
       'osm-commercial-evidence-synthetic-v1.json',
     ];
