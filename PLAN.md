@@ -20,11 +20,11 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=11
-NEXT_TASK=11.2
+NEXT_TASK=11.3
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
-LAST_VERIFIED_UTC=2026-09-26
+LAST_VERIFIED_UTC=2026-09-27
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
 IMPLEMENTATION_STARTED=YES
 ```
@@ -1967,13 +1967,13 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 - [x] 8.5 Add content/instruction separation and prompt-injection tests before any provider/economic text enters an LLM/Tadpole context.
 - [x] 8 exit: suppressed/unavailable/stale cases validate; provenance is required; no persistence or live calls; ADG and affected gates pass.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 11.2
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 11.3
 
 ```text
-[SCOPE_CONTRACT] packages/contracts, packages/providers, packages/economic. In scope: USGS 3DEP Elevation Point Query Service Zod schemas, elevation and vertical datum contracts, synthetic seed fixtures, pure coordinate and elevation units conversion, pinned-fetch adapter using the modern EPQS REST endpoint (https://epqs.nationalmap.gov/v1/json), kill switch (GEV_USGS_3DEP_ENABLED), and non-coercion of invalid/off-coverage points. Out of scope: the retired pqs.php endpoint, EPA AQS (Task 11.3), UI/HUD components (Phase 11 Exit).
+[SCOPE_CONTRACT] packages/contracts, packages/providers, packages/economic. In scope: EPA Air Quality System (AQS) historical monitoring data contracts, parameters (O3, PM2.5, PM10, CO, NO2, SO2), monitoring sites, quarterly/annual summaries, synthetic seed fixtures, pinned-fetch adapter using EPA AQS API (https://aqs.epa.gov/data/api), kill switch (GEV_EPA_AQS_ENABLED), strict labeling as historical/regulatory monitoring data (never real-time AQI), and non-coercion of unmonitored pollutants. Out of scope: real-time AirNow (future scope), DOT/BTS (Task 11.4), UI/HUD components (Phase 11 Exit).
 [PERFORMANCE_THRESHOLD] 100% unit tests green; query latency p95 < 25ms in seed mode; zero live calls under GEV_SEED_MODE=1.
-[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2, §11.2; ADR 0035, ADR 0050, ADR 0052; strict DataProvenance, modern EPQS v1/json REST endpoint only, zero coercion of ocean/off-coverage nulls.
-[FAILURE_MODES] Using retired pqs.php endpoint, coercing -1000000 or null off-coverage elevations to 0.0 sea level, making live requests under seed mode.
+[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2, §11.3; ADR 0035, ADR 0050, ADR 0052; strict DataProvenance, historical screening only, no real-time claims, zero coercion of unmonitored pollutants.
+[FAILURE_MODES] Labeling EPA AQS as real-time AQI, coercing missing pollutant measurements to 0.0 (clean air), making live calls in seed mode.
 ```
 
 ### Phase 9 — Economic R1: market and business footprint
@@ -1994,7 +1994,7 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 ### Phase 11 — Economic R3: risk, resilience, and accessibility
 
 - [x] 11.1 Verify and implement FEMA NRI and NFHL products from current official service catalogs.
-- [ ] 11.2 Implement USGS 3DEP via the current Elevation Point Query Service; do not use the retired `pqs.php` URL.
+- [x] 11.2 Implement USGS 3DEP via the current Elevation Point Query Service; do not use the retired `pqs.php` URL.
 - [ ] 11.3 Implement EPA AQS as historical/regulatory monitoring data; never label it real-time AQI. Treat AirNow as separate future scope if current conditions are approved.
 - [ ] 11.4 Implement approved DOT/BTS accessibility context and pure site-risk functions with provenance and screening disclaimers.
 - [ ] 11 exit: source product/vintage/geography is explicit; current alerts and long-term hazards are distinct; no risk result is framed as definitive advice.
@@ -4528,6 +4528,32 @@ No later task is authorized merely because it appears in this plan.
   - Architecture check: clean (`pnpm architecture:check`).
 - **Plan Advancement:** Task 11.1 complete (`[x] 11.1`). Advanced to `CURRENT_PHASE=11`, `NEXT_TASK=11.2`, `NEXT_TASK_STATUS=READY`.
 - **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 11.2. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 11.2 Implementation & Verification Checkpoint — 2026-09-27
+
+- **Scope:** Implemented USGS 3DEP Elevation Point Query Service (EPQS) adapter, vertical datum and unit contracts, pure conversions, non-coercion invariants, and synthetic seed fixtures adhering to PLAN.md §10 Task 11.2, ADR 0035, ADR 0050, ADR 0052, and ADR 0063.
+- **Artifacts produced & updated:**
+  - `packages/contracts/src/usgs3dep.ts`: Strict Zod contracts for USGS 3DEP and EPQS (vertical datums NAVD88/NAD83/WGS84, units Meters/Feet, raw EPQS response wire parser, normalized point query, elevation point result with non-coercion superRefinements, terrain slope result, synthetic fixture dataset schema, and mandatory `USGS_3DEP_ADVISORY_DISCLAIMER`).
+  - `packages/contracts/test/usgs3depContracts.test.ts`: Contracts test suite verifying schema validation, non-coercion of `-1000000` to available/0.0 sea level, coordinate bounds, slope schema, and datums (6/6 tests passed).
+  - `fixtures/usgs-3dep-synthetic-v1.json`: Deterministic synthetic seed fixture containing mountain terrain (Boulder, CO: 1630.5m), coastal plain (Miami, FL: 2.1m), below-sea-level land (Badwater Basin, Death Valley, CA: -86.0m), shoreline benchmark (Monterey Bay, CA: 0.0m), inland plain (Chicago, IL: 181.0m), mountain summit (Mount Elbert, CO: 4401.2m), and off-coverage ocean points (Atlantic and Pacific oceans: -1000000 unavailable).
+  - `packages/economic/src/usgs3depConversions.ts`: Pure zero-I/O module for international foot/meter conversions (`metersToFeet`, `feetToMeters`, `convertElevationEstimate`), coordinate bounds validation, EPQS endpoint validator strictly rejecting `pqs.php`, non-coercion raw parser (`parseUsgsRawElevation`), and terrain slope engine (`haversineDistanceMeters`, `calculateTerrainSlope`).
+  - `packages/economic/src/sourceRegistry.ts`: Advanced `usgs-3dep` status from `planned` to `seed` with `seed_fixture_id: 'usgs-3dep-synthetic-v1'`.
+  - `packages/economic/test/usgs3depConversions.test.ts`: Unit and fast-check property tests verifying round-trip invertibility, bounds rejection, `pqs.php` rejection, non-coercion invariants, and slope metrics (15/15 tests passed).
+  - `packages/providers/src/usgs3dep.ts`: `Usgs3DepAdapter` implementing seed-mode fixture replay, nearest-neighbor matching (< 0.2 deg), non-coercion of off-coverage coordinates to unavailable, terrain slope calculation (`getSlope`), kill switch (`GEV_USGS_3DEP_ENABLED`), seed mode enforcement (`GEV_SEED_MODE=1`), and pinned-fetch live integration using modern EPQS REST endpoint with SSRF allowlists.
+  - `packages/providers/test/usgs3dep.test.ts`: Adapter test suite covering seed mode elevation queries, negative land elevations, shoreline zero elevation, off-coverage non-coercion, unit conversion, batch queries, terrain slope, kill switch, seed mode violation, pinned-fetch mock, and performance benchmark (13/13 tests passed).
+  - `docs/adr/0063-usgs-3dep-elevation-adapter-architecture.md`: Documented architecture decision and registered in `docs/adr/INDEX.md`.
+  - `RUNBOOK.md`: Added Section 19 documenting USGS 3DEP EPQS operations, non-coercion laws, unit conversions, and screening disclaimers.
+- **Verification Evidence & Performance:**
+  - `@gev/contracts` test suite: 22 files, 142 tests passed.
+  - `@gev/economic` test suite: 20 files, 167 tests passed.
+  - `@gev/providers` test suite: 21 files, 146 tests passed.
+  - EPQS query latency benchmark: p50=0.067ms, p95=0.264ms (threshold < 25ms p95).
+  - Monorepo typecheck: 19/19 tasks successful, 0 errors (`pnpm turbo run typecheck`).
+  - Biome check on modified files: 0 errors, 0 warnings.
+  - Architecture check: clean, 0 files > 500 lines without ADR (`pnpm architecture:check`).
+  - Active Documentation Guard (ADG): 84 doc files, 1,155 paths, 42 symbols, 0 errors (`pnpm docs:check`).
+- **Plan Advancement:** Task 11.2 complete (`[x] 11.2`). Advanced to `CURRENT_PHASE=11`, `NEXT_TASK=11.3`, `NEXT_TASK_STATUS=READY`.
+- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 11.3. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
 
