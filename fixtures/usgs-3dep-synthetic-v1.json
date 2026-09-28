@@ -1,0 +1,343 @@
+{
+  "schema_version": 1,
+  "fixture_id": "usgs-3dep-synthetic-v1",
+  "source_id": "usgs-3dep",
+  "title": "USGS 3D Elevation Program (3DEP) EPQS Synthetic Seed Fixture",
+  "description": "Deterministic Elevation Point Query Service (EPQS) reference points across diverse United States topographies, covering mountain, coastal, below-sea-level, exact sea-level, and off-coverage ocean locations.",
+  "provenance": {
+    "schema_version": 1,
+    "source": {
+      "provider_id": "usgs-3dep",
+      "feed_id": "elevation-epqs",
+      "name": "USGS Elevation Point Query Service (EPQS)",
+      "canonical_url": "https://epqs.nationalmap.gov/v1/json"
+    },
+    "retrieved_at": "2026-09-27T12:00:00.000Z",
+    "observation_period": {
+      "status": "available",
+      "start": "2024-01-01T00:00:00.000Z",
+      "end": "2024-09-27T23:59:59.000Z"
+    },
+    "vintage": {
+      "status": "available",
+      "value": "3DEP 1/3 arc-second (2024)"
+    },
+    "mode": "seed",
+    "source_mode": "seed",
+    "license": {
+      "id": "us-government-public-domain",
+      "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+    },
+    "attribution": "U.S. Geological Survey, 3D Elevation Program (3DEP)",
+    "fixture_id": "usgs-3dep-synthetic-v1",
+    "cache": null,
+    "freshness": {
+      "status": "fresh",
+      "age_seconds": 0,
+      "fresh_for_seconds": 2592000
+    }
+  },
+  "points": [
+    {
+      "location_name": "Boulder, CO",
+      "x": -105.2705,
+      "y": 40.015,
+      "elevation": {
+        "status": "available",
+        "value": 1630.5,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "Meters",
+        "notes": "Rocky Mountain foothills"
+      },
+      "elevation_meters": {
+        "status": "available",
+        "value": 1630.5,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "Meters"
+      },
+      "elevation_feet": {
+        "status": "available",
+        "value": 5349.4094,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "Feet"
+      },
+      "data_source": "3DEP 1/3 arc-second",
+      "units": "Meters",
+      "vertical_datum": "NAVD88",
+      "is_off_coverage": false
+    },
+    {
+      "location_name": "Miami, FL",
+      "x": -80.1918,
+      "y": 25.7617,
+      "elevation": {
+        "status": "available",
+        "value": 2.1,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "Meters",
+        "notes": "Low-lying Atlantic coastal plain"
+      },
+      "elevation_meters": {
+        "status": "available",
+        "value": 2.1,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "Meters"
+      },
+      "elevation_feet": {
+        "status": "available",
+        "value": 6.8898,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "Feet"
+      },
+      "data_source": "3DEP 1/3 arc-second",
+      "units": "Meters",
+      "vertical_datum": "NAVD88",
+      "is_off_coverage": false
+    },
+    {
+      "location_name": "Badwater Basin, Death Valley, CA",
+      "x": -116.8258,
+      "y": 36.2503,
+      "elevation": {
+        "status": "available",
+        "value": -86.0,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "Meters",
+        "notes": "Lowest point in North America (-86m NAVD88)"
+      },
+      "elevation_meters": {
+        "status": "available",
+        "value": -86.0,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "Meters"
+      },
+      "elevation_feet": {
+        "status": "available",
+        "value": -282.1522,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "Feet"
+      },
+      "data_source": "3DEP 1/3 arc-second",
+      "units": "Meters",
+      "vertical_datum": "NAVD88",
+      "is_off_coverage": false
+    },
+    {
+      "location_name": "Monterey Bay Shoreline, CA",
+      "x": -122.0308,
+      "y": 36.9741,
+      "elevation": {
+        "status": "available",
+        "value": 0.0,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "Meters",
+        "notes": "Pacific shoreline sea level reference"
+      },
+      "elevation_meters": {
+        "status": "available",
+        "value": 0.0,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "Meters"
+      },
+      "elevation_feet": {
+        "status": "available",
+        "value": 0.0,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "Feet"
+      },
+      "data_source": "3DEP 1/3 arc-second",
+      "units": "Meters",
+      "vertical_datum": "NAVD88",
+      "is_off_coverage": false
+    },
+    {
+      "location_name": "Chicago, IL",
+      "x": -87.6298,
+      "y": 41.8781,
+      "elevation": {
+        "status": "available",
+        "value": 181.0,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "Meters",
+        "notes": "Great Lakes urban plain"
+      },
+      "elevation_meters": {
+        "status": "available",
+        "value": 181.0,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "Meters"
+      },
+      "elevation_feet": {
+        "status": "available",
+        "value": 593.832,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "Feet"
+      },
+      "data_source": "3DEP 1/3 arc-second",
+      "units": "Meters",
+      "vertical_datum": "NAVD88",
+      "is_off_coverage": false
+    },
+    {
+      "location_name": "Asheville, NC",
+      "x": -82.5515,
+      "y": 35.5951,
+      "elevation": {
+        "status": "available",
+        "value": 650.0,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "Meters",
+        "notes": "Blue Ridge Mountain valley"
+      },
+      "elevation_meters": {
+        "status": "available",
+        "value": 650.0,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "Meters"
+      },
+      "elevation_feet": {
+        "status": "available",
+        "value": 2132.546,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "Feet"
+      },
+      "data_source": "3DEP 1/3 arc-second",
+      "units": "Meters",
+      "vertical_datum": "NAVD88",
+      "is_off_coverage": false
+    },
+    {
+      "location_name": "Mount Elbert, CO",
+      "x": -106.4454,
+      "y": 39.1178,
+      "elevation": {
+        "status": "available",
+        "value": 4401.2,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "Meters",
+        "notes": "Highest summit of the Rocky Mountains"
+      },
+      "elevation_meters": {
+        "status": "available",
+        "value": 4401.2,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "Meters"
+      },
+      "elevation_feet": {
+        "status": "available",
+        "value": 14439.6325,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "Feet"
+      },
+      "data_source": "3DEP 1/3 arc-second",
+      "units": "Meters",
+      "vertical_datum": "NAVD88",
+      "is_off_coverage": false
+    },
+    {
+      "location_name": "Atlantic Ocean Offshore",
+      "x": -70.0,
+      "y": 25.0,
+      "elevation": {
+        "status": "unavailable",
+        "reason": "USGS 3DEP elevation unavailable: point is outside coverage area or water body (-1000000 off-coverage)"
+      },
+      "elevation_meters": {
+        "status": "unavailable",
+        "reason": "USGS 3DEP elevation unavailable: point is outside coverage area or water body (-1000000 off-coverage)"
+      },
+      "elevation_feet": {
+        "status": "unavailable",
+        "reason": "USGS 3DEP elevation unavailable: point is outside coverage area or water body (-1000000 off-coverage)"
+      },
+      "data_source": "Unavailable",
+      "units": "Meters",
+      "vertical_datum": "unknown",
+      "is_off_coverage": true
+    },
+    {
+      "location_name": "Pacific Ocean Offshore",
+      "x": -125.0,
+      "y": 32.0,
+      "elevation": {
+        "status": "unavailable",
+        "reason": "USGS 3DEP elevation unavailable: point is outside coverage area or water body (-1000000 off-coverage)"
+      },
+      "elevation_meters": {
+        "status": "unavailable",
+        "reason": "USGS 3DEP elevation unavailable: point is outside coverage area or water body (-1000000 off-coverage)"
+      },
+      "elevation_feet": {
+        "status": "unavailable",
+        "reason": "USGS 3DEP elevation unavailable: point is outside coverage area or water body (-1000000 off-coverage)"
+      },
+      "data_source": "Unavailable",
+      "units": "Meters",
+      "vertical_datum": "unknown",
+      "is_off_coverage": true
+    },
+    {
+      "location_name": "Paris, France (International)",
+      "x": 2.3522,
+      "y": 48.8566,
+      "elevation": {
+        "status": "unavailable",
+        "reason": "USGS 3DEP elevation unavailable: point is outside coverage area or water body (-1000000 off-coverage)"
+      },
+      "elevation_meters": {
+        "status": "unavailable",
+        "reason": "USGS 3DEP elevation unavailable: point is outside coverage area or water body (-1000000 off-coverage)"
+      },
+      "elevation_feet": {
+        "status": "unavailable",
+        "reason": "USGS 3DEP elevation unavailable: point is outside coverage area or water body (-1000000 off-coverage)"
+      },
+      "data_source": "Unavailable",
+      "units": "Meters",
+      "vertical_datum": "unknown",
+      "is_off_coverage": true
+    }
+  ]
+}

@@ -27,6 +27,7 @@ describe('Economic Source Registry (ADR 0052)', () => {
       'bls-oews',
       'bls-lau',
       'fema-nri-nfhl',
+      'usgs-3dep',
       'osm-commercial',
     ];
 

@@ -160,9 +160,10 @@ export const ECONOMIC_SOURCE_REGISTRY: Record<EconomicSourceId, EconomicSourceMe
     supported_geographies: ['point', 'bounding_box'],
     update_cadence: 'Continuous lidar acquisition',
     vintage_description: 'Topographic elevation in meters above NAD83/NAVD88 datum',
-    status: 'planned',
+    status: 'seed',
     suppression_supported: false,
     margin_of_error_supported: false,
+    seed_fixture_id: 'usgs-3dep-synthetic-v1',
   },
   'epa-aqs': {
     id: 'epa-aqs',

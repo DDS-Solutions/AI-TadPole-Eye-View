@@ -252,6 +252,7 @@ See [ADR 0049](./docs/adr/0049-registry-derived-layer-access-read-model.md).
   - `bls-oews-synthetic-v1.json` (BLS Occupational Employment and Wage Statistics)
   - `bls-lau-synthetic-v1.json` (BLS Local Area Unemployment Statistics)
   - `fema-nri-synthetic-v1.json` (FEMA National Risk Index)
+  - `usgs-3dep-synthetic-v1.json` (USGS 3DEP Elevation Point Query Service)
   - `osm-commercial-synthetic-v1.json` and `osm-commercial-evidence-synthetic-v1.json` (OpenStreetMap Commercial POIs)
 - Every fixture record carries mandatory `DataProvenance` with `mode: "seed"` and `source_mode: "seed"`. Fixtures labeled with live mode are rejected immediately by contract validation.
 - Missing, suppressed, or low-sample economic estimates retain their explicit discriminated status (`suppressed`, `unavailable`, `not_applicable`) and are never coerced to zero.
@@ -517,3 +518,14 @@ The FEMA National Risk Index (NRI) and National Flood Hazard Layer (NFHL) adapte
   - All NFHL outputs must preserve `FEMA_NFHL_ADVISORY_DISCLAIMER`: "FEMA National Flood Hazard Layer (NFHL) data provide advisory geospatial screening and flood hazard identification only. They do not constitute a formal Letter of Map Amendment (LOMA), Letter of Map Revision (LOMR), elevation certificate, or definitive flood insurance rating determination."
 - **Spatial Flood Hazard Classification Hierarchy:** `getFloodSummary` prioritizes multi-feature spatial intersections deterministically: `high_risk_sfha` (Zone A, AE, AH, AO, AR, A99, V, VE) > `moderate_risk_500yr` (Zone X 0.2% annual chance) > `undetermined_risk_zone_d` (Zone D) > `minimal_risk_outside_sfha` (Zone X unshaded).
 - **Kill-Switch & Seed Enforcement:** Governed by `GEV_FEMA_NRI_ENABLED` and `GEV_FEMA_NFHL_ENABLED` (default: 1) and `GEV_SEED_MODE=1`. Live queries to FEMA OpenFEMA API or NFHL MapServer without explicit authorization fail closed with `FemaNriSeedModeViolationError` or `FemaNfhlSeedModeViolationError`.
+
+## 19. USGS 3DEP Elevation Point Query Service (EPQS) Operations (ADR 0063)
+
+The USGS 3D Elevation Program (3DEP) EPQS adapter (`packages/providers/src/usgs3dep.ts`) and pure domain modules (`packages/economic/src/usgs3depConversions.ts`) enforce terrain modeling, unit conversions, and non-coercion laws:
+
+- **Modern EPQS REST Endpoint Only:** All elevation queries must target the modern EPQS REST endpoint `https://epqs.nationalmap.gov/v1/json`. The legacy `pqs.php` endpoint is permanently retired; any query or configuration referencing `pqs.php` is strictly rejected with `Usgs3DepRetiredEndpointError`.
+- **Strict Non-Coercion of Off-Coverage Sentinels:** The USGS EPQS service returns sentinel values (`-1000000` or `<= -999999`) or `null` when a queried point is off-coverage (e.g. international territory or open oceans). In accordance with non-coercion laws, these sentinels must NEVER be coerced to `0.0` sea level; they must evaluate to `{ status: 'unavailable', reason: '...' }` with `is_off_coverage: true`.
+- **Preservation of Below-Sea-Level Land Depressions:** Legitimate terrestrial depressions below sea level (such as Badwater Basin, Death Valley, CA at -86 meters) and legitimate shoreline sea-level benchmarks (`0.0` meters) must evaluate to `{ status: 'available' }` without coercion.
+- **Pure Unit Conversions & Reversibility:** Pure functions `metersToFeet` and `feetToMeters` implement the international foot standard (`1 foot = 0.3048 meters` exactly) and maintain property-verified round-trip invertibility.
+- **Mandatory Advisory Disclaimer:** All elevation and slope outputs must preserve `USGS_3DEP_ADVISORY_DISCLAIMER`: "USGS 3DEP elevation data retrieved via the Elevation Point Query Service (EPQS) is provided for geospatial reference, preliminary screening, and terrain modeling. It does not replace licensed boundary, topographic, or geotechnical land surveys, and must not be used as official Elevation Certificates for FEMA National Flood Insurance Program (NFIP) rating or structural engineering design."
+- **Kill-Switch & Seed Enforcement:** Governed by `GEV_USGS_3DEP_ENABLED` (default: 1) failing closed with `Usgs3DepDisabledError`. Live queries require explicit developer authorization and use `pinnedFetch` with strict SSRF host/path allowlists (`epqs.nationalmap.gov/v1/json`). Unauthorized live calls fail closed with `Usgs3DepSeedModeViolationError`.
