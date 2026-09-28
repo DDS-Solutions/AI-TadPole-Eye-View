@@ -80,6 +80,7 @@ export class FemaNfhlAdapter {
   private readonly seedMode: boolean;
   private readonly allowLiveCalls: boolean;
   private cachedFeatures: FemaNfhlFloodHazardFeature[] | null = null;
+  private cachedDataset: { features: FemaNfhlFloodHazardFeature[]; provenance: any } | null = null;
 
   constructor(options: FemaNfhlAdapterOptions = {}) {
     this.clock = options.clock ?? new SystemClock();
@@ -102,19 +103,32 @@ export class FemaNfhlAdapter {
     return FEMA_NFHL_ADVISORY_DISCLAIMER;
   }
 
-  loadFeatures(): readonly FemaNfhlFloodHazardFeature[] {
-    if (this.cachedFeatures) {
-      return this.cachedFeatures;
+  loadDataset(): { features: readonly FemaNfhlFloodHazardFeature[]; provenance: any } {
+    if (this.cachedDataset) {
+      return this.cachedDataset;
     }
 
     if (!fs.existsSync(this.fixturePath)) {
       throw new Error(`FEMA NFHL seed fixture not found at '${this.fixturePath}'`);
     }
 
+    const stat = fs.statSync(this.fixturePath);
+    if (stat.size > 20_000_000) {
+      throw new Error(`FEMA NFHL fixture file exceeds 20MB limit: ${stat.size} bytes`);
+    }
+
     const raw = fs.readFileSync(this.fixturePath, 'utf8');
     const parsed = parseFemaNfhlFeaturesFixture(raw);
+    this.cachedDataset = parsed;
     this.cachedFeatures = parsed.features;
-    return this.cachedFeatures;
+    return this.cachedDataset;
+  }
+
+  loadFeatures(): readonly FemaNfhlFloodHazardFeature[] {
+    if (this.cachedFeatures) {
+      return this.cachedFeatures;
+    }
+    return this.loadDataset().features;
   }
 
   async queryFeatures(queryInput: FemaNfhlQuery): Promise<readonly FemaNfhlFloodHazardFeature[]> {
@@ -122,7 +136,14 @@ export class FemaNfhlAdapter {
       throw new FemaNfhlProviderDisabledError();
     }
 
-    const query = FemaNfhlQuerySchema.parse(queryInput);
+    let query: FemaNfhlQuery;
+    try {
+      query = FemaNfhlQuerySchema.parse(queryInput);
+    } catch (err) {
+      throw new FemaNfhlInvalidQueryError(
+        err instanceof Error ? err.message : 'Invalid FEMA NFHL query input'
+      );
+    }
 
     if (this.seedMode) {
       const allFeatures = this.loadFeatures();
@@ -188,51 +209,64 @@ export class FemaNfhlAdapter {
       throw new Error(`FEMA NFHL live endpoint returned HTTP ${response.status}`);
     }
 
-    return [];
+    throw new Error(
+      'FEMA NFHL live feature parsing is not yet implemented; live queries must not return silent empty results'
+    );
   }
 
   async getFloodSummary(queryInput: FemaNfhlQuery): Promise<FemaNfhlSummary> {
     const features = await this.queryFeatures(queryInput);
 
-    const defaultGeography: EconomicGeography = queryInput.geography ?? {
-      level: 'point',
-      latitude: queryInput.point?.latitude ?? 30.2672,
-      longitude: queryInput.point?.longitude ?? -97.7431,
-    };
+    const defaultGeography: EconomicGeography =
+      queryInput.geography ??
+      (queryInput.point
+        ? {
+            level: 'point',
+            latitude: queryInput.point.latitude,
+            longitude: queryInput.point.longitude,
+          }
+        : queryInput.bounding_box
+          ? {
+              level: 'bounding_box',
+              min_lon: queryInput.bounding_box[0],
+              min_lat: queryInput.bounding_box[1],
+              max_lon: queryInput.bounding_box[2],
+              max_lat: queryInput.bounding_box[3],
+            }
+          : {
+              level: 'point',
+              latitude: 30.2672,
+              longitude: -97.7431,
+            });
 
-    if (features.length === 0) {
-      return {
-        geography: defaultGeography,
-        dominant_zone: 'X',
-        risk_category: 'minimal_risk_outside_sfha',
-        in_sfha: false,
-        has_floodway: false,
-        base_flood_elevation: {
-          status: 'not_applicable',
-          reason: 'No flood hazard features intersect query location or area.',
-        },
-        vertical_datum: null,
-        feature_count: 0,
-        provenance: {
-          schema_version: 1,
+    const datasetProvenance = this.seedMode ? this.loadDataset().provenance : null;
+    const nowIso = new Date(this.clock.now()).toISOString();
+    const summaryProvenance = datasetProvenance
+      ? {
+          ...datasetProvenance,
+          retrieved_at: nowIso,
+          source_mode: this.seedMode ? ('seed' as const) : ('live' as const),
+        }
+      : {
+          schema_version: 1 as const,
           source: {
             provider_id: FEMA_NFHL_PROVIDER_ID,
             feed_id: FEMA_NFHL_FEED_ID,
             name: 'FEMA National Flood Hazard Layer',
             canonical_url: 'https://hazards.fema.gov/gis/nfhl/rest/services/public/NFHL/MapServer',
           },
-          retrieved_at: new Date(this.clock.now()).toISOString(),
+          retrieved_at: nowIso,
           observation_period: {
-            status: 'available',
+            status: 'available' as const,
             start: '2024-01-01T00:00:00.000Z',
             end: '2024-09-26T23:59:59.000Z',
           },
           vintage: {
-            status: 'available',
+            status: 'available' as const,
             value: FEMA_NFHL_DEFAULT_VINTAGE,
           },
-          mode: this.seedMode ? 'seed' : 'live',
-          source_mode: this.seedMode ? 'seed' : 'live',
+          mode: this.seedMode ? ('seed' as const) : ('live' as const),
+          source_mode: this.seedMode ? ('seed' as const) : ('live' as const),
           license: {
             id: 'us-government-public-domain',
             name: 'U.S. Government Work - 17 U.S.C. 105 (Public Domain)',
@@ -241,18 +275,42 @@ export class FemaNfhlAdapter {
           fixture_id: this.seedMode ? FEMA_NFHL_SEED_FIXTURE_ID : null,
           cache: null,
           freshness: {
-            status: 'fresh',
+            status: 'fresh' as const,
             age_seconds: 0,
             fresh_for_seconds: 2592000,
           },
+        };
+
+    if (features.length === 0) {
+      return {
+        geography: defaultGeography,
+        dominant_zone: 'X',
+        risk_category: 'undetermined_no_coverage',
+        in_sfha: false,
+        has_floodway: false,
+        base_flood_elevation: {
+          status: 'unavailable',
+          reason: 'No flood hazard features intersect query location or area.',
         },
+        vertical_datum: null,
+        feature_count: 0,
+        provenance: summaryProvenance,
         advisory_disclaimer: FEMA_NFHL_ADVISORY_DISCLAIMER,
       };
     }
 
-    // Determine dominant zone with priority: SFHA > 500-yr > Undetermined (Zone D) > Minimal
-    let dominantZone: FemaNfhlFloodZone = 'X';
-    let dominantCategory: FemaNfhlRiskCategory = 'minimal_risk_outside_sfha';
+    const RANK: Record<FemaNfhlRiskCategory, number> = {
+      high_risk_sfha: 4,
+      moderate_risk_500yr: 3,
+      undetermined_risk_zone_d: 2,
+      minimal_risk_outside_sfha: 1,
+      unknown: 0,
+      undetermined_no_coverage: -1,
+    };
+
+    let highestRank = -1;
+    let dominantZone: FemaNfhlFloodZone = features[0]?.fld_zone ?? 'X';
+    let dominantCategory: FemaNfhlRiskCategory = 'unknown';
     let inSfha = false;
     let hasFloodway = false;
     let highestBfe: number | null = null;
@@ -266,27 +324,18 @@ export class FemaNfhlAdapter {
         hasFloodway = true;
       }
       if (f.static_bfe.status === 'available') {
-        highestBfe = Math.max(highestBfe ?? -Infinity, f.static_bfe.value);
-        if (f.v_datum) {
-          datum = f.v_datum;
+        if (highestBfe === null || f.static_bfe.value > highestBfe) {
+          highestBfe = f.static_bfe.value;
+          datum = f.v_datum ?? null;
         }
       }
 
       const cat = classifyNfhlFloodRisk(f.fld_zone, f.zone_subty);
-      if (cat === 'high_risk_sfha') {
+      const rank = RANK[cat] ?? 0;
+      if (rank > highestRank) {
+        highestRank = rank;
         dominantZone = f.fld_zone;
-        dominantCategory = 'high_risk_sfha';
-      } else if (cat === 'moderate_risk_500yr' && dominantCategory !== 'high_risk_sfha') {
-        dominantZone = f.fld_zone;
-        dominantCategory = 'moderate_risk_500yr';
-      } else if (
-        cat === 'undetermined_risk_zone_d' &&
-        dominantCategory !== 'high_risk_sfha' &&
-        dominantCategory !== 'moderate_risk_500yr'
-      ) {
-        // Crucial non-coercion law: Zone D is preserved and not coerced to minimal risk!
-        dominantZone = f.fld_zone;
-        dominantCategory = 'undetermined_risk_zone_d';
+        dominantCategory = cat;
       }
     }
 
@@ -314,39 +363,7 @@ export class FemaNfhlAdapter {
             },
       vertical_datum: datum,
       feature_count: features.length,
-      provenance: {
-        schema_version: 1,
-        source: {
-          provider_id: FEMA_NFHL_PROVIDER_ID,
-          feed_id: FEMA_NFHL_FEED_ID,
-          name: 'FEMA National Flood Hazard Layer',
-          canonical_url: 'https://hazards.fema.gov/gis/nfhl/rest/services/public/NFHL/MapServer',
-        },
-        retrieved_at: new Date(this.clock.now()).toISOString(),
-        observation_period: {
-          status: 'available',
-          start: '2024-01-01T00:00:00.000Z',
-          end: '2024-09-26T23:59:59.000Z',
-        },
-        vintage: {
-          status: 'available',
-          value: FEMA_NFHL_DEFAULT_VINTAGE,
-        },
-        mode: this.seedMode ? 'seed' : 'live',
-        source_mode: this.seedMode ? 'seed' : 'live',
-        license: {
-          id: 'us-government-public-domain',
-          name: 'U.S. Government Work - 17 U.S.C. 105 (Public Domain)',
-        },
-        attribution: 'Federal Emergency Management Agency (FEMA), National Flood Hazard Layer',
-        fixture_id: this.seedMode ? FEMA_NFHL_SEED_FIXTURE_ID : null,
-        cache: null,
-        freshness: {
-          status: 'fresh',
-          age_seconds: 0,
-          fresh_for_seconds: 2592000,
-        },
-      },
+      provenance: summaryProvenance,
       advisory_disclaimer: FEMA_NFHL_ADVISORY_DISCLAIMER,
     };
   }

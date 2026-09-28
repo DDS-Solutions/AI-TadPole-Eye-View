@@ -1,5 +1,6 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { FemaNriVariableIdSchema } from '@gev/contracts';
 import {
   FEMA_NFHL_ADVISORY_DISCLAIMER,
   FEMA_NRI_SCREENING_DISCLAIMER,
@@ -7,6 +8,7 @@ import {
   FEMA_NRI_VARIABLE_DICTIONARY_V1,
   classifyNfhlFloodRisk,
   lookupFemaNriVariable,
+  lookupFemaNriVariableByHazard,
   parseNfhlDepth,
   parseNfhlStaticBfe,
   parseNriRawEstimate,
@@ -20,7 +22,10 @@ describe('FEMA NRI & NFHL Dictionary & Domain Logic (PLAN.md §10 Task 11.1 & AD
     expect(FEMA_NRI_VARIABLE_DICTIONARY_V1.screening_disclaimer).toBe(
       FEMA_NRI_SCREENING_DISCLAIMER
     );
-    expect(Object.keys(FEMA_NRI_VARIABLES_V1).length).toBeGreaterThanOrEqual(25);
+    expect(Object.keys(FEMA_NRI_VARIABLES_V1).length).toBe(73);
+    expect(new Set(Object.keys(FEMA_NRI_VARIABLES_V1))).toEqual(
+      new Set(FemaNriVariableIdSchema.options)
+    );
 
     // Look up composite risk score
     const riskScore = lookupFemaNriVariable('RISK_SCORE');
@@ -83,12 +88,16 @@ describe('FEMA NRI & NFHL Dictionary & Domain Logic (PLAN.md §10 Task 11.1 & AD
       'moderate_risk_500yr'
     );
 
-    // Minimal risk outside 500-year
+    // Minimal risk outside 500-year (requires explicit minimal subtype for Zone X)
     expect(classifyNfhlFloodRisk('C')).toBe('minimal_risk_outside_sfha');
-    expect(classifyNfhlFloodRisk('X')).toBe('minimal_risk_outside_sfha');
     expect(classifyNfhlFloodRisk('X', 'AREA OF MINIMAL FLOOD HAZARD')).toBe(
       'minimal_risk_outside_sfha'
     );
+
+    // Bare Zone X without subtype is ambiguous => unknown (non-coercion law)
+    expect(classifyNfhlFloodRisk('X')).toBe('unknown');
+    expect(classifyNfhlFloodRisk('OPEN_WATER')).toBe('unknown');
+    expect(classifyNfhlFloodRisk('AREA_NOT_INCLUDED')).toBe('unknown');
 
     // Crucial: Zone D (undetermined risk) MUST NOT be classified as minimal risk!
     expect(classifyNfhlFloodRisk('D')).toBe('undetermined_risk_zone_d');
@@ -106,7 +115,7 @@ describe('FEMA NRI & NFHL Dictionary & Domain Logic (PLAN.md §10 Task 11.1 & AD
     expect(parseNriRiskRating('Very High')).toBe('Very High');
     expect(parseNriRiskRating('Insufficient Data')).toBe('Insufficient Data');
     expect(parseNriRiskRating(null)).toBe('Not Applicable');
-    expect(parseNriRiskRating('Unrecognized')).toBe('Not Applicable');
+    expect(parseNriRiskRating('Unrecognized')).toBe('Insufficient Data');
   });
 
   it('proves zero numeric zero-coercion when parsing FEMA NRI raw estimates', () => {
@@ -186,23 +195,30 @@ describe('FEMA NRI & NFHL Dictionary & Domain Logic (PLAN.md §10 Task 11.1 & AD
     );
   });
 
-  it('property test: non-coercing parseNfhlStaticBfe preserves not_applicable invariants', () => {
+  it('property test: Zone D is never coerced to minimal risk under any subtype', () => {
     fc.assert(
-      fc.property(
-        fc.oneof(
-          fc.constant(null),
-          fc.constant(undefined),
-          fc.constant(''),
-          fc.constant(-9999),
-          fc.constant('-9999')
-        ),
-        (raw) => {
-          const res = parseNfhlStaticBfe(raw);
-          expect(res.status).toBe('not_applicable');
-          expect((res as { value?: unknown }).value).toBeUndefined();
-        }
-      ),
+      fc.property(fc.string(), (subtype) => {
+        const result = classifyNfhlFloodRisk('D', subtype);
+        expect(result).toBe('undetermined_risk_zone_d');
+        expect(result).not.toBe('minimal_risk_outside_sfha');
+      }),
       { numRuns: 100 }
     );
+  });
+
+  it('handles comma-separated numbers and rejects non-decimal representations', () => {
+    // Comma-separated numbers
+    const commaParsed = parseNriRawEstimate('1,234.56', 'USD');
+    expect(commaParsed.status).toBe('available');
+    if (commaParsed.status === 'available') {
+      expect(commaParsed.value).toBe(1234.56);
+    }
+
+    // Hex representation must NOT parse as decimal 31
+    const hexParsed = parseNriRawEstimate('0x1F', 'index_score');
+    expect(hexParsed.status).toBe('unavailable');
+
+    const hexBfe = parseNfhlStaticBfe('0x1F');
+    expect(hexBfe.status).toBe('unavailable');
   });
 });

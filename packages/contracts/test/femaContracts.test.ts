@@ -108,7 +108,6 @@ describe('FEMA NRI & NFHL Contracts (PLAN.md §10 Task 11.1 & ADR 0062)', () => 
       })
     ).toThrow(/FEMA NRI queries support geographies: county, tract, state/);
 
-    // Unrecognized query parameter rejection
     expect(() =>
       FemaNriQuerySchema.parse({
         geography: {
@@ -118,7 +117,7 @@ describe('FEMA NRI & NFHL Contracts (PLAN.md §10 Task 11.1 & ADR 0062)', () => 
         },
         malicious_extra_field: 'exploit',
       })
-    ).toThrow(/Unrecognized query parameter 'malicious_extra_field'/);
+    ).toThrow(/malicious_extra_field/);
   });
 
   it('validates FEMA NFHL flood zones and risk category classifications', () => {

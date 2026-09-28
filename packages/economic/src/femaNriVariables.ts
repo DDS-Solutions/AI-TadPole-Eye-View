@@ -2,20 +2,21 @@ import {
   FEMA_NRI_DEFAULT_VINTAGE,
   FEMA_NRI_SCHEMA_VERSION,
   FEMA_NRI_SCREENING_DISCLAIMER,
+  type FemaNriHazardType,
   type FemaNriVariableDefinition,
+  type FemaNriVariableId,
   FemaNriVariableDefinitionSchema,
   type FemaNriVariableDictionary,
   FemaNriVariableDictionarySchema,
 } from '@gev/contracts';
+import { FEMA_NRI_HAZARD_VARIABLES } from './femaNriHazardCatalog.js';
 
 export { FEMA_NRI_SCHEMA_VERSION, FEMA_NRI_DEFAULT_VINTAGE, FEMA_NRI_SCREENING_DISCLAIMER };
 
 /**
- * Versioned FEMA National Risk Index (NRI) Variable Definitions (V1.0.0).
- * Implements PLAN.md §10 Task 11.1 and ADR 0062.
- * Pure domain metadata with zero I/O.
+ * Core composite, EAL, SoVI, BRIC, and exposure variable definitions (19 variables).
  */
-export const FEMA_NRI_VARIABLES_V1: Record<string, FemaNriVariableDefinition> = {
+const CORE_VARIABLES: Record<string, FemaNriVariableDefinition> = {
   RISK_SCORE: FemaNriVariableDefinitionSchema.parse({
     variable_id: 'RISK_SCORE',
     metric_id: 'nri-composite-risk-score',
@@ -235,141 +236,17 @@ export const FEMA_NRI_VARIABLES_V1: Record<string, FemaNriVariableDefinition> = 
     supported_geographies: ['county', 'tract'],
     tags: ['fema', 'exposure', 'agriculture'],
   }),
-
-  // Key Individual Hazard Scores
-  RFLD_RISKS: FemaNriVariableDefinitionSchema.parse({
-    variable_id: 'RFLD_RISKS',
-    metric_id: 'riverine-flooding-risk-score',
-    label: 'Riverine Flooding Risk Score',
-    description: 'Relative risk score (0-100) for riverine / inland overflow flooding.',
-    unit: 'index_score',
-    category: 'hazard_risk',
-    hazard_type: 'riverine_flooding',
-    supported_geographies: ['county', 'tract'],
-    tags: ['fema', 'flooding', 'riverine', 'hazard-risk'],
-  }),
-
-  RFLD_EALT: FemaNriVariableDefinitionSchema.parse({
-    variable_id: 'RFLD_EALT',
-    metric_id: 'riverine-flooding-expected-annual-loss',
-    label: 'Riverine Flooding Expected Annual Loss (USD)',
-    description: 'Expected economic loss in USD per year from riverine flooding.',
-    unit: 'USD',
-    category: 'expected_annual_loss',
-    hazard_type: 'riverine_flooding',
-    supported_geographies: ['county', 'tract'],
-    tags: ['fema', 'flooding', 'riverine', 'eal'],
-  }),
-
-  CFLD_RISKS: FemaNriVariableDefinitionSchema.parse({
-    variable_id: 'CFLD_RISKS',
-    metric_id: 'coastal-flooding-risk-score',
-    label: 'Coastal Flooding Risk Score',
-    description: 'Relative risk score (0-100) for coastal surge and tidal inundation.',
-    unit: 'index_score',
-    category: 'hazard_risk',
-    hazard_type: 'coastal_flooding',
-    supported_geographies: ['county', 'tract'],
-    tags: ['fema', 'coastal', 'storm-surge', 'hazard-risk'],
-  }),
-
-  HRCN_RISKS: FemaNriVariableDefinitionSchema.parse({
-    variable_id: 'HRCN_RISKS',
-    metric_id: 'hurricane-risk-score',
-    label: 'Hurricane Risk Score',
-    description: 'Relative risk score (0-100) for tropical cyclone and hurricane impacts.',
-    unit: 'index_score',
-    category: 'hazard_risk',
-    hazard_type: 'hurricane',
-    supported_geographies: ['county', 'tract'],
-    tags: ['fema', 'hurricane', 'cyclone', 'hazard-risk'],
-  }),
-
-  TRND_RISKS: FemaNriVariableDefinitionSchema.parse({
-    variable_id: 'TRND_RISKS',
-    metric_id: 'tornado-risk-score',
-    label: 'Tornado Risk Score',
-    description: 'Relative risk score (0-100) for tornadic wind vortices.',
-    unit: 'index_score',
-    category: 'hazard_risk',
-    hazard_type: 'tornado',
-    supported_geographies: ['county', 'tract'],
-    tags: ['fema', 'tornado', 'wind', 'hazard-risk'],
-  }),
-
-  WDFR_RISKS: FemaNriVariableDefinitionSchema.parse({
-    variable_id: 'WDFR_RISKS',
-    metric_id: 'wildfire-risk-score',
-    label: 'Wildfire Risk Score',
-    description:
-      'Relative risk score (0-100) for wildland and wildland-urban interface (WUI) fires.',
-    unit: 'index_score',
-    category: 'hazard_risk',
-    hazard_type: 'wildfire',
-    supported_geographies: ['county', 'tract'],
-    tags: ['fema', 'wildfire', 'wui', 'hazard-risk'],
-  }),
-
-  ERQK_RISKS: FemaNriVariableDefinitionSchema.parse({
-    variable_id: 'ERQK_RISKS',
-    metric_id: 'earthquake-risk-score',
-    label: 'Earthquake Risk Score',
-    description: 'Relative risk score (0-100) for seismic shaking hazards.',
-    unit: 'index_score',
-    category: 'hazard_risk',
-    hazard_type: 'earthquake',
-    supported_geographies: ['county', 'tract'],
-    tags: ['fema', 'earthquake', 'seismic', 'hazard-risk'],
-  }),
-
-  SWND_RISKS: FemaNriVariableDefinitionSchema.parse({
-    variable_id: 'SWND_RISKS',
-    metric_id: 'strong-wind-risk-score',
-    label: 'Strong Wind Risk Score',
-    description: 'Relative risk score (0-100) for non-tornadic straight-line damaging winds.',
-    unit: 'index_score',
-    category: 'hazard_risk',
-    hazard_type: 'strong_wind',
-    supported_geographies: ['county', 'tract'],
-    tags: ['fema', 'wind', 'straight-line', 'hazard-risk'],
-  }),
-
-  HWAV_RISKS: FemaNriVariableDefinitionSchema.parse({
-    variable_id: 'HWAV_RISKS',
-    metric_id: 'heat-wave-risk-score',
-    label: 'Heat Wave Risk Score',
-    description: 'Relative risk score (0-100) for prolonged extreme temperature events.',
-    unit: 'index_score',
-    category: 'hazard_risk',
-    hazard_type: 'heat_wave',
-    supported_geographies: ['county', 'tract'],
-    tags: ['fema', 'heat', 'temperature', 'hazard-risk'],
-  }),
-
-  DRGT_RISKS: FemaNriVariableDefinitionSchema.parse({
-    variable_id: 'DRGT_RISKS',
-    metric_id: 'drought-risk-score',
-    label: 'Drought Risk Score',
-    description: 'Relative risk score (0-100) for agricultural and hydrological drought.',
-    unit: 'index_score',
-    category: 'hazard_risk',
-    hazard_type: 'drought',
-    supported_geographies: ['county', 'tract'],
-    tags: ['fema', 'drought', 'water-stress', 'hazard-risk'],
-  }),
-
-  WNTW_RISKS: FemaNriVariableDefinitionSchema.parse({
-    variable_id: 'WNTW_RISKS',
-    metric_id: 'winter-weather-risk-score',
-    label: 'Winter Weather Risk Score',
-    description: 'Relative risk score (0-100) for blizzards, heavy snow, and sub-freezing hazards.',
-    unit: 'index_score',
-    category: 'hazard_risk',
-    hazard_type: 'winter_weather',
-    supported_geographies: ['county', 'tract'],
-    tags: ['fema', 'winter', 'snow', 'hazard-risk'],
-  }),
 };
+
+/**
+ * Authoritative, versioned FEMA National Risk Index (NRI) Variable Definitions (V1.0.0).
+ * Complete coverage across all 73 authoritative variables in FemaNriVariableIdSchema.
+ * Pure domain metadata with zero I/O.
+ */
+export const FEMA_NRI_VARIABLES_V1: Record<FemaNriVariableId, FemaNriVariableDefinition> = {
+  ...CORE_VARIABLES,
+  ...FEMA_NRI_HAZARD_VARIABLES,
+} as Record<FemaNriVariableId, FemaNriVariableDefinition>;
 
 /**
  * Authoritative FEMA NRI Variable Dictionary V1 instance.
@@ -392,8 +269,22 @@ export const FEMA_NRI_VARIABLE_DICTIONARY = FEMA_NRI_VARIABLE_DICTIONARY_V1;
 export function lookupFemaNriVariable(
   variableIdOrMetricId: string
 ): FemaNriVariableDefinition | undefined {
-  if (FEMA_NRI_VARIABLES_V1[variableIdOrMetricId]) {
-    return FEMA_NRI_VARIABLES_V1[variableIdOrMetricId];
+  if (FEMA_NRI_VARIABLES_V1[variableIdOrMetricId as FemaNriVariableId]) {
+    return FEMA_NRI_VARIABLES_V1[variableIdOrMetricId as FemaNriVariableId];
   }
   return Object.values(FEMA_NRI_VARIABLES_V1).find((def) => def.metric_id === variableIdOrMetricId);
+}
+
+/**
+ * Resolves a variable definition by hazard type and metric kind.
+ */
+export function lookupFemaNriVariableByHazard(
+  hazard: FemaNriHazardType,
+  kind: 'score' | 'rating' | 'eal' = 'score'
+): FemaNriVariableDefinition | undefined {
+  const category = kind === 'eal' ? 'expected_annual_loss' : 'hazard_risk';
+  const unit = kind === 'score' ? 'index_score' : kind === 'rating' ? 'categorical_rating' : 'USD';
+  return Object.values(FEMA_NRI_VARIABLES_V1).find(
+    (def) => def.hazard_type === hazard && def.category === category && def.unit === unit
+  );
 }

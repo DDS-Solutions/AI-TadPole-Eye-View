@@ -136,7 +136,7 @@ describe('Economic Seed Fixtures Contract Validation (Task 8.3)', () => {
     expect(dataset.provenance.mode).toBe('seed');
     expect(dataset.provenance.license.id).toBe('us-government-public-domain');
 
-    const eal = dataset.records.find((r) => r.metric_id === 'expected-annual-loss');
+    const eal = dataset.records.find((r) => r.metric_id === 'expected-annual-loss-total');
     expect(eal).toBeDefined();
     expect(eal?.estimate.status).toBe('available');
     if (eal?.estimate.status === 'available') {

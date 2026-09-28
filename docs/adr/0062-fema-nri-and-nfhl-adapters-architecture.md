@@ -34,28 +34,29 @@ Specific requirements from PLAN.md §11.1 and the authorized 4-Pillar brief:
 - **FEMA NRI**:
   - `FemaNriHazardTypeSchema`: 18 natural hazards (`riverine_flooding`, `coastal_flooding`, `hurricane`, `tornado`, `wildfire`, `earthquake`, `strong_wind`, `heat_wave`, `drought`, `winter_weather`, `hail`, `ice_storm`, `landslide`, `lightning`, `tsunami`, `avalanche`, `cold_wave`, `volcanic_activity`);
   - `FemaNriRiskRatingSchema`: 5 qualitative tiers (`Very Low`, `Relatively Low`, `Relatively Moderate`, `Relatively High`, `Very High`);
-  - `FemaNriVariableIdSchema`: authoritative literals (`RISK_SCORE`, `RISK_RATNG`, `EAL_VALT`, `SOVI_SCORE`, `RESL_SCORE`, and hazard-specific score/rating/EAL triplets);
+  - `FemaNriVariableIdSchema`: authoritative literals (73 variables: 19 composite/EAL/SoVI/BRIC/exposure + 54 hazard-specific score/rating/EAL triplets);
   - `FemaNriUnitSchema`: `index_score`, `USD`, `categorical_rating`, `count`, `ratio`, `percentile`;
   - `FemaNriVariableDefinitionSchema` & `FemaNriVariableDictionarySchema`;
-  - `FemaNriQuerySchema`: validates allowed geographies (`county`, `tract`, `state`) and variable filters;
+  - `FemaNriQuerySchema`: strict schema validating allowed geographies (`county`, `tract`, `state`) and validated `variables` array;
   - `FEMA_NRI_SCREENING_DISCLAIMER`: mandatory screening notice attached to query outputs.
 - **FEMA NFHL**:
-  - `FemaNfhlFloodZoneSchema`: regulatory flood zones (`A`, `AE`, `AH`, `AO`, `AR`, `A99`, `V`, `VE`, `X`, `D`);
-  - `FemaNfhlRiskCategorySchema`: `high_risk_sfha`, `moderate_risk_500yr`, `minimal_risk_outside_sfha`, `undetermined_risk_zone_d`, `unknown`;
+  - `FemaNfhlFloodZoneSchema`: regulatory flood zones (`A`, `AE`, `AH`, `AO`, `AR`, `A99`, `V`, `VE`, `X`, `D`, `OPEN_WATER`, `AREA_NOT_INCLUDED`);
+  - `FemaNfhlRiskCategorySchema`: `high_risk_sfha`, `moderate_risk_500yr`, `minimal_risk_outside_sfha`, `undetermined_risk_zone_d`, `undetermined_no_coverage`, `unknown`;
   - `FemaNfhlBoundingBoxSchema`: strict 4-tuple `[minLon, minLat, maxLon, maxLat]`;
   - `FemaNfhlFloodHazardFeatureSchema`: DFIRM attributes with `static_bfe` and `depth` modeled as `EconomicEstimate` discriminated unions;
-  - `FemaNfhlSummarySchema`: composite location summary preserving dominant zone, SFHA presence, floodway flag, and highest BFE;
+  - `FemaNfhlSummarySchema`: composite location summary strictly preventing coercion of `feature_count === 0` to minimal risk (superRefined to require `undetermined_no_coverage` or `unknown`);
   - `FEMA_NFHL_ADVISORY_DISCLAIMER`: mandatory advisory notice attached to all flood summaries.
 
-### 2.2 Pure Domain Layer (`packages/economic/src/femaNriVariables.ts`, `packages/economic/src/femaDictionary.ts`)
-To comply with the strict 500-line limit (Rule 15), domain logic was split cleanly into two focused modules:
-1. `femaNriVariables.ts` (399 lines): pure definitions of `FEMA_NRI_VARIABLES_V1`, variable lookup helper `lookupFemaNriVariable`, and authoritative dictionary instance `FEMA_NRI_VARIABLE_DICTIONARY_V1`;
-2. `femaDictionary.ts` (246 lines): pure transformation functions and parsers:
+### 2.2 Pure Domain Layer (`packages/economic/src/femaNriVariables.ts`, `packages/economic/src/femaNriHazardCatalog.ts`, `packages/economic/src/femaDictionary.ts`)
+To comply with the strict 500-line limit (Rule 15), domain logic was split cleanly into focused modules:
+1. `femaNriHazardCatalog.ts` (190 lines): pure definitions of all 54 hazard triplets (18 hazards × score/rating/EAL);
+2. `femaNriVariables.ts` (269 lines): core 19 variable definitions, complete 73-variable `FEMA_NRI_VARIABLES_V1` record typed against `Record<FemaNriVariableId, FemaNriVariableDefinition>`, variable lookup helper `lookupFemaNriVariable`, hazard lookup helper `lookupFemaNriVariableByHazard`, and authoritative dictionary instance `FEMA_NRI_VARIABLE_DICTIONARY_V1`;
+3. `femaDictionary.ts` (240 lines): pure transformation functions and parsers:
    - `validateFemaNriGeography`: verifies county, tract, or state level;
-   - `classifyNfhlFloodRisk`: maps flood zone and subtype to `FemaNfhlRiskCategory`, strictly isolating Zone D as `undetermined_risk_zone_d`;
-   - `parseNriRiskRating`: parses qualitative strings into `FemaNriRiskRating` with non-coercion for unrated;
-   - `parseNriRawEstimate`: maps raw numbers and sentinel codes to `EconomicEstimate`;
-   - `parseNfhlStaticBfe` & `parseNfhlDepth`: parses DFIRM elevations, mapping sentinel codes (`-9999`, null, undefined) to `{ status: 'not_applicable' }`;
+   - `classifyNfhlFloodRisk`: maps flood zone and subtype to `FemaNfhlRiskCategory`, strictly isolating Zone D as `undetermined_risk_zone_d`, un-subtyped bare Zone X and unmapped zones as `unknown`;
+   - `parseNriRiskRating`: parses qualitative strings into `FemaNriRiskRating`, returning `Insufficient Data` for unrecognized ratings;
+   - `parseNriRawEstimate`: maps raw numbers and sentinel codes to `EconomicEstimate`, stripping comma separators and rejecting non-decimal representations;
+   - `parseNfhlStaticBfe` & `parseNfhlDepth`: parses DFIRM elevations and depths, mapping sentinel codes (`-9999`, null, undefined) to `{ status: 'not_applicable' }`;
    - `parseFemaNfhlFeaturesFixture`: validates raw NFHL GeoJSON/ArcGIS features datasets.
 
 ### 2.3 Synthetic Seed Fixtures (`fixtures/`)

@@ -47,7 +47,7 @@
     {
       "evidence_id": "ev-fema-risk-score-48453-2023",
       "source_id": "fema-nri-nfhl",
-      "metric_id": "nri-risk-score",
+      "metric_id": "nri-composite-risk-score",
       "variable_name": "RISK_SCORE",
       "label": "FEMA National Risk Index Composite Risk Score (0-100 scale)",
       "geography": {
@@ -103,7 +103,7 @@
     {
       "evidence_id": "ev-fema-eal-total-48453-2023",
       "source_id": "fema-nri-nfhl",
-      "metric_id": "expected-annual-loss",
+      "metric_id": "expected-annual-loss-total",
       "variable_name": "EAL_VALT",
       "label": "Expected Annual Loss Total (USD) across Buildings, Population, and Agriculture",
       "geography": {
@@ -490,7 +490,7 @@
     {
       "evidence_id": "ev-fema-risk-score-48453000101-2023",
       "source_id": "fema-nri-nfhl",
-      "metric_id": "nri-risk-score",
+      "metric_id": "nri-composite-risk-score",
       "variable_name": "RISK_SCORE",
       "label": "FEMA National Risk Index Composite Risk Score (Tract 48453000101)",
       "geography": {

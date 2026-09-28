@@ -112,7 +112,7 @@ describe('FEMA NFHL Provider Adapter (PLAN.md §10 Task 11.1 & ADR 0062)', () =>
     expect(shoalCreek?.static_bfe.status).toBe('not_applicable');
   });
 
-  it('returns safe non-flooded summary for point outside mapped hazard features', async () => {
+  it('returns undetermined_no_coverage summary for point outside mapped hazard features (non-coercion law)', async () => {
     const adapter = new FemaNfhlAdapter();
     const summary = await adapter.getFloodSummary({
       point: {
@@ -123,9 +123,26 @@ describe('FEMA NFHL Provider Adapter (PLAN.md §10 Task 11.1 & ADR 0062)', () =>
 
     expect(summary.feature_count).toBe(0);
     expect(summary.dominant_zone).toBe('X');
-    expect(summary.risk_category).toBe('minimal_risk_outside_sfha');
+    expect(summary.risk_category).toBe('undetermined_no_coverage');
+    expect(summary.risk_category).not.toBe('minimal_risk_outside_sfha');
     expect(summary.in_sfha).toBe(false);
-    expect(summary.base_flood_elevation.status).toBe('not_applicable');
+    expect(summary.base_flood_elevation.status).toBe('unavailable');
+  });
+
+  it('accurately derives bounding_box geography without hardcoded point fallbacks', async () => {
+    const adapter = new FemaNfhlAdapter();
+    const bbox: [number, number, number, number] = [-97.75, 30.26, -97.74, 30.27];
+    const summary = await adapter.getFloodSummary({
+      bounding_box: bbox,
+    });
+
+    expect(summary.geography.level).toBe('bounding_box');
+    if (summary.geography.level === 'bounding_box') {
+      expect(summary.geography.min_lon).toBe(bbox[0]);
+      expect(summary.geography.min_lat).toBe(bbox[1]);
+      expect(summary.geography.max_lon).toBe(bbox[2]);
+      expect(summary.geography.max_lat).toBe(bbox[3]);
+    }
   });
 
   it('respects kill switch when provider is disabled', async () => {
