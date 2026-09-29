@@ -37,6 +37,55 @@ export const LedgerEvidenceSchema = z
   .strict();
 export type LedgerEvidence = z.infer<typeof LedgerEvidenceSchema>;
 
+function isCanonicalJsonValue(value: unknown, seen = new Set<unknown>()): boolean {
+  if (value === null || typeof value === 'boolean' || typeof value === 'string') {
+    return true;
+  }
+  if (typeof value === 'number') {
+    return Number.isFinite(value);
+  }
+  if (typeof value === 'object') {
+    if (seen.has(value)) {
+      return false;
+    }
+    seen.add(value);
+    try {
+      if (Array.isArray(value)) {
+        for (let i = 0; i < value.length; i++) {
+          if (!(i in value)) return false;
+          const item = value[i];
+          if (item === undefined || !isCanonicalJsonValue(item, seen)) {
+            return false;
+          }
+        }
+        return true;
+      }
+      const proto = Object.getPrototypeOf(value);
+      if (proto !== null && proto !== Object.prototype) {
+        return false;
+      }
+      for (const key of Object.keys(value)) {
+        const prop = (value as Record<string, unknown>)[key];
+        if (prop === undefined || !isCanonicalJsonValue(prop, seen)) {
+          return false;
+        }
+      }
+      return true;
+    } finally {
+      seen.delete(value);
+    }
+  }
+  return false;
+}
+
+/**
+ * Authoritative components that uniquely identify an idempotency unit.
+ *
+ * Scoping rules:
+ * - `tenant_id`: Non-empty string scopes the fingerprint, idempotency replay, and budget
+ *   caps strictly to that tenant's quota. When `null`, the operation executes within the
+ *   platform/global namespace and consumes global platform budget caps.
+ */
 export const LedgerFingerprintComponentsSchema = z
   .object({
     contract_version: z.literal(M3_LEDGER_CONTRACT_VERSION),
@@ -59,6 +108,14 @@ export const LedgerFingerprintComponentsSchema = z
         message: 'ledger estimate exceeds the safe micro-USD range',
       });
     }
+    if (!isCanonicalJsonValue(components.input)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['input'],
+        message:
+          'ledger fingerprint input must be canonically serializable JSON without undefined, functions, symbols, non-finite numbers, or cycles',
+      });
+    }
   });
 export type LedgerFingerprintComponents = z.infer<typeof LedgerFingerprintComponentsSchema>;
 
@@ -75,11 +132,11 @@ export const LedgerOperationSchema = z
     state: LedgerOperationStateSchema,
     reserved_microusd: SafeMicroUsdSchema,
     settled_microusd: SafeMicroUsdSchema,
-    period_start: z.string().datetime(),
-    deadline_at: z.string().datetime(),
-    created_at: z.string().datetime(),
-    execution_started_at: z.string().datetime().nullable(),
-    terminal_at: z.string().datetime().nullable(),
+    period_start: z.string().datetime({ offset: true }),
+    deadline_at: z.string().datetime({ offset: true }),
+    created_at: z.string().datetime({ offset: true }),
+    execution_started_at: z.string().datetime({ offset: true }).nullable(),
+    terminal_at: z.string().datetime({ offset: true }).nullable(),
     terminal_result: z.unknown().nullable(),
     terminal_result_digest: z
       .string()
@@ -103,7 +160,7 @@ export const LedgerReservationRequestSchema = z
   .object({
     operation_id: z.string().uuid(),
     fingerprint_components: LedgerFingerprintComponentsSchema,
-    deadline_at: z.string().datetime(),
+    deadline_at: z.string().datetime({ offset: true }),
     audit_intent: AuditIntent,
   })
   .strict()
@@ -175,6 +232,14 @@ export const LedgerTerminalRequestSchema = z
   .superRefine(refineLedgerTerminal);
 export type LedgerTerminalRequest = z.infer<typeof LedgerTerminalRequestSchema>;
 
+/**
+ * Request payload to release reserved funds for an uncompleted or failed operation.
+ *
+ * State transition requirements:
+ * - When refunding an un-dispatched operation in `RESERVED` state, `evidence` is optional (`null`).
+ * - When refunding an in-flight operation in `EXECUTING` state, `evidence` is required to record
+ *   the provider-attested failure or local failure rationale.
+ */
 export const LedgerRefundRequestSchema = z
   .object({ ...LedgerTerminalShape, evidence: LedgerEvidenceSchema.nullable() })
   .strict()
@@ -265,7 +330,7 @@ export const LedgerReconciliationResponseSchema = z
     operation_id: z.string().uuid(),
     state: z.enum(['SETTLED', 'REFUNDED']),
     settled_microusd: SafeMicroUsdSchema,
-    terminal_at: z.string().datetime(),
+    terminal_at: z.string().datetime({ offset: true }),
   })
   .strict();
 export type LedgerReconciliationResponse = z.infer<typeof LedgerReconciliationResponseSchema>;

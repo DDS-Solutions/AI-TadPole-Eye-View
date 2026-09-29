@@ -2,6 +2,17 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { defineConfig } from 'vite';
 import { cesiumEngine } from 'vite-plugin-cesium-engine';
 
+const API_PROXY = {
+  '/api': {
+    target: 'http://127.0.0.1:3000',
+    changeOrigin: true,
+  },
+  '/ops': {
+    target: 'http://127.0.0.1:3000',
+    changeOrigin: true,
+  },
+};
+
 export default defineConfig({
   plugins: [svelte({ configFile: './svelte.config.js' }), cesiumEngine()],
   build: {
@@ -34,29 +45,11 @@ export default defineConfig({
   server: {
     port: 5180,
     strictPort: true,
-    proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:3000',
-        changeOrigin: true,
-      },
-      '/ops': {
-        target: 'http://127.0.0.1:3000',
-        changeOrigin: true,
-      },
-    },
+    proxy: API_PROXY,
   },
   preview: {
     port: 5180,
     strictPort: true,
-    proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:3000',
-        changeOrigin: true,
-      },
-      '/ops': {
-        target: 'http://127.0.0.1:3000',
-        changeOrigin: true,
-      },
-    },
+    proxy: API_PROXY,
   },
 });

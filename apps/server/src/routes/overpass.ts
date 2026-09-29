@@ -62,8 +62,9 @@ export function createOverpassRouter(options: OverpassRouterOptions = {}) {
             {
               type: 'node',
               id: 10001,
-              lat: sanitized.bbox?.min_lat ? sanitized.bbox.min_lat + 0.05 : 37.7749,
-              lon: sanitized.bbox?.min_lon ? sanitized.bbox.min_lon + 0.05 : -122.4194,
+              lat: sanitized.bbox?.min_lat !== undefined ? sanitized.bbox.min_lat + 0.05 : 37.7749,
+              lon:
+                sanitized.bbox?.min_lon !== undefined ? sanitized.bbox.min_lon + 0.05 : -122.4194,
               tags: {
                 amenity: 'hospital',
                 name: 'San Francisco General Hospital',
@@ -102,7 +103,10 @@ export function createOverpassRouter(options: OverpassRouterOptions = {}) {
         },
         body: `data=${encodeURIComponent(sanitized.sanitized_ql)}`,
         allowedHosts: ['overpass-api.de', 'overpass.kumi.systems'],
-        allowedPaths: [{ host: 'overpass-api.de', pathPrefix: '/api/interpreter' }],
+        allowedPaths: [
+          { host: 'overpass-api.de', pathPrefix: '/api/interpreter' },
+          { host: 'overpass.kumi.systems', pathPrefix: '/api/interpreter' },
+        ],
         timeoutMs: sanitized.timeout_sec * 1000,
         maxBytes: 15 * 1024 * 1024,
       });

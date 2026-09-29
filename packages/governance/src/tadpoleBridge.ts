@@ -40,14 +40,16 @@ export function issueSignedCapToken(
 
 /**
  * Verifies an Ed25519-signed Capability Token.
+ * Accepts either a CapToken object or a raw token string.
  */
 export function verifySignedCapToken(
-  capToken: CapToken,
+  capToken: CapToken | string,
   publicKeyPem: string,
   clock: SimClock = new SystemClock()
 ): CapabilityScope[] | null {
   try {
-    const parts = capToken.token.split('.');
+    const rawToken = typeof capToken === 'string' ? capToken : capToken.token;
+    const parts = rawToken.split('.');
     if (parts.length !== 3 || parts[0] !== 'cap-ed25519') {
       return null;
     }
@@ -58,13 +60,22 @@ export function verifySignedCapToken(
       return null;
     }
 
-    const claimsJson = Buffer.from(partClaims, 'base64url').toString('utf-8');
+    const claimsBuffer = Buffer.from(partClaims, 'base64url');
+    if (claimsBuffer.toString('base64url') !== partClaims) {
+      return null;
+    }
+    const sigBuffer = Buffer.from(partSignature, 'base64');
+    if (sigBuffer.byteLength !== 64 || sigBuffer.toString('base64') !== partSignature) {
+      return null;
+    }
+
+    const claimsJson = claimsBuffer.toString('utf-8');
 
     const isValidSig = crypto.verify(
       null,
       Buffer.from(claimsJson, 'utf-8'),
       publicKeyPem,
-      Buffer.from(partSignature, 'base64')
+      sigBuffer
     );
     if (!isValidSig) {
       return null;

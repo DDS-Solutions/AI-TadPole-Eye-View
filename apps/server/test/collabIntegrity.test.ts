@@ -86,7 +86,9 @@ describe('collaboration transport integrity', () => {
       false
     );
 
-    expect(manager.getRoom('presence-room')?.peers.get('trusted-id')?.presence).toMatchObject({
+    expect(
+      manager.getRoom('presence-room')?.peers.findByClientId('trusted-id')?.presence
+    ).toMatchObject({
       clientId: 'trusted-id',
       callsign: 'Trusted',
       role: 'viewer',
@@ -142,18 +144,18 @@ describe('collaboration transport integrity', () => {
 
     const room = manager.getRoom('multi-tab-room');
     expect(room?.peers.size).toBe(2);
-    expect(room?.peers.get('operator-1')?.presence?.callsign).toBe('OperatorOne');
+    expect(room?.peers.findByClientId('operator-1')?.presence?.callsign).toBe('OperatorOne');
 
     // Close first tab
     tab1.emit('close');
 
     // Peer count decreases to 1, but client presence is still active
     expect(room?.peers.size).toBe(1);
-    expect(room?.peers.get('operator-1')?.presence?.callsign).toBe('OperatorOne');
+    expect(room?.peers.findByClientId('operator-1')?.presence?.callsign).toBe('OperatorOne');
 
     // Close second tab
     tab2.emit('close');
     expect(room?.peers.size).toBe(0);
-    expect(room?.peers.get('operator-1')).toBeUndefined();
+    expect(room?.peers.findByClientId('operator-1')).toBeUndefined();
   });
 });

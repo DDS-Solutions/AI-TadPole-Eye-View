@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { USGS_3DEP_ADVISORY_DISCLAIMER, USGS_3DEP_MODERN_EPQS_URL } from '@gev/contracts';
-import * as security from '@gev/security';
+import { MockAgent, PinnedFetchSecurityError } from '@gev/security';
 import {
   USGS_3DEP_FEED_ID,
   USGS_3DEP_PROVIDER_ID,
@@ -54,6 +54,7 @@ describe('USGS 3DEP Provider Adapter (PLAN.md §10 Task 11.2 & ADR 0063)', () =>
     }
     expect(boulder.data_source).toContain('3DEP');
     expect(boulder.vertical_datum).toBe('NAVD88');
+    expect(boulder.horizontal_datum).toBe('NAD83');
     expect(boulder.provenance.source.provider_id).toBe(USGS_3DEP_PROVIDER_ID);
     expect(boulder.provenance.source.feed_id).toBe(USGS_3DEP_FEED_ID);
 
@@ -154,9 +155,17 @@ describe('USGS 3DEP Provider Adapter (PLAN.md §10 Task 11.2 & ADR 0063)', () =>
     expect(results[0]?.elevation.status).toBe('available');
     expect(results[1]?.elevation.status).toBe('available');
     expect(results[2]?.elevation.status).toBe('unavailable');
+
+    // Batch query limit of 100 enforced by Usgs3DepBatchQuerySchema
+    const excessiveQueries = Array.from({ length: 101 }, () => ({
+      x: -105.2705,
+      y: 40.015,
+      units: 'Meters' as const,
+    }));
+    await expect(adapter.getElevations(excessiveQueries)).rejects.toThrow();
   });
 
-  it('calculates terrain slope between two points and attaches disclaimer', async () => {
+  it('calculates terrain slope between two points and attaches disclaimer and provenance', async () => {
     const adapter = new Usgs3DepAdapter();
 
     const slope = await adapter.getSlope(
@@ -170,6 +179,8 @@ describe('USGS 3DEP Provider Adapter (PLAN.md §10 Task 11.2 & ADR 0063)', () =>
       expect(slope.elevation_change_meters.value).toBeCloseTo(2770.7, 1);
     }
     expect(slope.slope_percent.status).toBe('available');
+    expect(slope.provenance_start).toBeDefined();
+    expect(slope.provenance_end).toBeDefined();
     expect(slope.advisory_disclaimer).toBe(USGS_3DEP_ADVISORY_DISCLAIMER);
   });
 
@@ -191,12 +202,16 @@ describe('USGS 3DEP Provider Adapter (PLAN.md §10 Task 11.2 & ADR 0063)', () =>
     ).rejects.toThrow(Usgs3DepSeedModeViolationError);
   });
 
-  it('executes live API requests with pinnedFetch when explicitly authorized', async () => {
-    const mockPinnedFetch = vi.spyOn(security, 'pinnedFetch').mockResolvedValue({
-      ok: true,
-      status: 200,
-      statusText: 'OK',
-      json: async () => ({
+  it('executes live API requests with pinnedFetch and MockAgent when explicitly authorized', async () => {
+    const mockAgent = new MockAgent();
+    mockAgent.disableNetConnect();
+    const client = mockAgent.get('https://epqs.nationalmap.gov');
+    client
+      .intercept({
+        path: (path: string) => path.startsWith('/v1/json'),
+        method: 'GET',
+      })
+      .reply(200, {
         USGS_Elevation_Point_Query_Service: {
           Elevation_Query: {
             x: -105.2705,
@@ -206,29 +221,115 @@ describe('USGS 3DEP Provider Adapter (PLAN.md §10 Task 11.2 & ADR 0063)', () =>
             Elevation: 1630.5,
           },
         },
-      }),
-    } as unknown as Response);
+      });
+
+    const mockResolver = {
+      resolve4: async () => ['137.227.240.23'],
+      resolve6: async () => [],
+    };
 
     const liveAdapter = new Usgs3DepAdapter({
       seedMode: false,
       allowLiveCalls: true,
+      pinnedFetchOptions: {
+        dispatcher: mockAgent,
+        customResolver: mockResolver,
+      },
     });
 
     const result = await liveAdapter.getElevation({ x: -105.2705, y: 40.015, units: 'Meters' });
-
-    expect(mockPinnedFetch).toHaveBeenCalledTimes(1);
-    const calledUrl = mockPinnedFetch.mock.calls[0]?.[0] as URL;
-    expect(calledUrl.origin).toBe('https://epqs.nationalmap.gov');
-    expect(calledUrl.pathname).toBe('/v1/json');
-    expect(calledUrl.searchParams.get('x')).toBe('-105.2705');
-    expect(calledUrl.searchParams.get('y')).toBe('40.015');
-    expect(calledUrl.searchParams.get('units')).toBe('Meters');
 
     expect(result.elevation.status).toBe('available');
     if (result.elevation.status === 'available') {
       expect(result.elevation.value).toBe(1630.5);
     }
+    expect(result.horizontal_datum).toBe('NAD83');
+    expect(result.vertical_datum).toBe('NAVD88');
     expect(result.provenance.source_mode).toBe('live');
+  });
+
+  it('handles live off-coverage sentinel response by evaluating to unavailable', async () => {
+    const mockAgent = new MockAgent();
+    mockAgent.disableNetConnect();
+    const client = mockAgent.get('https://epqs.nationalmap.gov');
+    client
+      .intercept({
+        path: (path: string) => path.startsWith('/v1/json'),
+        method: 'GET',
+      })
+      .reply(200, {
+        USGS_Elevation_Point_Query_Service: {
+          Elevation_Query: {
+            x: -70.0,
+            y: 25.0,
+            Data_Source: 'Unavailable',
+            Units: 'Meters',
+            Elevation: -1000000,
+          },
+        },
+      });
+
+    const liveAdapter = new Usgs3DepAdapter({
+      seedMode: false,
+      allowLiveCalls: true,
+      pinnedFetchOptions: {
+        dispatcher: mockAgent,
+        customResolver: {
+          resolve4: async () => ['137.227.240.23'],
+          resolve6: async () => [],
+        },
+      },
+    });
+
+    const result = await liveAdapter.getElevation({ x: -70.0, y: 25.0, units: 'Meters' });
+    expect(result.is_off_coverage).toBe(true);
+    expect(result.elevation.status).toBe('unavailable');
+  });
+
+  it('rejects live calls to non-allowlisted endpoint hosts via SSRF guard', async () => {
+    const disallowedAdapter = new Usgs3DepAdapter({
+      seedMode: false,
+      allowLiveCalls: true,
+      endpointUrl: 'https://evil.internal.example.com/v1/json',
+      pinnedFetchOptions: {
+        customResolver: {
+          resolve4: async () => ['192.168.1.1'],
+          resolve6: async () => [],
+        },
+      },
+    });
+
+    await expect(
+      disallowedAdapter.getElevation({ x: -105.2705, y: 40.015, units: 'Meters' })
+    ).rejects.toThrow(PinnedFetchSecurityError);
+  });
+
+  it('handles live upstream 503 HTTP error by throwing descriptive error', async () => {
+    const mockAgent = new MockAgent();
+    mockAgent.disableNetConnect();
+    const client = mockAgent.get('https://epqs.nationalmap.gov');
+    client
+      .intercept({
+        path: (path: string) => path.startsWith('/v1/json'),
+        method: 'GET',
+      })
+      .reply(503, 'Service Unavailable');
+
+    const liveAdapter = new Usgs3DepAdapter({
+      seedMode: false,
+      allowLiveCalls: true,
+      pinnedFetchOptions: {
+        dispatcher: mockAgent,
+        customResolver: {
+          resolve4: async () => ['137.227.240.23'],
+          resolve6: async () => [],
+        },
+      },
+    });
+
+    await expect(
+      liveAdapter.getElevation({ x: -105.2705, y: 40.015, units: 'Meters' })
+    ).rejects.toThrow(/HTTP 503/);
   });
 
   it('proves p95 query latency is strictly < 25ms in seed mode (PLAN.md §10 Task 11.2)', async () => {

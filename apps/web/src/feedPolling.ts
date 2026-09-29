@@ -87,6 +87,8 @@ async function createFeedHttpError(response: Response, url: string): Promise<Fee
   return new FeedHttpError(response.status, code, message);
 }
 
+let currentPollSequence = 0;
+
 async function loadFeed<T extends ProvenanceCarrier>(
   layer: keyof LayerVisibility,
   url: string,
@@ -95,12 +97,17 @@ async function loadFeed<T extends ProvenanceCarrier>(
   consume: (data: T) => void,
   clear?: () => void
 ): Promise<void> {
+  const sequenceAtStart = currentPollSequence;
   try {
     const response = await fetch(url, { signal });
     if (!response.ok) {
       throw await createFeedHttpError(response, url);
     }
     const data = schema.parse(await response.json());
+    if (sequenceAtStart < currentPollSequence) {
+      // Discard stale out-of-order response when newer poll has already dispatched
+      return;
+    }
     consume(data);
     layerStore.setProvenance(layer, data.provenance);
     layerStore.activeErrors[layer] = null;
@@ -126,6 +133,7 @@ export async function pollVisibleFeeds(
   bindings: FeedLayerBindings,
   signal: AbortSignal
 ): Promise<void> {
+  ++currentPollSequence;
   const tasks: Promise<void>[] = [];
   const aoi = layerStore.operationalAoi;
   const aoiQuery = new URLSearchParams({
@@ -236,7 +244,8 @@ export async function pollVisibleFeeds(
   }
 
   if (
-    (layerStore.visibility.satellites || layerStore.satelliteAccessLock !== null) &&
+    layerStore.visibility.satellites &&
+    layerStore.satelliteAccessLock === null &&
     bindings.satellites
   ) {
     tasks.push(

@@ -10,6 +10,7 @@ import { type SimClock, SystemClock } from '@gev/core';
 import { LedgerOperationError, type SqliteBudgetLedger } from '@gev/governance';
 import { markResponseProvenanceCached } from '@gev/providers';
 import type { Context, Next } from 'hono';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { withRequestTimeout } from './billableFeedResult.js';
 import { DEFAULT_PROVIDER_TIERS, type ProviderTierConfig } from './costGovernorConfig.js';
 import {
@@ -21,6 +22,9 @@ import {
 } from './costGovernorSettlement.js';
 import type { InMemoryRateLimiter, OpsAuthAdapter } from './opsAuth.js';
 export { DEFAULT_PROVIDER_TIERS, type ProviderTierConfig };
+
+import { canonicalFeedKey, RECOGNIZED_FEED_QUERY_PARAMS } from './costGovernorFeedKey.js';
+export { canonicalFeedKey, RECOGNIZED_FEED_QUERY_PARAMS };
 
 const MAX_CACHE_ENTRIES = 200;
 const BILLABLE_REQUEST_TIMEOUT_MS = 30_000;
@@ -143,7 +147,7 @@ export class CostGovernor {
       const now = this.clock.now();
       const state = this.getProviderState(providerName);
       const tenantCache = this.getTenantCache(state, tenantId);
-      const cacheKey = c.req.url;
+      const cacheKey = canonicalFeedKey(providerName, c.req.url);
       const cached = tenantCache.get(cacheKey);
 
       if (state.cooldownUntil > now) {
@@ -154,7 +158,7 @@ export class CostGovernor {
         if (cached) {
           c.header('X-GEV-Stale', 'true');
           c.header('X-GEV-Cache-Source', 'cooldown-fallback');
-          return c.json(this.readCachedBody(cached), cached.status as 200);
+          return c.json(this.readCachedBody(cached), cached.status as ContentfulStatusCode);
         }
 
         return c.json(
@@ -171,7 +175,7 @@ export class CostGovernor {
         c.header('X-GEV-Cache', 'HIT');
         c.header('X-GEV-Cache-Age-Sec', ageSec.toString());
         c.header('X-GEV-TTL-Sec', tier.ttlSeconds.toString());
-        return c.json(this.readCachedBody(cached), cached.status as 200);
+        return c.json(this.readCachedBody(cached), cached.status as ContentfulStatusCode);
       }
 
       // 4. Per-tenant rate limit on cache misses
@@ -191,8 +195,9 @@ export class CostGovernor {
         }
       }
 
+      const isMetered = tier.metered ?? tier.costPerFetchUsd > 0;
       let activeReservation: ActiveReservation | undefined;
-      if (tier.costPerFetchUsd > 0) {
+      if (isMetered) {
         const reservation = this.reserveBillable(c, providerName, cacheKey, tier, cached, tenantId);
         if (reservation instanceof Response) return reservation;
         activeReservation = reservation;
@@ -233,6 +238,8 @@ export class CostGovernor {
       }
 
       // If successful, update cached response and record spend
+      let fallbackServed = false;
+      const upstreamStatus = c.res.status;
       if (status >= 200 && status < 300) {
         const cloned = c.res.clone();
         try {
@@ -273,6 +280,7 @@ export class CostGovernor {
         }
       } else if (cached && now - cached.timestamp < tier.maxStaleSeconds * 1000) {
         // Staleness fallback on 5xx or rate limits — replace c.res (H2 fix)
+        fallbackServed = true;
         c.res = new Response(JSON.stringify(this.readCachedBody(cached)), {
           status: 200,
           headers: {
@@ -289,7 +297,8 @@ export class CostGovernor {
           this.budgetLedger,
           this.clock,
           activeReservation,
-          providerName
+          providerName,
+          { fallbackServed, upstreamStatus }
         );
         if (settlementFailure) {
           c.res = settlementFailure;

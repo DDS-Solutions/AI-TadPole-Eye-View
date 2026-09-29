@@ -1,6 +1,14 @@
 import { Buffer } from 'node:buffer';
+import { MAX_LEDGER_RESULT_BYTES } from '@gev/contracts';
 
-export const MAX_FEED_BODY_BYTES = 10 * 1024 * 1024; // 10 MB limit
+export const MAX_FEED_BODY_BYTES = MAX_LEDGER_RESULT_BYTES; // 256 KB limit aligned with durable ledger replay capacity
+
+if (MAX_FEED_BODY_BYTES > MAX_LEDGER_RESULT_BYTES) {
+  throw new Error(
+    `Feed cap ${MAX_FEED_BODY_BYTES} exceeds durable ledger replay limit ${MAX_LEDGER_RESULT_BYTES}; ` +
+      'settlements would charge for discarded payloads'
+  );
+}
 
 export interface FeedTerminalResult {
   kind: 'gev.feed.terminal.v1';
@@ -55,7 +63,7 @@ export async function readFeedTerminalResponse(
         if (value) {
           totalBytes += value.byteLength;
           if (totalBytes > maxBytes) {
-            await reader.cancel();
+            reader.cancel().catch(() => {});
             return {
               kind: 'gev.feed.terminal.v1',
               status: 413,
@@ -73,8 +81,17 @@ export async function readFeedTerminalResponse(
       const text = combined.toString('utf-8');
       body = contentType.includes('json') ? JSON.parse(text) : text;
     }
-  } catch {
-    body = null;
+  } catch (error) {
+    return {
+      kind: 'gev.feed.terminal.v1',
+      status: 502,
+      contentType: 'application/json',
+      body: {
+        error: 'Failed to read or parse upstream feed response body',
+        code: 'UPSTREAM_BODY_CORRUPT',
+        details: error instanceof Error ? error.message : String(error),
+      },
+    };
   }
   return { kind: 'gev.feed.terminal.v1', status: response.status, contentType, body };
 }

@@ -60,15 +60,16 @@ export const AuditOutcome = z
   .object({
     kind: z.literal(GevEvents.AuditOutcome),
     intent_id: z.string().uuid(),
-    ts: z.string().datetime(),
+    ts: z.string().datetime({ offset: true }),
     status: z.enum(['ok', 'error', 'blocked']),
     result: z.unknown().optional(),
-    /** Required when status === 'blocked' (trip code or denial reason). */
-    error: z.string().optional(),
+    /** Required when status === 'error' or 'blocked'. */
+    error: z.string().trim().min(1).max(2048).optional(),
     duration_ms: z.number().int().nonnegative().optional(),
   })
-  .refine((o) => o.status !== 'blocked' || !!o.error, {
-    message: 'blocked outcomes must state why',
+  .refine((o) => o.status === 'ok' || (typeof o.error === 'string' && o.error.length > 0), {
+    message:
+      'blocked outcomes must state why; error and blocked outcomes must state a non-empty reason',
   });
 export type AuditOutcome = z.infer<typeof AuditOutcome>;
 
@@ -207,13 +208,13 @@ export const ApprovalResult = z
   .object({
     request_id: z.string().uuid(),
     decision: z.enum(['approved', 'denied', 'expired']),
-    /** Opaque locally; Ed25519 signature from M2 onward. Required when approved. */
-    signature: z.string().optional(),
+    /** Opaque locally (min 8 chars); Ed25519 signature from M2 onward. Required when approved. */
+    signature: z.string().trim().min(8).max(256).optional(),
     decided_by: Actor,
-    decided_at: z.string().datetime(),
+    decided_at: z.string().datetime({ offset: true }),
   })
-  .refine((r) => r.decision !== 'approved' || !!r.signature, {
-    message: 'approved results require a signature',
+  .refine((r) => r.decision !== 'approved' || (!!r.signature && r.signature.length >= 8), {
+    message: 'approved results require a non-empty cryptographic signature or authorization proof',
   });
 export type ApprovalResult = z.infer<typeof ApprovalResult>;
 
@@ -279,23 +280,28 @@ export type CapabilityScope = z.infer<typeof CapabilityScope>;
 export const CapTokenClaims = z.object({
   /** Actor identity, e.g. 'ai:session-7', 'human:dev', 'svc:tadpole'. */
   sub: z.string().min(3),
-  scopes: z.array(CapabilityScope).min(1),
-  iat: z.string().datetime(),
-  exp: z.string().datetime(),
+  scopes: z
+    .array(CapabilityScope)
+    .min(1)
+    .refine((scopes) => new Set(scopes).size === scopes.length, {
+      message: 'capability token scopes must be unique',
+    }),
+  iat: z.string().datetime({ offset: true }),
+  exp: z.string().datetime({ offset: true }),
 });
 export type CapTokenClaims = z.infer<typeof CapTokenClaims>;
 
 export const CapToken = z.object({
   /** Opaque locally; becomes a signed capability token at M2+. */
-  token: z.string(),
+  token: z.string().min(1),
   claims: CapTokenClaims,
 });
 export type CapToken = z.infer<typeof CapToken>;
 
 export interface CapabilityIssuer {
   issue(sub: string, scopes: CapabilityScope[], ttlSeconds: number): CapToken;
-  /** Returns valid scopes, or null if expired/invalid. */
-  verify(t: CapToken): CapabilityScope[] | null;
+  /** Returns valid scopes, or null if expired/invalid. Accepts either CapToken or raw token string. */
+  verify(t: CapToken | string): CapabilityScope[] | null;
 }
 
 // ─── Port 5: AgentEnvelope (the 4-Pillar task brief, PLAN.md §7.6) ──────
@@ -323,15 +329,26 @@ export interface AgentEnvelope {
 
 // ─── Tool manifest flags (data-driven prod gating, PLAN.md §6) ──────────
 
-export const ToolManifest = z.object({
-  name: z.string(),
-  description: z.string(),
-  /** JSON Schema emitted from the tool's own Zod input schema. */
-  input_schema: z.unknown(),
-  is_mutating: z.boolean(),
-  is_dangerous: z.boolean(),
-  is_cacheable: z.boolean().default(false),
-  required_scopes: z.array(CapabilityScope).default([]),
-  approval_scopes: z.array(ApprovalScope).default([]),
-});
+export const ToolManifest = z
+  .object({
+    name: z
+      .string()
+      .min(3)
+      .max(64)
+      .regex(
+        /^[a-z0-9][a-z0-9._-]*$/,
+        'tool name must be a lowercase alphanumeric identifier with dots, underscores, or hyphens'
+      ),
+    description: z.string(),
+    /** JSON Schema emitted from the tool's own Zod input schema. */
+    input_schema: z.unknown(),
+    is_mutating: z.boolean(),
+    is_dangerous: z.boolean(),
+    is_cacheable: z.boolean().default(false),
+    required_scopes: z.array(CapabilityScope).default([]),
+    approval_scopes: z.array(ApprovalScope).default([]),
+  })
+  .refine((tool) => !tool.is_dangerous || tool.approval_scopes.length > 0, {
+    message: 'dangerous tools must require at least one approval scope',
+  });
 export type ToolManifest = z.infer<typeof ToolManifest>;

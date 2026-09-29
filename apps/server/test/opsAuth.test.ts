@@ -237,6 +237,18 @@ describe('shared privileged server authentication adapter', () => {
     expect(limiter.consume('voice-session', 'client-b', 5).allowed).toBe(true);
   });
 
+  it('enforces hard capacity cap under active key rotation and never exceeds maxEntries (F-11)', () => {
+    const clock = new FrozenClock();
+    const smallCapacityLimiter = new InMemoryRateLimiter(clock, 60_000, 10);
+
+    // Insert 25 distinct client keys within the same time window
+    for (let i = 0; i < 25; i++) {
+      smallCapacityLimiter.consume('test-bucket', `rotating-client-${i}`, 5);
+      expect(smallCapacityLimiter.size).toBeLessThanOrEqual(10);
+    }
+    expect(smallCapacityLimiter.size).toBe(10);
+  });
+
   it('PROPERTY: exact arbitrary token values compare successfully', () => {
     fc.assert(
       fc.property(fc.string({ maxLength: 512 }), (token) => {

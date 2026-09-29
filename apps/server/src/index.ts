@@ -217,6 +217,9 @@ export function createApp(options: CreateAppOptions = {}) {
     return { flag: input.flag, enabled: input.enabled, updated: false };
   });
 
+  // Architectural Invariant (F-13): Mount order is load-bearing.
+  // 1. mountMcpHttpRuntime is mounted BEFORE CORS so the loopback-only MCP endpoint maintains
+  //    its strict empty origin allowlist (originValidation([])) without gaining browser CORS headers.
   const mcpHttp = mountMcpHttpRuntime(
     app,
     {
@@ -231,6 +234,7 @@ export function createApp(options: CreateAppOptions = {}) {
     }
   );
 
+  // 2. Global CORS middleware mounted after MCP for all standard browser API routes (*).
   app.use(
     '*',
     cors({
@@ -239,6 +243,7 @@ export function createApp(options: CreateAppOptions = {}) {
     })
   );
 
+  // 3. mountOpsAuthorization installs the closed role matrix (/ops/*) before any /ops routes are registered.
   mountOpsAuthorization(app, auth);
 
   app.get('/api/health', async (c) => {

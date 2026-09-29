@@ -11,6 +11,11 @@ export interface OverpassSanitizerOptions {
 // ReDoS regex pattern detector (nested or multiple unbounded quantifiers)
 const REDOS_PATTERN = /(\([^)]*[+*]\)[+*]|\([a-z0-9|]*\+[^)]*\)\+)/i;
 
+export const MAX_OVERPASS_BBOX_SPAN_DEG = 5.0;
+export const MAX_OVERPASS_QUERY_LENGTH = 10_000;
+export const MAX_OVERPASS_STATEMENTS = 50;
+export const MAX_OVERPASS_TIMEOUT_SEC = 25;
+
 /**
  * Overpass QL Query Sanitizer (PLAN.md §10 Phase 1 Item 4)
  * Cleans, validates, and bounds OpenStreetMap Overpass QL queries.
@@ -19,9 +24,9 @@ export function sanitizeOverpassQuery(
   rawQl: string,
   options: OverpassSanitizerOptions = {}
 ): OverpassSanitizationResult {
-  const maxTimeoutSec = options.maxTimeoutSec ?? 25;
-  const defaultTimeoutSec = options.defaultTimeoutSec ?? 25;
-  const maxBboxSpanDeg = options.maxBboxSpanDeg ?? 5.0;
+  const maxTimeoutSec = options.maxTimeoutSec ?? MAX_OVERPASS_TIMEOUT_SEC;
+  const defaultTimeoutSec = options.defaultTimeoutSec ?? MAX_OVERPASS_TIMEOUT_SEC;
+  const maxBboxSpanDeg = options.maxBboxSpanDeg ?? MAX_OVERPASS_BBOX_SPAN_DEG;
 
   if (!rawQl || typeof rawQl !== 'string') {
     throw new OverpassSanitizationError('Query must be a non-empty string', 'EMPTY_QUERY');
@@ -32,9 +37,9 @@ export function sanitizeOverpassQuery(
     throw new OverpassSanitizationError('Query must be non-empty', 'EMPTY_QUERY');
   }
 
-  if (trimmed.length > 10000) {
+  if (trimmed.length > MAX_OVERPASS_QUERY_LENGTH) {
     throw new OverpassSanitizationError(
-      `Query length (${trimmed.length}) exceeds maximum allowable 10,000 characters`,
+      `Query length (${trimmed.length}) exceeds maximum allowable ${MAX_OVERPASS_QUERY_LENGTH} characters`,
       'QUERY_TOO_LARGE'
     );
   }
@@ -52,9 +57,9 @@ export function sanitizeOverpassQuery(
 
   // Count statements (semicolons)
   const statements = trimmed.split(';').filter((s) => s.trim().length > 0);
-  if (statements.length > 50) {
+  if (statements.length > MAX_OVERPASS_STATEMENTS) {
     throw new OverpassSanitizationError(
-      `Query contains ${statements.length} statements, exceeding maximum limit of 50`,
+      `Query contains ${statements.length} statements, exceeding maximum limit of ${MAX_OVERPASS_STATEMENTS}`,
       'EXCESSIVE_STATEMENTS'
     );
   }
@@ -69,31 +74,38 @@ export function sanitizeOverpassQuery(
     }
   }
 
-  // Extract bounding box if present [bbox:s,w,n,e] or statement (s,w,n,e)
+  // Extract and validate ALL bounding boxes present: global [bbox:s,w,n,e] AND statement (s,w,n,e)
   let detectedBbox: BoundingBox | undefined = options.fallbackBbox;
-  const globalBboxMatch = trimmed.match(
-    /\[bbox:([-\d.]+),\s*([-\d.]+),\s*([-\d.]+),\s*([-\d.]+)\]/i
-  );
 
-  if (globalBboxMatch?.[1] && globalBboxMatch[2] && globalBboxMatch[3] && globalBboxMatch[4]) {
-    const s = Number.parseFloat(globalBboxMatch[1]);
-    const w = Number.parseFloat(globalBboxMatch[2]);
-    const n = Number.parseFloat(globalBboxMatch[3]);
-    const e = Number.parseFloat(globalBboxMatch[4]);
-
-    validateCoordinates(s, w, n, e, maxBboxSpanDeg);
-    detectedBbox = { min_lat: s, min_lon: w, max_lat: n, max_lon: e };
-  } else {
-    // Check statement level (s,w,n,e)
-    const stmtBboxMatch = trimmed.match(/\(([-\d.]+),\s*([-\d.]+),\s*([-\d.]+),\s*([-\d.]+)\)/);
-    if (stmtBboxMatch?.[1] && stmtBboxMatch[2] && stmtBboxMatch[3] && stmtBboxMatch[4]) {
-      const s = Number.parseFloat(stmtBboxMatch[1]);
-      const w = Number.parseFloat(stmtBboxMatch[2]);
-      const n = Number.parseFloat(stmtBboxMatch[3]);
-      const e = Number.parseFloat(stmtBboxMatch[4]);
-
+  const globalBboxMatches = [
+    ...trimmed.matchAll(/\[bbox:([-\d.]+),\s*([-\d.]+),\s*([-\d.]+),\s*([-\d.]+)\]/gi),
+  ];
+  for (const m of globalBboxMatches) {
+    if (m[1] && m[2] && m[3] && m[4]) {
+      const s = Number.parseFloat(m[1]);
+      const w = Number.parseFloat(m[2]);
+      const n = Number.parseFloat(m[3]);
+      const e = Number.parseFloat(m[4]);
       validateCoordinates(s, w, n, e, maxBboxSpanDeg);
-      detectedBbox = { min_lat: s, min_lon: w, max_lat: n, max_lon: e };
+      if (!detectedBbox) {
+        detectedBbox = { min_lat: s, min_lon: w, max_lat: n, max_lon: e };
+      }
+    }
+  }
+
+  const stmtBboxMatches = [
+    ...trimmed.matchAll(/\(([-\d.]+),\s*([-\d.]+),\s*([-\d.]+),\s*([-\d.]+)\)/g),
+  ];
+  for (const m of stmtBboxMatches) {
+    if (m[1] && m[2] && m[3] && m[4]) {
+      const s = Number.parseFloat(m[1]);
+      const w = Number.parseFloat(m[2]);
+      const n = Number.parseFloat(m[3]);
+      const e = Number.parseFloat(m[4]);
+      validateCoordinates(s, w, n, e, maxBboxSpanDeg);
+      if (!detectedBbox) {
+        detectedBbox = { min_lat: s, min_lon: w, max_lat: n, max_lon: e };
+      }
     }
   }
 
@@ -104,11 +116,13 @@ export function sanitizeOverpassQuery(
     );
   }
 
-  // Normalize query body by removing any existing timeout/out headers
+  // Normalize query body by removing any existing timeout/out/bbox headers and statement-level coordinate filters
+  // so that the injected sanitized bounding box header is strictly authoritative
   let cleanBody = trimmed
     .replace(/\[out:[^\]]+\];?/gi, '')
     .replace(/\[timeout:\d+\];?/gi, '')
     .replace(/\[bbox:[^\]]+\];?/gi, '')
+    .replace(/\(([-\d.]+),\s*([-\d.]+),\s*([-\d.]+),\s*([-\d.]+)\)/g, '')
     .trim();
 
   // If query doesn't end with semicolon, append it

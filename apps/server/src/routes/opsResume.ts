@@ -1,5 +1,10 @@
 import crypto from 'node:crypto';
-import { type Actor, type AuthenticatedIdentityContext, GevEvents } from '@gev/contracts';
+import {
+  type Actor,
+  type AuthenticatedIdentityContext,
+  GevEvents,
+  OpsResumeRequestSchema,
+} from '@gev/contracts';
 import type { SimClock } from '@gev/core';
 import type { CapBudgetGovernor, SqliteAuditSink } from '@gev/governance';
 import { Hono } from 'hono';
@@ -39,8 +44,19 @@ export function createOpsResumeRouter(options: OpsResumeRouterOptions): Hono {
         403
       );
     }
-    const body = (await c.req.json().catch(() => ({}))) as { reason?: string };
-    const reason = body.reason ?? 'Human operator manual override via ops API';
+    const rawBody = await c.req.json().catch(() => ({}));
+    const parsed = OpsResumeRequestSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return c.json(
+        {
+          error: 'Invalid resume request payload',
+          code: 'INVALID_REQUEST',
+          details: parsed.error.issues,
+        },
+        400
+      );
+    }
+    const reason = parsed.data.reason ?? 'Human operator manual override via ops API';
     const state = budgetGovernor.state();
 
     if (!state.stasis_active) {

@@ -10,7 +10,7 @@ export const USGS_3DEP_SCHEMA_VERSION = 1 as const;
 export const USGS_3DEP_DEFAULT_VINTAGE = '3DEP 1/3 arc-second (2024)' as const;
 
 export const USGS_3DEP_ADVISORY_DISCLAIMER =
-  'USGS 3DEP elevation data retrieved via the Elevation Point Query Service (EPQS) is provided for geospatial reference, preliminary screening, and terrain modeling. It does not replace licensed boundary, topographic, or geotechnical land surveys, and must not be used as official Elevation Certificates for FEMA National Flood Insurance Program (NFIP) rating or structural engineering design.' as const;
+  'USGS 3DEP elevation data retrieved via the Elevation Point Query Service (EPQS) is provided for geospatial reference, preliminary screening, and terrain modeling. It does not replace licensed boundary, topographic, or geotechnical land surveys, and must not be used as official Elevation Certificates for FEMA National Flood Insurance Program (NFIP) rating or structural engineering design. Elevations are NAVD88 orthometric heights; direct consumption in Cesium WGS84 ellipsoidal 3D coordinates requires local geoid undulation compensation (h = H + N) to prevent 20–35m vertical offsets.' as const;
 
 /**
  * Modern EPQS REST endpoint. The legacy pqs.php URL is retired and prohibited.
@@ -24,7 +24,7 @@ export const USGS_3DEP_RETIRED_ENDPOINT_SUBSTRING = 'pqs.php' as const;
 export const USGS_EPQS_OFF_COVERAGE_SENTINEL = -1000000 as const;
 
 // ============================================================================
-// Vertical Datums and Elevation Units
+// Vertical & Horizontal Datums and Elevation Units
 // ============================================================================
 
 export const Usgs3DepVerticalDatumSchema = z.enum([
@@ -35,6 +35,9 @@ export const Usgs3DepVerticalDatumSchema = z.enum([
   'unknown',
 ]);
 export type Usgs3DepVerticalDatum = z.infer<typeof Usgs3DepVerticalDatumSchema>;
+
+export const Usgs3DepHorizontalDatumSchema = z.enum(['NAD83', 'WGS84']);
+export type Usgs3DepHorizontalDatum = z.infer<typeof Usgs3DepHorizontalDatumSchema>;
 
 export const Usgs3DepElevationUnitSchema = z.enum(['Meters', 'Feet']);
 export type Usgs3DepElevationUnit = z.infer<typeof Usgs3DepElevationUnitSchema>;
@@ -76,6 +79,9 @@ export const Usgs3DepPointQuerySchema = z
   .strict();
 export type Usgs3DepPointQuery = z.infer<typeof Usgs3DepPointQuerySchema>;
 
+export const Usgs3DepBatchQuerySchema = z.array(Usgs3DepPointQuerySchema).max(100);
+export type Usgs3DepBatchQuery = z.infer<typeof Usgs3DepBatchQuerySchema>;
+
 // ============================================================================
 // Normalized Elevation Point Result
 // ============================================================================
@@ -93,6 +99,7 @@ export const Usgs3DepElevationPointResultSchema = z
     elevation_feet: EconomicEstimateSchema,
     data_source: z.string().min(1).max(128),
     vertical_datum: Usgs3DepVerticalDatumSchema,
+    horizontal_datum: Usgs3DepHorizontalDatumSchema.default('NAD83'),
     query_units: Usgs3DepElevationUnitSchema,
     is_off_coverage: z.boolean(),
     provenance: DataProvenanceSchema,
@@ -153,6 +160,8 @@ export const Usgs3DepSlopeResultSchema = z
     slope_percent: EconomicEstimateSchema,
     slope_degrees: EconomicEstimateSchema,
     provenance: DataProvenanceSchema,
+    provenance_start: DataProvenanceSchema.optional(),
+    provenance_end: DataProvenanceSchema.optional(),
     advisory_disclaimer: z.literal(USGS_3DEP_ADVISORY_DISCLAIMER),
   })
   .strict();
@@ -173,6 +182,7 @@ export const Usgs3DepPointFixtureSchema = z
     data_source: z.string().min(1).max(128),
     units: Usgs3DepElevationUnitSchema,
     vertical_datum: Usgs3DepVerticalDatumSchema,
+    horizontal_datum: Usgs3DepHorizontalDatumSchema.default('NAD83'),
     is_off_coverage: z.boolean(),
   })
   .strict();

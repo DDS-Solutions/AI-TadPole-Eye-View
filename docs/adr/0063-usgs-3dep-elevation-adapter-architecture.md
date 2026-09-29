@@ -17,16 +17,18 @@ Specific requirements from PLAN.md §11.2 and the authorized 4-Pillar brief:
    - The USGS EPQS service returns sentinel value `-1000000` (or `<= -999999`, or `null`) when a coordinate falls outside the DEM coverage area or into open ocean water bodies.
    - These sentinel values must **NEVER** be coerced to `0.0` sea level or treated as valid elevation measurements; they must evaluate to `{ status: 'unavailable', reason: '...' }` with `is_off_coverage: true`.
    - Legitimate below-sea-level land depressions (such as Badwater Basin in Death Valley, CA at -86 meters) and legitimate shoreline sea level benchmarks (0.0 meters) must remain valid and evaluate to `{ status: 'available' }` without coercion.
-3. **Vertical Datum and Units**:
+3. **Vertical & Horizontal Datums and Geoid Notice**:
    - Explicit vertical datum modeling (`NAVD88`, `NAD83`, `WGS84`, `local_mean_sea_level`, `unknown`).
+   - Explicit horizontal datum modeling (`NAD83`, `WGS84`).
+   - EPQS elevations are NAVD88 orthometric heights ($H$, height above geoid / mean sea level). Direct ingestion into Cesium WGS84 ellipsoidal 3D coordinates ($h$) requires local geoid undulation compensation ($h = H + N$, where $N \approx -20\text{m}$ to $-35\text{m}$ in CONUS) to prevent vertical registration errors.
    - Bidirectional pure conversion between meters and international feet (`1 foot = 0.3048 meters` exactly).
 4. **Mandatory Advisory Screening Disclaimer**:
-   - `USGS_3DEP_ADVISORY_DISCLAIMER`: clarifies that EPQS elevation data is provided for geospatial reference, preliminary screening, and terrain modeling, and does not replace licensed land surveys or official FEMA Elevation Certificates for NFIP rating.
+   - `USGS_3DEP_ADVISORY_DISCLAIMER`: clarifies that EPQS elevation data is provided for geospatial reference, preliminary screening, and terrain modeling, does not replace licensed land surveys or official FEMA Elevation Certificates for NFIP rating, and explicitly notes the NAVD88 orthometric datum requirement for Cesium integration.
 5. **Operational Kill Switch & Seed Mode Enforcement**:
    - Kill switch `GEV_USGS_3DEP_ENABLED` failing closed with `Usgs3DepDisabledError`.
    - Seed mode is the default (`GEV_SEED_MODE=1`); live external calls require explicit developer authorization and use `pinnedFetch` with strict SSRF host/path allowlists.
 6. **Performance Threshold**:
-   - Query latency p95 < 25ms in seed mode (benchmarked at < 0.05ms p95 via cached synthetic fixtures).
+   - Query latency p95 < 25ms in seed mode (benchmarked at p50 ≈ 0.07ms, p95 ≈ 0.27ms via cached synthetic fixtures).
 
 ---
 
@@ -42,11 +44,13 @@ Specific requirements from PLAN.md §11.2 and the authorized 4-Pillar brief:
   - `USGS_3DEP_ADVISORY_DISCLAIMER`: attached to all elevation and slope results.
 - **Schemas**:
   - `Usgs3DepVerticalDatumSchema`: `NAVD88`, `NAD83`, `WGS84`, `local_mean_sea_level`, `unknown`.
+  - `Usgs3DepHorizontalDatumSchema`: `NAD83`, `WGS84`.
   - `Usgs3DepElevationUnitSchema`: `Meters`, `Feet`.
   - `RawUsgsEpqsResponseSchema`: wire parser for EPQS JSON format.
   - `Usgs3DepPointQuerySchema`: validated query with `x` [-180, 180], `y` [-90, 90], `units`.
-  - `Usgs3DepElevationPointResultSchema`: includes point coordinates, `elevation`, `elevation_meters`, `elevation_feet` (discriminated `EconomicEstimate`), `vertical_datum`, `data_source`, `is_off_coverage`, and `DataProvenance`. SuperRefined with non-coercion invariants ensuring off-coverage points cannot have available status.
-  - `Usgs3DepSlopeResultSchema`: terrain slope calculation between two coordinates with distance, elevation change, slope percent, and slope degrees.
+  - `Usgs3DepBatchQuerySchema`: capped at 100 queries to prevent unbounded network or memory amplification.
+  - `Usgs3DepElevationPointResultSchema`: includes point coordinates, `elevation`, `elevation_meters`, `elevation_feet` (discriminated `EconomicEstimate`), `vertical_datum`, `horizontal_datum`, `data_source`, `is_off_coverage`, and `DataProvenance`. SuperRefined with non-coercion invariants ensuring off-coverage points cannot have available status.
+  - `Usgs3DepSlopeResultSchema`: terrain slope calculation between two coordinates with distance, elevation change, slope percent, slope degrees, and two-point provenance (`provenance_start`, `provenance_end`).
   - `Usgs3DepFixtureDatasetSchema`: validated synthetic seed fixture structure.
 
 ### 2.2 Pure Domain Layer (`packages/economic/src/usgs3depConversions.ts`)
@@ -57,11 +61,12 @@ Specific requirements from PLAN.md §11.2 and the authorized 4-Pillar brief:
   - `convertElevationEstimate`: converts units while preserving estimate status (`available` vs `unavailable`).
 - **Validators & Non-Coercion Parser**:
   - `validateUsgsCoordinates(x, y)`: bounds checking.
-  - `validateEpqsEndpoint(url)`: strictly throws if `pqs.php` is detected.
-  - `parseUsgsRawElevation(rawElev, rawUnits)`: maps numbers and EPQS sentinels to `ParsedUsgsElevation`. Values `<= -999999`, `null`, `undefined`, or `NaN` evaluate to `unavailable`. Legitimate negative values on land (e.g. -86m) evaluate to `available`.
+  - `validateEpqsEndpoint(url)`: strictly throws if `pqs.php` is detected in URL pathname or query parameters.
+  - `parseUsgsRawElevation(rawElev, rawUnits)`: maps numbers and EPQS sentinels to `ParsedUsgsElevation`. Values `<= -999999`, `null`, `undefined`, or `NaN` evaluate to `unavailable`. Legitimate negative values on land (e.g. -86m) evaluate to `available`. Discrete cutover locked at `-999998` (available) vs `-999999` (unavailable).
 - **Terrain Slope Engine**:
   - `haversineDistanceMeters(lat1, lon1, lat2, lon2)`: spherical distance.
-  - `calculateTerrainSlope(p1, p2)`: calculates horizontal distance, elevation change, slope percent, and degrees. Fails closed to `unavailable` if either point lacks valid elevation data.
+  - `USGS_3DEP_MIN_SLOPE_BASELINE_METERS = 10.0`: guards against DEM quantization noise over short baselines.
+  - `calculateTerrainSlope(p1, p2)`: calculates horizontal distance, elevation change, slope percent, and degrees. Fails closed to `unavailable` if either point lacks valid elevation data or if horizontal distance is under the 10m minimum baseline.
 - **Source Registry Integration (`packages/economic/src/sourceRegistry.ts`)**:
   - `usgs-3dep` status advanced from `planned` to `seed`.
   - `seed_fixture_id` linked to `usgs-3dep-synthetic-v1`.

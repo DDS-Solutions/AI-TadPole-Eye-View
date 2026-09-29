@@ -13,15 +13,24 @@ interface RateLimitWindow {
   startedAtMs: number;
 }
 
+export const DEFAULT_MAX_RATE_LIMITER_ENTRIES = 5000;
+
 /** Shared, clock-injected fixed-window protection for bounded in-memory surfaces. */
 export class InMemoryRateLimiter {
   private readonly windows = new Map<string, RateLimitWindow>();
-  private readonly maxEntries = 5000;
+  readonly maxEntries: number;
 
   constructor(
     private readonly clock: SimClock,
-    private readonly windowMs = 60_000
-  ) {}
+    private readonly windowMs = 60_000,
+    maxEntries = DEFAULT_MAX_RATE_LIMITER_ENTRIES
+  ) {
+    this.maxEntries = maxEntries;
+  }
+
+  get size(): number {
+    return this.windows.size;
+  }
 
   private prune(now: number): void {
     for (const [k, w] of this.windows.entries()) {
@@ -36,11 +45,15 @@ export class InMemoryRateLimiter {
     const key = `${bucket}:${clientId}`;
     let window = this.windows.get(key);
 
-    if (this.windows.size > this.maxEntries) {
-      this.prune(now);
-    }
-
     if (!window || now - window.startedAtMs >= this.windowMs) {
+      if (this.windows.size >= this.maxEntries) {
+        this.prune(now);
+        while (this.windows.size >= this.maxEntries) {
+          const oldestKey = this.windows.keys().next().value;
+          if (oldestKey === undefined) break;
+          this.windows.delete(oldestKey);
+        }
+      }
       window = { count: 0, startedAtMs: now };
       this.windows.set(key, window);
     }

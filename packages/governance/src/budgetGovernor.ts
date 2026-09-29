@@ -10,7 +10,12 @@ import {
   type Verdict,
 } from '@gev/contracts';
 import { type SimClock, SystemClock } from '@gev/core';
-import { openGovernanceDatabase, withImmediateTransaction } from './governanceDb.js';
+import {
+  applyGovernancePragmas,
+  migrateGovernanceDatabase,
+  openGovernanceDatabase,
+  withImmediateTransaction,
+} from './governanceDb.js';
 import { fromMicrousd, toMicrousd } from './money.js';
 
 interface BudgetStateRow {
@@ -71,11 +76,16 @@ export class CapBudgetGovernor implements BudgetGovernor {
 
   constructor(options: CapBudgetGovernorOptions = {}) {
     this.clock = options.clock ?? new SystemClock();
-    const opened = options.db
-      ? { db: options.db, dbPath: options.resolvedDbPath ?? options.dbPath ?? ':memory:' }
-      : openGovernanceDatabase({ dbPath: options.dbPath, clock: this.clock });
-    this.db = opened.db;
-    this.dbPath = opened.dbPath;
+    if (options.db) {
+      this.db = options.db;
+      this.dbPath = options.resolvedDbPath ?? options.dbPath ?? ':memory:';
+      applyGovernancePragmas(this.db, this.dbPath);
+      migrateGovernanceDatabase(this.db, this.clock);
+    } else {
+      const opened = openGovernanceDatabase({ dbPath: options.dbPath, clock: this.clock });
+      this.db = opened.db;
+      this.dbPath = opened.dbPath;
+    }
     this.ownsDb = options.db === undefined;
 
     const envCapRaw = process.env.GEV_BUDGET_CAP_USD;

@@ -40,7 +40,14 @@ import {
 } from './toolSchemas.js';
 
 export const ToolMetadataSchema = z.object({
-  name: z.string(),
+  name: z
+    .string()
+    .min(3)
+    .max(64)
+    .regex(
+      /^[a-z0-9][a-z0-9._-]*$/,
+      'tool name must be a lowercase alphanumeric identifier with dots, underscores, or hyphens'
+    ),
   description: z.string(),
   is_mutating: z.boolean(),
   is_dangerous: z.boolean(),

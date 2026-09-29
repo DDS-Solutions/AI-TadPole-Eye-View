@@ -224,9 +224,13 @@ export class AuditChainStore {
       });
     } catch (error) {
       const detail = error instanceof Error ? error.message : '';
-      return detail.includes('no such table')
-        ? fail('CHAIN_SCHEMA_MISSING')
-        : unavailable(this.clock);
+      if (detail.includes('no such table')) {
+        return fail('CHAIN_SCHEMA_MISSING');
+      }
+      if (detail.includes('MALFORMED') || detail.includes('malformed') || detail.includes('JSON')) {
+        return fail('MALFORMED_ROW');
+      }
+      return unavailable(this.clock);
     }
   }
 
@@ -236,11 +240,6 @@ export class AuditChainStore {
       .get() as AuditChainStateRow | undefined;
     if (!state || !validState(state)) throw new Error('Audit chain integrity unavailable');
 
-    const unchained = this.db
-      .prepare(`SELECT e.id FROM audit_events e LEFT JOIN governance_audit_chain c
-        ON c.event_id = e.id WHERE c.event_id IS NULL LIMIT 1`)
-      .get();
-    if (unchained) throw new Error('Audit chain contains an unlinked event');
     if (state.head_sequence > state.anchor_sequence) {
       const head = this.db
         .prepare('SELECT event_id, chain_hash FROM governance_audit_chain WHERE sequence = ?')

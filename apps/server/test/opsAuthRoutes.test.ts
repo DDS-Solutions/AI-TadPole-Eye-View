@@ -1,6 +1,7 @@
 import { createGovernanceRuntimeContext } from '@gev/governance';
 import { describe, expect, it, vi } from 'vitest';
 import { createApp } from '../src/index.js';
+import { PLATFORM_ADMIN_OPS_PATHS } from '../src/middleware/opsAuth.js';
 
 const OPS_TOKEN = 'route-coverage-ops-token';
 
@@ -361,6 +362,27 @@ describe('operations route authentication coverage', () => {
       context.auditSink.close();
     }
   });
+
+  it('validates resume payload with strict bounded schema and rejects oversized reason (G-10)', async () => {
+    const context = createProtectedApp();
+    context.budgetGovernor.trip('BUDGET_BREACH', 'test trip');
+    try {
+      const response = await context.app.request('/ops/resume', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${OPS_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason: 'x'.repeat(1000) }),
+      });
+
+      expect(response.status).toBe(400);
+      await expect(response.json()).resolves.toMatchObject({ code: 'INVALID_REQUEST' });
+      expect(context.budgetGovernor.state().stasis_active).toBe(true);
+    } finally {
+      context.auditSink.close();
+    }
+  });
   it('leaves the explicitly public health route outside the operations guard', async () => {
     const { app, auditSink } = createProtectedApp();
 
@@ -371,6 +393,24 @@ describe('operations route authentication coverage', () => {
       await expect(response.json()).resolves.toMatchObject({ status: 'ok' });
     } finally {
       auditSink.close();
+    }
+  });
+
+  it('INVARIANT: all registered /ops routes are covered by PLATFORM_ADMIN_OPS_PATHS or explicit policy (F-12)', () => {
+    for (const route of PROTECTED_OPS_ROUTES) {
+      const isLayerAccess = route.path.startsWith('/ops/layer-access');
+      const isOperatorStatus = route.path === '/ops/status';
+      const isCoveredByPlatformAdmin = PLATFORM_ADMIN_OPS_PATHS.some((pattern) => {
+        if (pattern.endsWith('/*')) {
+          const prefix = pattern.slice(0, -2);
+          return route.path.startsWith(prefix);
+        }
+        return route.path === pattern;
+      });
+      expect(
+        isCoveredByPlatformAdmin || isLayerAccess || isOperatorStatus,
+        `Route ${route.path} must be covered by PLATFORM_ADMIN_OPS_PATHS, layer-access, or operator status policy`
+      ).toBe(true);
     }
   });
 });
