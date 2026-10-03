@@ -364,7 +364,8 @@
         {
           frameMonitor,
           attachToWindow:
-            import.meta.env.DEV || import.meta.env.VITE_DEBUG_BUS === 'true',
+            import.meta.env.DEV ||
+            Boolean(typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.search.includes('gev_debug=1'))),
         }
       );
 

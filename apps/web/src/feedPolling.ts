@@ -244,8 +244,7 @@ export async function pollVisibleFeeds(
   }
 
   if (
-    layerStore.visibility.satellites &&
-    layerStore.satelliteAccessLock === null &&
+    (layerStore.visibility.satellites || layerStore.satelliteAccessLock !== null) &&
     bindings.satellites
   ) {
     tasks.push(
