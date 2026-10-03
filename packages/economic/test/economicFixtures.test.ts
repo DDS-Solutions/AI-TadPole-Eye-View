@@ -315,11 +315,11 @@ describe('Performance Threshold: Parsing Latency (Task 8.3)', () => {
     'osm-commercial-evidence-synthetic-v1.json',
   ] as const;
 
-  // Tuned for 2-vCPU CI runners: batchSize=20 amortizes CFS quantum (~4ms)
+  // Tuned for 2-vCPU CI runners: batchSize=25 amortizes CFS quantum (~4ms)
   // and eliminates CPU starvation spikes when multiple Vitest workers run concurrently.
-  // batchCount=25 gives a robust p95 (23rd of 25 sorted values).
-  const batchSize = 20;
-  const batchCount = 25;
+  // batchCount=30 gives a robust p95 (28th of 30 sorted values, dropping up to 2 preemption spikes).
+  const batchSize = 25;
+  const batchCount = 30;
 
   it.each(fixtureNames)(
     'proves fixture parsing p95 latency is < 10ms for %s',
