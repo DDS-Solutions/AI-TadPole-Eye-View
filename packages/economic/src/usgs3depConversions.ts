@@ -39,11 +39,29 @@ export function validateUsgsCoordinates(x: number, y: number): void {
  * Validates that the EPQS endpoint does not use the retired legacy URL (pqs.php).
  */
 export function validateEpqsEndpoint(endpointUrl: string): void {
-  const retiredToken = USGS_3DEP_RETIRED_ENDPOINT_SUBSTRING || 'pqs.php';
-  if (endpointUrl.includes(retiredToken) || endpointUrl.includes('pqs.php')) {
-    throw new Error(
-      `USGS 3DEP retired pqs.php endpoint is prohibited. Use modern EPQS REST endpoint https://epqs.nationalmap.gov/v1/json (PLAN.md §10 Task 11.2)`
-    );
+  try {
+    const parsed = new URL(endpointUrl);
+    const pathnameLower = parsed.pathname.toLowerCase();
+    if (
+      pathnameLower.endsWith('pqs.php') ||
+      pathnameLower.includes('/pqs.php') ||
+      parsed.searchParams.has('pqs.php') ||
+      endpointUrl.toLowerCase().includes(USGS_3DEP_RETIRED_ENDPOINT_SUBSTRING)
+    ) {
+      throw new Error(
+        `USGS 3DEP retired pqs.php endpoint is prohibited. Use modern EPQS REST endpoint https://epqs.nationalmap.gov/v1/json (PLAN.md §10 Task 11.2)`
+      );
+    }
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('retired pqs.php endpoint is prohibited')) {
+      throw err;
+    }
+    if (endpointUrl.toLowerCase().includes(USGS_3DEP_RETIRED_ENDPOINT_SUBSTRING)) {
+      throw new Error(
+        `USGS 3DEP retired pqs.php endpoint is prohibited. Use modern EPQS REST endpoint https://epqs.nationalmap.gov/v1/json (PLAN.md §10 Task 11.2)`
+      );
+    }
+    throw err;
   }
 }
 
@@ -219,6 +237,13 @@ export function haversineDistanceMeters(
   return EARTH_RADIUS_METERS * c;
 }
 
+/**
+ * Minimum horizontal baseline distance (10 meters) for reliable terrain slope.
+ * 3DEP DEM has ~0.3m vertical quantization and ~10m resolution (1/3 arc-second);
+ * baselines under 10m are noise-dominated and produce unreliable slope angles.
+ */
+export const USGS_3DEP_MIN_SLOPE_BASELINE_METERS = 10.0 as const;
+
 export interface SlopeCalculationInput {
   x: number;
   y: number;
@@ -235,6 +260,7 @@ export interface SlopeCalculationResult {
 /**
  * Calculates slope gradient between two elevation points.
  * If either point has unavailable elevation, slope metrics evaluate to unavailable.
+ * If horizontal distance is under USGS_3DEP_MIN_SLOPE_BASELINE_METERS (10m), slope metrics evaluate to unavailable to prevent quantization noise.
  */
 export function calculateTerrainSlope(
   p1: SlopeCalculationInput,
@@ -278,6 +304,19 @@ export function calculateTerrainSlope(
       elevationChangeMeters,
       slopePercent: notApplicable,
       slopeDegrees: notApplicable,
+    };
+  }
+
+  if (horizontalDistanceMeters < USGS_3DEP_MIN_SLOPE_BASELINE_METERS) {
+    const unavailable: EconomicEstimate = {
+      status: 'unavailable',
+      reason: `Horizontal distance (${horizontalDistanceMeters.toFixed(2)}m) is below minimum baseline threshold (${USGS_3DEP_MIN_SLOPE_BASELINE_METERS}m); terrain slope is noise-dominated due to DEM vertical quantization (~0.3m)`,
+    };
+    return {
+      horizontalDistanceMeters,
+      elevationChangeMeters,
+      slopePercent: unavailable,
+      slopeDegrees: unavailable,
     };
   }
 

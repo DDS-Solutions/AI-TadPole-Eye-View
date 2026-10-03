@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -8,6 +9,7 @@ import {
   computeMaskedFingerprint,
   decryptSecret,
   encryptSecret,
+  resolveCredentialKey,
 } from '../src/layerAccessCrypto.js';
 import { openGovernanceDatabase } from '../src/governanceDb.js';
 import { SqliteTenantLayerAccessStore } from '../src/tenantLayerAccessStore.js';
@@ -37,24 +39,97 @@ describe('Tenant Layer Access Store & Crypto', () => {
   });
 
   describe('layerAccessCrypto', () => {
-    it('encrypts and decrypts secrets with AES-256-GCM round-trip', () => {
+    it('encrypts and decrypts secrets with AES-256-GCM round-trip (v1 format)', () => {
       const secret = 'sk-live-opensky-token-xyz-12345';
       const encrypted = encryptSecret(secret);
       expect(encrypted).not.toContain(secret);
-      expect(encrypted.split(':')).toHaveLength(3);
+      const parts = encrypted.split(':');
+      expect(parts).toHaveLength(5);
+      expect(parts[0]).toBe('v1');
+      expect(parts[1]).toBe('default');
 
       const decrypted = decryptSecret(encrypted);
       expect(decrypted).toBe(secret);
     });
 
-    it('fails decryption on tampered ciphertext or auth tag', () => {
-      const encrypted = encryptSecret('secret-key');
-      const [iv, tag, cipher] = encrypted.split(':');
-      const tamperedTag = tag.slice(0, -2) + (tag.endsWith('00') ? 'ff' : '00');
-      expect(() => decryptSecret(`${iv}:${tamperedTag}:${cipher}`)).toThrow();
+    it('decrypts legacy 3-part format seamlessly', () => {
+      const secret = 'legacy-secret-format';
+      // Simulate legacy format: iv:tag:ciphertext without v1 prefix
+      const key = resolveCredentialKey();
+      const iv = Buffer.alloc(12, 1);
+      const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+      const enc = Buffer.concat([cipher.update(secret, 'utf8'), cipher.final()]);
+      const tag = cipher.getAuthTag();
+      const legacyPayload = `${iv.toString('hex')}:${tag.toString('hex')}:${enc.toString('hex')}`;
+
+      const decrypted = decryptSecret(legacyPayload);
+      expect(decrypted).toBe(secret);
     });
 
-    it('computes constant-time masked fingerprint conforming to ADR 0049', () => {
+    it('enforces AAD authentication: mismatched context fails decryption', () => {
+      const secret = 'highly-sensitive-feed-credential';
+      const encrypted = encryptSecret(secret, { aad: 'tenant-1:provider-a' });
+
+      // Decrypting with matching AAD succeeds
+      expect(decryptSecret(encrypted, { aad: 'tenant-1:provider-a' })).toBe(secret);
+
+      // Decrypting with wrong tenant or provider fails
+      expect(() => decryptSecret(encrypted, { aad: 'tenant-2:provider-a' })).toThrow();
+      expect(() => decryptSecret(encrypted, { aad: 'tenant-1:provider-b' })).toThrow();
+      expect(() => decryptSecret(encrypted)).toThrow();
+    });
+
+    it('fails closed in production if GEV_CREDENTIAL_KEY is unset (C-01)', () => {
+      const prevEnv = process.env.NODE_ENV;
+      const prevKey = process.env.GEV_CREDENTIAL_KEY;
+      try {
+        process.env.NODE_ENV = 'production';
+        delete process.env.GEV_CREDENTIAL_KEY;
+        expect(() => resolveCredentialKey()).toThrow(
+          /GEV_CREDENTIAL_KEY is required in production/
+        );
+      } finally {
+        process.env.NODE_ENV = prevEnv;
+        if (prevKey !== undefined) process.env.GEV_CREDENTIAL_KEY = prevKey;
+      }
+    });
+
+    it('rejects malformed GEV_CREDENTIAL_KEY lengths (C-11)', () => {
+      const prevKey = process.env.GEV_CREDENTIAL_KEY;
+      try {
+        // Truncated 63-char hex key
+        process.env.GEV_CREDENTIAL_KEY = 'a'.repeat(63);
+        expect(() => resolveCredentialKey()).toThrow(/expected a 64-character hexadecimal string/);
+
+        // 65-char hex key
+        process.env.GEV_CREDENTIAL_KEY = 'b'.repeat(65);
+        expect(() => resolveCredentialKey()).toThrow(/expected a 64-character hexadecimal string/);
+
+        // Non-hex string
+        process.env.GEV_CREDENTIAL_KEY = 'z'.repeat(64);
+        expect(() => resolveCredentialKey()).toThrow(/expected a 64-character hexadecimal string/);
+
+        // Valid 64-char hex key works
+        process.env.GEV_CREDENTIAL_KEY =
+          '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+        const key = resolveCredentialKey();
+        expect(key.length).toBe(32);
+      } finally {
+        if (prevKey !== undefined) process.env.GEV_CREDENTIAL_KEY = prevKey;
+        else delete process.env.GEV_CREDENTIAL_KEY;
+      }
+    });
+
+    it('fails decryption on tampered ciphertext or auth tag', () => {
+      const encrypted = encryptSecret('secret-key');
+      const parts = encrypted.split(':');
+      const tag = parts[3];
+      const tamperedTag = tag.slice(0, -2) + (tag.endsWith('00') ? 'ff' : '00');
+      parts[3] = tamperedTag;
+      expect(() => decryptSecret(parts.join(':'))).toThrow();
+    });
+
+    it('computes masked fingerprint conforming to ADR 0049', () => {
       const fp1 = computeMaskedFingerprint('pk_live_1234567890abcdefA91C');
       expect(fp1).toBe('•••••••• A91C');
       expect(/^\u2022{8} [A-Z0-9]{4}$/.test(fp1)).toBe(true);
@@ -243,6 +318,45 @@ describe('Tenant Layer Access Store & Crypto', () => {
       store.deleteCredential('tenant-one', 'opensky', 'human:admin-1');
       expect(store.getCredentialRecord('tenant-one', 'opensky')).toBeNull();
       expect(store.getCredentialRecord('tenant-two', 'opensky')).not.toBeNull();
+    });
+
+    it('rejects cross-tenant ciphertext swapping via AAD authentication (C-02)', async () => {
+      const store = new SqliteTenantLayerAccessStore(db, clock);
+      store.submitCredential(
+        'tenant-alpha',
+        {
+          provider_id: 'opensky',
+          secret_kind: 'api_key',
+          secret_value: 'alpha-confidential-secret-1111',
+        },
+        'human:admin'
+      );
+
+      // Maliciously swap ciphertext of tenant-alpha into tenant-beta's row in DB
+      const alphaRow = db
+        .prepare(
+          'SELECT encrypted_secret FROM governance_tenant_layer_credentials WHERE tenant_id = ? AND provider_id = ?'
+        )
+        .get('tenant-alpha', 'opensky') as { encrypted_secret: string };
+
+      db.prepare(
+        `INSERT INTO governance_tenant_layer_credentials (
+          tenant_id, provider_id, secret_kind, encrypted_secret, masked_fingerprint,
+          status, validation_error, created_at, updated_at, validated_at, revoked_at
+        ) VALUES (?, ?, ?, ?, ?, 'valid', NULL, ?, ?, ?, NULL)`
+      ).run(
+        'tenant-beta',
+        'opensky',
+        'api_key',
+        alphaRow.encrypted_secret,
+        '•••••••• 1111',
+        new Date(NOW).toISOString(),
+        new Date(NOW).toISOString(),
+        new Date(NOW).toISOString()
+      );
+
+      // Attempting to retrieve secret as tenant-beta MUST throw auth tag mismatch because AAD was tenant-alpha
+      expect(() => store.getDecryptedSecret('tenant-beta', 'opensky')).toThrow();
     });
   });
 });

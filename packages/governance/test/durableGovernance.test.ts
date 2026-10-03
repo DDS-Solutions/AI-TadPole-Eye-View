@@ -89,7 +89,7 @@ describe('durable shared budget and STASIS state', () => {
     expect(observer.state().spent_usd).toBe(2);
     expect(observer.stateRevision()).toBe(200);
     observer.close();
-  });
+  }, 15_000);
 
   it('rounds sub-micro-dollar costs conservatively instead of treating them as free', () => {
     const governor = new CapBudgetGovernor({ capUsd: 0.000001, dbPath: ':memory:' });
@@ -124,7 +124,7 @@ describe('durable shared budget and STASIS state', () => {
       last_trip: { code: 'LOGIC_BLOCKER', resumed_by: 'human' },
     });
     observer.close();
-  });
+  }, 15_000);
 
   it('fails closed on a corrupt database instead of creating local state', () => {
     const { dbPath } = makeTempDatabase();

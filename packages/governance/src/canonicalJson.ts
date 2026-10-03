@@ -10,7 +10,7 @@ export interface CanonicalJsonObject {
   [key: string]: CanonicalJson;
 }
 
-/** RFC 8785-compatible serialization for validated I-JSON values. */
+/** RFC 8785-style key ordering and number formatting for validated JSON values. */
 export function canonicalizeJson(value: CanonicalJson): string {
   if (value === null || typeof value === 'boolean' || typeof value === 'string') {
     return JSON.stringify(value);

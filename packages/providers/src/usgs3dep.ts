@@ -5,6 +5,7 @@ import {
   USGS_3DEP_ADVISORY_DISCLAIMER,
   USGS_3DEP_DEFAULT_VINTAGE,
   USGS_3DEP_MODERN_EPQS_URL,
+  Usgs3DepBatchQuerySchema,
   type Usgs3DepElevationPointResult,
   Usgs3DepElevationPointResultSchema,
   type Usgs3DepFixtureDataset,
@@ -23,7 +24,7 @@ import {
   validateEpqsEndpoint,
   validateUsgsCoordinates,
 } from '@gev/economic';
-import { pinnedFetch } from '@gev/security';
+import { type PinnedFetchOptions, pinnedFetch } from '@gev/security';
 import { resolveFixturePath } from './opensky.js';
 
 function createUsgs3DepProvenance(clock: SimClock, mode: 'seed' | 'live'): DataProvenance {
@@ -107,6 +108,7 @@ export interface Usgs3DepAdapterOptions {
   seedMode?: boolean;
   allowLiveCalls?: boolean;
   endpointUrl?: string;
+  pinnedFetchOptions?: Partial<PinnedFetchOptions>;
 }
 
 /**
@@ -126,6 +128,7 @@ export class Usgs3DepAdapter {
   private readonly seedMode: boolean;
   private readonly allowLiveCalls: boolean;
   private readonly endpointUrl: string;
+  private readonly pinnedFetchOptions: Partial<PinnedFetchOptions>;
   private cachedFixture: Usgs3DepFixtureDataset | null = null;
   private cachedPoints: readonly Usgs3DepPointFixture[] | null = null;
 
@@ -136,6 +139,7 @@ export class Usgs3DepAdapter {
     this.seedMode = options.seedMode ?? process.env.GEV_SEED_MODE !== '0';
     this.allowLiveCalls = options.allowLiveCalls ?? false;
     this.endpointUrl = options.endpointUrl ?? USGS_3DEP_MODERN_EPQS_URL;
+    this.pinnedFetchOptions = options.pinnedFetchOptions ?? {};
 
     // Check endpoint URL against retired endpoint
     if (this.endpointUrl.includes('pqs.php')) {
@@ -210,13 +214,15 @@ export class Usgs3DepAdapter {
 
   /**
    * Retrieves elevations for an array of coordinate points.
+   * Constrained by Usgs3DepBatchQuerySchema (max 100 queries).
    */
   async getElevations(
-    queries: readonly Usgs3DepPointQuery[]
+    rawQueries: readonly Usgs3DepPointQuery[]
   ): Promise<Usgs3DepElevationPointResult[]> {
     if (!this.enabled) {
       throw new Usgs3DepDisabledError();
     }
+    const queries = Usgs3DepBatchQuerySchema.parse(rawQueries);
     return Promise.all(queries.map((q) => this.getElevation(q)));
   }
 
@@ -243,6 +249,8 @@ export class Usgs3DepAdapter {
       slope_percent: slope.slopePercent,
       slope_degrees: slope.slopeDegrees,
       provenance: elev1.provenance,
+      provenance_start: elev1.provenance,
+      provenance_end: elev2.provenance,
       advisory_disclaimer: USGS_3DEP_ADVISORY_DISCLAIMER,
     });
   }
@@ -284,6 +292,7 @@ export class Usgs3DepAdapter {
         elevation_feet: unavailableEstimate,
         data_source: matched?.data_source ?? 'Unavailable',
         vertical_datum: 'unknown',
+        horizontal_datum: 'NAD83',
         query_units: query.units,
         is_off_coverage: true,
         provenance,
@@ -301,6 +310,7 @@ export class Usgs3DepAdapter {
       elevation_feet: matched.elevation_feet,
       data_source: matched.data_source,
       vertical_datum: matched.vertical_datum,
+      horizontal_datum: 'NAD83',
       query_units: query.units,
       is_off_coverage: false,
       provenance,
@@ -336,6 +346,7 @@ export class Usgs3DepAdapter {
       ],
       timeoutMs: 10000,
       maxBytes: 1024 * 1024,
+      ...this.pinnedFetchOptions,
     });
 
     if (!response.ok) {
@@ -359,6 +370,7 @@ export class Usgs3DepAdapter {
       elevation_feet: parsed.elevationFeet,
       data_source: queryResult.Data_Source || (parsed.isOffCoverage ? 'Unavailable' : '3DEP'),
       vertical_datum: parsed.isOffCoverage ? 'unknown' : 'NAVD88',
+      horizontal_datum: 'NAD83',
       query_units: query.units,
       is_off_coverage: parsed.isOffCoverage,
       provenance,

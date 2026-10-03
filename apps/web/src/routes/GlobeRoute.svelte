@@ -24,7 +24,7 @@
   } from '@gev/cesium-kit';
   import { parseSceneFromUrl } from '@gev/core';
   import { pollVisibleFeeds } from '../feedPolling.js';
-  import { layerStore } from '../stores/layers.svelte.js';
+  import { type EntitySelection, layerStore } from '../stores/layers.svelte.js';
   import { voiceStore } from '../stores/voice.svelte.js';
   import { collabStore } from '../stores/collab.svelte.js';
   import { runtimeClock } from '../runtimeClock.js';
@@ -149,14 +149,42 @@
       };
     });
 
+    const LAYER_TO_KIND: Record<string, EntitySelection['kind']> = {
+      flights: 'flight',
+      flight: 'flight',
+      marine: 'marine',
+      ships: 'marine',
+      ship: 'marine',
+      quakes: 'quake',
+      quake: 'quake',
+      firms: 'firms',
+      gbfs: 'gbfs',
+      cctv: 'cctv',
+      radio: 'radio',
+      launches: 'launch',
+      launch: 'launch',
+      weather: 'weather',
+      cables: 'cable',
+      cable: 'cable',
+      satellites: 'satellite',
+      satellite: 'satellite',
+      solar: 'solar-context',
+      alerts: 'nws-alert',
+      aviationWeather: 'aviation-weather',
+      tropicalCyclones: 'tropical-cyclone',
+      coastalConditions: 'coastal-condition',
+    };
+
     voiceStore.executor.register('toggle_layer', (input) => {
-      const key = input.layer as keyof typeof layerStore.visibility;
-      if (key in layerStore.visibility) {
-        layerStore.visibility[key] = input.enabled;
+      const updated = layerStore.setLayerEnabled(input.layer, input.enabled);
+      if (updated) {
         collabStore.syncLayerToggle(input.layer, input.enabled);
         return { layer: input.layer, enabled: input.enabled, updated: true };
       }
-      return { layer: input.layer, enabled: input.enabled, updated: false };
+      const currentVal = Object.hasOwn(layerStore.visibility, input.layer)
+        ? layerStore.visibility[input.layer as keyof typeof layerStore.visibility]
+        : false;
+      return { layer: input.layer, enabled: currentVal, updated: false };
     });
 
     voiceStore.executor.register('select_entity', (input) => {
@@ -164,8 +192,9 @@
       const list = (layerStore.rawEntities[key] || []) as Array<Record<string, unknown>>;
       const found = list.find((item) => String(item.id || item.icao24 || item.mmsi || item.station_id) === input.id);
       if (found) {
+        const resolvedKind = LAYER_TO_KIND[input.layer] ?? (input.layer as EntitySelection['kind']);
         layerStore.selectEntity({
-          kind: input.layer as any,
+          kind: resolvedKind,
           id: input.id,
           name: String(found.name || found.callsign || input.id),
           data: found,
@@ -193,11 +222,23 @@
     voiceStore.executor.register('query_aoi', (input) => {
       const counts: Record<string, number> = {};
       let total = 0;
-      for (const [layer, list] of Object.entries(layerStore.rawEntities)) {
+      const allEntityCollections: Record<string, unknown[]> = {
+        ...layerStore.rawEntities,
+        alerts: layerStore.operationalEntities.alerts,
+        aviationWeather: layerStore.operationalEntities.aviationWeather,
+        tropicalCyclones: layerStore.operationalEntities.tropicalCyclones,
+        coastalConditions: layerStore.operationalEntities.coastalConditions,
+      };
+
+      for (const [layer, list] of Object.entries(allEntityCollections)) {
         if (!input.layers || input.layers.includes(layer)) {
           const inBounds = (list as Array<Record<string, unknown>>).filter((item) => {
-            const lat = Number(item.latitude || item.lat);
-            const lon = Number(item.longitude || item.lon);
+            const rawLat = item.latitude ?? item.lat;
+            const rawLon = item.longitude ?? item.lon;
+            if (rawLat === undefined || rawLat === null || rawLon === undefined || rawLon === null) return false;
+            const lat = typeof rawLat === 'number' ? rawLat : Number(rawLat);
+            const lon = typeof rawLon === 'number' ? rawLon : Number(rawLon);
+            if (!Number.isFinite(lat) || !Number.isFinite(lon)) return false;
             return lat >= input.south && lat <= input.north && lon >= input.west && lon <= input.east;
           });
           counts[layer] = inBounds.length;
@@ -228,6 +269,8 @@
     solarLayer?.setVisible(layerStore.visibility.solar);
     nwsAlertLayer?.setVisible(layerStore.visibility.alerts);
     aviationWeatherLayer?.setVisible(layerStore.visibility.aviationWeather);
+    tropicalCycloneLayer?.setVisible(layerStore.visibility.tropicalCyclones);
+    coastalConditionsLayer?.setVisible(layerStore.visibility.coastalConditions);
 
     quakeLayer?.setMinMagnitude(layerStore.filters.quakes.minMagnitude);
     firmsLayer?.setMinFrp(layerStore.filters.firms.minFrp);
@@ -248,13 +291,16 @@
   $effect(() => {
     const target = layerStore.flyToTarget;
     if (target && globe) {
-      globe.setCameraPose({
+      const pose = {
         longitude: target.lon,
         latitude: target.lat,
         altitude: Math.max(2500, target.alt * 1.5),
         pitch: -55,
+      };
+      queueMicrotask(() => {
+        layerStore.clearFlyTo();
       });
-      layerStore.clearFlyTo();
+      globe.setCameraPose(pose);
     }
   });
 
@@ -319,10 +365,7 @@
           frameMonitor,
           attachToWindow:
             import.meta.env.DEV ||
-            (typeof window !== 'undefined' &&
-              (window.location.hostname === 'localhost' ||
-                window.location.hostname === '127.0.0.1' ||
-                window.location.search.includes('gev_debug=1'))),
+            Boolean(typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.search.includes('gev_debug=1'))),
         }
       );
 
@@ -352,6 +395,7 @@
   });
 
   onDestroy(() => {
+    collabStore.leaveRoom();
     abortController?.abort();
     abortController = null;
     if (pollInterval) {

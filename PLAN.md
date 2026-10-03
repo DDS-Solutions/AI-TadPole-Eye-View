@@ -4533,25 +4533,25 @@ No later task is authorized merely because it appears in this plan.
 
 - **Scope:** Implemented USGS 3DEP Elevation Point Query Service (EPQS) adapter, vertical datum and unit contracts, pure conversions, non-coercion invariants, and synthetic seed fixtures adhering to PLAN.md §10 Task 11.2, ADR 0035, ADR 0050, ADR 0052, and ADR 0063.
 - **Artifacts produced & updated:**
-  - `packages/contracts/src/usgs3dep.ts`: Strict Zod contracts for USGS 3DEP and EPQS (vertical datums NAVD88/NAD83/WGS84, units Meters/Feet, raw EPQS response wire parser, normalized point query, elevation point result with non-coercion superRefinements, terrain slope result, synthetic fixture dataset schema, and mandatory `USGS_3DEP_ADVISORY_DISCLAIMER`).
-  - `packages/contracts/test/usgs3depContracts.test.ts`: Contracts test suite verifying schema validation, non-coercion of `-1000000` to available/0.0 sea level, coordinate bounds, slope schema, and datums (6/6 tests passed).
+  - `packages/contracts/src/usgs3dep.ts`: Strict Zod contracts for USGS 3DEP and EPQS (vertical datums NAVD88/NAD83/WGS84, horizontal datum NAD83/WGS84, units Meters/Feet, raw EPQS response wire parser, normalized point query, batch query cap of 100, elevation point result with non-coercion superRefinements, terrain slope result with two-point provenance, synthetic fixture dataset schema, and mandatory `USGS_3DEP_ADVISORY_DISCLAIMER` with Cesium geoid undulation compensation notice).
+  - `packages/contracts/test/usgs3depContracts.test.ts`: Contracts test suite verifying schema validation, non-coercion of `-1000000` to available/0.0 sea level, coordinate bounds, batch query limits, slope schema, and datums (8/8 tests passed).
   - `fixtures/usgs-3dep-synthetic-v1.json`: Deterministic synthetic seed fixture containing mountain terrain (Boulder, CO: 1630.5m), coastal plain (Miami, FL: 2.1m), below-sea-level land (Badwater Basin, Death Valley, CA: -86.0m), shoreline benchmark (Monterey Bay, CA: 0.0m), inland plain (Chicago, IL: 181.0m), mountain summit (Mount Elbert, CO: 4401.2m), and off-coverage ocean points (Atlantic and Pacific oceans: -1000000 unavailable).
-  - `packages/economic/src/usgs3depConversions.ts`: Pure zero-I/O module for international foot/meter conversions (`metersToFeet`, `feetToMeters`, `convertElevationEstimate`), coordinate bounds validation, EPQS endpoint validator strictly rejecting `pqs.php`, non-coercion raw parser (`parseUsgsRawElevation`), and terrain slope engine (`haversineDistanceMeters`, `calculateTerrainSlope`).
+  - `packages/economic/src/usgs3depConversions.ts`: Pure zero-I/O module for international foot/meter conversions (`metersToFeet`, `feetToMeters`, `convertElevationEstimate`), coordinate bounds validation, EPQS endpoint validator strictly rejecting `pqs.php`, non-coercion raw parser (`parseUsgsRawElevation`), discrete threshold cutover (`-999998` vs `-999999`), and terrain slope engine (`haversineDistanceMeters`, `calculateTerrainSlope`, `USGS_3DEP_MIN_SLOPE_BASELINE_METERS`).
   - `packages/economic/src/sourceRegistry.ts`: Advanced `usgs-3dep` status from `planned` to `seed` with `seed_fixture_id: 'usgs-3dep-synthetic-v1'`.
-  - `packages/economic/test/usgs3depConversions.test.ts`: Unit and fast-check property tests verifying round-trip invertibility, bounds rejection, `pqs.php` rejection, non-coercion invariants, and slope metrics (15/15 tests passed).
-  - `packages/providers/src/usgs3dep.ts`: `Usgs3DepAdapter` implementing seed-mode fixture replay, nearest-neighbor matching (< 0.2 deg), non-coercion of off-coverage coordinates to unavailable, terrain slope calculation (`getSlope`), kill switch (`GEV_USGS_3DEP_ENABLED`), seed mode enforcement (`GEV_SEED_MODE=1`), and pinned-fetch live integration using modern EPQS REST endpoint with SSRF allowlists.
-  - `packages/providers/test/usgs3dep.test.ts`: Adapter test suite covering seed mode elevation queries, negative land elevations, shoreline zero elevation, off-coverage non-coercion, unit conversion, batch queries, terrain slope, kill switch, seed mode violation, pinned-fetch mock, and performance benchmark (13/13 tests passed).
+  - `packages/economic/test/usgs3depConversions.test.ts`: Unit and fast-check property tests verifying round-trip invertibility, bounds rejection, `pqs.php` rejection, non-coercion invariants, discrete threshold cutovers, minimum slope baseline noise filtering, and slope metrics (17/17 tests passed).
+  - `packages/providers/src/usgs3dep.ts`: `Usgs3DepAdapter` implementing seed-mode fixture replay, nearest-neighbor matching (< 0.2 deg), non-coercion of off-coverage coordinates to unavailable, terrain slope calculation (`getSlope`), kill switch (`GEV_USGS_3DEP_ENABLED`), seed mode enforcement (`GEV_SEED_MODE=1`), batch bounds, and pinned-fetch live integration using modern EPQS REST endpoint with SSRF allowlists and custom Dispatcher injection.
+  - `packages/providers/test/usgs3dep.test.ts`: Adapter test suite covering seed mode elevation queries, negative land elevations, shoreline zero elevation, off-coverage non-coercion, unit conversion, batch queries, terrain slope, kill switch, seed mode violation, pinned-fetch MockAgent live integration, SSRF rejection, upstream 503 error handling, and performance benchmark (16/16 tests passed).
   - `docs/adr/0063-usgs-3dep-elevation-adapter-architecture.md`: Documented architecture decision and registered in `docs/adr/INDEX.md`.
-  - `RUNBOOK.md`: Added Section 19 documenting USGS 3DEP EPQS operations, non-coercion laws, unit conversions, and screening disclaimers.
+  - `RUNBOOK.md`: Added Section 19 documenting USGS 3DEP EPQS operations, non-coercion laws, unit conversions, screening disclaimers, and NAVD88 orthometric vs Cesium WGS84 ellipsoidal geoid undulation rules.
 - **Verification Evidence & Performance:**
-  - `@gev/contracts` test suite: 22 files, 142 tests passed.
-  - `@gev/economic` test suite: 20 files, 167 tests passed.
-  - `@gev/providers` test suite: 21 files, 146 tests passed.
-  - EPQS query latency benchmark: p50=0.067ms, p95=0.264ms (threshold < 25ms p95).
+  - `@gev/contracts` test suite: 22 files, 144 tests passed.
+  - `@gev/economic` test suite: 20 files, 168 tests passed.
+  - `@gev/providers` test suite: 21 files, 148 tests passed.
+  - EPQS query latency benchmark: p50=0.071ms, p95=0.249ms (threshold < 25ms p95).
   - Monorepo typecheck: 19/19 tasks successful, 0 errors (`pnpm turbo run typecheck`).
   - Biome check on modified files: 0 errors, 0 warnings.
   - Architecture check: clean, 0 files > 500 lines without ADR (`pnpm architecture:check`).
-  - Active Documentation Guard (ADG): 84 doc files, 1,155 paths, 42 symbols, 0 errors (`pnpm docs:check`).
+  - Active Documentation Guard (ADG): 84 doc files, 1,174 paths, 42 symbols, 0 errors (`pnpm docs:check`).
 - **Plan Advancement:** Task 11.2 complete (`[x] 11.2`). Advanced to `CURRENT_PHASE=11`, `NEXT_TASK=11.3`, `NEXT_TASK_STATUS=READY`.
 - **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 11.3. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 

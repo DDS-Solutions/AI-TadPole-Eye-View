@@ -18,12 +18,12 @@
   },
   "dependencies": {
     "@gev/contracts": "workspace:*",
-    "ipaddr.js": "^2.2.3",
-    "undici": "^8.10.2"
+    "ipaddr.js": "^2.5.0",
+    "undici": "^8.11.2"
   },
   "devDependencies": {
-    "fast-check": "^4.10.0",
+    "fast-check": "^4.10.2",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.3"
   }
 }

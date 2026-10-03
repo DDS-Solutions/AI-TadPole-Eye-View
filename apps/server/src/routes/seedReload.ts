@@ -29,8 +29,21 @@ export function createSeedReloadRouter(options: SeedReloadRouterOptions): Hono {
   app.post('/reload', async (context) => {
     const startTime = clock.now();
     const actor = (context.var as unknown as { opsActor: Actor }).opsActor;
-    const operationId = context.req.header('Idempotency-Key') ?? crypto.randomUUID();
+    const rawIdempotencyKey = context.req.header('Idempotency-Key');
+    if (
+      rawIdempotencyKey &&
+      !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+        rawIdempotencyKey
+      )
+    ) {
+      return context.json(
+        { error: 'Idempotency-Key must be a valid UUID', code: 'INVALID_IDEMPOTENCY_KEY' },
+        400
+      );
+    }
+    const operationId = rawIdempotencyKey ?? crypto.randomUUID();
     const taskRef = context.req.header('X-Task-Ref') || `seed-reload:${operationId}`;
+    const tenantId = context.req.header('X-GEV-Tenant') || null;
     context.header('X-GEV-Operation-Id', operationId);
     let reservation: LedgerReservationResult;
     try {
@@ -40,7 +53,7 @@ export function createSeedReloadRouter(options: SeedReloadRouterOptions): Hono {
           contract_version: M3_LEDGER_CONTRACT_VERSION,
           fingerprint_version: M3_FINGERPRINT_VERSION,
           actor,
-          tenant_id: null,
+          tenant_id: tenantId,
           action: 'seed.reload',
           input: {},
           task_ref: taskRef,
@@ -210,7 +223,14 @@ function refundBeforeDispatch(
         ts: options.clock.iso(),
         status: statusCode === 403 ? 'blocked' : 'error',
         result: terminal,
-        ...(statusCode === 403 ? { error: 'Approval denied' } : {}),
+        error:
+          typeof terminal.error === 'string'
+            ? terminal.error
+            : typeof terminal.code === 'string'
+              ? String(terminal.code)
+              : statusCode === 403
+                ? 'Approval denied'
+                : 'Operation refunded before dispatch',
         duration_ms: options.clock.now() - startTime,
       },
       evidence: null,
@@ -224,10 +244,13 @@ function refundBeforeDispatch(
 function replayResponse(
   context: Context,
   operation: LedgerOperation,
-  statusCode: 200 | 403 | 409 | 503 = 200
+  statusCode?: 200 | 403 | 409 | 503
 ): Response {
   if (!operation.terminal_result || typeof operation.terminal_result !== 'object') {
     return context.json({ status: 'error', code: 'LEDGER_UNAVAILABLE' }, 503);
   }
-  return context.json(operation.terminal_result, statusCode);
+  const terminal = operation.terminal_result as Record<string, unknown>;
+  const resolvedStatus =
+    statusCode ?? (terminal.status === 'error' ? 500 : terminal.status === 'blocked' ? 429 : 200);
+  return context.json(operation.terminal_result, resolvedStatus as any);
 }

@@ -29,14 +29,14 @@ export function validateAllowlists(
   const host = parsedUrl.hostname.toLowerCase();
   const path = parsedUrl.pathname;
 
-  if (allowedHosts && allowedHosts.length > 0) {
+  if (allowedHosts !== undefined) {
     const isHostAllowed = allowedHosts.some((h) => h.toLowerCase() === host);
     if (!isHostAllowed) {
       throw new PinnedFetchSecurityError(`Host ${host} is not in the allowed hosts list`);
     }
   }
 
-  if (allowedPaths && allowedPaths.length > 0) {
+  if (allowedPaths !== undefined) {
     const isPathAllowed = allowedPaths.some((rule) => {
       if (rule.host.toLowerCase() !== host) {
         return false;
@@ -96,7 +96,8 @@ const IPV6_BLOCKED_CIDRS = [
   '2002::/16', // 6to4
 ].map((cidr) => ipaddr.parseCIDR(cidr));
 
-const NAT64_PREFIX = ipaddr.parseCIDR('64:ff9b::/96');
+const NAT64_WELL_KNOWN_PREFIX = ipaddr.parseCIDR('64:ff9b::/96');
+const NAT64_LOCAL_USE_PREFIX = ipaddr.parseCIDR('64:ff9b:1::/48');
 
 /**
  * Normalizes encoded URL hostnames (e.g. integer IP 2130706433, hex 0x7f.1, octal 0177.0.0.1, short-form 127.1, trailing dot host.).
@@ -209,7 +210,7 @@ export function validateIpAddress(ipStr: string): { address: string; family: 4 |
     const v6 = addr as ipaddr.IPv6;
     if (v6.isIPv4MappedAddress()) {
       addr = v6.toIPv4Address();
-    } else if (v6.match(NAT64_PREFIX)) {
+    } else if (v6.match(NAT64_WELL_KNOWN_PREFIX) || v6.match(NAT64_LOCAL_USE_PREFIX)) {
       // NAT64 prefix embeds IPv4 in the lowest 32 bits
       const bytes = v6.toByteArray().slice(12, 16);
       addr = new ipaddr.IPv4(bytes as [number, number, number, number]);

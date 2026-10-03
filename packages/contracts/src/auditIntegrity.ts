@@ -42,7 +42,7 @@ export const AuditIntegrityStatusSchema = z
       .nullable(),
     verified_entries: z.number().int().nonnegative(),
     retention_receipts: z.number().int().nonnegative(),
-    verified_at: z.string().datetime(),
+    verified_at: z.string().datetime({ offset: true }),
     failure_code: AuditIntegrityFailureCodeSchema.nullable(),
     failure_sequence: z.number().int().positive().nullable(),
   })

@@ -26,12 +26,12 @@
     "@biomejs/biome": "2.5.13",
     "@modelcontextprotocol/conformance": "0.2.0-alpha.11",
     "@modelcontextprotocol/inspector": "2.5.0",
-    "@playwright/test": "^1.50.1",
-    "@types/node": "^24.1.0",
-    "fast-check": "^4.10.0",
-    "turbo": "^2.10.13",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^24.19.1",
+    "fast-check": "^4.10.2",
+    "turbo": "^2.11.7",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.3"
   },
   "packageManager": "pnpm@10.34.5",
   "pnpm": {

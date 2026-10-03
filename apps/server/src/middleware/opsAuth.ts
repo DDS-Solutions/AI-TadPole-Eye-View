@@ -74,11 +74,14 @@ export interface OpsAuthAdapter {
   middleware(policy?: OpsAuthorizationPolicy): MiddlewareHandler;
 }
 
-const PLATFORM_ADMIN_OPS_PATHS = [
+export const PLATFORM_ADMIN_OPS_PATHS = [
   '/ops/audit',
   '/ops/audit/*',
+  '/ops/budget',
   '/ops/budget/*',
+  '/ops/cables',
   '/ops/cables/*',
+  '/ops/seed',
   '/ops/seed/*',
   '/ops/resume',
 ] as const;
@@ -251,6 +254,19 @@ export function createOpsAuth(options: OpsAuthOptions = {}): OpsAuthAdapter {
     { identity: AuthenticatedIdentityContext; expiresAtEpochSeconds: number }
   >();
 
+  const purgeTokenCache = (nowEpochSeconds: number) => {
+    for (const [key, value] of tokenCache.entries()) {
+      if (nowEpochSeconds >= value.expiresAtEpochSeconds) {
+        tokenCache.delete(key);
+      }
+    }
+    while (tokenCache.size >= 1000) {
+      const oldestKey = tokenCache.keys().next().value;
+      if (oldestKey === undefined) break;
+      tokenCache.delete(oldestKey);
+    }
+  };
+
   const authenticate = async (
     authorization?: string,
     requestedTenantId?: string,
@@ -264,7 +280,8 @@ export function createOpsAuth(options: OpsAuthOptions = {}): OpsAuthAdapter {
       const accessToken = extractBearerToken(authorization);
       if (!accessToken) return localDecision;
       const nowEpochSeconds = Math.floor(clock.now() / 1000);
-      const cached = tokenCache.get(accessToken);
+      const tokenHash = createHash('sha256').update(accessToken).digest('hex');
+      const cached = tokenCache.get(tokenHash);
       if (cached && nowEpochSeconds < cached.expiresAtEpochSeconds) {
         identity = cached.identity;
       } else {
@@ -302,8 +319,8 @@ export function createOpsAuth(options: OpsAuthOptions = {}): OpsAuthAdapter {
             ...parsed.data,
             scopes: Object.freeze([...parsed.data.scopes]),
           }) as AuthenticatedIdentityContext;
-          if (tokenCache.size >= 1000) tokenCache.clear();
-          tokenCache.set(accessToken, {
+          purgeTokenCache(nowEpochSeconds);
+          tokenCache.set(tokenHash, {
             identity,
             expiresAtEpochSeconds: parsed.data.expires_at_epoch_seconds,
           });

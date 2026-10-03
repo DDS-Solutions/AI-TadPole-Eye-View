@@ -10,6 +10,7 @@ import {
   METERS_TO_FEET_FACTOR,
   metersToFeet,
   parseUsgsRawElevation,
+  USGS_3DEP_MIN_SLOPE_BASELINE_METERS,
   validateEpqsEndpoint,
   validateUsgsCoordinates,
 } from '../src/index.js';
@@ -87,6 +88,9 @@ describe('USGS 3DEP Pure Conversions, Validators, and Non-Coercion Parser (PLAN.
       expect(() => validateEpqsEndpoint('https://example.com/pqs.php')).toThrow(
         /retired pqs.php endpoint is prohibited/
       );
+      expect(() =>
+        validateEpqsEndpoint('https://epqs.nationalmap.gov/v1/json?service=pqs.php')
+      ).toThrow(/retired pqs.php endpoint is prohibited/);
     });
   });
 
@@ -142,6 +146,24 @@ describe('USGS 3DEP Pure Conversions, Validators, and Non-Coercion Parser (PLAN.
           return parsed.isOffCoverage && parsed.elevation.status === 'unavailable';
         })
       );
+    });
+
+    it('locks discrete threshold boundary: -999998 is available, <= -999999 is unavailable', () => {
+      const accepted = parseUsgsRawElevation(-999998, 'Meters');
+      expect(accepted.isOffCoverage).toBe(false);
+      expect(accepted.elevation.status).toBe('available');
+
+      const rejectedExact = parseUsgsRawElevation(-999999, 'Meters');
+      expect(rejectedExact.isOffCoverage).toBe(true);
+      expect(rejectedExact.elevation.status).toBe('unavailable');
+
+      const sentinel = parseUsgsRawElevation(-1000000, 'Meters');
+      expect(sentinel.isOffCoverage).toBe(true);
+      expect(sentinel.elevation.status).toBe('unavailable');
+
+      const belowSentinel = parseUsgsRawElevation(-1000001, 'Meters');
+      expect(belowSentinel.isOffCoverage).toBe(true);
+      expect(belowSentinel.elevation.status).toBe('unavailable');
     });
 
     it('satisfies valid land property: realistic elevations in [-500, 9000] are available and preserve sign', () => {
@@ -244,6 +266,42 @@ describe('USGS 3DEP Pure Conversions, Validators, and Non-Coercion Parser (PLAN.
       const slope = calculateTerrainSlope(p1, p1);
       expect(slope.horizontalDistanceMeters).toBe(0);
       expect(slope.slopePercent.status).toBe('not_applicable');
+    });
+
+    it('evaluates slope to unavailable when horizontal distance is below 10m quantization baseline', () => {
+      // Coordinates ~3.3m apart
+      const p1 = {
+        x: -105.0,
+        y: 40.0,
+        elevationMeters: {
+          status: 'available' as const,
+          value: 1000,
+          margin_of_error: null,
+          confidence_level: null,
+          sample_size: null,
+          unit: 'Meters',
+        },
+      };
+      const p2 = {
+        x: -105.00003,
+        y: 40.0,
+        elevationMeters: {
+          status: 'available' as const,
+          value: 1001,
+          margin_of_error: null,
+          confidence_level: null,
+          sample_size: null,
+          unit: 'Meters',
+        },
+      };
+      const slope = calculateTerrainSlope(p1, p2);
+      expect(slope.horizontalDistanceMeters).toBeGreaterThan(0);
+      expect(slope.horizontalDistanceMeters).toBeLessThan(USGS_3DEP_MIN_SLOPE_BASELINE_METERS);
+      expect(slope.slopePercent.status).toBe('unavailable');
+      expect(slope.slopeDegrees.status).toBe('unavailable');
+      if (slope.slopePercent.status === 'unavailable') {
+        expect(slope.slopePercent.reason).toContain('below minimum baseline threshold');
+      }
     });
   });
 

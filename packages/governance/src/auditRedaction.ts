@@ -14,17 +14,28 @@ export const AUDIT_MAX_ARRAY_ITEMS = 64;
 export const AUDIT_MAX_STRING_BYTES = 2_048;
 export const AUDIT_MAX_PAYLOAD_BYTES = 16_384;
 
-const SENSITIVE_KEY_PARTS = [
+const FORBIDDEN_OBJECT_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+const SENSITIVE_KEY_TOKENS = new Set([
   'authorization',
   'apikey',
   'credential',
+  'credentials',
   'password',
   'passwd',
   'secret',
   'token',
   'cookie',
+  'session',
+  'jwt',
+  'bearer',
   'privatekey',
   'signature',
+  'taxid',
+  'ssn',
+]);
+
+const SENSITIVE_KEY_PHRASES = new Set([
   'businesscontext',
   'businessname',
   'tenantdata',
@@ -34,26 +45,44 @@ const SENSITIVE_KEY_PARTS = [
   'contactphone',
   'contactaddress',
   'ownername',
-  'taxid',
   'socialsecurity',
-  'ssn',
-] as const;
+]);
 
 interface SanitizeContext {
-  seen: WeakSet<object>;
+  activePath: Set<object>;
 }
 
 function utf8Bytes(value: string): number {
   return Buffer.byteLength(value, 'utf8');
 }
 
-function normalizeKey(key: string): string {
-  return key.toLowerCase().replace(/[^a-z0-9]/g, '');
-}
+export function isSensitiveKey(key: string): boolean {
+  const normalized = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (SENSITIVE_KEY_TOKENS.has(normalized) || SENSITIVE_KEY_PHRASES.has(normalized)) {
+    return true;
+  }
 
-function isSensitiveKey(key: string): boolean {
-  const normalized = normalizeKey(key);
-  return SENSITIVE_KEY_PARTS.some((part) => normalized.includes(part));
+  // Tokenize on non-alphanumeric delimiters and camelCase word boundaries
+  const words = key
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+
+  for (const word of words) {
+    if (word === 'api') continue; // don't flag generic 'api' alone, e.g. 'api_url' or 'api_endpoint'
+    if (SENSITIVE_KEY_TOKENS.has(word) || SENSITIVE_KEY_PHRASES.has(word)) {
+      return true;
+    }
+  }
+
+  for (const phrase of SENSITIVE_KEY_PHRASES) {
+    if (normalized.startsWith(phrase) || normalized.endsWith(phrase)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 export function redactAuditText(value: string, maxBytes = AUDIT_MAX_STRING_BYTES): string {
@@ -65,7 +94,7 @@ export function redactAuditText(value: string, maxBytes = AUDIT_MAX_STRING_BYTES
     .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]+/gi, `Bearer ${AUDIT_REDACTED}`)
     .replace(/:\/\/[^\s/:@]+:[^\s/@]+@/g, `://${AUDIT_REDACTED}@`)
     .replace(
-      /\b(authorization|api[_-]?key|access[_-]?token|refresh[_-]?token|password|passwd|secret|cookie|session)\s*[:=]\s*[^\s,;]+/gi,
+      /\b(authorization|api[_-]?key|access[_-]?token|refresh[_-]?token|password|passwd|secret|cookie|session|jwt|bearer)\s*[:=]\s*[^\s,;]+/gi,
       (_match, label: string) => `${label}=${AUDIT_REDACTED}`
     );
 
@@ -84,37 +113,43 @@ function sanitizeValue(value: unknown, depth: number, context: SanitizeContext):
   }
   if (typeof value !== 'object') return `[OMITTED:${typeof value}]`;
   if (depth >= AUDIT_MAX_DEPTH) return '[OMITTED:depth-limit]';
-  if (context.seen.has(value)) return '[OMITTED:cyclic-reference]';
-  context.seen.add(value);
+  if (context.activePath.has(value)) return '[OMITTED:cyclic-reference]';
 
-  if (Array.isArray(value)) {
-    const retained = value
-      .slice(0, AUDIT_MAX_ARRAY_ITEMS)
-      .map((item) => sanitizeValue(item, depth + 1, context));
-    if (value.length > retained.length) {
-      retained.push({ _audit_omitted_items: value.length - retained.length });
+  context.activePath.add(value);
+  try {
+    if (Array.isArray(value)) {
+      const retained = value
+        .slice(0, AUDIT_MAX_ARRAY_ITEMS)
+        .map((item) => sanitizeValue(item, depth + 1, context));
+      if (value.length > retained.length) {
+        retained.push({ _audit_omitted_items: value.length - retained.length });
+      }
+      return retained;
     }
-    return retained;
-  }
 
-  const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
-    a.localeCompare(b)
-  );
-  const result: Record<string, CanonicalJson> = {};
-  for (const [rawKey, rawValue] of entries.slice(0, AUDIT_MAX_OBJECT_KEYS)) {
-    const key = redactAuditText(rawKey, 256);
-    result[key] = isSensitiveKey(rawKey)
-      ? AUDIT_REDACTED
-      : sanitizeValue(rawValue, depth + 1, context);
+    const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
+      a.localeCompare(b)
+    );
+    const result: Record<string, CanonicalJson> = Object.create(null);
+    for (const [rawKey, rawValue] of entries.slice(0, AUDIT_MAX_OBJECT_KEYS)) {
+      if (FORBIDDEN_OBJECT_KEYS.has(rawKey)) continue;
+      const key = redactAuditText(rawKey, 256);
+      if (FORBIDDEN_OBJECT_KEYS.has(key)) continue;
+      result[key] = isSensitiveKey(rawKey)
+        ? AUDIT_REDACTED
+        : sanitizeValue(rawValue, depth + 1, context);
+    }
+    if (entries.length > AUDIT_MAX_OBJECT_KEYS) {
+      result._audit_omitted_keys = entries.length - AUDIT_MAX_OBJECT_KEYS;
+    }
+    return result;
+  } finally {
+    context.activePath.delete(value);
   }
-  if (entries.length > AUDIT_MAX_OBJECT_KEYS) {
-    result._audit_omitted_keys = entries.length - AUDIT_MAX_OBJECT_KEYS;
-  }
-  return result;
 }
 
 export function sanitizeAuditValue(value: unknown): CanonicalJson {
-  const sanitized = sanitizeValue(value, 0, { seen: new WeakSet() });
+  const sanitized = sanitizeValue(value, 0, { activePath: new Set() });
   const canonical = canonicalizeJson(sanitized);
   if (utf8Bytes(canonical) <= AUDIT_MAX_PAYLOAD_BYTES) return sanitized;
   return {

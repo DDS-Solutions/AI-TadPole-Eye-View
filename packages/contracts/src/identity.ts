@@ -120,7 +120,7 @@ export type IdentityBearerVerificationRequest = z.infer<
 
 /** Injected resource-server seam. Implementations validate signatures and revocation. */
 export interface IdentityBearerVerifier {
-  verify(request: IdentityBearerVerificationRequest): Promise<unknown>;
+  verify(request: IdentityBearerVerificationRequest): Promise<AuthenticatedIdentityContext | null>;
 }
 
 export const TenantResourceAuthorizationRequestSchema = z

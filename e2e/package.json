@@ -8,6 +8,6 @@
     "lint": "biome check ."
   },
   "devDependencies": {
-    "@playwright/test": "^1.50.1"
+    "@playwright/test": "^1.63.0"
   }
 }

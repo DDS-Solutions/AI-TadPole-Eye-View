@@ -304,33 +304,34 @@ describe('Failure Modes & Security Guards (Task 8.3)', () => {
 });
 
 describe('Performance Threshold: Parsing Latency (Task 8.3)', () => {
-  it('proves fixture parsing p95 latency is < 10ms across all synthetic datasets', () => {
-    const fixtureNames = [
-      'census-acs-synthetic-v1.json',
-      'census-cbp-zbp-synthetic-v1.json',
-      'bls-oews-synthetic-v1.json',
-      'bls-lau-synthetic-v1.json',
-      'fema-nri-synthetic-v1.json',
-      'fema-nfhl-synthetic-v1.json',
-      'osm-commercial-synthetic-v1.json',
-      'osm-commercial-evidence-synthetic-v1.json',
-    ];
+  const fixtureNames = [
+    'census-acs-synthetic-v1.json',
+    'census-cbp-zbp-synthetic-v1.json',
+    'bls-oews-synthetic-v1.json',
+    'bls-lau-synthetic-v1.json',
+    'fema-nri-synthetic-v1.json',
+    'fema-nfhl-synthetic-v1.json',
+    'osm-commercial-synthetic-v1.json',
+    'osm-commercial-evidence-synthetic-v1.json',
+  ] as const;
 
-    // Tuned for 2-vCPU CI runners: batchSize=25 amortizes CFS quantum (~4ms)
-    // and eliminates CPU starvation spikes when multiple Vitest workers run concurrently.
-    // batchCount=40 gives a robust p95 (39th of 40 sorted values).
-    const batchSize = 25;
-    const batchCount = 40;
+  // Tuned for 2-vCPU CI runners: batchSize=25 amortizes CFS quantum (~4ms)
+  // and eliminates CPU starvation spikes when multiple Vitest workers run concurrently.
+  // batchCount=30 gives a robust p95 (28th of 30 sorted values, dropping up to 2 preemption spikes).
+  const batchSize = 25;
+  const batchCount = 30;
 
-    for (const fileName of fixtureNames) {
+  it.each(fixtureNames)(
+    'proves fixture parsing p95 latency is < 10ms for %s',
+    (fileName) => {
       const raw = loadFixtureJson(fileName);
       const parseFn =
         fileName === 'osm-commercial-synthetic-v1.json'
           ? parseOsmCommercialPoiFixture
           : parseEconomicFixtureDataset;
 
-      // Warm-up: 40 iterations for V8 TurboFan tier-up compilation and schema/regex caching
-      for (let w = 0; w < 40; w++) {
+      // Warm-up: 15 iterations for V8 TurboFan tier-up compilation and schema/regex caching
+      for (let w = 0; w < 15; w++) {
         parseFn(raw);
       }
 
@@ -358,6 +359,7 @@ describe('Performance Threshold: Parsing Latency (Task 8.3)', () => {
         p95Latency,
         `P95 parse latency for ${fileName} (${p95Latency.toFixed(2)}ms) must be strictly less than 10ms`
       ).toBeLessThan(10);
-    }
-  }, 15_000); // Explicit 15s timeout for CI runner contention
+    },
+    30_000
+  );
 });

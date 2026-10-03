@@ -21,10 +21,10 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.GEV_ROOM_JWT_SECRET || crypto.randomBytes(32).toString('hex')
 );
 
-const MAX_ACTIVE_ROOMS = 50;
-const MAX_PEERS_PER_ROOM = 20;
-const MAX_FRAME_BYTES = 65536; // 64 KB per frame limit
-const ROOM_IDLE_TTL_MS = 60 * 60 * 1000; // 1 hour idle TTL
+export const MAX_ACTIVE_ROOMS = 50;
+export const MAX_PEERS_PER_ROOM = 20;
+export const MAX_FRAME_BYTES = 65536; // 64 KB per frame limit
+export const ROOM_IDLE_TTL_MS = 60 * 60 * 1000; // 1 hour idle TTL
 
 export function isAllowedWebSocketOrigin(
   origin: string | undefined,
@@ -64,11 +64,9 @@ export interface RoomPeer {
 }
 
 export class PeerMap extends Map<string, RoomPeer> {
-  override get(key: string): RoomPeer | undefined {
-    const direct = super.get(key);
-    if (direct) return direct;
+  findByClientId(clientId: string): RoomPeer | undefined {
     for (const peer of this.values()) {
-      if (peer.clientId === key) return peer;
+      if (peer.clientId === clientId) return peer;
     }
     return undefined;
   }
@@ -253,8 +251,6 @@ export class CollabRoomManager {
 
     // 3. Handle incoming frames with strict RBAC and schema guards
     ws.on('message', (data: unknown, isBinary: boolean) => {
-      room.lastActivityAt = this.clock.now();
-
       // Enforce frame size limit
       const byteLen =
         typeof data === 'string'
@@ -269,9 +265,8 @@ export class CollabRoomManager {
       }
 
       if (isBinary) {
-        // RBAC: Reject binary CRDT mutations from viewers
+        // RBAC: Reject binary CRDT mutations from viewers without extending room idle TTL
         if (peer.role === 'viewer') {
-          // Drop unauthorized mutation from viewer
           return;
         }
 
@@ -283,6 +278,8 @@ export class CollabRoomManager {
           ws.close(1008, 'Invalid collaborative intent update');
           return;
         }
+
+        room.lastActivityAt = this.clock.now();
 
         // Broadcast binary update to all OTHER peers in the room
         for (const [peerConnId, otherPeer] of room.peers.entries()) {
@@ -298,6 +295,7 @@ export class CollabRoomManager {
           if (envelope.type === 'presence' && envelope.presence) {
             const validatedPresence = UserPresencePatchSchema.safeParse(envelope.presence);
             if (validatedPresence.success) {
+              room.lastActivityAt = this.clock.now();
               peer.presence = {
                 ...peer.presence,
                 ...validatedPresence.data,
@@ -349,6 +347,7 @@ export interface CollabRouterOptions {
   auth: OpsAuthAdapter;
   rateLimiter?: InMemoryRateLimiter;
   resolveClientId?: Parameters<typeof createRateLimitMiddleware>[1]['resolveClientId'];
+  allowedHosts?: readonly string[];
 }
 
 export function createCollabRouter(manager: CollabRoomManager, options: CollabRouterOptions) {
@@ -399,8 +398,18 @@ export function createCollabRouter(manager: CollabRoomManager, options: CollabRo
       assignedRole
     );
 
-    const host = c.req.header('host') || '127.0.0.1:3000';
-    const protocol = c.req.url.startsWith('https') ? 'wss' : 'ws';
+    const rawHost = c.req.header('host');
+    let host = '127.0.0.1:3000';
+    if (rawHost && /^[a-zA-Z0-9.-]+(:\d+)?$/.test(rawHost)) {
+      const hostname = rawHost.split(':')[0]!.toLowerCase();
+      const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+      if (isLocal || options.allowedHosts?.includes(hostname)) {
+        host = rawHost;
+      }
+    }
+    const forwardedProto = c.req.header('x-forwarded-proto')?.toLowerCase();
+    const isTls = forwardedProto === 'https' || c.req.url.startsWith('https:');
+    const protocol = isTls ? 'wss' : 'ws';
     const wsUrl = `${protocol}://${host}/api/collab/room/${encodeURIComponent(req.roomId)}?token=${encodeURIComponent(token)}`;
 
     return c.json(

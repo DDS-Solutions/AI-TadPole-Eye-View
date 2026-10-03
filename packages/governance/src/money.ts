@@ -24,8 +24,8 @@ export function toMicrousd(
 }
 
 export function fromMicrousd(value: number): number {
-  if (!Number.isSafeInteger(value) || value < 0) {
-    throw new Error('Persisted micro-USD value is invalid');
+  if (!Number.isSafeInteger(value) || value < 0 || value > MAX_SAFE_MICRO_USD) {
+    throw new Error('Persisted micro-USD value is invalid or exceeds safe range');
   }
   return value / MICRO_USD_PER_USD;
 }
