@@ -8,9 +8,11 @@ import {
   USGS_3DEP_RETIRED_ENDPOINT_SUBSTRING,
   USGS_3DEP_SCHEMA_VERSION,
   USGS_EPQS_OFF_COVERAGE_SENTINEL,
+  Usgs3DepBatchQuerySchema,
   Usgs3DepElevationPointResultSchema,
   Usgs3DepElevationUnitSchema,
   Usgs3DepFixtureDatasetSchema,
+  Usgs3DepHorizontalDatumSchema,
   Usgs3DepPointFixtureSchema,
   Usgs3DepPointQuerySchema,
   Usgs3DepSlopeResultSchema,
@@ -60,9 +62,11 @@ describe('USGS 3DEP Contracts (PLAN.md §10 Task 11.2 & ADR 0063)', () => {
     expect(USGS_EPQS_OFF_COVERAGE_SENTINEL).toBe(-1000000);
     expect(USGS_3DEP_ADVISORY_DISCLAIMER).toContain('Elevation Point Query Service (EPQS)');
     expect(USGS_3DEP_ADVISORY_DISCLAIMER).toContain('does not replace licensed boundary');
+    expect(USGS_3DEP_ADVISORY_DISCLAIMER).toContain('NAVD88 orthometric heights');
+    expect(USGS_3DEP_ADVISORY_DISCLAIMER).toContain('geoid undulation compensation');
   });
 
-  it('validates vertical datum and elevation units schemas', () => {
+  it('validates vertical datum, horizontal datum, and elevation units schemas', () => {
     expect(Usgs3DepVerticalDatumSchema.parse('NAVD88')).toBe('NAVD88');
     expect(Usgs3DepVerticalDatumSchema.parse('NAD83')).toBe('NAD83');
     expect(Usgs3DepVerticalDatumSchema.parse('WGS84')).toBe('WGS84');
@@ -70,9 +74,30 @@ describe('USGS 3DEP Contracts (PLAN.md §10 Task 11.2 & ADR 0063)', () => {
     expect(Usgs3DepVerticalDatumSchema.parse('unknown')).toBe('unknown');
     expect(() => Usgs3DepVerticalDatumSchema.parse('INVALID_DATUM')).toThrow();
 
+    expect(Usgs3DepHorizontalDatumSchema.parse('NAD83')).toBe('NAD83');
+    expect(Usgs3DepHorizontalDatumSchema.parse('WGS84')).toBe('WGS84');
+    expect(() => Usgs3DepHorizontalDatumSchema.parse('INVALID_HORIZONTAL')).toThrow();
+
     expect(Usgs3DepElevationUnitSchema.parse('Meters')).toBe('Meters');
     expect(Usgs3DepElevationUnitSchema.parse('Feet')).toBe('Feet');
     expect(() => Usgs3DepElevationUnitSchema.parse('Yards')).toThrow();
+  });
+
+  it('validates batch query schema bounds (0 to 100 queries)', () => {
+    expect(Usgs3DepBatchQuerySchema.parse([])).toHaveLength(0);
+    const valid50 = Array.from({ length: 50 }, () => ({
+      x: -105.0,
+      y: 40.0,
+      units: 'Meters' as const,
+    }));
+    expect(Usgs3DepBatchQuerySchema.parse(valid50)).toHaveLength(50);
+
+    const excessive101 = Array.from({ length: 101 }, () => ({
+      x: -105.0,
+      y: 40.0,
+      units: 'Meters' as const,
+    }));
+    expect(() => Usgs3DepBatchQuerySchema.parse(excessive101)).toThrow();
   });
 
   it('validates raw EPQS wire schemas including stringified and negative values', () => {

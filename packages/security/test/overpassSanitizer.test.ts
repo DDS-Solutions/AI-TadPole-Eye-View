@@ -33,6 +33,25 @@ describe('Overpass QL Sanitizer & Security Guard (PLAN.md §10 Phase 1 Item 4)',
     expect(() => sanitizeOverpassQuery(raw)).toThrow(/BBOX_AREA_EXCEEDED/);
   });
 
+  it('rejects exploit query attempting to bypass global bbox with unconstrained statement bbox (F-01)', () => {
+    const exploit = '[bbox:40.0,-75.0,40.1,-74.9]; node(0,0,90,180); out body;';
+    expect(() => sanitizeOverpassQuery(exploit)).toThrow(/BBOX_AREA_EXCEEDED/);
+  });
+
+  it('rejects query when secondary statement bbox is oversized', () => {
+    const raw = 'node(40.0,-75.0,40.1,-74.9); way(0,0,80,80); out;';
+    expect(() => sanitizeOverpassQuery(raw)).toThrow(/BBOX_AREA_EXCEEDED/);
+  });
+
+  it('sanitizes valid statement coordinate filter and strips it from body to make header authoritative', () => {
+    const raw = 'node(40.0,-75.0,40.1,-74.9)["amenity"="hospital"]; out;';
+    const res = sanitizeOverpassQuery(raw);
+    expect(res.bbox).toEqual({ min_lat: 40, min_lon: -75, max_lat: 40.1, max_lon: -74.9 });
+    expect(res.sanitized_ql).toContain('[bbox:40,-75,40.1,-74.9];');
+    expect(res.sanitized_ql).toContain('node["amenity"="hospital"]; out;');
+    expect(res.sanitized_ql).not.toContain('(40.0,-75.0,40.1,-74.9)');
+  });
+
   it('rejects ReDoS patterns in regular expression filters', () => {
     const raw = '[bbox:37.0,-122.5,38.0,-121.5]; node["name"~"(a+)+"]; out;';
     expect(() => sanitizeOverpassQuery(raw)).toThrow(/REDOS_DETECTED/);

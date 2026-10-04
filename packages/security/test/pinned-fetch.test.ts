@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   MaxBytesExceededError,
   PinnedFetchSecurityError,
+  createByteCountingStream,
   createPinnedAgent,
   createPinnedLookupHook,
   pinnedFetch,
@@ -20,6 +21,11 @@ describe('Pinned Fetch Client', () => {
       const forbiddenUrl = new URL('https://evil-site.com/data');
       expect(() => {
         validateAllowlists(forbiddenUrl, ['opensky-network.org']);
+      }).toThrow(PinnedFetchSecurityError);
+
+      // Empty allowedHosts fails closed
+      expect(() => {
+        validateAllowlists(allowedUrl, []);
       }).toThrow(PinnedFetchSecurityError);
     });
 
@@ -154,6 +160,31 @@ describe('Pinned Fetch Client', () => {
 
       const text = await response.text();
       expect(text).toBe(validPayload);
+    });
+
+    it('invokes onLimitExceeded callback when streaming byte limit is exceeded', async () => {
+      let limitExceededCalled = false;
+      const stream = createByteCountingStream(10, () => {
+        limitExceededCalled = true;
+      });
+      const reader = stream.readable.getReader();
+      const writer = stream.writable.getWriter();
+      writer.write(new Uint8Array(20)).catch(() => {});
+      await reader.read().catch(() => {});
+      expect(limitExceededCalled).toBe(true);
+    });
+
+    it('ensures fetch failure cleans up without unhandled rejection (F-03)', async () => {
+      const mockResolver = {
+        resolve4: async () => ['93.184.216.34'],
+        resolve6: async () => [],
+      };
+      await expect(
+        pinnedFetch('http://example.com:59999/test', {
+          customResolver: mockResolver,
+          timeoutMs: 50,
+        })
+      ).rejects.toThrow();
     });
   });
 });

@@ -47,9 +47,12 @@ self.addEventListener('fetch', (event) => {
         fetch(event.request)
           .then((networkResponse) => {
             if (networkResponse && networkResponse.status === 200) {
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, networkResponse);
-              });
+              caches
+                .open(CACHE_NAME)
+                .then((cache) => {
+                  return cache.put(event.request, networkResponse);
+                })
+                .catch(() => {});
             }
           })
           .catch(() => {});
@@ -62,9 +65,12 @@ self.addEventListener('fetch', (event) => {
         }
 
         const responseToCache = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
+        caches
+          .open(CACHE_NAME)
+          .then((cache) => {
+            return cache.put(event.request, responseToCache);
+          })
+          .catch(() => {});
 
         return response;
       });

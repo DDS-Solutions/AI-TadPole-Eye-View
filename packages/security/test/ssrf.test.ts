@@ -86,9 +86,11 @@ describe('SSRF Protection Suite', () => {
       expect(() => validateIpAddress('::ffff:192.168.1.50')).toThrow(SsrfBlockError);
     });
 
-    it('unwraps and blocks NAT64 embedded private IPs (64:ff9b::/96)', () => {
+    it('unwraps and blocks NAT64 embedded private IPs (64:ff9b::/96 and RFC 8215 64:ff9b:1::/48)', () => {
       expect(() => validateIpAddress('64:ff9b::127.0.0.1')).toThrow(SsrfBlockError);
       expect(() => validateIpAddress('64:ff9b::10.0.0.1')).toThrow(SsrfBlockError);
+      expect(() => validateIpAddress('64:ff9b:1::127.0.0.1')).toThrow(SsrfBlockError);
+      expect(() => validateIpAddress('64:ff9b:1::10.0.0.1')).toThrow(SsrfBlockError);
     });
 
     it('blocks non-global IPv6 (loopback, link-local, ULA, documentation)', () => {

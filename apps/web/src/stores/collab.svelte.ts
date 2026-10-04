@@ -92,6 +92,14 @@ class CollabStore {
         }
       });
 
+      // Close any previous socket connection to prevent orphaned sockets
+      if (this.ws) {
+        try {
+          this.ws.close();
+        } catch {}
+        this.ws = null;
+      }
+
       // Connect to WebSocket room
       const ws = new WebSocket(joinData.wsUrl);
       ws.binaryType = 'arraybuffer';
@@ -132,7 +140,13 @@ class CollabStore {
       };
 
       ws.onerror = (e) => {
-        this.state.error = `Collab WebSocket error: ${JSON.stringify(e)}`;
+        const errorMsg =
+          e instanceof ErrorEvent
+            ? e.message
+            : typeof (e as unknown as { message?: unknown }).message === 'string'
+              ? (e as unknown as { message: string }).message
+              : e.type || 'WebSocket error';
+        this.state.error = `Collab WebSocket error: ${errorMsg}`;
       };
 
       ws.onclose = () => {
@@ -156,6 +170,7 @@ class CollabStore {
     this.state.roomToken = null;
     this.state.presences = [];
     this.state.followLeaderId = null;
+    this.state.intentState = null;
   }
 
   updateCursor(lat: number, lon: number, altitude_m = 500): void {

@@ -66,7 +66,8 @@ export class SqliteTenantLayerAccessStore {
   ): TenantLayerCredentialRecord {
     const validated = TenantLayerCredentialSubmissionSchema.parse(submission);
     const nowIso = new Date(this.clock.now()).toISOString();
-    const encrypted = encryptSecret(validated.secret_value, this.encryptionKey);
+    const aad = `${tenantId}:${validated.provider_id}`;
+    const encrypted = encryptSecret(validated.secret_value, { key: this.encryptionKey, aad });
     const masked = computeMaskedFingerprint(validated.secret_value);
 
     const existing = this.db
@@ -141,7 +142,8 @@ export class SqliteTenantLayerAccessStore {
       throw new Error(`Cannot validate revoked credential for provider '${providerId}'`);
     }
 
-    const rawSecret = decryptSecret(row.encrypted_secret, this.encryptionKey);
+    const aad = `${tenantId}:${providerId}`;
+    const rawSecret = decryptSecret(row.encrypted_secret, { key: this.encryptionKey, aad });
     const nowIso = new Date(this.clock.now()).toISOString();
 
     let valid = true;
@@ -271,7 +273,8 @@ export class SqliteTenantLayerAccessStore {
       .get(tenantId, providerId) as { encrypted_secret: string; status: string } | undefined;
 
     if (row?.status !== 'valid') return null;
-    return decryptSecret(row.encrypted_secret, this.encryptionKey);
+    const aad = `${tenantId}:${providerId}`;
+    return decryptSecret(row.encrypted_secret, { key: this.encryptionKey, aad });
   }
 
   acceptTerms(

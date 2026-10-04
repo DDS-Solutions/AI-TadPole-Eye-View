@@ -246,4 +246,65 @@ describe('Collaborative Rooms API (@gev/server)', () => {
       context.auditSink.close();
     }
   });
+
+  it('rejects untrusted Host headers from exfiltrating signed room tokens (F-08)', async () => {
+    const context = createApp({ opsAuth: { opsToken, requireAuth: true } });
+    try {
+      const response = await context.app.request('/api/collab/join', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Host: 'attacker.example.com',
+          'X-Forwarded-Proto': 'https',
+        },
+        body: JSON.stringify({
+          roomId: 'host-safety-room',
+          callsign: 'Test-Host-Guard',
+          role: 'viewer',
+        }),
+      });
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.wsUrl).not.toContain('attacker.example.com');
+      expect(data.wsUrl).toContain('wss://127.0.0.1:3000/api/collab/room/host-safety-room');
+    } finally {
+      context.auditSink.close();
+    }
+  });
+
+  it('does not reset room idle activity timestamp on unauthorized viewer binary frames (F-19)', () => {
+    const clock = new FrozenClock(1_000_000);
+    const context = createApp({ clock, opsAuth: { opsToken, requireAuth: true } });
+    try {
+      const room = context.collabRoomManager.getOrCreateRoom('viewer-idle-room');
+      const initialActivity = room.lastActivityAt;
+
+      // Mock WebSocket
+      let messageHandler: ((data: unknown, isBinary: boolean) => void) | undefined;
+      const fakeWs = {
+        readyState: 1,
+        send: () => {},
+        close: () => {},
+        on: (event: string, handler: any) => {
+          if (event === 'message') messageHandler = handler;
+        },
+      };
+
+      context.collabRoomManager.handleWebSocketPeer(fakeWs as any, {
+        sub: 'viewer-client-1',
+        callsign: 'ViewerOne',
+        roomId: 'viewer-idle-room',
+        role: 'viewer',
+      });
+
+      clock.setTime(1_050_000);
+      // Viewer sends unauthorized binary frame
+      messageHandler?.(new Uint8Array([1, 2, 3]), true);
+
+      // Room lastActivityAt should NOT have been updated by viewer binary frame
+      expect(room.lastActivityAt).toBe(initialActivity);
+    } finally {
+      context.auditSink.close();
+    }
+  });
 });

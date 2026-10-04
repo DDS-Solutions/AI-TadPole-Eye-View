@@ -527,5 +527,49 @@ The USGS 3D Elevation Program (3DEP) EPQS adapter (`packages/providers/src/usgs3
 - **Strict Non-Coercion of Off-Coverage Sentinels:** The USGS EPQS service returns sentinel values (`-1000000` or `<= -999999`) or `null` when a queried point is off-coverage (e.g. international territory or open oceans). In accordance with non-coercion laws, these sentinels must NEVER be coerced to `0.0` sea level; they must evaluate to `{ status: 'unavailable', reason: '...' }` with `is_off_coverage: true`.
 - **Preservation of Below-Sea-Level Land Depressions:** Legitimate terrestrial depressions below sea level (such as Badwater Basin, Death Valley, CA at -86 meters) and legitimate shoreline sea-level benchmarks (`0.0` meters) must evaluate to `{ status: 'available' }` without coercion.
 - **Pure Unit Conversions & Reversibility:** Pure functions `metersToFeet` and `feetToMeters` implement the international foot standard (`1 foot = 0.3048 meters` exactly) and maintain property-verified round-trip invertibility.
-- **Mandatory Advisory Disclaimer:** All elevation and slope outputs must preserve `USGS_3DEP_ADVISORY_DISCLAIMER`: "USGS 3DEP elevation data retrieved via the Elevation Point Query Service (EPQS) is provided for geospatial reference, preliminary screening, and terrain modeling. It does not replace licensed boundary, topographic, or geotechnical land surveys, and must not be used as official Elevation Certificates for FEMA National Flood Insurance Program (NFIP) rating or structural engineering design."
+- **Mandatory Advisory Disclaimer:** All elevation and slope outputs must preserve `USGS_3DEP_ADVISORY_DISCLAIMER`: "USGS 3DEP elevation data retrieved via the Elevation Point Query Service (EPQS) is provided for geospatial reference, preliminary screening, and terrain modeling. It does not replace licensed boundary, topographic, or geotechnical land surveys, and must not be used as official Elevation Certificates for FEMA National Flood Insurance Program (NFIP) rating or structural engineering design. Elevations are NAVD88 orthometric heights; direct consumption in Cesium WGS84 ellipsoidal 3D coordinates requires local geoid undulation compensation (h = H + N) to prevent 20–35m vertical offsets."
+- **Vertical Datum & Cesium WGS84 Geoid Undulation Rule:** EPQS elevations are NAVD88 orthometric heights ($H$, height above geoid / mean sea level). Cesium entity and camera rendering consumes WGS84 ellipsoidal height ($h$). Downstream consumers must compensate with the local geoid undulation ($h = H + N$, where $N \approx -20\text{m}$ to $-35\text{m}$ across CONUS) to prevent 20–35m vertical registration displacement.
+- **Terrain Slope Baseline Noise Guard:** Pure function `calculateTerrainSlope` enforces `USGS_3DEP_MIN_SLOPE_BASELINE_METERS = 10.0`. Baselines under 10m evaluate to `unavailable` due to DEM quantization noise (~0.3m vertical precision on 1/3 arc-second DEM).
+- **Batch Query Bounds:** `getElevations` limits concurrent batch requests to 100 queries via `Usgs3DepBatchQuerySchema` to prevent resource exhaustion.
 - **Kill-Switch & Seed Enforcement:** Governed by `GEV_USGS_3DEP_ENABLED` (default: 1) failing closed with `Usgs3DepDisabledError`. Live queries require explicit developer authorization and use `pinnedFetch` with strict SSRF host/path allowlists (`epqs.nationalmap.gov/v1/json`). Unauthorized live calls fail closed with `Usgs3DepSeedModeViolationError`.
+
+## 20. Contract Atoms, Identity Trust Root & Money Precision Safeguards (Round 6)
+
+The core contract atoms (`packages/contracts/src/{ports,identity,toolRegistry}.ts`), governance money engine (`packages/governance/src/money.ts`), capability verifier (`packages/governance/src/tadpoleBridge.ts`), and server result pipelines (`apps/server/src/middleware/billableFeedResult.ts`) enforce strict trust boundaries:
+
+- **Base64 Trailing Garbage Strict Re-encoding Verification (E-04):** Node.js `Buffer.from(str, 'base64')` ignores trailing garbage following `==` padding (`FAA==corrupted` yields the same 64 bytes as `FAA==`). In accordance with capability token security, `verifySignedCapToken` strictly verifies re-encoding equality (`sigBuffer.toString('base64') === partSignature` and `claimsBuffer.toString('base64url') === partClaims`) to prevent forged or malformed tokens.
+- **AuditOutcome Refinement Requirement (E-06):** Any `AuditOutcome` with `status: 'error'` or `'blocked'` must include a non-empty, bounded string `error` reason (`min(1).max(2048)`). Omitting `error` or supplying empty whitespace trips `ZodError` and fails closed. All server error response handlers (such as `refundBeforeDispatch` in `seedReload.ts`) must supply explicit error descriptions.
+- **Safe Integer Microusd Bounds (E-09):** `MAX_SAFE_MICRO_USD` ($9 \times 10^{15}$) is strictly enforced on both write (`toMicrousd`) and read (`fromMicrousd`) paths to prevent IEEE 754 precision loss when dealing with financial transactions. All billable default tiers ($0.0001, 0.0005, 0.001) convert losslessly to integer microusd (100, 500, 1000).
+- **Feed Payload vs Ledger Result Size Invariant (E-01):** Boot-time invariant enforces `MAX_FEED_BODY_BYTES <= MAX_LEDGER_RESULT_BYTES` (64KB), guaranteeing billable feed payloads never exceed durable ledger result storage.
+- **Dangerous Tool Manifest Gates (E-07):** Any tool declaring `is_dangerous: true` must declare at least one `approval_scopes` entry and conform to alphanumeric naming regex `/^[a-z0-9][a-z0-9._-]*$/`.
+- **Approved Results Signature Requirement (E-08):** Approval decisions with `decision: 'approved'` require a valid signature/token of minimum 8 characters.
+
+## 21. Web Client Governance & Tool Actuation Safeguards (Round 7)
+
+The Svelte 5 web client (`apps/web/src/{stores,routes,components}`) and feed ingestion pipeline enforce strict governance, non-coercion, and session boundary laws:
+
+- **Single Mutation Boundary for Layer Visibility (W-02):** All layer visibility mutations must route through `layerStore.setLayerEnabled(layer, enabled)` rather than direct property assignment. This method checks `Object.hasOwn(this.visibility, layer)` to prevent prototype chain pollution (`constructor`, `toString`, etc.), and enforces `satelliteAccessLock` so that restricted feeds cannot be toggled on by AI voice commands or collaborative sync.
+- **Coordinate Non-Coercion at Equator & Meridian (W-03):** When filtering spatial entities in `query_aoi`, latitude and longitude extraction must use nullish coalescing `??` (`item.latitude ?? item.lat`), never truthiness `||`. Falsy zero values (`latitude: 0` or `longitude: 0`) must never fall through to `NaN` or be silently dropped.
+- **Debug Bus Production Isolation (W-04):** `attachDebugBus` is strictly restricted to development environments or explicit build flags (`import.meta.env.DEV || import.meta.env.VITE_DEBUG_BUS === 'true'`). Dynamic runtime URL inspection (`?gev_debug=1`) is permanently forbidden in production.
+- **Session-Scoped Operations Token (W-05):** Operational tokens (`gev_ops_token`) are strictly stored in `sessionStorage` rather than persistent `localStorage` to guard against persistent XSS credential exfiltration across browser sessions.
+- **Layer & Entity Kind Normalization (W-06):** Plural provider/feed identifiers (`flights`, `satellites`, `quakes`) are mapped to singular entity selection kinds (`flight`, `satellite`, `quake`) in `select_entity` to ensure HUD inspection cards and timeline charts render without style/data decoupling.
+- **Complete Layer Visibility Synchronization (W-07):** The visibility `$effect` in `GlobeRoute.svelte` synchronizes all 16 layers, including `tropicalCycloneLayer` and `coastalConditionsLayer`.
+- **Monotonic Poll Sequence Guard (W-10):** `feedPolling.ts` implements a monotonic poll sequence counter. Out-of-order responses from slow network requests are discarded if a newer poll sequence has already been dispatched.
+- **Collab Socket & Intent Lifecycle (W-11, W-12):** `collabStore.leaveRoom()` is invoked in `GlobeRoute.onDestroy()`. `joinRoom()` closes any pre-existing WebSocket, and `leaveRoom()` resets `intentState` to `null` to prevent cross-room state bleed.
+- **WebSocket Diagnostic Quality (W-13):** `ws.onerror` formats DOM and ErrorEvent message properties cleanly, avoiding empty `{}` stringification.
+- **Voice Status Machine Vocabulary Validation (W-14):** XState machine snapshot values are validated against `VALID_VOICE_STATUSES` before updating store status, preventing unknown states from corrupting client state.
+- **Provenance Honesty (W-15):** When layer freshness is unavailable, `provenanceSummary` displays `UNAVAILABLE` rather than softening the condition to `PARTIAL`.
+- **Service Worker Rejection Safety (W-16):** Cache writes in `sw.js` handle rejections gracefully with explicit `.catch()` blocks.
+- **WCAG AA Compliance (W-17):** HUD token `--voice-idle` is set to `var(--hud-text-secondary)` (`#94a3b8`) achieving 6.97:1 contrast against panel dark surfaces.
+- **Satellite Lock Polling Suppression (W-20):** `feedPolling.ts` suppresses satellite polling when `satelliteAccessLock !== null`, avoiding repeated busy-polling against locked endpoints.
+- **Full Entity Collection Coverage in AOI (W-21):** `query_aoi` covers both standard feeds and operational collections (`alerts`, `aviationWeather`, `tropicalCyclones`, `coastalConditions`).
+
+## 22. Network & SSRF Guard Allowlist Invariants
+
+The SSRF validation engine (`packages/security/src/ssrf.ts`) enforces strict fail-closed outbound network boundaries:
+
+- **Empty Allowlist Fail-Closed Behavior:** `validateAllowlists` enforces that if `allowedHosts` or `allowedPaths` is provided as an empty array (`[]`), the guard strictly fails closed and throws `PinnedFetchSecurityError`, rather than treating an empty list as "allow all".
+- **Path Prefix Segment Boundaries:** Path prefix rules enforce directory boundaries (`path === prefix || path.startsWith(prefix === '/' ? '/' : `${prefix}/`)`) preventing traversal/bypass attacks using unsegmented string prefixes (e.g. `/stations_unauthorized`).
+
+
+

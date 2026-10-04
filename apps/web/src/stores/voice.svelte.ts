@@ -38,6 +38,32 @@ export interface VoiceStoreState {
 const MAX_PROVIDER_TRANSCRIPT_CHARS = 64 * 1024;
 export const MAX_VOICE_COMMAND_CHARS = 4096;
 
+const VALID_VOICE_STATUSES = new Set<VoiceStoreState['status']>([
+  'idle',
+  'connecting',
+  'listening',
+  'processing',
+  'speaking',
+  'stasis_halted',
+  'error',
+]);
+
+function toVoiceStatus(val: unknown): VoiceStoreState['status'] {
+  if (typeof val === 'string' && VALID_VOICE_STATUSES.has(val as VoiceStoreState['status'])) {
+    return val as VoiceStoreState['status'];
+  }
+  if (val && typeof val === 'object') {
+    const subVal = Object.values(val)[0];
+    if (
+      typeof subVal === 'string' &&
+      VALID_VOICE_STATUSES.has(subVal as VoiceStoreState['status'])
+    ) {
+      return subVal as VoiceStoreState['status'];
+    }
+  }
+  return 'error';
+}
+
 class VoiceStore {
   state = $state<VoiceStoreState>({
     status: 'idle',
@@ -62,16 +88,10 @@ class VoiceStore {
     clock: runtimeClock,
     allowedTools: VOICE_OPERATOR_TOOL_NAMES,
   });
+
   constructor() {
     this.actor.subscribe((snapshot) => {
-      const val = snapshot.value;
-      if (typeof val === 'string') {
-        this.state.status = val as VoiceStoreState['status'];
-      } else if (val && typeof val === 'object') {
-        const subVal = Object.values(val)[0] as string;
-        this.state.status = (subVal as VoiceStoreState['status']) || 'listening';
-      }
-
+      this.state.status = toVoiceStatus(snapshot.value);
       this.state.transcript = snapshot.context.transcript;
       this.state.activeTool = snapshot.context.activeTool as VoiceStoreState['activeTool'];
       this.state.error = snapshot.context.error ?? this.operationalError;
@@ -104,10 +124,10 @@ class VoiceStore {
     let candidate: AgentProviderAdapter | null = null;
     try {
       if (provider === 'openai-realtime') {
+        // Retrieve operational token scoped to current browser session (sessionStorage)
+        // Avoid persistent localStorage to guard against long-lived XSS exfiltration.
         const opsToken =
-          typeof window !== 'undefined'
-            ? localStorage.getItem('gev_ops_token') || sessionStorage.getItem('gev_ops_token')
-            : null;
+          typeof window !== 'undefined' ? sessionStorage.getItem('gev_ops_token') : null;
 
         const abortController = new AbortController();
         this.connectionAbort = abortController;

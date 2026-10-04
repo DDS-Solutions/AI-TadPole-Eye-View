@@ -21,6 +21,7 @@ import {
   createLedgerAuditOutcome,
   normalizeTerminalResult,
 } from './ledgerSerialization.js';
+import type { TrustedAuditRetentionKey } from './auditRetention.js';
 import type { BudgetRow, LedgerRow, TenantBudgetRow } from './budgetLedgerTypes.js';
 
 export type { LedgerRow, BudgetRow, TenantBudgetRow };
@@ -30,9 +31,10 @@ export class BudgetLedgerStore {
 
   constructor(
     private readonly db: DatabaseSync,
-    private readonly clock: SimClock
+    private readonly clock: SimClock,
+    trustedRetentionKeys: readonly TrustedAuditRetentionKey[] = []
   ) {
-    this.auditChain = new AuditChainStore(db, clock);
+    this.auditChain = new AuditChainStore(db, clock, trustedRetentionKeys);
   }
 
   insertOperation(
@@ -84,17 +86,16 @@ export class BudgetLedgerStore {
     );
   }
 
-  readActiveOperationByFingerprint(fingerprint: string, nowIso: string): LedgerRow | null {
+  readActiveOperationByFingerprint(fingerprint: string, _nowIso?: string): LedgerRow | null {
     return (
       (this.db
         .prepare(
           `SELECT * FROM governance_budget_operations
           WHERE request_fingerprint = ?
-            AND state IN ('RESERVED', 'EXECUTING')
-            AND deadline_at > ?
+            AND state IN ('RESERVED', 'EXECUTING', 'IN_DOUBT')
           ORDER BY rowid DESC LIMIT 1`
         )
-        .get(fingerprint, nowIso) as LedgerRow | undefined) ?? null
+        .get(fingerprint) as LedgerRow | undefined) ?? null
     );
   }
 
@@ -241,8 +242,12 @@ export class BudgetLedgerStore {
       try {
         const globalBudget = this.readBudgetRow();
         cap = globalBudget.cap_microusd;
-      } catch {
-        cap = 10_000_000;
+      } catch (error) {
+        throw new Error(
+          `Cannot resolve tenant budget cap for tenant '${tenantId}': global budget is unreadable: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
       }
     }
     const now = this.isoNow();
@@ -327,17 +332,22 @@ export class BudgetLedgerStore {
     }
     if (operation.state === 'IN_DOUBT')
       return LedgerReservationResultSchema.parse({ kind: 'in_doubt', operation });
-    if (operation.state === 'RESERVED' || operation.state === 'EXECUTING')
+    if (operation.state === 'RESERVED' || operation.state === 'EXECUTING') {
+      const now = this.isoNow();
+      if (operation.deadline_at && operation.deadline_at <= now) {
+        return LedgerReservationResultSchema.parse({ kind: 'in_doubt', operation });
+      }
       return LedgerReservationResultSchema.parse({ kind: 'in_progress', operation });
+    }
     return LedgerReservationResultSchema.parse({ kind: 'replay', operation });
   }
 
-  readExpiredOperations(now: string): LedgerRow[] {
+  readExpiredOperations(now: string, limit = 500): LedgerRow[] {
     return this.db
       .prepare(
-        "SELECT * FROM governance_budget_operations WHERE deadline_at <= ? AND state IN ('RESERVED', 'EXECUTING') ORDER BY created_at, operation_id"
+        "SELECT * FROM governance_budget_operations WHERE deadline_at <= ? AND state IN ('RESERVED', 'EXECUTING') ORDER BY created_at, operation_id LIMIT ?"
       )
-      .all(now) as unknown as LedgerRow[];
+      .all(now, limit) as unknown as LedgerRow[];
   }
 
   recordReservationDenial(
@@ -416,7 +426,19 @@ export class BudgetLedgerStore {
     this.insertLedgerEntry(current.operation_id, 'in_doubt', current.reserved_microusd, {
       reason: 'deadline_expired',
     });
-    this.writeTrip('COMPLIANCE_DRIFT', 'An executed operation expired with an ambiguous outcome.');
+    const tenantId = current.fingerprint_components.tenant_id;
+    if (tenantId) {
+      this.writeTenantTrip(
+        tenantId,
+        'COMPLIANCE_DRIFT',
+        'An executed operation expired with an ambiguous outcome.'
+      );
+    } else {
+      this.writeTrip(
+        'COMPLIANCE_DRIFT',
+        'An executed operation expired with an ambiguous outcome.'
+      );
+    }
     return outcome;
   }
 
@@ -450,6 +472,9 @@ export class BudgetLedgerStore {
       throw new Error('Settled spend is outside the supported micro-USD range');
     }
     let trip: 'BUDGET_BREACH' | 'COMPLIANCE_DRIFT' | null = null;
+    // Multi-tenant architecture invariant: tenant spend is capped by per-tenant budgets
+    // (ensuring one tenant's exhaustion never starves other tenants). Only non-tenant
+    // platform operations (!tenant_id) trip global platform STASIS for BUDGET_BREACH.
     if (!current.fingerprint_components.tenant_id && spent >= budget.cap_microusd) {
       trip = 'BUDGET_BREACH';
     } else if (actual > current.reserved_microusd) {

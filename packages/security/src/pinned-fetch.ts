@@ -1,4 +1,4 @@
-import { Agent, type Dispatcher, Response, fetch as undiciFetch } from 'undici';
+import { Agent, MockAgent, type Dispatcher, Response, fetch as undiciFetch } from 'undici';
 import { MaxBytesExceededError, PinnedFetchSecurityError } from './errors.js';
 import {
   type PathAllowRule,
@@ -8,7 +8,15 @@ import {
   validateAllowlists,
 } from './ssrf.js';
 
-export { type PathAllowRule, PinnedFetchSecurityError, MaxBytesExceededError, validateAllowlists };
+export {
+  Agent,
+  MockAgent,
+  type Dispatcher,
+  type PathAllowRule,
+  PinnedFetchSecurityError,
+  MaxBytesExceededError,
+  validateAllowlists,
+};
 
 export interface PinnedFetchOptions {
   timeoutMs?: number;
@@ -63,12 +71,16 @@ export function createPinnedAgent(primaryIp: { address: string; family: number }
 /**
  * Creates a byte-counting TransformStream that throws MaxBytesExceededError if the stream exceeds maxBytes.
  */
-export function createByteCountingStream(maxBytes: number): TransformStream {
+export function createByteCountingStream(
+  maxBytes: number,
+  onLimitExceeded?: () => void
+): TransformStream {
   let bytesRead = 0;
   return new TransformStream({
     transform(chunk: Uint8Array, controller) {
       bytesRead += chunk.byteLength;
       if (bytesRead > maxBytes) {
+        onLimitExceeded?.();
         controller.error(new MaxBytesExceededError(maxBytes, bytesRead));
         return;
       }
@@ -121,26 +133,39 @@ export async function pinnedFetch(
   // Custom agent pinning socket connection directly to the pre-validated IP
   const pinnedAgent = options.dispatcher ?? createPinnedAgent(primaryIp);
   const ownsAgent = !options.dispatcher; // only close agents we created
+  let agentClosed = false;
+
+  const safeCloseAgent = () => {
+    if (!agentClosed && ownsAgent && pinnedAgent instanceof Agent) {
+      agentClosed = true;
+      pinnedAgent.close();
+    }
+  };
 
   const abortSignal = AbortSignal.timeout(timeoutMs);
 
-  const response = await undiciFetch(parsedUrl.toString(), {
-    method: options.method || 'GET',
-    headers: options.headers,
-    body: options.body,
-    dispatcher: pinnedAgent,
-    redirect: 'error',
-    signal: abortSignal,
-  });
+  let response: Awaited<ReturnType<typeof undiciFetch>>;
+  try {
+    response = await undiciFetch(parsedUrl.toString(), {
+      method: options.method || 'GET',
+      headers: options.headers,
+      body: options.body,
+      dispatcher: pinnedAgent,
+      redirect: 'error',
+      signal: abortSignal,
+    });
 
-  // Fast-path: Verify Content-Length header if provided
-  const contentLengthHeader = response.headers.get('content-length');
-  if (contentLengthHeader) {
-    const contentLength = Number.parseInt(contentLengthHeader, 10);
-    if (!Number.isNaN(contentLength) && contentLength > maxBytes) {
-      if (ownsAgent && pinnedAgent instanceof Agent) pinnedAgent.close();
-      throw new MaxBytesExceededError(maxBytes, contentLength);
+    // Fast-path: Verify Content-Length header if provided
+    const contentLengthHeader = response.headers.get('content-length');
+    if (contentLengthHeader) {
+      const contentLength = Number.parseInt(contentLengthHeader, 10);
+      if (!Number.isNaN(contentLength) && contentLength > maxBytes) {
+        throw new MaxBytesExceededError(maxBytes, contentLength);
+      }
     }
+  } catch (error) {
+    safeCloseAgent();
+    throw error;
   }
 
   // Helper: creates a TransformStream that closes the agent when the body stream ends
@@ -150,9 +175,7 @@ export async function pinnedFetch(
         controller.enqueue(chunk);
       },
       flush() {
-        if (ownsAgent && pinnedAgent instanceof Agent) {
-          pinnedAgent.close();
-        }
+        safeCloseAgent();
       },
     });
   }
@@ -161,7 +184,7 @@ export async function pinnedFetch(
   if (response.body) {
     // biome-ignore lint/suspicious/noExplicitAny: Standard TransformStream bridge across undici/DOM stream definitions
     const cappedBody = (response.body as any)
-      .pipeThrough(createByteCountingStream(maxBytes))
+      .pipeThrough(createByteCountingStream(maxBytes, safeCloseAgent))
       .pipeThrough(createAgentCleanupStream());
     return new Response(cappedBody as unknown as string, {
       status: response.status,
@@ -171,9 +194,7 @@ export async function pinnedFetch(
   }
 
   // No body — close agent immediately
-  if (ownsAgent && pinnedAgent instanceof Agent) {
-    pinnedAgent.close();
-  }
+  safeCloseAgent();
 
   return response;
 }

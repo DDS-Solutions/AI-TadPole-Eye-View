@@ -48,7 +48,7 @@ function rollbackQuietly(db: DatabaseSync): void {
   }
 }
 
-function migrateGovernanceDatabase(db: DatabaseSync, clock: SimClock): void {
+export function migrateGovernanceDatabase(db: DatabaseSync, clock: SimClock): void {
   db.exec('BEGIN IMMEDIATE;');
   try {
     db.exec(`
@@ -249,9 +249,10 @@ function migrateGovernanceDatabase(db: DatabaseSync, clock: SimClock): void {
         );
         CREATE INDEX IF NOT EXISTS governance_tenant_budgets_stasis_idx
           ON governance_tenant_budgets (stasis_active);
-        INSERT INTO governance_schema_migrations (version, applied_at)
-        VALUES (5, '${new Date(clock.now()).toISOString()}');
       `);
+      db.prepare(
+        'INSERT INTO governance_schema_migrations (version, applied_at) VALUES (?, ?);'
+      ).run(5, new Date(clock.now()).toISOString());
     }
 
     if (versionRow.version < 6) {
@@ -290,16 +291,29 @@ function migrateGovernanceDatabase(db: DatabaseSync, clock: SimClock): void {
         );
         CREATE INDEX IF NOT EXISTS governance_tenant_layer_terms_status_idx
           ON governance_tenant_layer_terms (tenant_id, status);
-
-        INSERT INTO governance_schema_migrations (version, applied_at)
-        VALUES (6, '${new Date(clock.now()).toISOString()}');
       `);
+      db.prepare(
+        'INSERT INTO governance_schema_migrations (version, applied_at) VALUES (?, ?);'
+      ).run(6, new Date(clock.now()).toISOString());
     }
 
     db.exec('COMMIT;');
   } catch (error) {
     rollbackQuietly(db);
     throw error;
+  }
+}
+
+export function applyGovernancePragmas(db: DatabaseSync, dbPath = ''): void {
+  const currentTimeout =
+    (db.prepare('PRAGMA busy_timeout;').get() as { timeout?: number })?.timeout ?? 0;
+  if (currentTimeout <= 0) {
+    db.exec(`PRAGMA busy_timeout = ${GOVERNANCE_BUSY_TIMEOUT_MS};`);
+  }
+  db.exec('PRAGMA foreign_keys = ON;');
+  if (dbPath && dbPath !== ':memory:') {
+    db.exec('PRAGMA journal_mode = WAL;');
+    db.exec('PRAGMA synchronous = NORMAL;');
   }
 }
 
@@ -314,12 +328,7 @@ export function openGovernanceDatabase(options: GovernanceDatabaseOptions = {}):
   let db: DatabaseSync | undefined;
   try {
     db = new DatabaseSync(dbPath);
-    db.exec(`PRAGMA busy_timeout = ${GOVERNANCE_BUSY_TIMEOUT_MS};`);
-    db.exec('PRAGMA foreign_keys = ON;');
-    if (dbPath !== ':memory:') {
-      db.exec('PRAGMA journal_mode = WAL;');
-      db.exec('PRAGMA synchronous = NORMAL;');
-    }
+    applyGovernancePragmas(db, dbPath);
     migrateGovernanceDatabase(db, clock);
     return { db, dbPath };
   } catch (error) {
@@ -334,6 +343,9 @@ export function openGovernanceDatabase(options: GovernanceDatabaseOptions = {}):
 }
 
 export function withImmediateTransaction<T>(db: DatabaseSync, operation: () => T): T {
+  if (db.isTransaction) {
+    return operation();
+  }
   db.exec('BEGIN IMMEDIATE;');
   try {
     const result = operation();

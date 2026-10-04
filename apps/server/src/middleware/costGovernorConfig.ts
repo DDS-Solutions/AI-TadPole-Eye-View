@@ -5,6 +5,7 @@ export interface ProviderTierConfig {
   costPerFetchUsd: number;
   maxStaleSeconds: number;
   requestsPerMinute?: number;
+  metered?: boolean;
 }
 
 function providerTier(
@@ -31,7 +32,7 @@ export const DEFAULT_PROVIDER_TIERS: Record<string, ProviderTierConfig> = {
   cctv: providerTier('cctv', 0.001, 120),
   overpass: providerTier('overpass', 0, 600),
   cables: providerTier('cables', 0, 604_800),
-  'solar-context': providerTier('solar-context', 0, 1),
+  'solar-context': providerTier('solar-context', 0, 3600),
   'nws-alerts': providerTier('nws-alerts', 0, 300),
   'awc-weather': providerTier('aviation-metar', 0, 7200),
   'nhc-tropical-cyclones': providerTier('tropical-cyclone-advisories', 0, 21_600),

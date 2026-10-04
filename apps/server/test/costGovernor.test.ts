@@ -166,4 +166,101 @@ describe('Cost Governor Middleware & Data Proxies (PLAN.md §10 Phase 1)', () =>
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toMatchObject({ code: 'LEDGER_UNAVAILABLE' });
   });
+
+  it('refunds reservation and avoids spend when serving stale-cache fallback on upstream failure (G-03)', async () => {
+    const clock = new FrozenClock(Date.parse('2026-08-28T12:00:00.000Z'));
+    const runtime = createGovernanceRuntimeContext({ clock, dbPath: ':memory:', capUsd: 1 });
+    const governor = new CostGovernor({
+      clock,
+      budgetLedger: runtime.budgetLedger,
+      tiers: {
+        test: { ttlSeconds: 5, costPerFetchUsd: 0.0001, maxStaleSeconds: 60 },
+      },
+    });
+    const app = new Hono();
+    let upstreamFail = false;
+    app.use('/feed/*', governor.middleware('test'));
+    app.get('/feed/data', (c) => {
+      if (upstreamFail) return c.json({ error: 'upstream failure' }, 500);
+      return c.json({ data: 'live-value' });
+    });
+
+    const opId1 = '00000000-0000-4000-8000-000000000001';
+    const opId2 = '00000000-0000-4000-8000-000000000002';
+    try {
+      // 1. Initial live fetch succeeds and bills $0.0001
+      const res1 = await app.request('/feed/data', { headers: { 'Idempotency-Key': opId1 } });
+      expect(res1.status).toBe(200);
+      expect(runtime.budgetGovernor.state().spent_usd).toBe(0.0001);
+
+      // 2. TTL expires (6s later), upstream fails with 500
+      clock.setTime(clock.now() + 6_000);
+      upstreamFail = true;
+
+      const res2 = await app.request('/feed/data', { headers: { 'Idempotency-Key': opId2 } });
+      expect(res2.status).toBe(200);
+      expect(res2.headers.get('X-GEV-Stale')).toBe('true');
+      expect(res2.headers.get('X-GEV-Cache-Source')).toBe('error-fallback');
+
+      // Crucial: Spend is NOT incremented; operation 2 was refunded with evidence
+      expect(runtime.budgetGovernor.state().spent_usd).toBe(0.0001);
+      const op2 = runtime.budgetLedger.lookup(opId2);
+      expect(op2?.state).toBe('REFUNDED');
+      expect(op2?.evidence?.summary).toContain('Served stale cached response');
+    } finally {
+      runtime.close();
+    }
+  });
+
+  it('canonicalizes query parameters, ensuring cache hits and identical billing fingerprints (G-05)', async () => {
+    const clock = new FrozenClock(1724580000000);
+    const { app } = createApp({ clock });
+
+    // Request 1: cache miss
+    const res1 = await app.request('/api/flights?lamax=38.5&lamin=36.0&lomax=-121.0&lomin=-123.0');
+    expect(res1.status).toBe(200);
+    expect(res1.headers.get('X-GEV-Cache')).toBe('MISS');
+
+    // Request 2 with reversed parameter order: must be a cache HIT
+    const res2 = await app.request('/api/flights?lomin=-123.0&lomax=-121.0&lamin=36.0&lamax=38.5');
+    expect(res2.status).toBe(200);
+    expect(res2.headers.get('X-GEV-Cache')).toBe('HIT');
+
+    // Request 3 with random extraneous parameter: must still be a cache HIT
+    const res3 = await app.request(
+      '/api/flights?lamin=36.0&lamax=38.5&lomin=-123.0&lomax=-121.0&attacker_rand=9999'
+    );
+    expect(res3.status).toBe(200);
+    expect(res3.headers.get('X-GEV-Cache')).toBe('HIT');
+  });
+
+  it('refunds reservation and returns 500 when provider response exceeds durable replay bounds (G-07)', async () => {
+    const clock = new FrozenClock(Date.parse('2026-08-28T12:00:00.000Z'));
+    const runtime = createGovernanceRuntimeContext({ clock, dbPath: ':memory:', capUsd: 1 });
+    const governor = new CostGovernor({
+      clock,
+      budgetLedger: runtime.budgetLedger,
+      tiers: {
+        test: { ttlSeconds: 5, costPerFetchUsd: 0.0001, maxStaleSeconds: 60 },
+      },
+    });
+    const app = new Hono();
+    app.use('/feed/*', governor.middleware('test'));
+    app.get('/feed/data', (c) => c.json({ payload: 'x'.repeat(300_000) }));
+
+    const opId = '00000000-0000-4000-8000-000000000099';
+    try {
+      const res = await app.request('/feed/data', { headers: { 'Idempotency-Key': opId } });
+      expect(res.status).toBe(500);
+      await expect(res.json()).resolves.toMatchObject({ code: 'OUTPUT_TOO_LARGE' });
+
+      // Crucial: Spend was NOT committed; operation was refunded
+      expect(runtime.budgetGovernor.state().spent_usd).toBe(0);
+      const op = runtime.budgetLedger.lookup(opId);
+      expect(op?.state).toBe('REFUNDED');
+      expect(op?.evidence?.summary).toContain('exceeded durable replay bounds');
+    } finally {
+      runtime.close();
+    }
+  });
 });

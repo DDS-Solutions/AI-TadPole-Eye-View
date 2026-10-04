@@ -9,6 +9,7 @@ import type { SimClock } from '@gev/core';
 import { AUDIT_GENESIS_HASH, SHA256_HEX } from './auditChainHash.js';
 import { redactAuditText } from './auditRedaction.js';
 import { canonicalizeJson } from './canonicalJson.js';
+import { withImmediateTransaction } from './governanceDb.js';
 
 export interface AuditChainStateRow {
   chain_version: string;
@@ -50,6 +51,7 @@ export interface TrustedAuditRetentionKey {
   status: 'active' | 'retired' | 'revoked';
   validFrom?: string;
   validUntil?: string;
+  revokedAt?: string;
 }
 
 export interface AuditRetentionSigner {
@@ -121,9 +123,18 @@ function findTrustedKey(
 }
 
 function keyValidAt(key: TrustedAuditRetentionKey, at: string, requireActive: boolean): boolean {
-  if (key.status === 'revoked' || (requireActive && key.status !== 'active')) return false;
   const timestamp = Date.parse(at);
   if (!Number.isFinite(timestamp)) return false;
+  if (requireActive && key.status !== 'active') return false;
+  if (key.status === 'revoked') {
+    if (requireActive) return false;
+    if (key.revokedAt) {
+      const revokedAt = Date.parse(key.revokedAt);
+      if (!Number.isFinite(revokedAt) || timestamp >= revokedAt) return false;
+    } else {
+      return false;
+    }
+  }
   if (key.validFrom) {
     const validFrom = Date.parse(key.validFrom);
     if (!Number.isFinite(validFrom) || timestamp < validFrom) return false;
@@ -308,58 +319,67 @@ export function applyAuditRetention(
     throw new Error('Audit retention signature did not verify against the trusted key');
   }
 
-  db.prepare(`INSERT INTO governance_audit_retention_receipts (
-    receipt_id, format, chain_version, previous_receipt_id, previous_anchor_sequence,
-    previous_anchor_hash, pruned_through_sequence, pruned_through_hash,
-    retained_from_sequence, head_sequence, head_hash, approved_at, approved_by,
-    reason, signer_id, key_id, algorithm, signature, payload_json
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
-    receipt.receipt_id,
-    receipt.format,
-    receipt.chain_version,
-    receipt.previous_receipt_id,
-    receipt.previous_anchor_sequence,
-    receipt.previous_anchor_hash,
-    receipt.pruned_through_sequence,
-    receipt.pruned_through_hash,
-    receipt.retained_from_sequence,
-    receipt.head_sequence,
-    receipt.head_hash,
-    receipt.approved_at,
-    receipt.approved_by,
-    receipt.reason,
-    receipt.signer_id,
-    receipt.key_id,
-    receipt.algorithm,
-    receipt.signature,
-    receipt.payload_json
-  );
+  let eventCount = 0;
+  withImmediateTransaction(db, () => {
+    db.prepare(`INSERT INTO governance_audit_retention_receipts (
+      receipt_id, format, chain_version, previous_receipt_id, previous_anchor_sequence,
+      previous_anchor_hash, pruned_through_sequence, pruned_through_hash,
+      retained_from_sequence, head_sequence, head_hash, approved_at, approved_by,
+      reason, signer_id, key_id, algorithm, signature, payload_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+      receipt.receipt_id,
+      receipt.format,
+      receipt.chain_version,
+      receipt.previous_receipt_id,
+      receipt.previous_anchor_sequence,
+      receipt.previous_anchor_hash,
+      receipt.pruned_through_sequence,
+      receipt.pruned_through_hash,
+      receipt.retained_from_sequence,
+      receipt.head_sequence,
+      receipt.head_hash,
+      receipt.approved_at,
+      receipt.approved_by,
+      receipt.reason,
+      receipt.signer_id,
+      receipt.key_id,
+      receipt.algorithm,
+      receipt.signature,
+      receipt.payload_json
+    );
 
-  const eventRows = db
-    .prepare('SELECT event_id FROM governance_audit_chain WHERE sequence <= ? ORDER BY sequence')
-    .all(request.pruneThroughSequence) as unknown as Array<{ event_id: string }>;
-  db.prepare(
-    'UPDATE governance_audit_mutation_guard SET retention_active = 1 WHERE singleton_id = 1'
-  ).run();
-  db.prepare('DELETE FROM governance_audit_chain WHERE sequence <= ?').run(
-    request.pruneThroughSequence
-  );
-  const deleteEvent = db.prepare('DELETE FROM audit_events WHERE id = ?');
-  for (const row of eventRows) deleteEvent.run(row.event_id);
-  db.prepare(`UPDATE governance_audit_chain_state SET anchor_sequence = ?, anchor_hash = ?,
-    last_retention_receipt_id = ?, updated_at = ? WHERE singleton_id = 1`).run(
-    request.pruneThroughSequence,
-    cutoff.chain_hash,
-    receiptId,
-    approvedAt
-  );
-  db.prepare(
-    'UPDATE governance_audit_mutation_guard SET retention_active = 0 WHERE singleton_id = 1'
-  ).run();
+    const eventRows = db
+      .prepare('SELECT event_id FROM governance_audit_chain WHERE sequence <= ? ORDER BY sequence')
+      .all(request.pruneThroughSequence) as unknown as Array<{ event_id: string }>;
+    eventCount = eventRows.length;
+
+    db.prepare(
+      'UPDATE governance_audit_mutation_guard SET retention_active = 1 WHERE singleton_id = 1'
+    ).run();
+
+    try {
+      db.prepare('DELETE FROM governance_audit_chain WHERE sequence <= ?').run(
+        request.pruneThroughSequence
+      );
+      const deleteEvent = db.prepare('DELETE FROM audit_events WHERE id = ?');
+      for (const row of eventRows) deleteEvent.run(row.event_id);
+      db.prepare(`UPDATE governance_audit_chain_state SET anchor_sequence = ?, anchor_hash = ?,
+        last_retention_receipt_id = ?, updated_at = ? WHERE singleton_id = 1`).run(
+        request.pruneThroughSequence,
+        cutoff.chain_hash,
+        receiptId,
+        approvedAt
+      );
+    } finally {
+      db.prepare(
+        'UPDATE governance_audit_mutation_guard SET retention_active = 0 WHERE singleton_id = 1'
+      ).run();
+    }
+  });
 
   return {
     receiptId,
-    prunedEntries: eventRows.length,
+    prunedEntries: eventCount,
     anchorSequence: request.pruneThroughSequence,
     anchorHash: cutoff.chain_hash,
     retainedFromSequence: request.pruneThroughSequence + 1,

@@ -1,6 +1,5 @@
 import { getMissingOperatorToolScopes, isOperatorToolName } from '@gev/contracts';
 import type { McpAuthorizationContext, McpBearerVerifier } from '@gev/contracts/mcp-authorization';
-import { isMcpOperatorToolName } from '@gev/ops-mcp';
 import {
   type GevMcpHttpHandler,
   type McpHttpExecutionObserver,
@@ -385,8 +384,7 @@ export function createMcpHttpRouter(options: McpHttpRouterOptions): McpHttpRoute
     if (
       c.req.header('mcp-method') === 'tools/call' &&
       requestedToolName &&
-      isOperatorToolName(requestedToolName) &&
-      isMcpOperatorToolName(requestedToolName)
+      isOperatorToolName(requestedToolName)
     ) {
       const missingScopes = getMissingOperatorToolScopes(requestedToolName, authorization.scopes);
       if (missingScopes.length > 0) {

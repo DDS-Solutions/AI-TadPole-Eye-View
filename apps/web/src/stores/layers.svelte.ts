@@ -139,7 +139,7 @@ class LayerStore {
     const freshnessLabel = freshnessStates.has('stale')
       ? 'STALE'
       : freshnessStates.has('unavailable')
-        ? 'PARTIAL'
+        ? 'UNAVAILABLE'
         : freshnessStates.has('fresh')
           ? 'FRESH'
           : 'AWAITING';
@@ -280,6 +280,18 @@ class LayerStore {
       );
     });
   });
+
+  setLayerEnabled(layer: string, enabled: boolean): boolean {
+    if (!Object.hasOwn(this.visibility, layer)) {
+      return false;
+    }
+    const key = layer as keyof LayerVisibility;
+    if (key === 'satellites' && this.satelliteAccessLock) {
+      return false;
+    }
+    this.visibility[key] = enabled;
+    return true;
+  }
 
   toggleLayer(layer: keyof LayerVisibility): void {
     if (layer === 'satellites' && this.satelliteAccessLock) {

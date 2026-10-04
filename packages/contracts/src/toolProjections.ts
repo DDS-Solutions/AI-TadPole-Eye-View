@@ -110,7 +110,7 @@ function zodToJsonSchemaLight(schema: z.ZodTypeAny): Record<string, unknown> {
   if (typeof toJSONSchemaFn === 'function') {
     const result = toJSONSchemaFn(schema);
     const clean = { ...result };
-    delete clean['$schema'];
+    delete clean.$schema;
     return clean;
   }
 
