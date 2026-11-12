@@ -36,4 +36,5 @@ export * from './blsLau.js';
 export * from './workforceAnalysis.js';
 export * from './fema.js';
 export * from './usgs3dep.js';
+export * from './epaAqs.js';
 export { z } from 'zod';

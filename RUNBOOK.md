@@ -253,6 +253,7 @@ See [ADR 0049](./docs/adr/0049-registry-derived-layer-access-read-model.md).
   - `bls-lau-synthetic-v1.json` (BLS Local Area Unemployment Statistics)
   - `fema-nri-synthetic-v1.json` (FEMA National Risk Index)
   - `usgs-3dep-synthetic-v1.json` (USGS 3DEP Elevation Point Query Service)
+  - `epa-aqs-synthetic-v1.json` (EPA AQS Historical Regulatory Air Quality Monitoring)
   - `osm-commercial-synthetic-v1.json` and `osm-commercial-evidence-synthetic-v1.json` (OpenStreetMap Commercial POIs)
 - Every fixture record carries mandatory `DataProvenance` with `mode: "seed"` and `source_mode: "seed"`. Fixtures labeled with live mode are rejected immediately by contract validation.
 - Missing, suppressed, or low-sample economic estimates retain their explicit discriminated status (`suppressed`, `unavailable`, `not_applicable`) and are never coerced to zero.
@@ -570,6 +571,16 @@ The SSRF validation engine (`packages/security/src/ssrf.ts`) enforces strict fai
 
 - **Empty Allowlist Fail-Closed Behavior:** `validateAllowlists` enforces that if `allowedHosts` or `allowedPaths` is provided as an empty array (`[]`), the guard strictly fails closed and throws `PinnedFetchSecurityError`, rather than treating an empty list as "allow all".
 - **Path Prefix Segment Boundaries:** Path prefix rules enforce directory boundaries (`path === prefix || path.startsWith(prefix === '/' ? '/' : `${prefix}/`)`) preventing traversal/bypass attacks using unsegmented string prefixes (e.g. `/stations_unauthorized`).
+
+## 23. EPA AQS Historical Regulatory Monitoring Operations (ADR 0064)
+
+The EPA Air Quality System (AQS) adapter (`packages/providers/src/epaAqs.ts`) and pure parameter dictionary (`packages/economic/src/epaAqsDictionary.ts`) govern historical ambient air quality screening:
+
+- **Historical Regulatory Data Only (Never Real-Time AQI):** EPA AQS provides historical quarterly and annual regulatory monitoring summaries across the six criteria pollutants (`O3`/`44201`, `PM2.5`/`88101`, `PM10`/`81102`, `CO`/`42101`, `NO2`/`42602`, `SO2`/`42401`). It must NEVER be labeled as real-time AQI or current conditions. Any endpoint referencing `airnow` or `airnowapi.org` is rejected fail-closed with `EpaAqsAirNowScopeError`.
+- **Non-Coercion of Unmonitored Pollutants & Zero-Observation Outages:** Not every station monitors all six criteria pollutants, and maintenance outages produce `observation_count: 0`. Missing, unmonitored, or zero-observation entries MUST evaluate to `{ status: 'unavailable' }` and never coerce to `0.0` (clean air). Legitimate `0.0` readings with `is_monitored: true` and `observation_count > 0` remain `available`.
+- **Mandatory Historical Disclaimer:** All query results enforce `data_classification: 'historical_regulatory_monitoring'`, `is_real_time: false`, and `EPA_AQS_HISTORICAL_DISCLAIMER`.
+- **Kill-Switch, Seed Enforcement & Credential Hygiene:** Governed by `GEV_EPA_AQS_ENABLED` (default: 1) failing closed with `EpaAqsDisabledError` and `GEV_SEED_MODE=1` failing closed with `EpaAqsSeedModeViolationError`. Live requests require `GEV_EPA_AQS_EMAIL` and `GEV_EPA_AQS_API_KEY`, use `pinnedFetch` restricted to `aqs.epa.gov/data/api`, and redact query-string credentials from any propagated errors.
+
 
 
 

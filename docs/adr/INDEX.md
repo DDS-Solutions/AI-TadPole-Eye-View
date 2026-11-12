@@ -53,4 +53,5 @@ This directory records all significant architectural and structural decisions ma
 | [0061](./0061-workforce-analysis-engine-api-mcp-ui-architecture.md) | Pure workforce analysis engine, protected REST APIs, governed MCP operator tools, and lazy workforce HUD inspector | Accepted | 2026-09-24 |
 | [0062](./0062-fema-nri-and-nfhl-adapters-architecture.md) | FEMA NRI and NFHL natural hazard and flood risk adapters, variable dictionary, non-coercion, and screening disclaimers | Accepted | 2026-09-26 |
 | [0063](./0063-usgs-3dep-elevation-adapter-architecture.md) | USGS 3DEP Elevation Point Query Service adapter, vertical datums, unit conversions, and non-coercion invariants | Accepted | 2026-09-27 |
+| [0064](./0064-epa-aqs-historical-monitoring-adapter-architecture.md) | EPA AQS Historical Regulatory Monitoring Adapter, Criteria Pollutant Dictionary, and Non-Coercion Invariants | Accepted | 2026-11-12 |
 

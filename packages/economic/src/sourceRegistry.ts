@@ -179,9 +179,10 @@ export const ECONOMIC_SOURCE_REGISTRY: Record<EconomicSourceId, EconomicSourceMe
     update_cadence: 'Quarterly regulatory upload',
     vintage_description:
       'Regulatory monitoring station measurements; historical screening data only',
-    status: 'planned',
+    status: 'seed',
     suppression_supported: false,
     margin_of_error_supported: false,
+    seed_fixture_id: 'epa-aqs-synthetic-v1',
   },
   'dot-bts-access': {
     id: 'dot-bts-access',
