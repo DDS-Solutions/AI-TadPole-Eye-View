@@ -22,13 +22,13 @@
   },
   "dependencies": {
     "@gev/contracts": "workspace:*",
-    "satellite.js": "7.1.0",
-    "xstate": "^5.33.2",
+    "satellite.js": "7.2.0",
+    "xstate": "^5.33.4",
     "yjs": "^13.6.33"
   },
   "devDependencies": {
     "fast-check": "^4.10.2",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.3"
+    "vitest": "^5.1.0"
   }
 }
