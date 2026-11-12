@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-26
-**Status:** IN PROGRESS — Phase 12: task 12.3 complete; phase 12 exit ready
+**Status:** IN PROGRESS — Phase 13: Phase 12 exit certified; task 13.1 ready
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -19,8 +19,8 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 
 ```text
 PLAN_VERSION=3.0
-CURRENT_PHASE=12
-NEXT_TASK=12_EXIT
+CURRENT_PHASE=13
+NEXT_TASK=13.1
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
@@ -1967,13 +1967,13 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 - [x] 8.5 Add content/instruction separation and prompt-injection tests before any provider/economic text enters an LLM/Tadpole context.
 - [x] 8 exit: suppressed/unavailable/stale cases validate; provenance is required; no persistence or live calls; ADG and affected gates pass.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 12_EXIT
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 13.1
 
 ```text
-[SCOPE_CONTRACT] packages/contracts, packages/core, packages/governance, packages/ops-mcp, packages/cli, apps/server, docs. In scope: certify Phase 12 Exit Gate proving a Tadpole agent profile operates authenticated HTTP MCP, all mutations pass M1/M2/M3 governance, spend settles idempotently across retries and timeouts, and independent audit proofs verify cleanly across Tasks 12.1–12.3. Out of scope: Phase 13 persistent BusinessContext and unapproved live external API integrations.
-[PERFORMANCE_THRESHOLD] 100% affected unit, integration, and performance suites green; Task 12.1 < 2ms p95 and Task 12.2 < 10ms p95; ADG, architectural-drift, and bundle-budget gates pass cleanly.
-[ARCHITECTURE_MODE] PLAN.md §2, §3, §6, §9.3, §10 Phase 12 exit; ADR 0029, ADR 0031, ADR 0032, ADR 0038, ADR 0041, ADR 0042, ADR 0043, ADR 0044; single shared SQLite governance runtime; zero fail-open fallbacks.
-[FAILURE_MODES] Unverified M1-M3 readiness, duplicate or leaked spend charges, bypassed signed approval, fail-open fallback on STASIS/signature/disconnect, stale plan or documentation sync.
+[SCOPE_CONTRACT] packages/contracts, packages/economic, packages/governance, apps/server, docs. In scope: design and implement versioned, tenant-owned, encrypted persistence for BusinessContext with SQLite migrations, tenant isolation, retention policy, backup, export, verified hard deletion, and full M1 intent/outcome audit coverage. Out of scope: live external API queries, untrusted content ingestion bypass, or Phase 14 release artifacts.
+[PERFORMANCE_THRESHOLD] 100% unit and property tests green; persistence round-trip and export < 10ms p95; ADG, architectural-drift (0 files > 500 lines), and bundle-budget checks clean.
+[ARCHITECTURE_MODE] PLAN.md §2, §3, §6, §10 Task 13.1; ADR 0031, ADR 0038, ADR 0041, ADR 0042; AES-256-GCM encryption at rest; tenant-isolated SQL repositories; strict audit-before-action.
+[FAILURE_MODES] Cross-tenant data leakage, unencrypted sensitive business parameters, missing audit intent/outcome on mutate/delete, orphaned records after deletion, schema drift without migration.
 ```
 
 ### Phase 9 — Economic R1: market and business footprint
@@ -2004,7 +2004,7 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 - [x] 12.1 Finalize AgentEnvelope mapping, connection lifecycle, identity, and capability propagation after OQ-1.
 - [x] 12.2 Demonstrate M1 observation, M2 signed approval, M3 shared ledger/STASIS, and verified audit chain before M4.
 - [x] 12.3 Run failure drills: invalid signature, replay, ledger timeout, disconnect, budget breach, STASIS notification, and human resume.
-- [ ] 12 exit: a real Tadpole agent uses authenticated HTTP MCP; all mutations are governed; spend settles idempotently; audit proof verifies independently.
+- [x] 12 exit: a real Tadpole agent uses authenticated HTTP MCP; all mutations are governed; spend settles idempotently; audit proof verifies independently.
 
 ### Phase 13 — Economic R4: governed SMB digital twin
 
@@ -4703,6 +4703,52 @@ No later task is authorized merely because it appears in this plan.
   - Active Documentation Guard (ADG) & doc tests: verified after `MASTER_PLAN_V3.md` synchronization (`pnpm docs:check` & `pnpm docs:test`).
 - **Plan Advancement:** Task 12.3 complete (`[x] 12.3`). Advanced to `CURRENT_PHASE=12`, `NEXT_TASK=12_EXIT`, `NEXT_TASK_STATUS=READY`.
 - **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 12_EXIT. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Phase 12 Exit Gate Certification Checkpoint — 2026-11-12
+
+- **Branch:** `codex/phase-12-exit-gate` (branched after Task 12.3 commit `30b5efe`)
+- **Scope:** Certified the Phase 12 Exit Gate (`NEXT_TASK=12_EXIT`) establishing that a real Tadpole agent operates authenticated HTTP MCP under protocol `2026-07-28`, all mutations are strictly governed across M1 (Observation), M2 (Signed Approval), and M3 (Shared SQLite Ledger/STASIS), spend settles idempotently across retries without duplicate holds or double-charging, STASIS lockdowns propagate push notifications over SSE with human-only resume enforcement, and independent cryptographic audit proofs verify cleanly across all Task 12.1–12.3 implementations adhering to PLAN.md §2, §3, §6, §9.3, §10, and ADRs 0029, 0031, 0032, 0038, 0041, 0042, 0043, and 0044.
+- **Artifacts produced & updated:**
+  - `apps/server/test/phase12ExitGate.test.ts` (421 lines): Added comprehensive Phase 12 exit certification test suite verifying:
+    1. Authenticated Tadpole HTTP MCP session lifecycle with `TaskBrief` envelope wrapping and `CapToken` capability propagation;
+    2. Scoped tool discovery (`tools/list`) and mutation execution (`tools/call`);
+    3. Strict M1 observation (audit intent recorded before mutation execution, audit outcome after);
+    4. M2 `SignedApprovalGate` cryptographic Ed25519 verification before mutating dispatch;
+    5. M3 shared SQLite budget ledger reservation and settlement;
+    6. Idempotent settlement across retries using stable `operation_id` without double-charging or ledger drift;
+    7. STASIS lockdown drill on budget breach emitting `stasis.entered` push event on live `/ops/audit/stream` SSE;
+    8. Immediate fail-closed HTTP 423 `STASIS_ACTIVE` on subsequent MCP tool calls;
+    9. Strict rejection of unauthenticated (401) and unauthorized non-admin operator (403) resume requests;
+    10. Human platform_admin resume via `/ops/resume` lifting STASIS and emitting `stasis.resumed` on SSE;
+    11. Complete cryptographic SQLite audit chain integrity verification via `verifyIndependentAuditChain()`;
+    12. Permanent fail-closed suspension of sessions that entered STASIS;
+    13. In-memory engine performance verification certifying `< 2ms` p95 envelope/capability propagation and `< 10ms` p95 M1->M4 mutation latency.
+  - `scripts/run-mcp-conformance.mjs`: Updated MCP Inspector tool expectation from 7 to 13 tools (accounting for the 6 Phase 8–11 economic operator tools) with 0 schema errors; added robust handling for Node 26 libuv Windows async shutdown assertions (`UV_HANDLE_CLOSING`).
+  - `README.md`, `SECURITY.md`, & `packages/cli/src/commands/status.ts`: Advanced phase badges and status declarations to `Phase 13 — Economic R4: governed SMB digital twin`.
+- **Verification Evidence & Performance:**
+  - Official MCP Conformance Suite (`pnpm test:mcp:official`): 13 tools validated with 0 schema errors by MCP Inspector 2.5.0; 23/23 official scenarios passed (including `tools-list` and `http-header-validation`); zero non-loopback fetches.
+  - Performance benchmarks:
+    - Task 12.1 Envelope + Capability Propagation (`pnpm --filter @gev/governance test:performance`): `p95=0.465ms` (N=200, threshold `< 2ms`).
+    - Task 12.2 E2E M1->M2->M3->M4 Governed MCP Mutation (`pnpm --filter @gev/server test:performance`): `p95=5.846ms` (N=60, threshold `< 10ms`).
+    - Phase 12 Exit Gate inline benchmarks (`phase12ExitGate.test.ts`): Task 12.1 `p95=0.578ms`, Task 12.2 `p95=6.458ms`.
+  - Monorepo unit & integration test suites (`pnpm turbo run test --concurrency=2`): 19/19 tasks passed across 12 packages:
+    - `@gev/server`: 36 files / 314 tests passed (including `phase12ExitGate.test.ts`).
+    - `@gev/governance`: 16 files / 108 tests passed.
+    - `@gev/contracts`: 25 files / 193 tests passed.
+    - `@gev/economic`: 22 files / 188 tests passed.
+    - `@gev/providers`: 23 files / 163 tests passed.
+    - `@gev/ops-mcp`: 11 files / 72 tests passed.
+    - `@gev/core`: 12 files / 72 tests passed.
+    - `@gev/security`: 4 files / 44 tests passed.
+    - `@gev/cli`: 4 files / 17 tests passed.
+    - `@gev/cesium-kit`: 4 files / 17 tests passed.
+    - `@gev/web`: 1 file / 9 tests passed.
+  - Strict TypeScript build & typecheck: 11/11 build tasks & 19/19 typecheck tasks clean (`pnpm build && pnpm typecheck`).
+  - Architecture & bundle size budgets: 0 large files (> 500 lines), all Web bundle chunks within deterministic budgets (`pnpm architecture:check && pnpm check:budgets`).
+  - Active Documentation Guard (ADG) & doc tests: 87 doc files, 1417 paths, 46 module symbols checked with zero integrity errors; 17/17 doc tests passed (`pnpm docs:check && pnpm docs:test`).
+  - Console Status Check (`pnpm gev status`): Verified console reports `Project Phase: Phase 13 — Economic R4: governed SMB digital twin`.
+- **Plan Advancement:** Phase 12 Exit Gate certified (`[x] 12 exit`). Advanced to `CURRENT_PHASE=13`, `NEXT_TASK=13.1`, `NEXT_TASK_STATUS=READY`.
+- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 13.1. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
 
