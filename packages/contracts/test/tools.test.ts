@@ -151,6 +151,7 @@ describe('Phase 3 Tool & Collab Contracts (@gev/contracts)', () => {
         'analyze_competition',
         'compare_locations',
         'analyze_workforce_context',
+        'assess_site_risk',
       ]);
       expect(getAuthorizedOperatorToolNames(['read.audit'])).toEqual(['tail_logs']);
       expect(getAuthorizedOperatorToolNames(['read.telemetry', 'read.audit'])).toEqual([
@@ -165,6 +166,7 @@ describe('Phase 3 Tool & Collab Contracts (@gev/contracts)', () => {
         'analyze_competition',
         'compare_locations',
         'analyze_workforce_context',
+        'assess_site_risk',
       ]);
       expect(getAuthorizedOperatorToolNames(['agent.voice'])).toEqual([]);
       expect(

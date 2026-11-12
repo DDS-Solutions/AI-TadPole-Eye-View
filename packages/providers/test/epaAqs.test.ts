@@ -292,10 +292,12 @@ describe('EPA AQS Provider Adapter (PLAN.md §10 Task 11.3 & ADR 0064)', () => {
   it('proves p95 query latency is strictly < 25ms in seed mode (PLAN.md §10 Task 11.3)', async () => {
     const adapter = new EpaAqsAdapter();
 
-    // Warm-up
-    await adapter.querySummaries({
-      geography: { level: 'county', county_fips: '48453', state_fips: '48' },
-    });
+    // Warm-up V8 JIT across 10 iterations before timing
+    for (let w = 0; w < 10; w++) {
+      await adapter.querySummaries({
+        geography: { level: 'county', county_fips: '48453', state_fips: '48' },
+      });
+    }
 
     const iterations = 100;
     const latencies: number[] = [];

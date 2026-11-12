@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-26
-**Status:** IN PROGRESS — Phase 11: 11 exit ready; task 11.4 complete
+**Status:** IN PROGRESS — Phase 12: task 12.1 ready; phase 11 exit certified
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -19,8 +19,8 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 
 ```text
 PLAN_VERSION=3.0
-CURRENT_PHASE=11
-NEXT_TASK=11_EXIT
+CURRENT_PHASE=12
+NEXT_TASK=12.1
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
@@ -1967,13 +1967,13 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 - [x] 8.5 Add content/instruction separation and prompt-injection tests before any provider/economic text enters an LLM/Tadpole context.
 - [x] 8 exit: suppressed/unavailable/stale cases validate; provenance is required; no persistence or live calls; ADG and affected gates pass.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 11_EXIT
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 12.1
 
 ```text
-[SCOPE_CONTRACT] packages/contracts, packages/economic, packages/providers, apps/server, packages/ops-mcp, apps/web, e2e. In scope: Phase 11 Exit Gate certification ensuring FEMA NRI/NFHL, USGS 3DEP, EPA AQS, and DOT/BTS site-risk and accessibility screening exposes explicit source product/vintage/geography, keeps current operational alerts distinct from long-term hazards, avoids definitive advice framing, and wires governed API/MCP/UI inspection surfaces. Out of scope: Phase 12 Tadpole M4 runtime, real-time AirNow.
-[PERFORMANCE_THRESHOLD] Phase 11 Exit certification suite 100% green; site-risk screening p95 < 25ms in seed mode; zero live calls under GEV_SEED_MODE=1; Playwright E2E green with condition-waits only.
-[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2, §11 exit; ADR 0031, ADR 0035, ADR 0050, ADR 0052, ADR 0062, ADR 0063, ADR 0064, ADR 0065; shared governance, audit.intent/audit.outcome, zero coercion, non-definitive screening disclaimers.
-[FAILURE_MODES] Conflating current alerts with long-term hazards, presenting screening scores as definitive advice, omitting source product/vintage/geography, bypassing shared governance.
+[SCOPE_CONTRACT] packages/contracts, packages/governance, packages/ops-mcp, apps/server, docs/adr. In scope: finalize AgentEnvelope port mapping, Tadpole connection/session lifecycle, identity propagation, and per-request capability propagation following the accepted OQ-1 profile (ADR 0032) and M1–M3 shared governance runtime. Out of scope: M1–M4 showcase and failure drills (Tasks 12.2–12.3), Phase 13 persistent BusinessContext.
+[PERFORMANCE_THRESHOLD] 100% unit and integration tests green; AgentEnvelope validation and capability propagation < 2ms p95; zero governance or STASIS bypass.
+[ARCHITECTURE_MODE] PLAN.md §2, §3, §6, §9.3, §12.1; ADR 0031, ADR 0032, ADR 0041, ADR 0042, ADR 0043; single shared governance runtime; fail-closed on unverified identity, missing capability scope, or active STASIS.
+[FAILURE_MODES] Bypassing AgentEnvelope or capability propagation on MCP transports, trusting unverified Tadpole identity claims, accepting replayed/expired capability tokens, weakening OQ-1 fail-closed defaults.
 ```
 
 ### Phase 9 — Economic R1: market and business footprint
@@ -1997,7 +1997,7 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 - [x] 11.2 Implement USGS 3DEP via the current Elevation Point Query Service; do not use the retired `pqs.php` URL.
 - [x] 11.3 Implement EPA AQS as historical/regulatory monitoring data; never label it real-time AQI. Treat AirNow as separate future scope if current conditions are approved.
 - [x] 11.4 Implement approved DOT/BTS accessibility context and pure site-risk functions with provenance and screening disclaimers.
-- [ ] 11 exit: source product/vintage/geography is explicit; current alerts and long-term hazards are distinct; no risk result is framed as definitive advice.
+- [x] 11 exit: source product/vintage/geography is explicit; current alerts and long-term hazards are distinct; no risk result is framed as definitive advice.
 
 ### Phase 12 — Tadpole M4 runtime
 
@@ -4609,6 +4609,28 @@ No later task is authorized merely because it appears in this plan.
   - Active Documentation Guard (ADG) and doc tests: verified after `MASTER_PLAN_V3.md` synchronization (`pnpm docs:check` & `pnpm docs:test`).
 - **Plan Advancement:** Task 11.4 complete (`[x] 11.4`). Advanced to `CURRENT_PHASE=11`, `NEXT_TASK=11_EXIT`, `NEXT_TASK_STATUS=READY`.
 - **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 11_EXIT. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Phase 11 Exit Gate Certification Checkpoint — 2026-11-12
+
+- **Branch:** `codex/phase-11-exit-gate` (branched after commit `02e7b88` for Task 11.4)
+- **Scope:** Certified Phase 11 Exit Gate (`[x] 11 exit`) across `@gev/contracts`, `@gev/economic`, `@gev/providers`, `@gev/ops-mcp`, `apps/server`, `apps/web`, and `e2e`: explicit source product/vintage/geography attribution across FEMA NRI/NFHL, USGS 3DEP, EPA AQS (historical), and DOT/BTS; strict separation between `current_operational_alerts` and `long_term_hazards`; mandatory non-definitive screening disclaimers (`is_definitive_advice: false`); protected HTTP API (`/api/economic/site-risk`); governed MCP operator tool (`assess_site_risk`); and lazy `/#/intelligence` UI inspection surface (`SiteRiskTab.svelte`).
+- **Artifacts produced & updated:**
+  - `packages/contracts/src/siteRisk.ts`, `packages/contracts/src/toolSchemas.ts`, `packages/contracts/src/toolRegistry.ts`, `packages/contracts/src/mcpPresentation.ts`, `packages/contracts/test/tools.test.ts`, & `packages/contracts/test/mcpPresentation.test.ts`: Added `SiteRiskAnalysisRequestSchema` and registered `assess_site_risk` across canonical tool registry and MCP presentation policy.
+  - `packages/ops-mcp/src/siteRiskTools.ts` (175 lines), `packages/ops-mcp/src/tools.ts`, `packages/ops-mcp/src/index.ts`, `packages/ops-mcp/test/executorParity.test.ts`, & `packages/ops-mcp/test/httpAdapter.test.ts`: Implemented shared `resolveAndAssessSiteRisk` (with per-clock seed adapter caching and parallel queries) and `handleAssessSiteRisk` registered in `MCP_OPERATOR_TOOL_NAMES` (13 tools).
+  - `apps/server/src/routes/siteRiskRoutes.ts` (182 lines) & `apps/server/src/routes/economic.ts`: Mounted protected `POST /api/economic/site-risk` route with `opsAuth`, tenant isolation, kill-switch, STASIS 423 guard, rate limiter, and `audit.intent`/`audit.outcome` WAL logging.
+  - `apps/server/test/phase11ExitGate.test.ts`, `apps/server/test/mcpAuthorization.test.ts`, & `apps/server/test/mcpHttp.test.ts`: Added 5-part Phase 11 Exit certification suite verifying explicit source product/vintage/geography, alert vs. long-term hazard invariance, non-coercion across 3DEP/AQS/BTS/insufficient-data, tenant isolation + STASIS + atomic audit persistence, and governed MCP parity (5/5 tests passed; N=200 screening benchmark `p95=0.357ms`).
+  - `apps/web/src/routes/intelligence/SiteRiskTab.svelte` (285 lines), `apps/web/src/routes/intelligence/MarketAnalysisInspector.svelte` (494 lines), & `apps/web/src/routes/intelligence/economicModulesData.ts`: Added `Site Risk & Access` inspector tab displaying non-definitive disclaimer banner, long-term structural hazards vs. current operational alerts, DOT/BTS accessibility context, and inspectable source attribution & data-gaps drawer; updated Phase 11 card to `INSPECTION READY`.
+  - `e2e/siteRiskInspector.spec.ts` & `e2e/intelligenceRoute.spec.ts`: Added Playwright E2E inspection spec and visually verified rendered Playwright output screenshot (site-risk-inspector.png).
+- **Verification Evidence & Performance:**
+  - Monorepo unit & integration tests: 19/19 turbo tasks successful (`pnpm turbo run test --concurrency=2`); `@gev/server` 32 files, 309 tests passed; `@gev/contracts` 24 files, 191 tests passed; `@gev/economic` 22 files, 188 tests passed; `@gev/providers` 23 files, 163 tests passed; `@gev/ops-mcp` 11 files, 72 tests passed.
+  - Phase 11 site-risk screening benchmark (N=200): `p95=0.357ms` (threshold `< 25ms`).
+  - Playwright E2E (`siteRiskInspector.spec.ts`, `intelligenceRoute.spec.ts`, `workforceAnalysisInspector.spec.ts`): 5/5 passed with condition-waits only; screenshot visually verified.
+  - Monorepo typecheck: 19/19 tasks passed (`pnpm typecheck`).
+  - Architecture check: clean, 0 large files (`pnpm architecture:check`).
+  - Web bundle budgets: all chunks within limits (`pnpm check:budgets`, `IntelligenceRoute` `12.07 KB` gzip `<= 25 KB`).
+  - Active Documentation Guard (ADG) & doc tests: verified after `MASTER_PLAN_V3.md` synchronization (`pnpm docs:check` & `pnpm docs:test`).
+- **Plan Advancement:** Phase 11 complete (`[x] 11 exit`). Advanced to `CURRENT_PHASE=12`, `NEXT_TASK=12.1`, `NEXT_TASK_STATUS=READY`.
+- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 12.1. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
 

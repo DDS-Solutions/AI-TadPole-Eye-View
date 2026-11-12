@@ -75,6 +75,36 @@ export const SiteRiskAccessibilitySummarySchema = z
   .strict();
 export type SiteRiskAccessibilitySummary = z.infer<typeof SiteRiskAccessibilitySummarySchema>;
 
+export const SiteRiskOperationalAlertInputSchema = z
+  .object({
+    id: z.string().min(1).max(128),
+    event: z.string().min(1).max(200),
+    severity: z.enum(['Extreme', 'Severe', 'Moderate', 'Minor', 'Unknown']),
+    headline: z.string().min(1).max(300).optional(),
+  })
+  .strict();
+export type SiteRiskOperationalAlertInputContract = z.infer<
+  typeof SiteRiskOperationalAlertInputSchema
+>;
+
+export const SiteRiskAnalysisRequestSchema = z
+  .object({
+    tenant_id: z.string().min(1).max(128).optional(),
+    geography: EconomicGeographySchema,
+    point: z
+      .object({
+        x: z.number().finite().min(-180).max(180),
+        y: z.number().finite().min(-90).max(90),
+      })
+      .strict()
+      .optional(),
+    include_current_alerts: z.boolean().default(true),
+    current_alerts: z.array(SiteRiskOperationalAlertInputSchema).max(25).optional(),
+  })
+  .strict();
+export type SiteRiskAnalysisRequest = z.input<typeof SiteRiskAnalysisRequestSchema>;
+export type ParsedSiteRiskAnalysisRequest = z.infer<typeof SiteRiskAnalysisRequestSchema>;
+
 export const SiteRiskAssessmentResultSchema = z
   .object({
     schema_version: z.literal(SITE_RISK_SCHEMA_VERSION),

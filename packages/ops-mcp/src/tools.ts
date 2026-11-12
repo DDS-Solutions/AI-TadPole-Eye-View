@@ -42,6 +42,7 @@ import {
   handleCompareLocations,
 } from './marketAnalysisTools.js';
 import { handleAnalyzeWorkforceContext } from './workforceAnalysisTools.js';
+import { handleAssessSiteRisk } from './siteRiskTools.js';
 
 export const MAX_SCENE_BYTES = 1024 * 1024;
 export const MCP_OPERATOR_TOOL_NAMES = [
@@ -57,6 +58,7 @@ export const MCP_OPERATOR_TOOL_NAMES = [
   'analyze_competition',
   'compare_locations',
   'analyze_workforce_context',
+  'assess_site_risk',
 ] as const satisfies readonly OperatorToolName[];
 export type McpOperatorToolName = (typeof MCP_OPERATOR_TOOL_NAMES)[number];
 const MCP_OPERATOR_TOOL_NAME_SET: ReadonlySet<string> = new Set(MCP_OPERATOR_TOOL_NAMES);
@@ -473,7 +475,8 @@ export function registerOperatorToolHandlers(ctx: OperatorContext): void {
     )
     .register('analyze_workforce_context', (input, executionContext) =>
       handleAnalyzeWorkforceContext(ctx, input, executionContext)
-    );
+    )
+    .register('assess_site_risk', (input) => handleAssessSiteRisk(ctx, input));
 }
 
 /** Executes through the one core lifecycle; this function performs no governance itself. */

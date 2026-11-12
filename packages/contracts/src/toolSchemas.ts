@@ -26,6 +26,12 @@ import {
   WorkforceAnalysisResultSchema,
   type WorkforceAnalysisResult,
 } from './workforceAnalysis.js';
+import {
+  SiteRiskAnalysisRequestSchema,
+  type SiteRiskAnalysisRequest,
+  SiteRiskAssessmentResultSchema,
+  type SiteRiskAssessmentResult,
+} from './siteRisk.js';
 import { AuditEntrySchema } from './ports.js';
 import {
   ProviderHealthSchema,
@@ -280,6 +286,11 @@ export type AnalyzeWorkforceContextInput = WorkforceAnalysisInput;
 export const AnalyzeWorkforceContextOutputSchema = WorkforceAnalysisResultSchema;
 export type AnalyzeWorkforceContextOutput = WorkforceAnalysisResult;
 
+export const AssessSiteRiskInputSchema = SiteRiskAnalysisRequestSchema;
+export type AssessSiteRiskInput = SiteRiskAnalysisRequest;
+export const AssessSiteRiskOutputSchema = SiteRiskAssessmentResultSchema;
+export type AssessSiteRiskOutput = SiteRiskAssessmentResult;
+
 export {
   BusinessContextInputSchema,
   type BusinessContextInput,
@@ -301,4 +312,8 @@ export {
   type WorkforceAnalysisInput,
   WorkforceAnalysisResultSchema,
   type WorkforceAnalysisResult,
+  SiteRiskAnalysisRequestSchema,
+  type SiteRiskAnalysisRequest,
+  SiteRiskAssessmentResultSchema,
+  type SiteRiskAssessmentResult,
 };
