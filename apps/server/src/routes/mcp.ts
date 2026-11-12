@@ -394,6 +394,26 @@ export function createMcpHttpRouter(options: McpHttpRouterOptions): McpHttpRoute
     });
     if (!tadpoleNarrowing.allowed) {
       void lease.release();
+      if (tadpoleNarrowing.code === 'stasis_active') {
+        return new Response(
+          JSON.stringify({
+            jsonrpc: '2.0',
+            error: {
+              code: -32003,
+              message: 'STASIS lock active; human resume required',
+              data: { code: 'STASIS_ACTIVE' },
+            },
+            id: null,
+          }),
+          {
+            status: 423,
+            headers: {
+              'content-type': 'application/json',
+              'cache-control': 'no-store',
+            },
+          }
+        );
+      }
       return mcpBearerChallengeResponse(tadpoleNarrowing.code, MCP_HTTP_RESOURCE_METADATA);
     }
     authorization = tadpoleNarrowing.authorization;

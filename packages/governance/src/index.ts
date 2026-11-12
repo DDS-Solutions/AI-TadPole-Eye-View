@@ -2,6 +2,7 @@ export * from './approvalGate.js';
 export * from './auditSink.js';
 export * from './auditRetention.js';
 export * from './budgetGovernor.js';
+export * from './stasisNotifier.js';
 export * from './budgetLedger.js';
 export * from './governanceDb.js';
 export * from './runtimeContext.js';

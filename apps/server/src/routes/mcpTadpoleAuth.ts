@@ -1,9 +1,13 @@
 import type { McpAuthorizationContext } from '@gev/contracts/mcp-authorization';
-import type { TadpoleCapabilityIssuer, TadpoleConnectionLifecycle } from '@gev/governance';
+import {
+  type TadpoleCapabilityIssuer,
+  type TadpoleConnectionLifecycle,
+  TadpoleLifecycleError,
+} from '@gev/governance';
 
 export type TadpoleHeaderPropagationResult =
   | { allowed: true; authorization: McpAuthorizationContext }
-  | { allowed: false; code: 'invalid_token' | 'insufficient_scope' };
+  | { allowed: false; code: 'invalid_token' | 'insufficient_scope' | 'stasis_active' };
 
 export function narrowMcpAuthorizationFromTadpoleHeaders(params: {
   authorization: McpAuthorizationContext;
@@ -53,7 +57,10 @@ export function narrowMcpAuthorizationFromTadpoleHeaders(params: {
         ...authorization,
         scopes: Object.freeze(narrowed) as [(typeof narrowed)[0], ...(typeof narrowed)[number][]],
       }) as McpAuthorizationContext;
-    } catch {
+    } catch (error) {
+      if (error instanceof TadpoleLifecycleError && error.code === 'STASIS_ACTIVE') {
+        return { allowed: false, code: 'stasis_active' };
+      }
       return { allowed: false, code: 'invalid_token' };
     }
   }
