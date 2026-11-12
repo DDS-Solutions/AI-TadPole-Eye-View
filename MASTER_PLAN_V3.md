@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-26
-**Status:** IN PROGRESS — Phase 11: task 11.4 ready; task 11.3 complete
+**Status:** IN PROGRESS — Phase 11: 11 exit ready; task 11.4 complete
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=11
-NEXT_TASK=11.4
+NEXT_TASK=11_EXIT
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
@@ -1967,13 +1967,13 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 - [x] 8.5 Add content/instruction separation and prompt-injection tests before any provider/economic text enters an LLM/Tadpole context.
 - [x] 8 exit: suppressed/unavailable/stale cases validate; provenance is required; no persistence or live calls; ADG and affected gates pass.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 11.4
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 11_EXIT
 
 ```text
-[SCOPE_CONTRACT] packages/contracts, packages/economic, packages/providers, fixtures. In scope: DOT/BTS transportation accessibility context contracts, synthetic seed fixtures, pinned-fetch adapter with kill switch (GEV_DOT_BTS_ENABLED), and pure site-risk synthesis functions combining FEMA NRI/NFHL, USGS 3DEP, EPA AQS, and DOT/BTS signals with explicit source provenance, current-alert vs long-term-hazard separation, and mandatory screening disclaimers. Out of scope: Phase 11 Exit UI/HUD integration, Phase 12 Tadpole M4 runtime, real-time AirNow.
-[PERFORMANCE_THRESHOLD] 100% unit and property tests green; site-risk and accessibility query p95 < 25ms in seed mode; zero live calls under GEV_SEED_MODE=1.
-[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2, §11.4; ADR 0035, ADR 0050, ADR 0052, ADR 0062, ADR 0063, ADR 0064; pure zero-I/O site-risk engine, strict DataProvenance, zero coercion of missing/unavailable signals, non-definitive screening disclaimers.
-[FAILURE_MODES] Framing site-risk outputs as definitive underwriting, engineering, or compliance advice; coercing unavailable hazard, pollutant, or accessibility signals to zero risk; conflating current alerts with long-term hazards; making live calls in seed mode.
+[SCOPE_CONTRACT] packages/contracts, packages/economic, packages/providers, apps/server, packages/ops-mcp, apps/web, e2e. In scope: Phase 11 Exit Gate certification ensuring FEMA NRI/NFHL, USGS 3DEP, EPA AQS, and DOT/BTS site-risk and accessibility screening exposes explicit source product/vintage/geography, keeps current operational alerts distinct from long-term hazards, avoids definitive advice framing, and wires governed API/MCP/UI inspection surfaces. Out of scope: Phase 12 Tadpole M4 runtime, real-time AirNow.
+[PERFORMANCE_THRESHOLD] Phase 11 Exit certification suite 100% green; site-risk screening p95 < 25ms in seed mode; zero live calls under GEV_SEED_MODE=1; Playwright E2E green with condition-waits only.
+[ARCHITECTURE_MODE] PLAN.md §2, §3, §8.2, §11 exit; ADR 0031, ADR 0035, ADR 0050, ADR 0052, ADR 0062, ADR 0063, ADR 0064, ADR 0065; shared governance, audit.intent/audit.outcome, zero coercion, non-definitive screening disclaimers.
+[FAILURE_MODES] Conflating current alerts with long-term hazards, presenting screening scores as definitive advice, omitting source product/vintage/geography, bypassing shared governance.
 ```
 
 ### Phase 9 — Economic R1: market and business footprint
@@ -1996,7 +1996,7 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 - [x] 11.1 Verify and implement FEMA NRI and NFHL products from current official service catalogs.
 - [x] 11.2 Implement USGS 3DEP via the current Elevation Point Query Service; do not use the retired `pqs.php` URL.
 - [x] 11.3 Implement EPA AQS as historical/regulatory monitoring data; never label it real-time AQI. Treat AirNow as separate future scope if current conditions are approved.
-- [ ] 11.4 Implement approved DOT/BTS accessibility context and pure site-risk functions with provenance and screening disclaimers.
+- [x] 11.4 Implement approved DOT/BTS accessibility context and pure site-risk functions with provenance and screening disclaimers.
 - [ ] 11 exit: source product/vintage/geography is explicit; current alerts and long-term hazards are distinct; no risk result is framed as definitive advice.
 
 ### Phase 12 — Tadpole M4 runtime
@@ -4582,6 +4582,33 @@ No later task is authorized merely because it appears in this plan.
 - **Remaining Risks / Open Notes:** Live EPA AQS API execution remains unverified against the remote upstream server (tested via `MockAgent` under `GEV_SEED_MODE=1` per PLAN.md §2 Principle 4) and requires `GEV_EPA_AQS_EMAIL` + `GEV_EPA_AQS_API_KEY` when authorized.
 - **Plan Advancement:** Task 11.3 complete (`[x] 11.3`). Advanced to `CURRENT_PHASE=11`, `NEXT_TASK=11.4`, `NEXT_TASK_STATUS=READY`.
 - **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 11.4. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 11.4 Implementation & Verification Checkpoint — 2026-11-12
+
+- **Branch:** `codex/task-11-4-dot-bts-site-risk` (branched after commit `6e2c399` for Task 11.3)
+- **Scope:** Implemented DOT/BTS transportation accessibility context contracts, synthetic seed fixture, `pinnedFetch` adapter (`GEV_DOT_BTS_ENABLED`), and pure multi-source site-risk screening engine (`assessSiteRisk`) combining FEMA NRI/NFHL, USGS 3DEP, EPA AQS, and DOT/BTS with strict separation of current operational alerts vs. long-term structural hazards, explicit source product/vintage/geography attribution, and mandatory non-definitive screening disclaimers adhering to PLAN.md §10 Task 11.4, ADR 0035, ADR 0050, ADR 0052, and ADR 0065.
+- **Artifacts produced & updated:**
+  - `packages/contracts/src/dotBts.ts` (150 lines), `packages/contracts/src/siteRisk.ts` (118 lines), & `packages/contracts/src/index.ts`: Strict Zod schemas for DOT/BTS accessibility metrics (`DotBtsAccessibilityRecordSchema` blocking `available` status on uncovered geographies), raw Socrata wire parsing, `DOT_BTS_SCREENING_DISCLAIMER`, `SiteRiskAssessmentResultSchema` (`is_definitive_advice: false`, `SITE_RISK_SCREENING_DISCLAIMER`, strict separation between `long_term_hazards` and `current_operational_alerts`, and zero-signal `insufficient_data` enforcement).
+  - `packages/contracts/test/dotBtsSiteRiskContracts.test.ts`: Contracts tests verifying non-coercion and disclaimer invariants (3/3 tests passed).
+  - `packages/economic/src/dotBtsDictionary.ts` (196 lines), `packages/economic/src/siteRiskAnalysis.ts` (432 lines), & `packages/economic/src/index.ts`: Pure zero-I/O DOT/BTS validators/classifiers (`parseDotBtsMeasurement`, `classifyDotBtsAccessibilityTier`, `classifyDotBtsFreightExposure`, `matchesDotBtsGeography`) and `assessSiteRisk` multi-source screening engine.
+  - `packages/economic/src/sourceRegistry.ts`: Advanced `dot-bts-access` status from `planned` to `seed` with `seed_fixture_id: 'dot-bts-synthetic-v1'`.
+  - `packages/economic/test/siteRiskAnalysis.test.ts` & `packages/economic/test/sourceRegistry.test.ts`: Unit and `fast-check` property tests verifying zero-coercion, current-alert vs. long-term-hazard separation, multi-source gap reporting, and registry state (5/5 and 4/4 tests passed).
+  - `fixtures/dot-bts-synthetic-v1.json`: Deterministic synthetic DOT/BTS accessibility fixture across four metro counties plus an uncovered remote Alaska county (`is_covered: false`).
+  - `packages/providers/src/dotBts.ts` (285 lines) & `packages/providers/src/index.ts`: `DotBtsAdapter` enforcing `GEV_DOT_BTS_ENABLED`, `GEV_SEED_MODE=1`, and SSRF-allowlisted `pinnedFetch` (`data.bts.gov/resource`).
+  - `packages/providers/test/dotBts.test.ts`: Adapter tests covering seed queries, uncovered non-coercion, kill switch, seed mode violation, `MockAgent` live `pinnedFetch`, SSRF rejection, and query latency benchmark (4/4 tests passed).
+  - `docs/adr/0065-dot-bts-accessibility-and-site-risk-screening-architecture.md` & `docs/adr/INDEX.md`: Accepted ADR 0065 and indexed.
+  - `RUNBOOK.md`: Added `dot-bts-synthetic-v1.json` and Section 24 documenting DOT/BTS accessibility and site-risk screening operations.
+- **Verification Evidence & Performance:**
+  - `@gev/contracts` test suite: 24 files, 190 tests passed (`pnpm --filter @gev/contracts test`).
+  - `@gev/economic` test suite: 22 files, 188 tests passed (`pnpm --filter @gev/economic test`).
+  - `@gev/providers` test suite: 23 files, 163 tests passed (`pnpm --filter @gev/providers test`).
+  - DOT/BTS seed-mode query latency benchmark (N=100): p50=0.133ms, p95=0.334ms (threshold < 25ms p95).
+  - Monorepo typecheck: 19/19 turbo tasks successful, 0 errors (`pnpm turbo run typecheck`).
+  - Biome check on modified/created files: 13 files checked, 0 errors, 0 warnings.
+  - Architecture check: clean, 0 large files (`pnpm architecture:check`).
+  - Active Documentation Guard (ADG) and doc tests: verified after `MASTER_PLAN_V3.md` synchronization (`pnpm docs:check` & `pnpm docs:test`).
+- **Plan Advancement:** Task 11.4 complete (`[x] 11.4`). Advanced to `CURRENT_PHASE=11`, `NEXT_TASK=11_EXIT`, `NEXT_TASK_STATUS=READY`.
+- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 11_EXIT. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
 

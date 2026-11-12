@@ -254,6 +254,7 @@ See [ADR 0049](./docs/adr/0049-registry-derived-layer-access-read-model.md).
   - `fema-nri-synthetic-v1.json` (FEMA National Risk Index)
   - `usgs-3dep-synthetic-v1.json` (USGS 3DEP Elevation Point Query Service)
   - `epa-aqs-synthetic-v1.json` (EPA AQS Historical Regulatory Air Quality Monitoring)
+  - `dot-bts-synthetic-v1.json` (DOT/BTS Transportation Accessibility Benchmarks)
   - `osm-commercial-synthetic-v1.json` and `osm-commercial-evidence-synthetic-v1.json` (OpenStreetMap Commercial POIs)
 - Every fixture record carries mandatory `DataProvenance` with `mode: "seed"` and `source_mode: "seed"`. Fixtures labeled with live mode are rejected immediately by contract validation.
 - Missing, suppressed, or low-sample economic estimates retain their explicit discriminated status (`suppressed`, `unavailable`, `not_applicable`) and are never coerced to zero.
@@ -580,6 +581,16 @@ The EPA Air Quality System (AQS) adapter (`packages/providers/src/epaAqs.ts`) an
 - **Non-Coercion of Unmonitored Pollutants & Zero-Observation Outages:** Not every station monitors all six criteria pollutants, and maintenance outages produce `observation_count: 0`. Missing, unmonitored, or zero-observation entries MUST evaluate to `{ status: 'unavailable' }` and never coerce to `0.0` (clean air). Legitimate `0.0` readings with `is_monitored: true` and `observation_count > 0` remain `available`.
 - **Mandatory Historical Disclaimer:** All query results enforce `data_classification: 'historical_regulatory_monitoring'`, `is_real_time: false`, and `EPA_AQS_HISTORICAL_DISCLAIMER`.
 - **Kill-Switch, Seed Enforcement & Credential Hygiene:** Governed by `GEV_EPA_AQS_ENABLED` (default: 1) failing closed with `EpaAqsDisabledError` and `GEV_SEED_MODE=1` failing closed with `EpaAqsSeedModeViolationError`. Live requests require `GEV_EPA_AQS_EMAIL` and `GEV_EPA_AQS_API_KEY`, use `pinnedFetch` restricted to `aqs.epa.gov/data/api`, and redact query-string credentials from any propagated errors.
+
+## 24. DOT/BTS Accessibility & Site-Risk Screening Operations (ADR 0065)
+
+The DOT/BTS accessibility adapter (`packages/providers/src/dotBts.ts`) and pure site-risk screening engine (`packages/economic/src/siteRiskAnalysis.ts`) govern Phase 11 site-risk and accessibility evaluations:
+
+- **Strict Alert vs. Long-Term Hazard Separation:** `assessSiteRisk` isolates active operational alerts (`current_operational_alerts`, `horizon: 'current_operational_alert'`) from structural hazards (`long_term_hazards`, `horizon: 'long_term_structural_hazard'`). Transient active alerts never modify `overall_screening_score`.
+- **Non-Definitive Screening Disclaimers:** Outputs enforce `is_definitive_advice: false`, `SITE_RISK_SCREENING_DISCLAIMER`, and `DOT_BTS_SCREENING_DISCLAIMER`.
+- **Non-Coercion of Uncovered Geographies & Zero-Signal States:** Uncovered DOT/BTS geographies (`is_covered: false`) evaluate to `unavailable`. When zero long-term hazard signals are available, `overall_screening_score` evaluates to `unavailable` and `screening_tier` evaluates to `insufficient_data` (never coerced to `0` / low concern).
+- **Kill-Switch & Seed Enforcement:** Governed by `GEV_DOT_BTS_ENABLED` (default: 1) failing closed with `DotBtsDisabledError` and `GEV_SEED_MODE=1` failing closed with `DotBtsSeedModeViolationError`. Live queries are restricted via `pinnedFetch` to `data.bts.gov/resource`.
+
 
 
 
