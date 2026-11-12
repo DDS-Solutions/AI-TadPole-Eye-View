@@ -132,6 +132,18 @@ function runNode(label, entry, args) {
         resolve({ stdout, stderr });
         return;
       }
+      // On Windows with Node 26+, libuv can trigger an assertion during child process termination
+      // (UV_HANDLE_CLOSING in src\win\async.c, exit code 3221226505) after the scenario finishes.
+      // If stdout confirms all checks succeeded with 0 failed, resolve cleanly.
+      if (
+        process.platform === 'win32' &&
+        code === 3221226505 &&
+        stdout.includes('0 failed') &&
+        stderr.includes('UV_HANDLE_CLOSING')
+      ) {
+        resolve({ stdout, stderr });
+        return;
+      }
       const output = `${stdout}\n${stderr}`.trim();
       reject(
         new Error(
@@ -286,7 +298,7 @@ try {
   );
   if (
     !Array.isArray(inspectorTools) ||
-    inspectorTools.length !== 7 ||
+    inspectorTools.length !== 13 ||
     inspectorErrors.length !== 0
   ) {
     throw new Error(

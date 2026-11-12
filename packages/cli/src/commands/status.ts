@@ -14,7 +14,7 @@ export interface StatusOptions {
   governanceDbPath?: string;
 }
 
-export const PROJECT_PHASE = 'Phase 12 — Tadpole M4 runtime';
+export const PROJECT_PHASE = 'Phase 13 — Economic R4: governed SMB digital twin';
 
 export async function runStatus(options: StatusOptions = {}): Promise<void> {
   const clock = new SystemClock();
