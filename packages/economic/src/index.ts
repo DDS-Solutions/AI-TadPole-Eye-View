@@ -18,3 +18,4 @@ export * from './blsLauDictionary.js';
 export * from './workforceAnalysis.js';
 export * from './femaDictionary.js';
 export * from './usgs3depConversions.js';
+export * from './epaAqsDictionary.js';
