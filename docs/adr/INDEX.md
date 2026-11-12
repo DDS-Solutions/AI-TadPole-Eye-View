@@ -54,4 +54,5 @@ This directory records all significant architectural and structural decisions ma
 | [0062](./0062-fema-nri-and-nfhl-adapters-architecture.md) | FEMA NRI and NFHL natural hazard and flood risk adapters, variable dictionary, non-coercion, and screening disclaimers | Accepted | 2026-09-26 |
 | [0063](./0063-usgs-3dep-elevation-adapter-architecture.md) | USGS 3DEP Elevation Point Query Service adapter, vertical datums, unit conversions, and non-coercion invariants | Accepted | 2026-09-27 |
 | [0064](./0064-epa-aqs-historical-monitoring-adapter-architecture.md) | EPA AQS Historical Regulatory Monitoring Adapter, Criteria Pollutant Dictionary, and Non-Coercion Invariants | Accepted | 2026-11-12 |
+| [0065](./0065-dot-bts-accessibility-and-site-risk-screening-architecture.md) | DOT/BTS Transportation Accessibility Adapter and Pure Site-Risk Screening Engine | Accepted | 2026-11-12 |
 
