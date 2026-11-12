@@ -39,14 +39,14 @@ export function issueSignedCapToken(
 }
 
 /**
- * Verifies an Ed25519-signed Capability Token.
+ * Verifies an Ed25519-signed Capability Token and returns its validated claims.
  * Accepts either a CapToken object or a raw token string.
  */
-export function verifySignedCapToken(
+export function verifySignedCapTokenWithClaims(
   capToken: CapToken | string,
-  publicKeyPem: string,
+  publicKey: crypto.KeyLike,
   clock: SimClock = new SystemClock()
-): CapabilityScope[] | null {
+): CapTokenClaims | null {
   try {
     const rawToken = typeof capToken === 'string' ? capToken : capToken.token;
     const parts = rawToken.split('.');
@@ -69,19 +69,12 @@ export function verifySignedCapToken(
       return null;
     }
 
-    const claimsJson = claimsBuffer.toString('utf-8');
-
-    const isValidSig = crypto.verify(
-      null,
-      Buffer.from(claimsJson, 'utf-8'),
-      publicKeyPem,
-      sigBuffer
-    );
+    const isValidSig = crypto.verify(null, claimsBuffer, publicKey, sigBuffer);
     if (!isValidSig) {
       return null;
     }
 
-    const claims = CapTokenClaimsSchema.parse(JSON.parse(claimsJson));
+    const claims = CapTokenClaimsSchema.parse(JSON.parse(claimsBuffer.toString('utf-8')));
 
     // Check expiration against clock
     const now = clock.now();
@@ -90,10 +83,22 @@ export function verifySignedCapToken(
       return null; // Expired
     }
 
-    return claims.scopes;
+    return claims;
   } catch {
     return null;
   }
+}
+
+/**
+ * Verifies an Ed25519-signed Capability Token.
+ * Accepts either a CapToken object or a raw token string.
+ */
+export function verifySignedCapToken(
+  capToken: CapToken | string,
+  publicKey: crypto.KeyLike,
+  clock: SimClock = new SystemClock()
+): CapabilityScope[] | null {
+  return verifySignedCapTokenWithClaims(capToken, publicKey, clock)?.scopes ?? null;
 }
 
 /**

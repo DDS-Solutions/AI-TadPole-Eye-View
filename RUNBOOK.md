@@ -593,11 +593,19 @@ The DOT/BTS accessibility adapter (`packages/providers/src/dotBts.ts`) and pure 
 
 ## 25. Tadpole AgentEnvelope & Capability Propagation Operations (ADR 0038)
 
-The Tadpole session lifecycle (`packages/governance/src/agentEnvelope.ts`) and MCP HTTP narrowing boundary (`apps/server/src/routes/mcpTadpoleAuth.ts`) enforce fail-closed identity and capability propagation:
+The Tadpole session lifecycle (`packages/governance/src/agentEnvelope.ts`, `packages/governance/src/tadpoleSessionLifecycle.ts`) and MCP HTTP narrowing boundary (`apps/server/src/routes/mcpTadpoleAuth.ts`) enforce fail-closed identity and capability propagation:
 
 - **Shared Runtime Ports:** `GovernanceRuntimeContext` owns concrete `TadpoleCapabilityIssuer` (Port 4, Ed25519-signed capability tokens) and `TadpoleAgentEnvelope` (Port 5, SHA-256-digested 4-Pillar briefs).
 - **Least-Privilege Scope Intersection:** Effective tool scopes are strictly the intersection of `McpAuthorizationContext.scopes`, `TadpoleAgentSession.granted_scopes`, and `CapToken.claims.scopes`. Neither `x-tadpole-cap-token` nor `x-tadpole-session-id` can escalate scopes beyond the verified OAuth bearer context.
 - **STASIS & Expiration Enforcement:** When `BudgetGovernor` trips STASIS, `TadpoleConnectionLifecycle` suspends active sessions to `suspended_stasis` immediately. Expired, revoked, or subject-mismatched capability tokens fail closed with `invalid_token` / `CAPABILITY_DENIED`.
+
+## 26. M1–M4 Governed Tadpole Showcase & Prerequisite Gate (Task 12.2)
+
+End-to-end M1–M4 readiness verification (`packages/governance/src/m1M4Readiness.ts`) and the executable CLI workflow (`pnpm gev showcase`) validate the complete governance progression before failure drills:
+
+- **M1 -> M2 -> M3 Prerequisite Gate (`assertM1ToM3Prerequisites`):** Rejects demo/unavailable approval gates (`LocalM2ApprovalDemoGate` / `UnavailableApprovalGate`), corrupted SQLite hash chains, active `STASIS`, unresolved `IN_DOUBT` operations, or `:memory:`-only authority when shared SQLite is required.
+- **Independent Audit Chain Verification (`verifyIndependentAuditChain`):** Verifies cryptographic hash links in `SqliteAuditSink` and enforces paired `audit.intent` -> `audit.outcome` WAL records across `governance.resume`, session lifecycle events, and governed MCP tool invocations without relying on a disconnected shadow helper.
+- **Executable Verification:** Run `pnpm gev showcase --json` for a local SQLite M1->M2->M3->M4 showcase run or `pnpm --filter @gev/server test:performance` for the isolated HTTP MCP `< 10ms p95` latency benchmark.
 
 
 

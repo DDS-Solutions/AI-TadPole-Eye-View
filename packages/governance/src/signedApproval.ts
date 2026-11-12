@@ -42,13 +42,13 @@ export function canonicalizeSignedApprovalPayload(payload: SignedApprovalPayload
 
 export function signApprovalPayload(
   payloadInput: SignedApprovalPayload,
-  privateKeyPem: string
+  privateKey: crypto.KeyLike
 ): SignedApprovalEnvelope {
   const payload = SignedApprovalPayloadSchema.parse(payloadInput);
   const signature = crypto.sign(
     null,
     Buffer.from(canonicalizeSignedApprovalPayload(payload), 'utf8'),
-    privateKeyPem
+    privateKey
   );
   return SignedApprovalEnvelopeSchema.parse({
     algorithm: 'Ed25519',
@@ -96,9 +96,11 @@ export interface ApprovalNonceStore {
 
 export class SqliteApprovalNonceStore implements ApprovalNonceStore {
   private readonly db: DatabaseSync;
+  private readonly ownsDb: boolean;
 
-  constructor(options: { dbPath?: string; clock?: SimClock } = {}) {
-    this.db = openGovernanceDatabase(options).db;
+  constructor(options: { dbPath?: string; clock?: SimClock; db?: DatabaseSync } = {}) {
+    this.ownsDb = options.db === undefined;
+    this.db = options.db ?? openGovernanceDatabase(options).db;
   }
 
   consume(payload: SignedApprovalPayload, consumedAt: string): void {
@@ -125,7 +127,9 @@ export class SqliteApprovalNonceStore implements ApprovalNonceStore {
   }
 
   close(): void {
-    this.db.close();
+    if (this.ownsDb) {
+      this.db.close();
+    }
   }
 }
 
@@ -325,6 +329,7 @@ export interface LocalSignedApprovalProviderOptions {
 export class LocalSignedApprovalProvider implements SignedApprovalProvider {
   private readonly options: LocalSignedApprovalProviderOptions;
   private readonly clock: SimClock;
+  private readonly privateKey: crypto.KeyObject;
 
   constructor(options: LocalSignedApprovalProviderOptions) {
     if (process.env.NODE_ENV === 'production') {
@@ -332,6 +337,7 @@ export class LocalSignedApprovalProvider implements SignedApprovalProvider {
     }
     this.options = options;
     this.clock = options.clock ?? new SystemClock();
+    this.privateKey = crypto.createPrivateKey(options.privateKeyPem);
   }
 
   async decide(requestInput: ApprovalRequest): Promise<ApprovalProviderResponse> {
@@ -361,7 +367,7 @@ export class LocalSignedApprovalProvider implements SignedApprovalProvider {
     });
     return {
       decision: 'approved',
-      signed_approval: signApprovalPayload(payload, this.options.privateKeyPem),
+      signed_approval: signApprovalPayload(payload, this.privateKey),
     };
   }
 }
