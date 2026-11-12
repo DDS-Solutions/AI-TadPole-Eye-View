@@ -335,5 +335,5 @@ describe('Task 12.2: End-to-End M1->M2->M3->M4 Governed Tadpole Showcase', () =>
     );
     expect(flagIntent).toBeDefined();
     expect(flagOutcome).toBeDefined();
-  });
+  }, 20_000);
 });

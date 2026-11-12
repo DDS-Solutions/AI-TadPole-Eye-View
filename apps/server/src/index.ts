@@ -369,7 +369,7 @@ export function createApp(options: CreateAppOptions = {}) {
   );
 
   app.route('/ops/audit', createAuditIntegrityRouter(auditSink));
-  app.route('/ops/audit', createAuditStreamRouter(auditSink, clock));
+  app.route('/ops/audit', createAuditStreamRouter(auditSink, { clock, budgetGovernor }));
   app.route(
     '/ops/layer-access',
     createLayerAccessRouter({

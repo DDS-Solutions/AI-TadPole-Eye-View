@@ -3,7 +3,6 @@ import {
   type Actor,
   type BudgetGovernor,
   type BudgetState,
-  BudgetState as BudgetStateSchema,
   type CostEstimate,
   CostEstimate as CostEstimateSchema,
   type TripCode,
@@ -17,33 +16,18 @@ import {
   withImmediateTransaction,
 } from './governanceDb.js';
 import { fromMicrousd, toMicrousd } from './money.js';
+import {
+  type BudgetStateRow,
+  type StasisEvent,
+  type StasisListener,
+  StasisNotificationBus,
+  type TenantBudgetStateRow,
+  assertValidBudgetStateRow,
+  mapBudgetStateRow,
+  parseWarnThreshold,
+} from './stasisNotifier.js';
 
-interface BudgetStateRow {
-  period_start: string;
-  spent_microusd: number;
-  cap_microusd: number;
-  warn_threshold_pct: number;
-  stasis_active: number;
-  trip_code: string | null;
-  trip_at: string | null;
-  resumed_by: string | null;
-  stasis_message: string | null;
-  revision: number;
-}
-
-interface TenantBudgetStateRow {
-  tenant_id: string;
-  period_start: string;
-  spent_microusd: number;
-  cap_microusd: number;
-  warn_threshold_pct: number;
-  stasis_active: number;
-  trip_code: string | null;
-  trip_at: string | null;
-  resumed_by: string | null;
-  stasis_message: string | null;
-  revision: number;
-}
+export type { StasisEvent, StasisListener } from './stasisNotifier.js';
 
 export interface CapBudgetGovernorOptions {
   capUsd?: number;
@@ -53,13 +37,6 @@ export interface CapBudgetGovernorOptions {
   dbPath?: string;
   db?: DatabaseSync;
   resolvedDbPath?: string;
-}
-
-function parseWarnThreshold(value: number): number {
-  if (!Number.isInteger(value) || value < 1 || value > 100) {
-    throw new Error('warnThresholdPct must be an integer from 1 through 100');
-  }
-  return value;
 }
 
 /**
@@ -72,6 +49,7 @@ export class CapBudgetGovernor implements BudgetGovernor {
   private readonly db: DatabaseSync;
   private readonly dbPath: string;
   private readonly ownsDb: boolean;
+  private readonly stasisBus = new StasisNotificationBus();
   private closed = false;
 
   constructor(options: CapBudgetGovernorOptions = {}) {
@@ -154,13 +132,14 @@ export class CapBudgetGovernor implements BudgetGovernor {
     const estimate = CostEstimateSchema.parse(action.estimate);
     const estimateMicrousd = toMicrousd(estimate.max, 'estimate.max', true, 'up');
 
-    return withImmediateTransaction(this.db, () => {
+    let trippedEvent: StasisEvent | undefined;
+    const verdict = withImmediateTransaction(this.db, () => {
       const row = this.readRequiredRow();
       const remainingMicrousd = Math.max(0, row.cap_microusd - row.spent_microusd);
 
       if (row.stasis_active === 1) {
         return {
-          allowed: false,
+          allowed: false as const,
           reason: (row.trip_code ?? 'BUDGET_BREACH') as TripCode,
           message: row.stasis_message ?? 'System is locked in STASIS mode.',
         };
@@ -169,21 +148,52 @@ export class CapBudgetGovernor implements BudgetGovernor {
       if (row.spent_microusd + estimateMicrousd > row.cap_microusd) {
         const message = `Estimated spend max $${estimate.max.toFixed(2)} for ${action.action} exceeds remaining cap $${fromMicrousd(remainingMicrousd).toFixed(2)} (Cap: $${fromMicrousd(row.cap_microusd).toFixed(2)}, Spent: $${fromMicrousd(row.spent_microusd).toFixed(2)}).`;
         this.writeTrip('BUDGET_BREACH', message);
-        return { allowed: false, reason: 'BUDGET_BREACH', message };
+        trippedEvent = {
+          kind: 'stasis.entered',
+          ts: this.clock.iso(),
+          stasis_active: true,
+          trip_code: 'BUDGET_BREACH',
+          message,
+          revision: row.revision + 1,
+        };
+        return { allowed: false as const, reason: 'BUDGET_BREACH' as const, message };
       }
 
       return {
-        allowed: true,
+        allowed: true as const,
         remaining_usd: fromMicrousd(remainingMicrousd - estimateMicrousd),
       };
     });
+    if (trippedEvent) {
+      this.stasisBus.emit(trippedEvent);
+    }
+    return verdict;
   }
 
   trip(reason: TripCode, message: string): void {
     if (!message.trim()) {
       throw new Error('STASIS trip message cannot be empty');
     }
-    withImmediateTransaction(this.db, () => this.writeTrip(reason, message));
+    const revision = withImmediateTransaction(this.db, () => {
+      this.writeTrip(reason, message);
+      return this.readRequiredRow().revision;
+    });
+    this.stasisBus.emit({
+      kind: 'stasis.entered',
+      ts: this.clock.iso(),
+      stasis_active: true,
+      trip_code: reason,
+      message,
+      revision,
+    });
+  }
+
+  subscribeStasis(listener: StasisListener): () => void {
+    return this.stasisBus.subscribe(listener);
+  }
+
+  notifyStasis(event: StasisEvent): void {
+    this.stasisBus.emit(event);
   }
 
   state(): BudgetState {
@@ -200,6 +210,7 @@ export class CapBudgetGovernor implements BudgetGovernor {
 
   recordSpend(amountUsd: number): void {
     const amountMicrousd = toMicrousd(amountUsd, 'Spend amount', true, 'up');
+    let trippedEvent: StasisEvent | undefined;
     withImmediateTransaction(this.db, () => {
       const row = this.readRequiredRow();
       const spentMicrousd = row.spent_microusd + amountMicrousd;
@@ -233,7 +244,20 @@ export class CapBudgetGovernor implements BudgetGovernor {
           shouldTrip ? null : row.resumed_by,
           message
         );
+      if (shouldTrip) {
+        trippedEvent = {
+          kind: 'stasis.entered',
+          ts: now,
+          stasis_active: true,
+          trip_code: 'BUDGET_BREACH',
+          message: message ?? 'Budget cap exceeded',
+          revision: row.revision + 1,
+        };
+      }
     });
+    if (trippedEvent) {
+      this.stasisBus.emit(trippedEvent);
+    }
   }
 
   /** Human-only resume mechanism (PLAN.md §9 and RUNBOOK.md STASIS). */
@@ -242,7 +266,7 @@ export class CapBudgetGovernor implements BudgetGovernor {
       throw new Error('STASIS resume requires a human actor');
     }
 
-    withImmediateTransaction(this.db, () => {
+    const revision = withImmediateTransaction(this.db, () => {
       const unresolved = this.db
         .prepare(
           `SELECT COUNT(*) AS count FROM governance_budget_operations WHERE state = 'IN_DOUBT'`
@@ -261,6 +285,14 @@ export class CapBudgetGovernor implements BudgetGovernor {
           WHERE singleton_id = 1
         `)
         .run(resumedBy);
+      return this.readRequiredRow().revision;
+    });
+    this.stasisBus.emit({
+      kind: 'stasis.resumed',
+      ts: this.clock.iso(),
+      stasis_active: false,
+      resumed_by: resumedBy,
+      revision,
     });
   }
 
@@ -404,39 +436,12 @@ export class CapBudgetGovernor implements BudgetGovernor {
     if (!row) {
       throw new Error('Durable governance budget state is missing; refusing fallback');
     }
-    if (
-      !Number.isSafeInteger(row.spent_microusd) ||
-      row.spent_microusd < 0 ||
-      !Number.isSafeInteger(row.cap_microusd) ||
-      row.cap_microusd <= 0 ||
-      (row.stasis_active !== 0 && row.stasis_active !== 1) ||
-      (row.resumed_by !== null && row.resumed_by !== 'human')
-    ) {
-      throw new Error('Durable governance budget row is invalid');
-    }
-    this.toBudgetState(row);
-    if (!Number.isSafeInteger(row.revision) || row.revision < 0) {
-      throw new Error('Durable governance budget revision is invalid');
-    }
+    assertValidBudgetStateRow(row);
     return row;
   }
 
-  private toBudgetState(row: BudgetStateRow): BudgetState {
-    return BudgetStateSchema.parse({
-      stasis_active: row.stasis_active === 1,
-      period_start: row.period_start,
-      spent_usd: fromMicrousd(row.spent_microusd),
-      cap_usd: fromMicrousd(row.cap_microusd),
-      warn_threshold_pct: row.warn_threshold_pct,
-      last_trip:
-        row.trip_code && row.trip_at
-          ? {
-              code: row.trip_code,
-              at: row.trip_at,
-              ...(row.resumed_by ? { resumed_by: row.resumed_by } : {}),
-            }
-          : null,
-    });
+  private toBudgetState(row: BudgetStateRow | TenantBudgetStateRow): BudgetState {
+    return mapBudgetStateRow(row);
   }
 
   private writeTrip(reason: TripCode, message: string): void {

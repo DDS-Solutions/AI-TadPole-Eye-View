@@ -168,6 +168,38 @@ export function createGovernanceRuntimeContext(
     agentEnvelope,
   });
 
+  // Immediately suspend active Tadpole sessions when STASIS trips, and propagate
+  // ledger-triggered STASIS transitions (e.g. reserve/markInDoubt) to subscribers.
+  let lastNotifiedStasis = budgetGovernor.state().stasis_active;
+  const unsubStasis = budgetGovernor.subscribeStasis((event) => {
+    lastNotifiedStasis = event.stasis_active;
+    if (event.kind === 'stasis.entered') {
+      connectionLifecycle.enterStasis(event.message ?? event.trip_code ?? 'STASIS_ACTIVE');
+    }
+  });
+  const unsubAudit = auditSink.subscribe((entry) => {
+    if (closed || entry.kind !== 'audit.outcome' || entry.status === 'ok') {
+      return;
+    }
+    try {
+      const govState = budgetGovernor.state();
+      if (govState.stasis_active && !lastNotifiedStasis) {
+        lastNotifiedStasis = true;
+        budgetGovernor.notifyStasis({
+          kind: 'stasis.entered',
+          ts: clock.iso(),
+          stasis_active: true,
+          trip_code: (govState.last_trip?.code ??
+            'BUDGET_BREACH') as import('@gev/contracts').TripCode,
+          message: entry.error ?? 'Budget/ledger operation tripped STASIS',
+          revision: budgetGovernor.stateRevision(),
+        });
+      }
+    } catch {
+      // Ignore if context is closing.
+    }
+  });
+
   return {
     clock,
     auditSink,
@@ -206,6 +238,8 @@ export function createGovernanceRuntimeContext(
         return;
       }
       closed = true;
+      unsubStasis();
+      unsubAudit();
       for (const timer of activeReapers) {
         clearInterval(timer);
       }

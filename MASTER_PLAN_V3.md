@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-26
-**Status:** IN PROGRESS — Phase 12: task 12.2 complete; task 12.3 ready
+**Status:** IN PROGRESS — Phase 12: task 12.3 complete; phase 12 exit ready
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=12
-NEXT_TASK=12.3
+NEXT_TASK=12_EXIT
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
@@ -1967,13 +1967,13 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 - [x] 8.5 Add content/instruction separation and prompt-injection tests before any provider/economic text enters an LLM/Tadpole context.
 - [x] 8 exit: suppressed/unavailable/stale cases validate; provenance is required; no persistence or live calls; ADG and affected gates pass.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 12.3
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 12_EXIT
 
 ```text
-[SCOPE_CONTRACT] packages/governance, packages/ops-mcp, packages/core, apps/server, docs. In scope: execute automated failure drills across invalid/tampered Ed25519 signatures, M2 approval and CapToken replay, SQLite ledger timeout and IN_DOUBT recovery, unexpected Tadpole MCP disconnect and cancellation, budget breach with STASIS notification, and human-only STASIS resume. Out of scope: Phase 12 Exit Gate certification and Phase 13 persistent BusinessContext.
-[PERFORMANCE_THRESHOLD] 100% failure-drill and regression tests green; zero fail-open fallbacks, leaked charges, or unaudited failure transitions; STASIS propagates fail-closed within 1 request cycle.
-[ARCHITECTURE_MODE] PLAN.md §2, §3, §6, §9.3, §12.3; ADR 0031, ADR 0032, ADR 0038, ADR 0041, ADR 0042, ADR 0043, ADR 0044; single shared SQLite governance runtime; idempotent operation_id preservation across retries and timeouts.
-[FAILURE_MODES] Silent auto-approval or fail-open fallback on signature/ledger error, duplicate spend settlement after timeout, non-human STASIS resume, swallowed disconnect without audit outcome or refund.
+[SCOPE_CONTRACT] packages/contracts, packages/core, packages/governance, packages/ops-mcp, packages/cli, apps/server, docs. In scope: certify Phase 12 Exit Gate proving a Tadpole agent profile operates authenticated HTTP MCP, all mutations pass M1/M2/M3 governance, spend settles idempotently across retries and timeouts, and independent audit proofs verify cleanly across Tasks 12.1–12.3. Out of scope: Phase 13 persistent BusinessContext and unapproved live external API integrations.
+[PERFORMANCE_THRESHOLD] 100% affected unit, integration, and performance suites green; Task 12.1 < 2ms p95 and Task 12.2 < 10ms p95; ADG, architectural-drift, and bundle-budget gates pass cleanly.
+[ARCHITECTURE_MODE] PLAN.md §2, §3, §6, §9.3, §10 Phase 12 exit; ADR 0029, ADR 0031, ADR 0032, ADR 0038, ADR 0041, ADR 0042, ADR 0043, ADR 0044; single shared SQLite governance runtime; zero fail-open fallbacks.
+[FAILURE_MODES] Unverified M1-M3 readiness, duplicate or leaked spend charges, bypassed signed approval, fail-open fallback on STASIS/signature/disconnect, stale plan or documentation sync.
 ```
 
 ### Phase 9 — Economic R1: market and business footprint
@@ -2003,7 +2003,7 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 
 - [x] 12.1 Finalize AgentEnvelope mapping, connection lifecycle, identity, and capability propagation after OQ-1.
 - [x] 12.2 Demonstrate M1 observation, M2 signed approval, M3 shared ledger/STASIS, and verified audit chain before M4.
-- [ ] 12.3 Run failure drills: invalid signature, replay, ledger timeout, disconnect, budget breach, STASIS notification, and human resume.
+- [x] 12.3 Run failure drills: invalid signature, replay, ledger timeout, disconnect, budget breach, STASIS notification, and human resume.
 - [ ] 12 exit: a real Tadpole agent uses authenticated HTTP MCP; all mutations are governed; spend settles idempotently; audit proof verifies independently.
 
 ### Phase 13 — Economic R4: governed SMB digital twin
@@ -4678,6 +4678,31 @@ No later task is authorized merely because it appears in this plan.
   - Active Documentation Guard (ADG) & doc tests: verified after `MASTER_PLAN_V3.md` synchronization (`pnpm docs:check` & `pnpm docs:test`).
 - **Plan Advancement:** Task 12.2 complete (`[x] 12.2`). Advanced to `CURRENT_PHASE=12`, `NEXT_TASK=12.3`, `NEXT_TASK_STATUS=READY`.
 - **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 12.3. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 12.3 Implementation & Verification Checkpoint — 2026-11-12
+
+- **Branch:** `codex/task-12-3-failure-drills` (branched after dependency update commit `c916626` over Task 12.2 `efee1fe`)
+- **Scope:** Implemented and executed automated failure drills across the governance and Tadpole seam: invalid/tampered Ed25519 signatures, M2 approval and CapToken replay defense, SQLite ledger timeout and IN_DOUBT reconciliation, unexpected Tadpole MCP disconnect and cancellation, budget breach with push STASIS notification, and human-only STASIS resume across `@gev/governance`, `@gev/ops-mcp`, `apps/server`, and `RUNBOOK.md` adhering to PLAN.md §6, §9.3, §10 Task 12.3, and ADRs 0031, 0038, 0041–0044.
+- **Artifacts produced & updated:**
+  - `packages/governance/src/stasisNotifier.ts` (104 lines): Added `StasisEvent`, `StasisNotificationBus`, `mapBudgetStateRow`, and `assertValidBudgetStateRow`, decoupling row validation and event publishing while keeping `budgetGovernor.ts` under 500 lines.
+  - `packages/governance/src/budgetGovernor.ts` (499 lines): Added `subscribeStasis` and `notifyStasis` to `CapBudgetGovernor` with immediate notification emission on `check`, `trip`, `recordSpend`, and `resume`.
+  - `packages/governance/src/runtimeContext.ts`: Wired `budgetGovernor.subscribeStasis` to immediately suspend active `TadpoleConnectionLifecycle` sessions upon STASIS entry, and hooked `auditSink.subscribe` to emit STASIS events for ledger-driven compliance trips.
+  - `packages/governance/test/failureDrills.test.ts` (3/3 tests passed): Verified Drill 1 & 2 (tampered/rogue Ed25519 signatures fail closed with `APPROVAL_UNAVAILABLE`, refund holds, and prevent dispatch; replayed M2 nonces fail; tampered/expired CapTokens fail), Drill 3 (ledger timeout/IN_DOUBT, idempotency conflict prevention, blocked human resume until reconciliation, and recovery of expired holds), and Drill 4 (budget breach push STASIS notification, session suspension, non-human resume rejection, and human resume notification).
+  - `apps/server/src/routes/auditStream.ts` & `apps/server/src/index.ts`: Extended `/ops/audit/stream` to stream live `stasis.entered` / `stasis.resumed` events alongside audit entries, with immediate emission if connected while STASIS is active.
+  - `apps/server/src/routes/mcpTadpoleAuth.ts` & `apps/server/src/routes/mcp.ts`: Mapped `STASIS_ACTIVE` lifecycle errors to HTTP `423` with standard JSON-RPC payload format.
+  - `apps/server/test/tadpoleFailureDrills.test.ts` (1/1 test passed): Verified end-to-end HTTP failure drills: 401 on tampered CapToken, client disconnect during pending approval cleanly aborts with zero charge and refunds M3 reservation, budget breach ($2.00 cap) delivers `stasis.entered` on SSE and suspends session within 1 cycle, subsequent MCP call returns 423 `STASIS_ACTIVE`, operator/AI resume is rejected 403, platform_admin resumes via `/ops/resume`, SSE receives `stasis.resumed`, and independent SQLite audit chain validates.
+  - `RUNBOOK.md` (§27): Documented Task 12.3 failure drills, IN_DOUBT reconciliation, and STASIS notification protocol.
+- **Verification Evidence & Performance:**
+  - Monorepo build & typecheck: 11/11 build tasks & 19/19 typecheck tasks passed (`pnpm build && pnpm typecheck`).
+  - `@gev/governance`: 16 files / 108 tests passed (`pnpm --filter @gev/governance test`) + Task 12.1 benchmark `p95=0.378ms` (`pnpm --filter @gev/governance test:performance`).
+  - `@gev/server`: 35 files / 313 tests passed (`pnpm --filter @gev/server exec vitest run --exclude test/load.test.ts --exclude test/tadpoleM1M4Performance.test.ts --no-file-parallelism --maxWorkers=1`) + Task 12.2 E2E M1->M2->M3->M4 benchmark `p95=5.158ms` (N=60, threshold `< 10ms`, `pnpm --filter @gev/server test:performance`).
+  - `@gev/ops-mcp`: 11 files / 72 tests passed (`pnpm --filter @gev/ops-mcp test`).
+  - `@gev/cli`: 4 files / 17 tests passed (`pnpm --filter @gev/cli test`).
+  - `@gev/core`: 12 files / 72 tests passed (`pnpm --filter @gev/core test`).
+  - Biome check on Task 12.3 files: 10 files checked, 0 errors; repo-wide `pnpm architecture:check`: clean, 0 large files (all source files strictly <= 500 lines).
+  - Active Documentation Guard (ADG) & doc tests: verified after `MASTER_PLAN_V3.md` synchronization (`pnpm docs:check` & `pnpm docs:test`).
+- **Plan Advancement:** Task 12.3 complete (`[x] 12.3`). Advanced to `CURRENT_PHASE=12`, `NEXT_TASK=12_EXIT`, `NEXT_TASK_STATUS=READY`.
+- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 12_EXIT. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
 

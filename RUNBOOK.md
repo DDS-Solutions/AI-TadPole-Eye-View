@@ -607,6 +607,15 @@ End-to-end M1–M4 readiness verification (`packages/governance/src/m1M4Readines
 - **Independent Audit Chain Verification (`verifyIndependentAuditChain`):** Verifies cryptographic hash links in `SqliteAuditSink` and enforces paired `audit.intent` -> `audit.outcome` WAL records across `governance.resume`, session lifecycle events, and governed MCP tool invocations without relying on a disconnected shadow helper.
 - **Executable Verification:** Run `pnpm gev showcase --json` for a local SQLite M1->M2->M3->M4 showcase run or `pnpm --filter @gev/server test:performance` for the isolated HTTP MCP `< 10ms p95` latency benchmark.
 
+## 27. Tadpole M4 Failure Drills & STASIS Notification Protocol (Task 12.3)
+
+Automated failure drills (`packages/governance/test/failureDrills.test.ts`, `apps/server/test/tadpoleFailureDrills.test.ts`) enforce fail-closed recovery across security, ledger, disconnect, and STASIS failure modes:
+
+- **Signature & Replay Rejection:** Tampered or untrusted M2 `SignedApprovalEnvelope` signatures fail closed (`APPROVAL_UNAVAILABLE`) and refund M3 ledger holds before handler dispatch. Replayed M2 nonces fail via `SqliteApprovalNonceStore`, and tampered/revoked/expired `x-tadpole-cap-token` headers return `401 invalid_token`.
+- **Ledger Timeout & `IN_DOUBT` Reconciliation:** Post-dispatch timeouts or handler crashes mark the M3 operation `IN_DOUBT` (`OPERATION_IN_DOUBT`) and trip `COMPLIANCE_DRIFT` STASIS. Subsequent retries with the same `operation_id` return `OPERATION_IN_DOUBT` without redispatching, and `budgetGovernor.resume('human')` fails closed until human `budgetLedger.reconcile(..., 'human')` resolves the `IN_DOUBT` record.
+- **Disconnect & Pre-Dispatch Cancellation:** Client disconnects while M2 approval is pending abort cleanly and refund the M3 reservation (`REFUNDED`, zero charge); closed sessions fail closed on subsequent `/mcp` calls (`401`).
+- **Push STASIS Notifications & 1-Cycle Propagation:** `CapBudgetGovernor` (`packages/governance/src/budgetGovernor.ts`) and `StasisNotificationBus` (`packages/governance/src/stasisNotifier.ts`) immediately suspend active `TadpoleConnectionLifecycle` sessions, push `stasis.entered` / `stasis.resumed` events on `/ops/audit/stream` (`apps/server/src/routes/auditStream.ts`), and reject the very next `/mcp` request cycle with `423` (`STASIS_ACTIVE`). Resume remains strictly restricted to authenticated human `platform_admin` operators (`/ops/resume`).
+
 
 
 
