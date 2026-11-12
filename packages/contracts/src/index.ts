@@ -39,4 +39,5 @@ export * from './usgs3dep.js';
 export * from './epaAqs.js';
 export * from './dotBts.js';
 export * from './siteRisk.js';
+export * from './agentEnvelope.js';
 export { z } from 'zod';

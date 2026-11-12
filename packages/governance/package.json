@@ -13,7 +13,8 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --exclude test/agentEnvelopePerformance.test.ts",
+    "test:performance": "vitest run test/agentEnvelopePerformance.test.ts --no-file-parallelism --maxWorkers=1",
     "lint": "biome check ."
   },
   "dependencies": {

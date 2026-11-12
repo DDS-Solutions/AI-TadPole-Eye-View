@@ -249,6 +249,8 @@ export function createGevMcpHttpHandler(options: GevMcpHttpHandlerOptions): GevM
               tenant_id: authorization.tenant_id,
               identity: authorization,
               authority_task_ref: authorization.task_ref,
+              envelope_task_ref: authorization.task_ref,
+              capability_scopes: authorization.scopes,
               task_ref: tenantScopedTaskRef(authorization),
               operation_id: readOperationId(requestContext.mcpReq._meta),
               signal: requestContext.mcpReq.signal,
