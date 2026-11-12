@@ -203,25 +203,12 @@ export const FemaNriQuerySchema = z
   .object({
     geography: FemaNriQueryGeographySchema,
     variables: z
-      .array(z.string().min(1).max(64))
+      .array(FemaNriVariableIdSchema)
       .max(50, 'Cannot request more than 50 variables in a single query')
       .optional(),
     vintage: z.string().min(4).max(64).optional(),
   })
-  .passthrough()
-  .superRefine((val, ctx) => {
-    const knownKeys = new Set(['geography', 'variables', 'vintage']);
-    const rawObj = val as Record<string, unknown>;
-    for (const key of Object.keys(rawObj)) {
-      if (!knownKeys.has(key)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: [key],
-          message: `Unrecognized query parameter '${key}'`,
-        });
-      }
-    }
-  });
+  .strict();
 export type FemaNriQuery = z.infer<typeof FemaNriQuerySchema>;
 
 // ============================================================================
@@ -254,6 +241,7 @@ export const FemaNfhlRiskCategorySchema = z.enum([
   'moderate_risk_500yr',
   'minimal_risk_outside_sfha',
   'undetermined_risk_zone_d',
+  'undetermined_no_coverage',
   'unknown',
 ]);
 export type FemaNfhlRiskCategory = z.infer<typeof FemaNfhlRiskCategorySchema>;
@@ -313,7 +301,21 @@ export const FemaNfhlSummarySchema = z
     provenance: DataProvenanceSchema,
     advisory_disclaimer: z.literal(FEMA_NFHL_ADVISORY_DISCLAIMER),
   })
-  .strict();
+  .strict()
+  .superRefine((val, ctx) => {
+    if (
+      val.feature_count === 0 &&
+      val.risk_category !== 'undetermined_no_coverage' &&
+      val.risk_category !== 'unknown'
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['risk_category'],
+        message:
+          'Non-coercion law: feature_count === 0 must evaluate to undetermined_no_coverage or unknown, never minimal or positive risk',
+      });
+    }
+  });
 export type FemaNfhlSummary = z.infer<typeof FemaNfhlSummarySchema>;
 
 export const FemaNfhlQuerySchema = z

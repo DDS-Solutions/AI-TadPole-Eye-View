@@ -56,7 +56,7 @@ describe('EconomicFixtureAdapter (@gev/providers)', () => {
     const metrics = records.map((r) => r.metric_id);
     expect(metrics).toContain('median-household-income');
     expect(metrics).toContain('establishment-count');
-    expect(metrics).toContain('nri-risk-score');
+    expect(metrics).toContain('nri-composite-risk-score');
 
     // Verify small-sample and disclosure avoidance suppression is preserved
     const hasSuppressed = records.some((r) => r.estimate.status === 'suppressed');

@@ -200,8 +200,28 @@ function isGeographyMatch(recordGeo: EconomicGeography, queryGeo: EconomicGeogra
       if (recordGeo.level === 'zcta' && (recordGeo as { zcta: string }).zcta === '78701') {
         return true;
       }
-      if (recordGeo.level === 'bounding_box' || recordGeo.level === 'point') {
-        return true;
+      if (recordGeo.level === 'point') {
+        const pt = recordGeo as { latitude: number; longitude: number };
+        return (
+          pt.longitude >= -98.17 &&
+          pt.longitude <= -97.56 &&
+          pt.latitude >= 30.02 &&
+          pt.latitude <= 30.63
+        );
+      }
+      if (recordGeo.level === 'bounding_box') {
+        const bbox = recordGeo as {
+          min_lon: number;
+          min_lat: number;
+          max_lon: number;
+          max_lat: number;
+        };
+        return !(
+          bbox.max_lon < -98.17 ||
+          bbox.min_lon > -97.56 ||
+          bbox.max_lat < 30.02 ||
+          bbox.min_lat > 30.63
+        );
       }
     }
   }

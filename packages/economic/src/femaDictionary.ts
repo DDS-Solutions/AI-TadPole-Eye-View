@@ -53,15 +53,21 @@ export function classifyNfhlFloodRisk(zone: string, subtype?: string | null): Fe
   // 500-year moderate risk (0.2% annual chance)
   if (
     normalizedZone === 'B' ||
-    (normalizedZone === 'X' && normalizedSubtype.includes('0.2 PCT ANNUAL CHANCE'))
+    (normalizedZone === 'X' &&
+      (normalizedSubtype.includes('0.2 PCT ANNUAL CHANCE') ||
+        normalizedSubtype.includes('0.2%') ||
+        normalizedSubtype.includes('500 YR') ||
+        normalizedSubtype.includes('500-YR')))
   ) {
     return 'moderate_risk_500yr';
   }
 
-  // Minimal risk outside 500-year
+  // Minimal risk outside 500-year (requires explicit minimal subtype for Zone X)
   if (
     normalizedZone === 'C' ||
-    (normalizedZone === 'X' && !normalizedSubtype.includes('0.2 PCT ANNUAL CHANCE'))
+    (normalizedZone === 'X' &&
+      (normalizedSubtype.includes('MINIMAL') ||
+        normalizedSubtype.includes('AREA OF MINIMAL FLOOD HAZARD')))
   ) {
     return 'minimal_risk_outside_sfha';
   }
@@ -71,6 +77,9 @@ export function classifyNfhlFloodRisk(zone: string, subtype?: string | null): Fe
     return 'undetermined_risk_zone_d';
   }
 
+  // Bare Zone X without subtype is ambiguous between 0.2% and minimal hazard;
+  // OPEN_WATER and AREA_NOT_INCLUDED are not evaluated flood risk determinations.
+  // In accordance with non-coercion laws, all evaluate to 'unknown'.
   return 'unknown';
 }
 
@@ -96,7 +105,7 @@ export function parseNriRiskRating(rating: string | null | undefined): FemaNriRi
     case 'insufficient data':
       return 'Insufficient Data';
     default:
-      return 'Not Applicable';
+      return 'Insufficient Data';
   }
 }
 
@@ -134,7 +143,15 @@ export function parseNriRawEstimate(
     };
   }
 
-  const num = Number(str);
+  const cleanStr = str.replace(/,/g, '');
+  if (/^0[xXbBoO]/.test(cleanStr)) {
+    return {
+      status: 'unavailable',
+      reason: `FEMA NRI estimate cannot accept non-decimal numeric representation: '${str}'.`,
+    };
+  }
+
+  const num = Number(cleanStr);
   if (!Number.isFinite(num)) {
     return {
       status: 'unavailable',
@@ -171,7 +188,15 @@ export function parseNfhlStaticBfe(rawBfe: unknown, datum?: string | null): Econ
     };
   }
 
-  const num = Number(rawBfe);
+  const str = String(rawBfe).trim().replace(/,/g, '');
+  if (/^0[xXbBoO]/.test(str)) {
+    return {
+      status: 'unavailable',
+      reason: `NFHL static BFE cannot accept non-decimal numeric representation: '${String(rawBfe)}'.`,
+    };
+  }
+
+  const num = Number(str);
   if (!Number.isFinite(num)) {
     return {
       status: 'unavailable',
@@ -208,7 +233,15 @@ export function parseNfhlDepth(rawDepth: unknown): EconomicEstimate {
     };
   }
 
-  const num = Number(rawDepth);
+  const str = String(rawDepth).trim().replace(/,/g, '');
+  if (/^0[xXbBoO]/.test(str)) {
+    return {
+      status: 'unavailable',
+      reason: `NFHL flood depth cannot accept non-decimal numeric representation: '${String(rawDepth)}'.`,
+    };
+  }
+
+  const num = Number(str);
   if (!Number.isFinite(num)) {
     return {
       status: 'unavailable',

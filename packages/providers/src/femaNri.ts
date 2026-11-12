@@ -8,6 +8,7 @@ import {
   type FemaNriHazardType,
   type FemaNriQuery,
   FemaNriQuerySchema,
+  type FemaNriVariableId,
 } from '@gev/contracts';
 import { type SimClock, SystemClock } from '@gev/core';
 import {
@@ -68,7 +69,7 @@ function getGeographyKey(geo: EconomicGeography): string {
   }
 }
 
-const HAZARD_METRIC_MAP: Record<FemaNriHazardType, string> = {
+const HAZARD_METRIC_MAP: Record<FemaNriHazardType, FemaNriVariableId> = {
   riverine_flooding: 'RFLD_RISKS',
   coastal_flooding: 'CFLD_RISKS',
   hurricane: 'HRCN_RISKS',
@@ -165,7 +166,15 @@ export class FemaNriAdapter {
       throw new FemaNriProviderDisabledError();
     }
 
-    const query = FemaNriQuerySchema.parse(queryInput);
+    let query: FemaNriQuery;
+    try {
+      query = FemaNriQuerySchema.parse(queryInput);
+    } catch (err) {
+      throw new FemaNriInvalidQueryError(
+        err instanceof Error ? err.message : 'Invalid FEMA NRI query input'
+      );
+    }
+
     validateFemaNriGeography(query.geography);
 
     if (this.seedMode) {
@@ -197,17 +206,25 @@ export class FemaNriAdapter {
       throw new FemaNriSeedModeViolationError();
     }
 
+    let filterCountyFips: string;
+    if (query.geography.level === 'county') {
+      filterCountyFips = query.geography.county_fips;
+    } else if (query.geography.level === 'tract') {
+      filterCountyFips = query.geography.tract_fips.slice(0, 5);
+    } else {
+      throw new FemaNriInvalidQueryError(
+        `FEMA NRI live API queries require county or tract geography with FIPS prefix. Received '${query.geography.level}'`
+      );
+    }
+
     // Live pinned-fetch path
     const url = new URL('https://www.fema.gov/api/open/v1/NationalRiskIndex');
-    const countyFips = query.geography.level === 'county' ? query.geography.county_fips : undefined;
-    if (countyFips) {
-      url.searchParams.set('$filter', `countyFips eq '${countyFips}'`);
-    }
+    url.searchParams.set('$filter', `countyFips eq '${filterCountyFips}'`);
 
     const response = await pinnedFetch(url.toString(), {
       timeoutMs: 10_000,
       maxBytes: 1_000_000,
-      allowedHosts: ['www.fema.gov', 'services.arcgis.com', 'hazards.fema.gov'],
+      allowedHosts: ['www.fema.gov'],
       headers: {
         Accept: 'application/json',
         ...(this.apiKey ? { 'X-Api-Key': this.apiKey } : {}),
@@ -218,9 +235,9 @@ export class FemaNriAdapter {
       throw new Error(`FEMA NRI live endpoint returned HTTP ${response.status}`);
     }
 
-    // Live parsing would adapt OpenFEMA JSON into EconomicEvidenceRecord[]
-    // Under seed mode / tests, seedMode is 1.
-    return [];
+    throw new Error(
+      'FEMA NRI live parsing is not yet implemented; live queries must not return silent empty results'
+    );
   }
 
   async getEvidenceByGeography(
