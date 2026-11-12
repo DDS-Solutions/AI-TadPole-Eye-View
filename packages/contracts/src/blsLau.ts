@@ -103,7 +103,10 @@ export const BlsLauQuerySchema = z
   .object({
     geography: BlsLauQueryGeographySchema,
     measures: z.array(BlsLauMeasureCodeSchema).max(4).optional(),
-    variables: z.array(z.string().min(1).max(64)).max(10).optional(),
+    variables: z
+      .array(z.string().min(1).max(64))
+      .max(BLS_API_LIMITS_REGISTERED.max_series_per_query)
+      .optional(),
     period: BlsLauPeriodSchema.optional(),
     year: BlsLauYearSchema.optional(),
     seasonal: BlsLauSeasonalCodeSchema.optional(),
