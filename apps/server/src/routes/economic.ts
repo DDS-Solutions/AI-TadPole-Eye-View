@@ -7,6 +7,7 @@ import { EconomicFixtureAdapter } from '@gev/providers';
 import { type Context, Hono } from 'hono';
 import type { InMemoryRateLimiter, OpsAuthAdapter } from '../middleware/opsAuth.js';
 import { createMarketAnalysisRouter } from './marketAnalysisRoutes.js';
+import { createSiteRiskRouter } from './siteRiskRoutes.js';
 import { createWorkforceAnalysisRouter } from './workforceAnalysisRoutes.js';
 
 export const DEFAULT_ECONOMIC_RATE_LIMIT = 60;
@@ -221,6 +222,7 @@ export function createEconomicRouter(options: EconomicRouterOptions): Hono {
 
   router.route('/', createMarketAnalysisRouter(options));
   router.route('/', createWorkforceAnalysisRouter(options));
+  router.route('/', createSiteRiskRouter(options));
 
   return router;
 }

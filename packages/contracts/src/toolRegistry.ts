@@ -7,6 +7,8 @@ import {
   AnalyzeMarketContextOutputSchema,
   AnalyzeWorkforceContextInputSchema,
   AnalyzeWorkforceContextOutputSchema,
+  AssessSiteRiskInputSchema,
+  AssessSiteRiskOutputSchema,
   CompareLocationsInputSchema,
   CompareLocationsOutputSchema,
   FlyToLocationInputSchema,
@@ -270,6 +272,17 @@ export const OPERATOR_TOOLS = {
     inputSchema: AnalyzeWorkforceContextInputSchema,
     outputSchema: AnalyzeWorkforceContextOutputSchema,
   },
+  assess_site_risk: {
+    ...NONBILLABLE_READ_POLICY,
+    name: 'assess_site_risk',
+    description:
+      'Run deterministic multi-source site-risk and transportation accessibility screening (FEMA NRI/NFHL, USGS 3DEP, EPA AQS historical, DOT/BTS) keeping current alerts separate from long-term hazards',
+    is_mutating: false,
+    is_dangerous: false,
+    is_cacheable: false,
+    inputSchema: AssessSiteRiskInputSchema,
+    outputSchema: AssessSiteRiskOutputSchema,
+  },
 } as const satisfies Record<string, OperatorToolDefinition<string, z.ZodTypeAny, z.ZodTypeAny>>;
 
 export type OperatorToolName = keyof typeof OPERATOR_TOOLS;
@@ -294,6 +307,7 @@ export const OPERATOR_TOOL_REQUIRED_SCOPES = {
   analyze_competition: ['read.telemetry'],
   compare_locations: ['read.telemetry'],
   analyze_workforce_context: ['read.telemetry'],
+  assess_site_risk: ['read.telemetry'],
 } as const satisfies Record<OperatorToolName, readonly CapabilityScope[]>;
 
 const OPERATOR_TOOL_NAME_SET: ReadonlySet<string> = new Set(Object.keys(OPERATOR_TOOLS));

@@ -69,15 +69,15 @@ export const economicModules: readonly EconomicModule[] = [
     id: 'phase-11',
     phase: 'Phase 11',
     title: 'Economic R3: Risk, Resilience & Accessibility',
-    badge: 'FEMA NRI / NFHL',
-    status: 'PLANNED',
+    badge: 'FEMA / USGS / EPA / DOT',
+    status: 'INSPECTION READY',
     statusReason:
-      'Phase 11 implementation planned. FEMA National Risk Index and Flood Hazard Layer pending.',
-    sources: ['FEMA NRI Hazard Ratings', 'FEMA NFHL Vector Layers', 'Resilience Scores'],
+      'Phase 11 active. FEMA NRI/NFHL, USGS 3DEP, historical EPA AQS, DOT/BTS accessibility, and site-risk screening ready.',
+    sources: ['FEMA NRI / NFHL', 'USGS 3DEP EPQS', 'EPA AQS (Historical)', 'DOT/BTS Accessibility'],
     metrics: [
-      { label: 'HAZARD RATING', value: 'EAL / SOVI RATINGS' },
-      { label: 'COMMUNITY RESILIENCE', value: 'HVRA INDEX' },
-      { label: 'FLOOD BOUNDARY', value: '100-YR / 500-YR' },
+      { label: 'HAZARD HORIZON', value: 'LONG-TERM VS LIVE ALERTS' },
+      { label: 'SCREENING ADVICE', value: 'NON-DEFINITIVE ONLY' },
+      { label: 'UNMONITORED DATA', value: 'NON-COERCED' },
     ],
   },
 ];

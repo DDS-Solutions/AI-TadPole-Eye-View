@@ -4,14 +4,16 @@
     AnalyzeCompetitionOutput,
     AnalyzeMarketContextOutput,
     AnalyzeWorkforceContextOutput,
+    AssessSiteRiskOutput,
     CompareLocationsOutput,
     EconomicGeography,
   } from '@gev/contracts';
-  import MarketContextTab from './MarketContextTab.svelte';
   import LocationComparisonTab from './LocationComparisonTab.svelte';
+  import MarketContextTab from './MarketContextTab.svelte';
+  import SiteRiskTab from './SiteRiskTab.svelte';
   import WorkforceTab from './WorkforceTab.svelte';
 
-  type TabId = 'market' | 'competition' | 'comparison' | 'workforce';
+  type TabId = 'market' | 'competition' | 'comparison' | 'workforce' | 'site-risk';
 
   const GEOGRAPHY_PRESETS: Array<{ id: string; label: string; geo: EconomicGeography }> = [
     {
@@ -56,6 +58,7 @@
   let competitionResult = $state<AnalyzeCompetitionOutput | null>(null);
   let comparisonResult = $state<CompareLocationsOutput | null>(null);
   let workforceResult = $state<AnalyzeWorkforceContextOutput | null>(null);
+  let siteRiskResult = $state<AssessSiteRiskOutput | null>(null);
 
   const currentGeo = $derived(
     GEOGRAPHY_PRESETS.find((p) => p.id === selectedGeoId)?.geo ?? GEOGRAPHY_PRESETS[0].geo
@@ -128,6 +131,12 @@
           oews_evidence: [],
           lau_evidence: [],
         });
+      } else if (activeTab === 'site-risk') {
+        siteRiskResult = await postEconomic<AssessSiteRiskOutput>('site-risk', {
+          tenant_id: 'tenant-local',
+          geography: currentGeo,
+          include_current_alerts: true,
+        });
       }
     } catch (err) {
       errorMessage = err instanceof Error ? err.message : 'Analysis failed';
@@ -185,6 +194,14 @@
         onclick={() => handleTabChange('workforce')}
       >
         Workforce &amp; Wages
+      </button>
+      <button
+        id="tab-btn-site-risk"
+        class="tab-btn"
+        class:active={activeTab === 'site-risk'}
+        onclick={() => handleTabChange('site-risk')}
+      >
+        Site Risk &amp; Access
       </button>
     </div>
   </div>
@@ -302,6 +319,9 @@
 
   {#if activeTab === 'workforce' && workforceResult}
     <WorkforceTab result={workforceResult} />
+  {/if}
+  {#if activeTab === 'site-risk' && siteRiskResult}
+    <SiteRiskTab result={siteRiskResult} />
   {/if}
 </div>
 
