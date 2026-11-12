@@ -1,0 +1,506 @@
+{
+  "schema_version": 1,
+  "fixture_id": "dot-bts-synthetic-v1",
+  "source_id": "dot-bts-access",
+  "title": "DOT/BTS Transportation Accessibility & Freight Corridor Synthetic Seed Fixture",
+  "description": "Deterministic synthetic transportation accessibility benchmarks covering highway proximity, transit stop access, freight corridor exposure, road density, and commute times, plus an uncovered geography record verifying non-coercion.",
+  "data_horizon": "structural_infrastructure_benchmark",
+  "provenance": {
+    "schema_version": 1,
+    "source": {
+      "provider_id": "dot-bts-access",
+      "feed_id": "transportation-accessibility",
+      "name": "U.S. DOT / Bureau of Transportation Statistics (BTS)",
+      "canonical_url": "https://data.bts.gov/resource"
+    },
+    "retrieved_at": "2026-11-12T12:00:00.000Z",
+    "observation_period": {
+      "status": "available",
+      "start": "2024-01-01T00:00:00.000Z",
+      "end": "2024-12-31T23:59:59.000Z"
+    },
+    "vintage": {
+      "status": "available",
+      "value": "DOT/BTS National Transportation Atlas & Transit Access (2024)"
+    },
+    "mode": "seed",
+    "source_mode": "seed",
+    "license": {
+      "id": "us-government-public-domain",
+      "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+    },
+    "attribution": "U.S. Department of Transportation, Bureau of Transportation Statistics",
+    "fixture_id": "dot-bts-synthetic-v1",
+    "cache": null,
+    "freshness": {
+      "status": "fresh",
+      "age_seconds": 0,
+      "fresh_for_seconds": 2592000
+    }
+  },
+  "records": [
+    {
+      "geography": {
+        "level": "county",
+        "county_fips": "48453",
+        "state_fips": "48",
+        "name": "Travis County, TX"
+      },
+      "centroid": {
+        "latitude": 30.2672,
+        "longitude": -97.7431
+      },
+      "nearest_interstate_km": {
+        "status": "available",
+        "value": 1.4,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "km"
+      },
+      "nearest_transit_stop_km": {
+        "status": "available",
+        "value": 0.45,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "km"
+      },
+      "transit_stops_within_1km": {
+        "status": "available",
+        "value": 8,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "count"
+      },
+      "freight_corridor_distance_km": {
+        "status": "available",
+        "value": 1.6,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "km"
+      },
+      "walkable_road_density_km_per_sqkm": {
+        "status": "available",
+        "value": 11.2,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "km/sqkm"
+      },
+      "commute_mean_minutes": {
+        "status": "available",
+        "value": 24.8,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "minutes"
+      },
+      "accessibility_tier": "high_access",
+      "freight_exposure": "secondary_arterial",
+      "is_covered": true,
+      "data_horizon": "structural_infrastructure_benchmark",
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "dot-bts-access",
+          "feed_id": "transportation-accessibility",
+          "name": "U.S. DOT / Bureau of Transportation Statistics (BTS)",
+          "canonical_url": "https://data.bts.gov/resource"
+        },
+        "retrieved_at": "2026-11-12T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2024-01-01T00:00:00.000Z",
+          "end": "2024-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "DOT/BTS National Transportation Atlas & Transit Access (2024)"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Department of Transportation, Bureau of Transportation Statistics",
+        "fixture_id": "dot-bts-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 2592000
+        }
+      },
+      "advisory_disclaimer": "DOT/BTS transportation and accessibility metrics provide structural infrastructure screening signals only (highway proximity, transit station access, freight corridor connectivity, and commute burden). They do not replace licensed traffic impact studies, ADA compliance audits, or site engineering surveys."
+    },
+    {
+      "geography": {
+        "level": "county",
+        "county_fips": "06037",
+        "state_fips": "06",
+        "name": "Los Angeles County, CA"
+      },
+      "centroid": {
+        "latitude": 34.0666,
+        "longitude": -118.2269
+      },
+      "nearest_interstate_km": {
+        "status": "available",
+        "value": 0.4,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "km"
+      },
+      "nearest_transit_stop_km": {
+        "status": "available",
+        "value": 0.18,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "km"
+      },
+      "transit_stops_within_1km": {
+        "status": "available",
+        "value": 19,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "count"
+      },
+      "freight_corridor_distance_km": {
+        "status": "available",
+        "value": 0.35,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "km"
+      },
+      "walkable_road_density_km_per_sqkm": {
+        "status": "available",
+        "value": 16.4,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "km/sqkm"
+      },
+      "commute_mean_minutes": {
+        "status": "available",
+        "value": 31.6,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "minutes"
+      },
+      "accessibility_tier": "high_access",
+      "freight_exposure": "primary_freight_corridor",
+      "is_covered": true,
+      "data_horizon": "structural_infrastructure_benchmark",
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "dot-bts-access",
+          "feed_id": "transportation-accessibility",
+          "name": "U.S. DOT / Bureau of Transportation Statistics (BTS)",
+          "canonical_url": "https://data.bts.gov/resource"
+        },
+        "retrieved_at": "2026-11-12T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2024-01-01T00:00:00.000Z",
+          "end": "2024-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "DOT/BTS National Transportation Atlas & Transit Access (2024)"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Department of Transportation, Bureau of Transportation Statistics",
+        "fixture_id": "dot-bts-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 2592000
+        }
+      },
+      "advisory_disclaimer": "DOT/BTS transportation and accessibility metrics provide structural infrastructure screening signals only (highway proximity, transit station access, freight corridor connectivity, and commute burden). They do not replace licensed traffic impact studies, ADA compliance audits, or site engineering surveys."
+    },
+    {
+      "geography": {
+        "level": "county",
+        "county_fips": "17031",
+        "state_fips": "17",
+        "name": "Cook County, IL"
+      },
+      "centroid": {
+        "latitude": 41.7514,
+        "longitude": -87.7135
+      },
+      "nearest_interstate_km": {
+        "status": "available",
+        "value": 1.1,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "km"
+      },
+      "nearest_transit_stop_km": {
+        "status": "available",
+        "value": 0.3,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "km"
+      },
+      "transit_stops_within_1km": {
+        "status": "available",
+        "value": 14,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "count"
+      },
+      "freight_corridor_distance_km": {
+        "status": "available",
+        "value": 0.9,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "km"
+      },
+      "walkable_road_density_km_per_sqkm": {
+        "status": "available",
+        "value": 14.5,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "km/sqkm"
+      },
+      "commute_mean_minutes": {
+        "status": "available",
+        "value": 32.1,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "minutes"
+      },
+      "accessibility_tier": "high_access",
+      "freight_exposure": "secondary_arterial",
+      "is_covered": true,
+      "data_horizon": "structural_infrastructure_benchmark",
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "dot-bts-access",
+          "feed_id": "transportation-accessibility",
+          "name": "U.S. DOT / Bureau of Transportation Statistics (BTS)",
+          "canonical_url": "https://data.bts.gov/resource"
+        },
+        "retrieved_at": "2026-11-12T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2024-01-01T00:00:00.000Z",
+          "end": "2024-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "DOT/BTS National Transportation Atlas & Transit Access (2024)"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Department of Transportation, Bureau of Transportation Statistics",
+        "fixture_id": "dot-bts-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 2592000
+        }
+      },
+      "advisory_disclaimer": "DOT/BTS transportation and accessibility metrics provide structural infrastructure screening signals only (highway proximity, transit station access, freight corridor connectivity, and commute burden). They do not replace licensed traffic impact studies, ADA compliance audits, or site engineering surveys."
+    },
+    {
+      "geography": {
+        "level": "county",
+        "county_fips": "04013",
+        "state_fips": "04",
+        "name": "Maricopa County, AZ"
+      },
+      "centroid": {
+        "latitude": 33.5038,
+        "longitude": -112.0958
+      },
+      "nearest_interstate_km": {
+        "status": "available",
+        "value": 2.2,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "km"
+      },
+      "nearest_transit_stop_km": {
+        "status": "available",
+        "value": 1.4,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "km"
+      },
+      "transit_stops_within_1km": {
+        "status": "available",
+        "value": 1,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "count"
+      },
+      "freight_corridor_distance_km": {
+        "status": "available",
+        "value": 4.2,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "km"
+      },
+      "walkable_road_density_km_per_sqkm": {
+        "status": "available",
+        "value": 7.8,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "km/sqkm"
+      },
+      "commute_mean_minutes": {
+        "status": "available",
+        "value": 26.5,
+        "margin_of_error": null,
+        "confidence_level": null,
+        "sample_size": null,
+        "unit": "minutes"
+      },
+      "accessibility_tier": "moderate_access",
+      "freight_exposure": "local_access",
+      "is_covered": true,
+      "data_horizon": "structural_infrastructure_benchmark",
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "dot-bts-access",
+          "feed_id": "transportation-accessibility",
+          "name": "U.S. DOT / Bureau of Transportation Statistics (BTS)",
+          "canonical_url": "https://data.bts.gov/resource"
+        },
+        "retrieved_at": "2026-11-12T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2024-01-01T00:00:00.000Z",
+          "end": "2024-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "DOT/BTS National Transportation Atlas & Transit Access (2024)"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Department of Transportation, Bureau of Transportation Statistics",
+        "fixture_id": "dot-bts-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 2592000
+        }
+      },
+      "advisory_disclaimer": "DOT/BTS transportation and accessibility metrics provide structural infrastructure screening signals only (highway proximity, transit station access, freight corridor connectivity, and commute burden). They do not replace licensed traffic impact studies, ADA compliance audits, or site engineering surveys."
+    },
+    {
+      "geography": {
+        "level": "county",
+        "county_fips": "02185",
+        "state_fips": "02",
+        "name": "North Slope Borough, AK (Uncovered Remote)"
+      },
+      "nearest_interstate_km": {
+        "status": "unavailable",
+        "reason": "Remote off-network geography outside contiguous National Transit/Highway Atlas coverage"
+      },
+      "nearest_transit_stop_km": {
+        "status": "unavailable",
+        "reason": "Remote off-network geography outside National Transit Map coverage"
+      },
+      "transit_stops_within_1km": {
+        "status": "unavailable",
+        "reason": "Remote off-network geography outside National Transit Map coverage"
+      },
+      "freight_corridor_distance_km": {
+        "status": "unavailable",
+        "reason": "Remote off-network geography outside National Freight Highway Network coverage"
+      },
+      "walkable_road_density_km_per_sqkm": {
+        "status": "unavailable",
+        "reason": "Remote off-network geography outside DOT/BTS road density grid"
+      },
+      "commute_mean_minutes": {
+        "status": "unavailable",
+        "reason": "Remote off-network geography outside DOT/BTS commute benchmark coverage"
+      },
+      "accessibility_tier": "unavailable",
+      "freight_exposure": "unavailable",
+      "is_covered": false,
+      "data_horizon": "structural_infrastructure_benchmark",
+      "provenance": {
+        "schema_version": 1,
+        "source": {
+          "provider_id": "dot-bts-access",
+          "feed_id": "transportation-accessibility",
+          "name": "U.S. DOT / Bureau of Transportation Statistics (BTS)",
+          "canonical_url": "https://data.bts.gov/resource"
+        },
+        "retrieved_at": "2026-11-12T12:00:00.000Z",
+        "observation_period": {
+          "status": "available",
+          "start": "2024-01-01T00:00:00.000Z",
+          "end": "2024-12-31T23:59:59.000Z"
+        },
+        "vintage": {
+          "status": "available",
+          "value": "DOT/BTS National Transportation Atlas & Transit Access (2024)"
+        },
+        "mode": "seed",
+        "source_mode": "seed",
+        "license": {
+          "id": "us-government-public-domain",
+          "name": "U.S. Government Work - 17 U.S.C. 105 (Public Domain)"
+        },
+        "attribution": "U.S. Department of Transportation, Bureau of Transportation Statistics",
+        "fixture_id": "dot-bts-synthetic-v1",
+        "cache": null,
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "fresh_for_seconds": 2592000
+        }
+      },
+      "advisory_disclaimer": "DOT/BTS transportation and accessibility metrics provide structural infrastructure screening signals only (highway proximity, transit station access, freight corridor connectivity, and commute burden). They do not replace licensed traffic impact studies, ADA compliance audits, or site engineering surveys."
+    }
+  ]
+}
+
