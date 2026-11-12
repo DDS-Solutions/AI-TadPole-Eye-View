@@ -28,6 +28,7 @@ This directory records all significant architectural and structural decisions ma
 | [0034](./0034-celestrak-gp-omm-satellite-source-policy.md) | CelesTrak GP/OMM satellite source and access policy | Accepted | 2026-09-04 |
 | [0035](./0035-provenance-contract-and-freshness-policy.md) | Versioned provenance contract and registry-owned freshness policy | Accepted | 2026-08-29 |
 | [0036](./0036-cable-fixture-and-licensed-pack-policy.md) | Cable fixture and operator-licensed pack policy | Accepted | 2026-08-30 |
+| [0038](./0038-tadpole-agent-envelope-and-m4-policy.md) | Tadpole AgentEnvelope, Connection Lifecycle, Identity, and Capability Propagation Policy | Accepted | 2026-11-12 |
 | [0039](./0039-language-placement-and-runtime-boundaries.md) | Language placement and runtime boundaries | Accepted | 2026-08-27 |
 | [0040](./0040-architectural-drift-inventory-and-follow-up-gates.md) | Architectural drift inventory and follow-up gates | Accepted | 2026-08-28 |
 | [0041](./0041-durable-shared-governance-runtime.md) | Durable shared governance runtime | Accepted | 2026-08-28 |

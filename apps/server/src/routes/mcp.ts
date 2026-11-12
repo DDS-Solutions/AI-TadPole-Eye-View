@@ -1,5 +1,6 @@
 import { getMissingOperatorToolScopes, isOperatorToolName } from '@gev/contracts';
 import type { McpAuthorizationContext, McpBearerVerifier } from '@gev/contracts/mcp-authorization';
+import type { TadpoleCapabilityIssuer, TadpoleConnectionLifecycle } from '@gev/governance';
 import {
   type GevMcpHttpHandler,
   type McpHttpExecutionObserver,
@@ -9,6 +10,7 @@ import {
 } from '@gev/ops-mcp/http';
 import { originValidation } from '@modelcontextprotocol/hono';
 import { Hono } from 'hono';
+import { narrowMcpAuthorizationFromTadpoleHeaders } from './mcpTadpoleAuth.js';
 
 export const MCP_HTTP_RESOURCE = 'http://127.0.0.1:3000/mcp';
 export const MCP_HTTP_RESOURCE_METADATA =
@@ -24,6 +26,8 @@ export interface McpHttpRouterOptions {
   handler: GevMcpHttpHandler;
   now: () => number;
   bearerVerifier?: McpBearerVerifier;
+  capabilityIssuer?: TadpoleCapabilityIssuer;
+  connectionLifecycle?: TadpoleConnectionLifecycle;
   maxActiveRequests?: number;
 }
 
@@ -379,6 +383,20 @@ export function createMcpHttpRouter(options: McpHttpRouterOptions): McpHttpRoute
       void lease.release();
       return jsonRpcHttpError(400, -32003, 'MCP request was cancelled');
     }
+
+    // Optional Tadpole capability token & session lifecycle propagation (Task 12.1)
+    const tadpoleNarrowing = narrowMcpAuthorizationFromTadpoleHeaders({
+      authorization,
+      rawCapToken: c.req.header('x-tadpole-cap-token'),
+      rawSessionId: c.req.header('x-tadpole-session-id'),
+      capabilityIssuer: options.capabilityIssuer,
+      connectionLifecycle: options.connectionLifecycle,
+    });
+    if (!tadpoleNarrowing.allowed) {
+      void lease.release();
+      return mcpBearerChallengeResponse(tadpoleNarrowing.code, MCP_HTTP_RESOURCE_METADATA);
+    }
+    authorization = tadpoleNarrowing.authorization;
 
     const requestedToolName = c.req.header('mcp-name');
     if (

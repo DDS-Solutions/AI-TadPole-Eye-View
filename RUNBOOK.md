@@ -591,6 +591,15 @@ The DOT/BTS accessibility adapter (`packages/providers/src/dotBts.ts`) and pure 
 - **Non-Coercion of Uncovered Geographies & Zero-Signal States:** Uncovered DOT/BTS geographies (`is_covered: false`) evaluate to `unavailable`. When zero long-term hazard signals are available, `overall_screening_score` evaluates to `unavailable` and `screening_tier` evaluates to `insufficient_data` (never coerced to `0` / low concern).
 - **Kill-Switch & Seed Enforcement:** Governed by `GEV_DOT_BTS_ENABLED` (default: 1) failing closed with `DotBtsDisabledError` and `GEV_SEED_MODE=1` failing closed with `DotBtsSeedModeViolationError`. Live queries are restricted via `pinnedFetch` to `data.bts.gov/resource`.
 
+## 25. Tadpole AgentEnvelope & Capability Propagation Operations (ADR 0038)
+
+The Tadpole session lifecycle (`packages/governance/src/agentEnvelope.ts`) and MCP HTTP narrowing boundary (`apps/server/src/routes/mcpTadpoleAuth.ts`) enforce fail-closed identity and capability propagation:
+
+- **Shared Runtime Ports:** `GovernanceRuntimeContext` owns concrete `TadpoleCapabilityIssuer` (Port 4, Ed25519-signed capability tokens) and `TadpoleAgentEnvelope` (Port 5, SHA-256-digested 4-Pillar briefs).
+- **Least-Privilege Scope Intersection:** Effective tool scopes are strictly the intersection of `McpAuthorizationContext.scopes`, `TadpoleAgentSession.granted_scopes`, and `CapToken.claims.scopes`. Neither `x-tadpole-cap-token` nor `x-tadpole-session-id` can escalate scopes beyond the verified OAuth bearer context.
+- **STASIS & Expiration Enforcement:** When `BudgetGovernor` trips STASIS, `TadpoleConnectionLifecycle` suspends active sessions to `suspended_stasis` immediately. Expired, revoked, or subject-mismatched capability tokens fail closed with `invalid_token` / `CAPABILITY_DENIED`.
+
+
 
 
 

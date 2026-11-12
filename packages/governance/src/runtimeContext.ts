@@ -1,5 +1,6 @@
 import type { ApprovalGate, GovernanceAuthority } from '@gev/contracts';
 import { type SimClock, SystemClock } from '@gev/core';
+import { TadpoleAgentEnvelope, TadpoleCapabilityIssuer } from './agentEnvelope.js';
 import { PromptApprovalGate, UnavailableApprovalGate } from './approvalGate.js';
 import type { AuditRetentionPolicy, TrustedAuditRetentionKey } from './auditRetention.js';
 import { SqliteAuditSink } from './auditSink.js';
@@ -25,6 +26,8 @@ export interface GovernanceRuntimeContext {
   budgetGovernor: CapBudgetGovernor;
   budgetLedger: SqliteBudgetLedger;
   approvalGate: ApprovalGate;
+  capabilityIssuer: TadpoleCapabilityIssuer;
+  agentEnvelope: TadpoleAgentEnvelope;
   tenantLayerAccessStore: SqliteTenantLayerAccessStore;
   startReaper(intervalMs?: number): { stop(): void };
   authority(): GovernanceAuthority;
@@ -153,12 +156,17 @@ export function createGovernanceRuntimeContext(
   let closed = false;
   const activeReapers = new Set<NodeJS.Timeout>();
 
+  const capabilityIssuer = new TadpoleCapabilityIssuer({ clock, auditSink });
+  const agentEnvelope = new TadpoleAgentEnvelope(clock);
+
   return {
     clock,
     auditSink,
     budgetGovernor,
     budgetLedger,
     approvalGate,
+    capabilityIssuer,
+    agentEnvelope,
     tenantLayerAccessStore,
     startReaper: (intervalMs = 30_000) => {
       const timer = setInterval(() => {

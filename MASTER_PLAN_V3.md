@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-26
-**Status:** IN PROGRESS — Phase 12: task 12.1 ready; phase 11 exit certified
+**Status:** IN PROGRESS — Phase 12: task 12.1 complete; task 12.2 ready
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=12
-NEXT_TASK=12.1
+NEXT_TASK=12.2
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
@@ -1967,13 +1967,13 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 - [x] 8.5 Add content/instruction separation and prompt-injection tests before any provider/economic text enters an LLM/Tadpole context.
 - [x] 8 exit: suppressed/unavailable/stale cases validate; provenance is required; no persistence or live calls; ADG and affected gates pass.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 12.1
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 12.2
 
 ```text
-[SCOPE_CONTRACT] packages/contracts, packages/governance, packages/ops-mcp, apps/server, docs/adr. In scope: finalize AgentEnvelope port mapping, Tadpole connection/session lifecycle, identity propagation, and per-request capability propagation following the accepted OQ-1 profile (ADR 0032) and M1–M3 shared governance runtime. Out of scope: M1–M4 showcase and failure drills (Tasks 12.2–12.3), Phase 13 persistent BusinessContext.
-[PERFORMANCE_THRESHOLD] 100% unit and integration tests green; AgentEnvelope validation and capability propagation < 2ms p95; zero governance or STASIS bypass.
-[ARCHITECTURE_MODE] PLAN.md §2, §3, §6, §9.3, §12.1; ADR 0031, ADR 0032, ADR 0041, ADR 0042, ADR 0043; single shared governance runtime; fail-closed on unverified identity, missing capability scope, or active STASIS.
-[FAILURE_MODES] Bypassing AgentEnvelope or capability propagation on MCP transports, trusting unverified Tadpole identity claims, accepting replayed/expired capability tokens, weakening OQ-1 fail-closed defaults.
+[SCOPE_CONTRACT] packages/governance, packages/ops-mcp, packages/cli, apps/server, docs. In scope: demonstrate M1 observation (hash-chained audit stream & independent verification), M2 signed approval verification, M3 shared SQLite ledger/STASIS reservation and idempotent settlement, and M4 authenticated HTTP MCP execution with AgentEnvelope and capability propagation end-to-end before failure drills. Out of scope: Task 12.3 failure drills and Phase 13 persistent BusinessContext.
+[PERFORMANCE_THRESHOLD] 100% unit and integration tests green; end-to-end M1->M2->M3->M4 governed invocation latency < 10ms p95 under FrozenClock; zero unverified M4 bypasses.
+[ARCHITECTURE_MODE] PLAN.md §2, §3, §6, §9.3, §12.2; ADR 0029, ADR 0031, ADR 0032, ADR 0038, ADR 0041, ADR 0042, ADR 0043, ADR 0044; single shared governance runtime; strict audit.intent before and audit.outcome after every mutation.
+[FAILURE_MODES] Skipping M1/M2/M3 prerequisites before M4 execution, accepting unsigned or replayed approvals, non-idempotent spend settlement, missing independent audit chain verification.
 ```
 
 ### Phase 9 — Economic R1: market and business footprint
@@ -2001,7 +2001,7 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 
 ### Phase 12 — Tadpole M4 runtime
 
-- [ ] 12.1 Finalize AgentEnvelope mapping, connection lifecycle, identity, and capability propagation after OQ-1.
+- [x] 12.1 Finalize AgentEnvelope mapping, connection lifecycle, identity, and capability propagation after OQ-1.
 - [ ] 12.2 Demonstrate M1 observation, M2 signed approval, M3 shared ledger/STASIS, and verified audit chain before M4.
 - [ ] 12.3 Run failure drills: invalid signature, replay, ledger timeout, disconnect, budget breach, STASIS notification, and human resume.
 - [ ] 12 exit: a real Tadpole agent uses authenticated HTTP MCP; all mutations are governed; spend settles idempotently; audit proof verifies independently.
@@ -2069,7 +2069,7 @@ Stop and request a human ADR for person tracking, face recognition, de-anonymiza
 | 0035 | Provenance/geography/statistical/evidence contract model | Reserved |
 | 0036 | OSM economic use and ODbL output obligations | Reserved |
 | 0037 | Intelligence routing and optional MapLibre bundle strategy | Reserved |
-| 0038 | Tadpole AgentEnvelope and M4 failure policy | Reserved |
+| 0038 | Tadpole AgentEnvelope and M4 failure policy | Accepted (ADR 0038) |
 | 0039 | Language placement across TypeScript/Svelte, Rust, SQL, and Python | Accepted |
 
 Reserved ADR numbers are planning aids, not accepted decisions. Update `docs/adr/INDEX.md` only when an ADR file exists.
@@ -4631,6 +4631,29 @@ No later task is authorized merely because it appears in this plan.
   - Active Documentation Guard (ADG) & doc tests: verified after `MASTER_PLAN_V3.md` synchronization (`pnpm docs:check` & `pnpm docs:test`).
 - **Plan Advancement:** Phase 11 complete (`[x] 11 exit`). Advanced to `CURRENT_PHASE=12`, `NEXT_TASK=12.1`, `NEXT_TASK_STATUS=READY`.
 - **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 12.1. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 12.1 Implementation & Verification Checkpoint — 2026-11-12
+
+- **Branch:** `codex/task-12-1-agent-envelope-lifecycle` (branched after commit `56027f0` for Phase 11 Exit Gate)
+- **Scope:** Finalized Port 4 (`CapabilityIssuer`) & Port 5 (`AgentEnvelope`) runtime mapping, Tadpole connection/session lifecycle, identity binding, and least-privilege per-request capability propagation across `@gev/contracts`, `@gev/core`, `@gev/governance`, `@gev/ops-mcp`, and `apps/server`, adhering to PLAN.md §10 Task 12.1, OQ-1 (ADR 0032), and ADRs 0031, 0038, 0041–0043.
+- **Artifacts produced & updated:**
+  - `packages/contracts/src/agentEnvelope.ts` (122 lines) & `packages/contracts/src/index.ts`: Added `TADPOLE_ENVELOPE_SCHEMA_VERSION`, `TadpoleConnectionStateSchema`, `TadpoleTransportModeSchema`, `TadpoleWrappedBriefSchema`, `TadpoleAgentSessionSchema`, and `TadpoleCapabilityPropagationSchema`.
+  - `packages/contracts/test/agentEnvelopeContracts.test.ts`: Added contracts validation tests (2/2 tests passed).
+  - `packages/core/src/toolExecutionTypes.ts` & `packages/core/src/toolExecutor.ts`: Added `envelope_task_ref`, `capability_scopes`, `'CAPABILITY_DENIED'` error code, and preflight `getMissingOperatorToolScopes` enforcement in `GovernedToolExecutor`.
+  - `packages/governance/src/agentEnvelope.ts` (185 lines), `packages/governance/src/tadpoleSessionLifecycle.ts` (339 lines), `packages/governance/src/runtimeContext.ts`, & `packages/governance/src/index.ts`: Implemented `TadpoleCapabilityIssuer` (Port 4), `TadpoleAgentEnvelope` (Port 5), and `TadpoleConnectionLifecycle` (session state transitions, least-privilege scope intersection, fail-closed STASIS/expiry/revocation, and `audit.intent`/`audit.outcome` WAL logging), wired into `GovernanceRuntimeContext`.
+  - `packages/governance/test/agentEnvelope.test.ts` (3/3 passed) & `packages/governance/test/agentEnvelopePerformance.test.ts` (isolated `test:performance` benchmark): Verified 4-Pillar wrapping, control-character rejection, Ed25519 CapToken expiry/revocation, least-privilege intersection, STASIS suspension, audit trail, and `< 2ms` p95 latency (`p95=0.572ms`, N=200).
+  - `packages/ops-mcp/src/httpAdapter.ts`: Propagated `envelope_task_ref` and `capability_scopes` into `GovernedToolExecutor` calls.
+  - `apps/server/src/routes/mcpTadpoleAuth.ts` (61 lines) & `apps/server/src/routes/mcp.ts` (470 lines): Added fail-closed `x-tadpole-cap-token` and `x-tadpole-session-id` header validation and least-privilege scope narrowing on HTTP MCP requests.
+  - `apps/server/test/tadpoleEnvelopePropagation.test.ts`: Verified `GovernedToolExecutor` `CAPABILITY_DENIED` preflight, MCP `tools/list` & `tools/call` narrowing, and revoked token 401 rejection (2/2 passed).
+  - `docs/adr/0038-tadpole-agent-envelope-and-m4-policy.md`, `docs/adr/INDEX.md`, & `RUNBOOK.md` (§25): Accepted/indexed ADR 0038 and documented Tadpole envelope/capability lifecycle operations.
+- **Verification Evidence & Performance:**
+  - Monorepo build & typecheck: 11/11 build tasks & 19/19 typecheck tasks passed (`pnpm build && pnpm typecheck`).
+  - Unit tests (`pnpm turbo run test --concurrency=2` after final edits): `@gev/contracts` 25 files / 193 tests passed, `@gev/security` 4 files / 44 tests passed, `@gev/core` 12 files / 72 tests passed, `@gev/economic` 22 files / 188 tests passed, `@gev/governance` 14 files / 103 tests passed, `@gev/cesium-kit` 4 files / 17 tests passed, `@gev/providers` 23 files / 163 tests passed, `@gev/ops-mcp` 11 files / 72 tests passed, `@gev/web` 1 file / 9 tests passed, `@gev/cli` 4 files / 16 tests passed; `@gev/server` 33 files / 311 tests passed sequentially (`vitest run --exclude test/load.test.ts --no-file-parallelism --maxWorkers=1`; one transient CPU-contention latency variance on `phase8ExitGate.test.ts` test 7 under 33-worker parallel startup).
+  - Task 12.1 performance benchmark (`pnpm --filter @gev/governance test:performance`): `p95=0.572ms` (N=200, threshold `< 2ms`).
+  - Biome check on Task 12.1 files: 15 files checked, 0 errors (`pnpm biome check`); repo-wide `pnpm architecture:check`: clean, 0 large files.
+  - Active Documentation Guard (ADG) & doc tests: verified after `MASTER_PLAN_V3.md` synchronization (`pnpm docs:check` & `pnpm docs:test`).
+- **Plan Advancement:** Task 12.1 complete (`[x] 12.1`). Advanced to `CURRENT_PHASE=12`, `NEXT_TASK=12.2`, `NEXT_TASK_STATUS=READY`.
+- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 12.2. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
 

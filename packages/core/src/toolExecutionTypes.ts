@@ -1,4 +1,9 @@
-import { type AuditOutcome, type AuthenticatedIdentityContext, GevEvents } from '@gev/contracts';
+import {
+  type AuditOutcome,
+  type AuthenticatedIdentityContext,
+  type CapabilityScope,
+  GevEvents,
+} from '@gev/contracts';
 import type { SimClock } from './clock.js';
 
 export const MICRO_USD_PER_USD = 1_000_000;
@@ -10,6 +15,8 @@ export interface ToolExecutionContext {
   tenant_id?: string | null;
   identity?: AuthenticatedIdentityContext;
   authority_task_ref?: string;
+  envelope_task_ref?: string;
+  capability_scopes?: readonly CapabilityScope[];
   operation_id?: string;
   signal?: AbortSignal;
 }
@@ -22,6 +29,7 @@ export type ToolHandler<TInput = unknown, TOutput = unknown> = (
 export type ToolExecutionFailureCode =
   | 'UNKNOWN_TOOL'
   | 'TOOL_UNAVAILABLE'
+  | 'CAPABILITY_DENIED'
   | 'INPUT_VALIDATION_FAILED'
   | 'MISSING_GOVERNANCE_PORT'
   | 'MISSING_HANDLER'

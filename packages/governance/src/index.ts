@@ -7,5 +7,7 @@ export * from './governanceDb.js';
 export * from './runtimeContext.js';
 export * from './signedApproval.js';
 export * from './tadpoleBridge.js';
+export * from './agentEnvelope.js';
+export * from './tadpoleSessionLifecycle.js';
 export * from './layerAccessCrypto.js';
 export * from './tenantLayerAccessStore.js';

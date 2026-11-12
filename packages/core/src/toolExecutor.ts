@@ -7,6 +7,7 @@ import {
   GevEvents,
   OPERATOR_TOOLS,
   type OperatorToolName,
+  getMissingOperatorToolScopes,
   isOperatorToolName,
 } from '@gev/contracts';
 import type { SimClock } from './clock.js';
@@ -132,6 +133,18 @@ export class GovernedToolExecutor {
         'TOOL_UNAVAILABLE',
         `Tool '${name}' is unavailable for this consumer`
       );
+    }
+    if (context.capability_scopes !== undefined) {
+      const missingScopes = getMissingOperatorToolScopes(name, context.capability_scopes);
+      if (missingScopes.length > 0) {
+        return this.preflightFailure(
+          name,
+          intentId,
+          startTime,
+          'CAPABILITY_DENIED',
+          `Capability scope denied for tool '${name}': missing [${missingScopes.join(', ')}]`
+        );
+      }
     }
 
     const definition = OPERATOR_TOOLS[name];
