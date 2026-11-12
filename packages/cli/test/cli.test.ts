@@ -5,6 +5,7 @@ import { createGovernanceRuntimeContext } from '@gev/governance';
 import { describe, expect, it, vi } from 'vitest';
 import { runAuditTail, runAuditVerify } from '../src/commands/audit.js';
 import { runFeedsHealth } from '../src/commands/feeds.js';
+import { runM1M4Showcase } from '../src/commands/m1M4Showcase.js';
 import { runResume } from '../src/commands/resume.js';
 import { runSceneLoad, runSceneSave } from '../src/commands/scene.js';
 import { PROJECT_PHASE, runStatus } from '../src/commands/status.js';
@@ -144,5 +145,27 @@ describe('GEV v2 CLI Surface (@gev/cli)', () => {
     await expect(
       runResume('Manual operator testing resumption', { governanceDbPath: ':memory:' })
     ).rejects.toThrow(/requires durable shared SQLite governance state/);
+  });
+
+  it('runM1M4Showcase() executes M1->M2->M3->M4 end-to-end with verified audit chain', async () => {
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, 'log').mockImplementation((msg) => {
+      logs.push(msg);
+    });
+    try {
+      const result = await runM1M4Showcase({ json: true });
+      expect(result.success).toBe(true);
+      expect(result.authority_kind).toBe('shared_sqlite');
+      expect(result.m2_gate_kind).toBe('signed_approval_gate');
+      expect(result.m3_stasis_recovered).toBe(true);
+      expect(result.m3_operation_state).toBe('SETTLED');
+      expect(result.m4_read_status).toBe(200);
+      expect(result.m4_mutation_status).toBe(200);
+      expect(result.audit_valid).toBe(true);
+      expect(result.m1_verified_entries).toBeGreaterThanOrEqual(10);
+      expect(logs).toHaveLength(1);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-26
-**Status:** IN PROGRESS — Phase 12: task 12.1 complete; task 12.2 ready
+**Status:** IN PROGRESS — Phase 12: task 12.2 complete; task 12.3 ready
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,7 +20,7 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=12
-NEXT_TASK=12.2
+NEXT_TASK=12.3
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
@@ -1967,13 +1967,13 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 - [x] 8.5 Add content/instruction separation and prompt-injection tests before any provider/economic text enters an LLM/Tadpole context.
 - [x] 8 exit: suppressed/unavailable/stale cases validate; provenance is required; no persistence or live calls; ADG and affected gates pass.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 12.2
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 12.3
 
 ```text
-[SCOPE_CONTRACT] packages/governance, packages/ops-mcp, packages/cli, apps/server, docs. In scope: demonstrate M1 observation (hash-chained audit stream & independent verification), M2 signed approval verification, M3 shared SQLite ledger/STASIS reservation and idempotent settlement, and M4 authenticated HTTP MCP execution with AgentEnvelope and capability propagation end-to-end before failure drills. Out of scope: Task 12.3 failure drills and Phase 13 persistent BusinessContext.
-[PERFORMANCE_THRESHOLD] 100% unit and integration tests green; end-to-end M1->M2->M3->M4 governed invocation latency < 10ms p95 under FrozenClock; zero unverified M4 bypasses.
-[ARCHITECTURE_MODE] PLAN.md §2, §3, §6, §9.3, §12.2; ADR 0029, ADR 0031, ADR 0032, ADR 0038, ADR 0041, ADR 0042, ADR 0043, ADR 0044; single shared governance runtime; strict audit.intent before and audit.outcome after every mutation.
-[FAILURE_MODES] Skipping M1/M2/M3 prerequisites before M4 execution, accepting unsigned or replayed approvals, non-idempotent spend settlement, missing independent audit chain verification.
+[SCOPE_CONTRACT] packages/governance, packages/ops-mcp, packages/core, apps/server, docs. In scope: execute automated failure drills across invalid/tampered Ed25519 signatures, M2 approval and CapToken replay, SQLite ledger timeout and IN_DOUBT recovery, unexpected Tadpole MCP disconnect and cancellation, budget breach with STASIS notification, and human-only STASIS resume. Out of scope: Phase 12 Exit Gate certification and Phase 13 persistent BusinessContext.
+[PERFORMANCE_THRESHOLD] 100% failure-drill and regression tests green; zero fail-open fallbacks, leaked charges, or unaudited failure transitions; STASIS propagates fail-closed within 1 request cycle.
+[ARCHITECTURE_MODE] PLAN.md §2, §3, §6, §9.3, §12.3; ADR 0031, ADR 0032, ADR 0038, ADR 0041, ADR 0042, ADR 0043, ADR 0044; single shared SQLite governance runtime; idempotent operation_id preservation across retries and timeouts.
+[FAILURE_MODES] Silent auto-approval or fail-open fallback on signature/ledger error, duplicate spend settlement after timeout, non-human STASIS resume, swallowed disconnect without audit outcome or refund.
 ```
 
 ### Phase 9 — Economic R1: market and business footprint
@@ -2002,7 +2002,7 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 ### Phase 12 — Tadpole M4 runtime
 
 - [x] 12.1 Finalize AgentEnvelope mapping, connection lifecycle, identity, and capability propagation after OQ-1.
-- [ ] 12.2 Demonstrate M1 observation, M2 signed approval, M3 shared ledger/STASIS, and verified audit chain before M4.
+- [x] 12.2 Demonstrate M1 observation, M2 signed approval, M3 shared ledger/STASIS, and verified audit chain before M4.
 - [ ] 12.3 Run failure drills: invalid signature, replay, ledger timeout, disconnect, budget breach, STASIS notification, and human resume.
 - [ ] 12 exit: a real Tadpole agent uses authenticated HTTP MCP; all mutations are governed; spend settles idempotently; audit proof verifies independently.
 
@@ -4654,6 +4654,30 @@ No later task is authorized merely because it appears in this plan.
   - Active Documentation Guard (ADG) & doc tests: verified after `MASTER_PLAN_V3.md` synchronization (`pnpm docs:check` & `pnpm docs:test`).
 - **Plan Advancement:** Task 12.1 complete (`[x] 12.1`). Advanced to `CURRENT_PHASE=12`, `NEXT_TASK=12.2`, `NEXT_TASK_STATUS=READY`.
 - **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 12.2. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 12.2 Implementation & Verification Checkpoint — 2026-11-12
+
+- **Branch:** `codex/task-12-2-m1-m4-showcase` (branched after commit `c5f682f` for Task 12.1)
+- **Scope:** Demonstrated end-to-end M1 observation (authenticated SSE `/ops/audit/stream`, `/ops/audit/integrity`, and independent SQLite chain verification), M2 Ed25519 `SignedApprovalGate` verification, M3 shared SQLite ledger reservation/settlement and human-only STASIS recovery, and M4 authenticated HTTP MCP execution with `TadpoleAgentEnvelope`, `TadpoleCapabilityIssuer`, and `TadpoleConnectionLifecycle` across `@gev/governance`, `@gev/ops-mcp`, `@gev/cli`, `apps/server`, and `RUNBOOK.md`.
+- **Artifacts produced & updated:**
+  - `packages/governance/src/runtimeContext.ts` & `packages/governance/src/index.ts`: Exposed `connectionLifecycle` on `GovernanceRuntimeContext` and passed shared SQLite `opened?.db` into `SqliteApprovalNonceStore`.
+  - `packages/governance/src/tadpoleBridge.ts`, `packages/governance/src/agentEnvelope.ts`, & `packages/governance/src/signedApproval.ts`: Added single-pass `verifySignedCapTokenWithClaims` and cached Ed25519 `KeyObject` verification/signing paths without changing wire formats.
+  - `packages/governance/src/m1M4Readiness.ts` & `packages/governance/test/m1M4Readiness.test.ts`: Added `inspectM1ToM3Readiness`, `assertM1ToM3Prerequisites`, `M1M4ReadinessError`, and `verifyIndependentAuditChain` (2/2 tests passed; fail-closed rejection of `PromptApprovalGate` / `UnavailableApprovalGate` / active STASIS / invalid audit chains).
+  - `packages/ops-mcp/src/httpAdapter.ts`: Registered only the targeted `mcp-name` tool on `tools/call` requests when authorized, preserving full `tools/list` discovery and fail-closed unknown/unauthorized behavior.
+  - `packages/cli/src/commands/m1M4Showcase.ts`, `packages/cli/src/index.ts`, & `packages/cli/test/cli.test.ts`: Added `runM1M4Showcase` (`pnpm gev showcase`) exercising M1 -> M2 -> M3 -> M4 on shared SQLite with independent audit verification (`4` files, `17` tests passed).
+  - `apps/server/src/mcpRuntime.ts` & `apps/server/src/routes/mcpTadpoleAuth.ts`: Wired `governanceContext.capabilityIssuer` and `governanceContext.connectionLifecycle` into `createMcpHttpRouter` and avoided duplicate CapToken signature verification per request.
+  - `apps/server/test/tadpoleM1M4Showcase.test.ts` & `apps/server/test/tadpoleM1M4Performance.test.ts`: Added full `createApp()` M1->M2->M3->M4 HTTP integration showcase and `< 10ms` p95 `FrozenClock` latency benchmark (`apps/server/package.json` `test:performance`).
+  - `RUNBOOK.md` (§25, §26): Documented `gev showcase` and M1 -> M2 -> M3 -> M4 prerequisite/audit verification workflow.
+- **Verification Evidence & Performance:**
+  - Monorepo build & typecheck: 11/11 build tasks & 19/19 typecheck tasks passed (`pnpm build && pnpm typecheck`).
+  - `@gev/governance`: 15 files / 105 tests passed (`pnpm --filter @gev/governance test`) + Task 12.1 benchmark `p95=0.330ms` (`pnpm --filter @gev/governance test:performance`).
+  - `@gev/ops-mcp`: 11 files / 72 tests passed (`pnpm --filter @gev/ops-mcp test`).
+  - `@gev/cli`: 4 files / 17 tests passed (`pnpm --filter @gev/cli test`) + `pnpm gev showcase --json` verified (`success: true`, `authority_kind: "shared_sqlite"`, `m2_gate_kind: "signed_approval_gate"`, `m3_operation_state: "SETTLED"`, `audit_valid: true`).
+  - `@gev/server`: 34 files / 312 tests passed (`pnpm --filter @gev/server exec vitest run --exclude test/load.test.ts --exclude test/tadpoleM1M4Performance.test.ts --no-file-parallelism --maxWorkers=1`) + Task 12.2 E2E M1->M2->M3->M4 governed HTTP MCP benchmark `p95=6.749ms` (N=60, threshold `< 10ms`, `pnpm --filter @gev/server test:performance`).
+  - Biome check on Task 12.2 touched files: 15 files checked, 0 errors; repo-wide `pnpm architecture:check`: clean, 0 large files.
+  - Active Documentation Guard (ADG) & doc tests: verified after `MASTER_PLAN_V3.md` synchronization (`pnpm docs:check` & `pnpm docs:test`).
+- **Plan Advancement:** Task 12.2 complete (`[x] 12.2`). Advanced to `CURRENT_PHASE=12`, `NEXT_TASK=12.3`, `NEXT_TASK_STATUS=READY`.
+- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 12.3. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
 

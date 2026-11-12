@@ -15,7 +15,8 @@ export function narrowMcpAuthorizationFromTadpoleHeaders(params: {
   let { authorization } = params;
   const { rawCapToken, rawSessionId, capabilityIssuer, connectionLifecycle } = params;
 
-  if (rawCapToken && capabilityIssuer) {
+  const canVerifyViaSession = Boolean(rawSessionId && connectionLifecycle);
+  if (rawCapToken && capabilityIssuer && !canVerifyViaSession) {
     const claims = capabilityIssuer.verifyWithClaims(rawCapToken);
     if (!claims || claims.sub !== authorization.principal) {
       return { allowed: false, code: 'invalid_token' };

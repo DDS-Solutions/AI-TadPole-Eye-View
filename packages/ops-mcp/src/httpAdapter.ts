@@ -217,7 +217,14 @@ export function createGevMcpHttpHandler(options: GevMcpHttpHandlerOptions): GevM
       const authorizedToolNames = authorization
         ? getAuthorizedOperatorToolNames(authorization.scopes, MCP_OPERATOR_TOOL_NAMES)
         : [];
-      const definitions = getMcpHttpToolDefinitions(authorizedToolNames);
+      const requestedToolHeader =
+        requestContext.requestInfo?.headers.get('mcp-method') === 'tools/call'
+          ? requestContext.requestInfo.headers.get('mcp-name')?.trim()
+          : undefined;
+      const targetToolNames = requestedToolHeader
+        ? authorizedToolNames.filter((name) => name === requestedToolHeader)
+        : authorizedToolNames;
+      const definitions = getMcpHttpToolDefinitions(targetToolNames);
 
       for (const definition of definitions) {
         const inputSchema = getCachedFromJsonSchema(definition.inputSchema);

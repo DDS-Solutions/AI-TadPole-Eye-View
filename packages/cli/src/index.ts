@@ -5,6 +5,7 @@ import { runAuditTail, runAuditVerify } from './commands/audit.js';
 import { runBudgetReconcile } from './commands/budget.js';
 import { runDemo } from './commands/demo.js';
 import { runFeedsHealth } from './commands/feeds.js';
+import { runM1M4Showcase } from './commands/m1M4Showcase.js';
 import { runResume } from './commands/resume.js';
 import { runSceneLoad, runSceneSave } from './commands/scene.js';
 import { runStatus } from './commands/status.js';
@@ -22,6 +23,16 @@ program
   .description('Run live Governed Agent Team showcase demonstration (PLAN.md §10 Phase 4)')
   .action(async () => {
     await runDemo();
+  });
+
+// 0b. gev showcase
+program
+  .command('showcase')
+  .description('Run M1->M2->M3->M4 governed Tadpole integration showcase (PLAN.md §10 Task 12.2)')
+  .option('--db-path <path>', 'Use an explicit shared SQLite governance database path')
+  .option('--json', 'Output raw JSON')
+  .action(async (options) => {
+    await runM1M4Showcase({ dbPath: options.dbPath, json: Boolean(options.json) });
   });
 
 // 1. gev status

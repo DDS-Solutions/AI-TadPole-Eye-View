@@ -18,6 +18,7 @@ import {
   type TrustedApprovalKey,
 } from './signedApproval.js';
 
+import { TadpoleConnectionLifecycle } from './tadpoleSessionLifecycle.js';
 import { SqliteTenantLayerAccessStore } from './tenantLayerAccessStore.js';
 
 export interface GovernanceRuntimeContext {
@@ -28,6 +29,7 @@ export interface GovernanceRuntimeContext {
   approvalGate: ApprovalGate;
   capabilityIssuer: TadpoleCapabilityIssuer;
   agentEnvelope: TadpoleAgentEnvelope;
+  connectionLifecycle: TadpoleConnectionLifecycle;
   tenantLayerAccessStore: SqliteTenantLayerAccessStore;
   startReaper(intervalMs?: number): { stop(): void };
   authority(): GovernanceAuthority;
@@ -127,7 +129,7 @@ export function createGovernanceRuntimeContext(
     approvalGate =
       options.approvalGate ??
       (options.signedApproval
-        ? createSignedApprovalGate(options.signedApproval, clock, dbPath)
+        ? createSignedApprovalGate(options.signedApproval, clock, dbPath, opened?.db)
         : process.env.NODE_ENV === 'production'
           ? new UnavailableApprovalGate(clock)
           : new PromptApprovalGate({ clock }));
@@ -158,6 +160,13 @@ export function createGovernanceRuntimeContext(
 
   const capabilityIssuer = new TadpoleCapabilityIssuer({ clock, auditSink });
   const agentEnvelope = new TadpoleAgentEnvelope(clock);
+  const connectionLifecycle = new TadpoleConnectionLifecycle({
+    clock,
+    auditSink,
+    budgetGovernor,
+    capabilityIssuer,
+    agentEnvelope,
+  });
 
   return {
     clock,
@@ -167,6 +176,7 @@ export function createGovernanceRuntimeContext(
     approvalGate,
     capabilityIssuer,
     agentEnvelope,
+    connectionLifecycle,
     tenantLayerAccessStore,
     startReaper: (intervalMs = 30_000) => {
       const timer = setInterval(() => {
@@ -214,9 +224,10 @@ export function createGovernanceRuntimeContext(
 function createSignedApprovalGate(
   options: NonNullable<GovernanceRuntimeContextOptions['signedApproval']>,
   clock: SimClock,
-  dbPath: string
+  dbPath: string,
+  db?: import('node:sqlite').DatabaseSync
 ): SignedApprovalGate {
-  const nonceStore = new SqliteApprovalNonceStore({ clock, dbPath });
+  const nonceStore = new SqliteApprovalNonceStore({ clock, dbPath, db });
   try {
     return new SignedApprovalGate({
       clock,

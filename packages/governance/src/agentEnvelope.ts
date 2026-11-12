@@ -4,7 +4,6 @@ import {
   type AuditSink,
   type CapToken,
   type CapTokenClaims,
-  CapTokenClaims as CapTokenClaimsSchema,
   type CapabilityIssuer,
   type CapabilityScope,
   GevEvents,
@@ -15,7 +14,7 @@ import {
 } from '@gev/contracts';
 import { type SimClock, SystemClock } from '@gev/core';
 import { type TadpoleKeyPair, generateEd25519KeyPair } from './signedApproval.js';
-import { issueSignedCapToken, verifySignedCapToken } from './tadpoleBridge.js';
+import { issueSignedCapToken, verifySignedCapTokenWithClaims } from './tadpoleBridge.js';
 
 // ============================================================================
 // Port 4: TadpoleCapabilityIssuer (PLAN.md §6, §12.1 & ADR 0038)
@@ -30,12 +29,14 @@ export interface TadpoleCapabilityIssuerOptions {
 export class TadpoleCapabilityIssuer implements CapabilityIssuer {
   private readonly clock: SimClock;
   private readonly keyPair: TadpoleKeyPair;
+  private readonly publicKey: crypto.KeyObject;
   private readonly auditSink?: AuditSink;
   private readonly revokedTokens = new Set<string>();
 
   constructor(options: TadpoleCapabilityIssuerOptions = {}) {
     this.clock = options.clock ?? new SystemClock();
     this.keyPair = options.keyPair ?? generateEd25519KeyPair();
+    this.publicKey = crypto.createPublicKey(this.keyPair.publicKeyPem);
     this.auditSink = options.auditSink;
   }
 
@@ -101,20 +102,7 @@ export class TadpoleCapabilityIssuer implements CapabilityIssuer {
       return null;
     }
 
-    const validScopes = verifySignedCapToken(raw, this.keyPair.publicKeyPem, this.clock);
-    if (!validScopes) {
-      return null;
-    }
-
-    try {
-      const parts = raw.split('.');
-      const payloadPart = parts[1];
-      if (!payloadPart) return null;
-      const decoded = JSON.parse(Buffer.from(payloadPart, 'base64url').toString('utf8'));
-      return CapTokenClaimsSchema.parse(decoded);
-    } catch {
-      return null;
-    }
+    return verifySignedCapTokenWithClaims(raw, this.publicKey, this.clock);
   }
 }
 

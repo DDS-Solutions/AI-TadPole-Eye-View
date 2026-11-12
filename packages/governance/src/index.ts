@@ -9,5 +9,6 @@ export * from './signedApproval.js';
 export * from './tadpoleBridge.js';
 export * from './agentEnvelope.js';
 export * from './tadpoleSessionLifecycle.js';
+export * from './m1M4Readiness.js';
 export * from './layerAccessCrypto.js';
 export * from './tenantLayerAccessStore.js';

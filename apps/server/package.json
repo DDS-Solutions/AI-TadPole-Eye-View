@@ -7,8 +7,9 @@
     "dev": "node --import tsx --watch src/index.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --exclude test/load.test.ts",
+    "test": "vitest run --exclude test/load.test.ts --exclude test/tadpoleM1M4Performance.test.ts",
     "test:load": "vitest run test/load.test.ts --no-file-parallelism --maxWorkers=1",
+    "test:performance": "vitest run test/tadpoleM1M4Performance.test.ts --no-file-parallelism --maxWorkers=1",
     "start": "node dist/index.js",
     "lint": "biome check ."
   },

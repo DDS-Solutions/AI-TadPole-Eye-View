@@ -50,6 +50,8 @@ export function createMcpHttpRuntime(
     now: () => options.clock.now(),
     bearerVerifier: process.env.NODE_ENV === 'production' ? undefined : options.bearerVerifier,
     maxActiveRequests: options.maxActiveRequests,
+    capabilityIssuer: options.governanceContext.capabilityIssuer,
+    connectionLifecycle: options.governanceContext.connectionLifecycle,
   });
 }
 
