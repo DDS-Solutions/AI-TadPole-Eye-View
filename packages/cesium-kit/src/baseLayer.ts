@@ -56,6 +56,7 @@ export abstract class BaseLayerController<
    */
   setVisible(visible: boolean): void {
     this.dataSource.show = visible;
+    this.viewer.scene?.requestRender?.();
   }
 
   /**
@@ -148,6 +149,7 @@ export abstract class BaseLayerController<
 
     this.afterDrain?.();
     this.dataSource.entities.resumeEvents();
+    this.viewer.scene?.requestRender?.();
   }
 
   /**

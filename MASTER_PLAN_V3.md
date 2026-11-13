@@ -2062,17 +2062,17 @@ Stop and request a human ADR for person tracking, face recognition, de-anonymiza
 | ADR | Decision | Status |
 |---|---|---|
 | 0030 | V3 canonical plan, synchronized named copy, deterministic resume protocol | Accepted |
-| 0031 | Authentication, identity, tenancy, and route policy | Reserved |
-| 0032 | MCP SDK/transport/protocol/session design | Reserved |
-| 0033 | Durable shared governance, M2/M3 adapters, audit hash chain | Reserved |
-| 0034 | Satellite source, GP/OMM propagation, reference frames, licensing | Reserved |
-| 0035 | Provenance/geography/statistical/evidence contract model | Reserved |
-| 0036 | OSM economic use and ODbL output obligations | Reserved |
-| 0037 | Intelligence routing and optional MapLibre bundle strategy | Reserved |
+| 0031 | Authentication, identity, tenancy, and route policy | Accepted (ADR 0031; production provisioning pending) |
+| 0032 | MCP SDK/transport/protocol/session design | Accepted (ADR 0032) |
+| 0033 | Durable shared governance, M2/M3 adapters, audit hash chain | Reserved (covered by ADRs 0041–0044) |
+| 0034 | Satellite source, GP/OMM propagation, reference frames, licensing | Accepted (ADR 0034) |
+| 0035 | Provenance/geography/statistical/evidence contract model | Accepted (ADR 0035) |
+| 0036 | OSM economic use and ODbL output obligations | Accepted (ADRs 0036, 0057) |
+| 0037 | Intelligence routing and optional MapLibre bundle strategy | Reserved (superseded by ADR 0051) |
 | 0038 | Tadpole AgentEnvelope and M4 failure policy | Accepted (ADR 0038) |
 | 0039 | Language placement across TypeScript/Svelte, Rust, SQL, and Python | Accepted |
 
-Reserved ADR numbers are planning aids, not accepted decisions. Update `docs/adr/INDEX.md` only when an ADR file exists.
+Accepted ADRs 0040–0065 are indexed in `docs/adr/INDEX.md`. Reserved ADR numbers remain planning cross-references; do not link nonexistent ADR files.
 
 ---
 

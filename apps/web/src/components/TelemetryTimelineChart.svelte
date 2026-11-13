@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import uPlot from 'uplot';
   import 'uplot/dist/uPlot.min.css';
+  import { WEB_CHART_THEME } from '../designTokens';
 
   interface SeriesConfig {
     label: string;
@@ -64,7 +65,7 @@
       cursor: {
         points: {
           size: 6,
-          fill: '#38bdf8',
+          fill: WEB_CHART_THEME.cursor,
         },
       },
       legend: {
@@ -72,15 +73,15 @@
       },
       axes: [
         {
-          stroke: '#94a3b8',
-          grid: { stroke: 'rgba(148, 163, 184, 0.12)', width: 1 },
-          ticks: { stroke: 'rgba(148, 163, 184, 0.25)', width: 1 },
+          stroke: WEB_CHART_THEME.axis,
+          grid: { stroke: WEB_CHART_THEME.grid, width: 1 },
+          ticks: { stroke: WEB_CHART_THEME.ticks, width: 1 },
           font: '10px ui-monospace, monospace',
         },
         {
-          stroke: '#94a3b8',
-          grid: { stroke: 'rgba(148, 163, 184, 0.12)', width: 1 },
-          ticks: { stroke: 'rgba(148, 163, 184, 0.25)', width: 1 },
+          stroke: WEB_CHART_THEME.axis,
+          grid: { stroke: WEB_CHART_THEME.grid, width: 1 },
+          ticks: { stroke: WEB_CHART_THEME.ticks, width: 1 },
           font: '10px ui-monospace, monospace',
         },
       ],
@@ -142,8 +143,8 @@
 <style>
   .telemetry-chart-wrapper {
     margin-top: 10px;
-    background: rgba(3, 7, 18, 0.6);
-    border: 1px solid rgba(148, 163, 184, 0.15);
+    background: var(--hud-surface-dark-soft);
+    border: 1px solid var(--hud-chip-border);
     border-radius: 6px;
     padding: 8px;
     box-sizing: border-box;
@@ -159,20 +160,20 @@
   }
 
   .chart-title {
-    color: #f8fafc;
+    color: var(--hud-text-primary);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
 
   .chart-tag {
-    color: #38bdf8;
+    color: var(--hud-accent);
     font-family: ui-monospace, monospace;
     font-size: 0.65rem;
-    background: rgba(56, 189, 248, 0.1);
+    background: var(--hud-accent-subtle);
     padding: 2px 5px;
     border-radius: 3px;
-    border: 1px solid rgba(56, 189, 248, 0.2);
+    border: 1px solid var(--hud-accent-selected);
   }
 
   .uplot-container {
@@ -183,11 +184,11 @@
   :global(.uplot .u-legend) {
     font-family: ui-monospace, monospace;
     font-size: 0.7rem;
-    color: #94a3b8;
+    color: var(--hud-text-secondary);
     padding: 2px 0 6px 0;
   }
 
   :global(.uplot .u-legend .u-series th) {
-    color: #f8fafc;
+    color: var(--hud-text-primary);
   }
 </style>

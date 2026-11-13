@@ -8,6 +8,7 @@ export const RoomTokenPayloadSchema = z.object({
   sub: z.string().min(1),
   callsign: z.string().min(1),
   roomId: z.string().min(1),
+  tenantId: z.string().min(1).default('tenant-local'),
   role: RoomRoleSchema,
   exp: z.number().int().positive(),
   iat: z.number().int().positive(),

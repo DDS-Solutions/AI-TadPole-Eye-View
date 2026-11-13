@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import http from 'node:http';
 import { createRequire } from 'node:module';
@@ -16,8 +17,18 @@ const CONFORMANCE_PROXY_PORT = 3001;
 const MCP_RESOURCE = `http://${HOST}:${GEV_PORT}/mcp`;
 const TEST_ACCESS_TOKEN = 'deterministic-task-6-5-conformance-token';
 const TEST_NOW_MS = 1_700_000_000_000;
-const CONFORMANCE_VERSION = '0.2.0-alpha.11';
-const INSPECTOR_VERSION = '2.5.0';
+const CONFORMANCE_VERSION = JSON.parse(
+  readFileSync(
+    path.join(ROOT, 'node_modules', '@modelcontextprotocol', 'conformance', 'package.json'),
+    'utf8'
+  )
+).version;
+const INSPECTOR_VERSION = JSON.parse(
+  readFileSync(
+    path.join(ROOT, 'node_modules', '@modelcontextprotocol', 'inspector', 'package.json'),
+    'utf8'
+  )
+).version;
 const MAX_TOOL_OUTPUT_BYTES = 2 * 1024 * 1024;
 const MAX_PROXY_BODY_BYTES = 2 * 1024 * 1024;
 const TOOL_TIMEOUT_MS = 60_000;

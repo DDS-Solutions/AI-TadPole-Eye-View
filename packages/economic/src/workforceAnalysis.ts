@@ -13,7 +13,6 @@ import {
   type WorkforceOccupationalSpecialization,
   type WorkforceUnemploymentSummary,
   type WorkforceWageDifferentialSummary,
-  type WorkforceWagePercentiles,
   getNumericEstimateValue,
 } from '@gev/contracts';
 import { calculateHhiFromShares } from './concentration.js';
@@ -24,147 +23,21 @@ import {
   synthesizeMultiSourceEvidenceBundle,
 } from './multiSourceEvidence.js';
 import { calculateLocationQuotient } from './specialization.js';
+import {
+  KNOWN_SOC_TITLES,
+  calculateEstimateRatio,
+  extractWagePercentiles,
+  findOewsRecord,
+  makeVarLink,
+  resolveLauPeriodAndYear,
+  unavail,
+} from './workforceHelpers.js';
+
+export { KNOWN_SOC_TITLES };
 
 // ============================================================================
 // Pure Workforce Analysis Engine (PLAN.md §8.2, §10.2, ADR 0061)
 // ============================================================================
-
-export const KNOWN_SOC_TITLES: Record<string, string> = {
-  '00-0000': 'All Occupations',
-  '11-0000': 'Management Occupations',
-  '13-0000': 'Business & Financial Operations',
-  '15-0000': 'Computer & Mathematical Occupations',
-  '15-1252': 'Software Developers',
-  '15-1211': 'Computer Systems Analysts',
-  '17-0000': 'Architecture & Engineering Occupations',
-  '19-0000': 'Life, Physical, & Social Science',
-  '21-0000': 'Community & Social Service',
-  '23-0000': 'Legal Occupations',
-  '25-0000': 'Educational Instruction & Library',
-  '27-0000': 'Arts, Design, Entertainment, Sports, & Media',
-  '29-0000': 'Healthcare Practitioners & Technical',
-  '29-1141': 'Registered Nurses',
-  '31-0000': 'Healthcare Support Occupations',
-  '33-0000': 'Protective Service Occupations',
-  '35-0000': 'Food Preparation & Serving',
-  '35-2014': 'Cooks, Restaurant',
-  '37-0000': 'Building & Grounds Cleaning',
-  '39-0000': 'Personal Care & Service',
-  '41-0000': 'Sales & Related Occupations',
-  '43-0000': 'Office & Administrative Support',
-  '45-0000': 'Farming, Fishing, & Forestry',
-  '47-0000': 'Construction & Extraction',
-  '49-0000': 'Installation, Maintenance, & Repair',
-  '51-0000': 'Production Occupations',
-  '53-0000': 'Transportation & Material Moving',
-};
-
-const unavail = (reason: string): EconomicEstimate => ({ status: 'unavailable', reason });
-
-function findOewsRecord(
-  records: readonly EconomicEvidenceRecord[],
-  socCode: string,
-  varNameOrMetric: string
-): EconomicEvidenceRecord | undefined {
-  const normSoc = socCode.replace('-', '');
-  return records.find((r) => {
-    const otherSocMatch = r.evidence_id.match(/\b\d{6}\b/);
-    if (otherSocMatch && otherSocMatch[0] !== normSoc && socCode !== '00-0000') {
-      return false;
-    }
-    return (
-      r.variable_name === varNameOrMetric ||
-      r.metric_id === varNameOrMetric ||
-      r.metric_id.includes(varNameOrMetric.toLowerCase().replace('_', '-'))
-    );
-  });
-}
-
-function calculateEstimateRatio(
-  numEst: EconomicEstimate,
-  denEst: EconomicEstimate,
-  unit: string = 'ratio'
-): EconomicEstimate {
-  const numVal = getNumericEstimateValue(numEst);
-  const denVal = getNumericEstimateValue(denEst);
-
-  if (numVal !== undefined && denVal !== undefined && denVal > 0) {
-    return {
-      status: 'available',
-      value: Math.round((numVal / denVal) * 100) / 100,
-      unit,
-      margin_of_error: null,
-      confidence_level: null,
-      sample_size: null,
-    };
-  }
-
-  if (numEst.status === 'suppressed') {
-    return {
-      status: 'suppressed',
-      reason: numEst.reason,
-      detail: `Ratio suppressed: numerator suppressed (${numEst.detail})`,
-      ...(numEst.bounds ? { bounds: numEst.bounds } : {}),
-      unit,
-    };
-  }
-  if (denEst.status === 'suppressed') {
-    return {
-      status: 'suppressed',
-      reason: denEst.reason,
-      detail: `Ratio suppressed: denominator suppressed (${denEst.detail})`,
-      ...(denEst.bounds ? { bounds: denEst.bounds } : {}),
-      unit,
-    };
-  }
-
-  return unavail('Component estimate unavailable to calculate ratio');
-}
-
-function extractWagePercentiles(
-  records: readonly EconomicEvidenceRecord[],
-  socCode: string,
-  prefix: 'H' | 'A'
-): WorkforceWagePercentiles {
-  const isH = prefix === 'H';
-  const otherPrefix = isH ? 'A' : 'H';
-  const lookup = (key: string): EconomicEstimate => {
-    const direct = findOewsRecord(records, socCode, `${prefix}_${key}`)?.estimate;
-    if (direct) return direct;
-    const alt = findOewsRecord(records, socCode, `${otherPrefix}_${key}`)?.estimate;
-    if (alt?.status === 'available' && typeof alt.value === 'number') {
-      return {
-        ...alt,
-        value: isH ? Number((alt.value / 2080).toFixed(2)) : Math.round(alt.value * 2080),
-        unit: isH ? 'USD_per_hour' : 'USD',
-      };
-    }
-    if (alt && alt.status !== 'available') return alt;
-    return unavail(`OEWS ${prefix}_${key} estimate not provided in evidence records`);
-  };
-
-  return {
-    pct10: lookup('PCT10'),
-    pct25: lookup('PCT25'),
-    median: lookup('MEDIAN'),
-    pct75: lookup('PCT75'),
-    pct90: lookup('PCT90'),
-    mean: lookup('MEAN'),
-  };
-}
-
-function makeVarLink(rec: EconomicEvidenceRecord, fallbackVintage: string) {
-  return {
-    source_id: rec.source_id,
-    variable_id: rec.variable_name,
-    metric_id: rec.metric_id,
-    vintage:
-      rec.provenance.vintage.status === 'available'
-        ? rec.provenance.vintage.value
-        : fallbackVintage,
-    attribution: rec.provenance.attribution,
-  };
-}
 
 export function analyzeWorkforceContext(
   input: WorkforceAnalysisInput,
@@ -323,13 +196,21 @@ export function analyzeWorkforceContext(
       top_share_pct: hhiRes.top_share_pct,
       cr4_pct: hhiRes.cr4_pct,
     };
+  } else if (empValues.length === 1) {
+    concentration = {
+      hhi: 10000,
+      tier: 'highly_concentrated',
+      occupation_count: 1,
+      top_share_pct: 100,
+      cr4_pct: 100,
+    };
   } else {
     concentration = {
-      hhi: 1200,
+      hhi: 0,
       tier: 'unconcentrated',
-      occupation_count: empValues.length,
-      top_share_pct: empValues.length > 0 ? 100 : 0,
-      cr4_pct: empValues.length > 0 ? 100 : 0,
+      occupation_count: 0,
+      top_share_pct: 0,
+      cr4_pct: 0,
     };
   }
 
@@ -363,13 +244,12 @@ export function analyzeWorkforceContext(
             ? 'elevated'
             : 'high';
 
-  const periodMatch = lauRateRec?.evidence_id.match(/M[0-9]{2}/) ?? ['M06'];
-  const yearMatch = lauRateRec?.evidence_id.match(/20[0-9]{2}/) ?? ['2024'];
+  const { period, year } = resolveLauPeriodAndYear(lauRateRec, clockTimestamp);
 
   const unemploymentDynamics: WorkforceUnemploymentSummary = {
     series_id: undefined,
-    period: periodMatch[0] as WorkforceUnemploymentSummary['period'],
-    year: yearMatch[0],
+    period: period as WorkforceUnemploymentSummary['period'],
+    year,
     civilian_labor_force:
       lauLaborForceRec?.estimate ??
       unavail('Civilian labor force estimate not provided in LAU evidence'),
@@ -408,7 +288,21 @@ export function analyzeWorkforceContext(
     if (dis) disagreements.push(dis);
   }
 
-  if (hourlyPercentiles.median.status === 'available' && benchmarkMedianRec) {
+  const localMedianRec =
+    findOewsRecord(
+      oewsRecords.filter((r) => r.geography.level !== 'nation'),
+      socCode,
+      'H_MEDIAN'
+    ) ??
+    findOewsRecord(
+      oewsRecords.filter((r) => r.geography.level !== 'nation'),
+      socCode,
+      'A_MEDIAN'
+    ) ??
+    localTotalEmpRec ??
+    oewsRecords.find((r) => r.geography.level !== 'nation');
+
+  if (hourlyPercentiles.median.status === 'available' && benchmarkMedianRec && localMedianRec) {
     const wageDis = evaluateSourceLinkedDisagreement({
       disagreementId: `dis-wf-wage-${socCode}-${Date.parse(clockTimestamp)}`,
       indicatorKey: 'median_wage_disparity',
@@ -419,16 +313,10 @@ export function analyzeWorkforceContext(
       expectedEstimate: benchmarkMedianRec.estimate,
       expectedProvenance: benchmarkMedianRec.provenance,
       observedMetric: 'Local Median Hourly Wage',
-      observedVariableLink: {
-        source_id: 'bls-oews',
-        variable_id: 'H_MEDIAN',
-        metric_id: 'hourly-median-wage',
-        vintage: 'Local Vintage',
-        attribution: 'BLS OEWS',
-      },
+      observedVariableLink: makeVarLink(localMedianRec, 'OEWS Local Vintage'),
       observedDescription: `Local OEWS median hourly wage rate for SOC ${socCode}`,
       observedEstimate: hourlyPercentiles.median,
-      observedProvenance: benchmarkMedianRec.provenance,
+      observedProvenance: localMedianRec.provenance,
       warningThreshold: 0.3,
       criticalThreshold: 0.5,
     });
@@ -441,26 +329,30 @@ export function analyzeWorkforceContext(
   const combinedRecords = [...oewsRecords, ...lauRecords];
   const primaryProvenance: DataProvenance =
     combinedRecords[0]?.provenance ?? createDefaultSynthesisProvenance(clockTimestamp);
-  const evidenceBundle: EconomicEvidenceBundle =
+  const bundleRecords: EconomicEvidenceRecord[] =
     combinedRecords.length > 0
-      ? synthesizeMultiSourceEvidenceBundle({
-          bundleId: `bundle-${analysisId}`,
-          tenantId,
-          title: `Workforce Evidence Bundle: SOC ${socCode} in ${input.target_geography.name ?? 'Target Geography'}`,
-          targetGeography: input.target_geography,
-          records: combinedRecords,
-          isoTimestamp: clockTimestamp,
-          primaryProvenance,
-        })
-      : {
-          bundle_id: `bundle-${analysisId}`,
-          tenant_id: tenantId,
-          title: `Empty Workforce Evidence Bundle: SOC ${socCode}`,
-          target_geography: input.target_geography,
-          records: [],
-          created_at: clockTimestamp,
-          provenance: primaryProvenance,
-        };
+      ? combinedRecords
+      : [
+          {
+            evidence_id: `ev-unavail-${analysisId}`,
+            source_id: 'bls-oews',
+            metric_id: 'workforce-evidence-unavailable',
+            variable_name: 'UNAVAILABLE',
+            label: 'No Workforce Evidence Available',
+            geography: input.target_geography,
+            estimate: unavail('No BLS OEWS or LAU evidence records available for target geography'),
+            provenance: primaryProvenance,
+          },
+        ];
+  const evidenceBundle: EconomicEvidenceBundle = synthesizeMultiSourceEvidenceBundle({
+    bundleId: `bundle-${analysisId}`,
+    tenantId,
+    title: `Workforce Evidence Bundle: SOC ${socCode} in ${input.target_geography.name ?? 'Target Geography'}`,
+    targetGeography: input.target_geography,
+    records: bundleRecords,
+    isoTimestamp: clockTimestamp,
+    primaryProvenance,
+  });
 
   const result: WorkforceAnalysisResult = {
     schema_version: ECONOMIC_SCHEMA_VERSION,

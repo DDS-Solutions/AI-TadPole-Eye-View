@@ -183,4 +183,57 @@ describe('Tadpole AgentEnvelope & Capability Propagation over MCP HTTP (Task 12.
     });
     expect(revokedRes.status).toBe(401);
   });
+
+  it('fails closed when Tadpole headers are supplied without configured capability verifier or session lifecycle', async () => {
+    const clock = new FrozenClock(NOW);
+    const operatorContext = createOperatorContext({ clock });
+    cleanups.push(() => operatorContext.governanceContext.close());
+    const toolExecutor = new GovernedToolExecutor({
+      clock,
+      auditSink: operatorContext.auditSink,
+      approvalGate: operatorContext.approvalGate,
+      budgetGovernor: operatorContext.budgetGovernor,
+      budgetLedger: operatorContext.budgetLedger,
+    });
+    const mcpHandler = createGevMcpHttpHandler({
+      context: { ...operatorContext, toolExecutor },
+      responseMode: 'json',
+    });
+    cleanups.push(() => mcpHandler.close());
+
+    const route = createMcpHttpRouter({
+      handler: mcpHandler,
+      bearerVerifier: { verify: async () => makeMcpAuth(['read.telemetry']) },
+    });
+    cleanups.push(() => route.close());
+    const app = new Hono();
+    app.route('/mcp', route.router);
+
+    const res = await app.request(MCP_HTTP_RESOURCE, {
+      method: 'POST',
+      headers: {
+        host: MCP_HTTP_HOST,
+        accept: 'application/json, text/event-stream',
+        'content-type': 'application/json',
+        authorization: 'Bearer valid-bearer-m4',
+        'mcp-protocol-version': '2026-07-28',
+        'mcp-method': 'tools/list',
+        'x-tadpole-cap-token': 'forged-token',
+        'x-tadpole-session-id': 'forged-session',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 'list-unconfigured',
+        method: 'tools/list',
+        params: {
+          _meta: {
+            'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+            'io.modelcontextprotocol/clientInfo': { name: 'tadpole-agent', version: '1.0.0' },
+            'io.modelcontextprotocol/clientCapabilities': {},
+          },
+        },
+      }),
+    });
+    expect(res.status).toBe(401);
+  });
 });

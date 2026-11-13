@@ -26,6 +26,13 @@ import {
   mapBudgetStateRow,
   parseWarnThreshold,
 } from './stasisNotifier.js';
+import {
+  ensureTenantBudgetRow,
+  recordTenantBudgetSpend,
+  resumeTenantBudget,
+  setTenantBudgetCap,
+  writeTenantBudgetTrip,
+} from './tenantBudgetSql.js';
 
 export type { StasisEvent, StasisListener } from './stasisNotifier.js';
 
@@ -342,76 +349,15 @@ export class CapBudgetGovernor implements BudgetGovernor {
   }
 
   recordTenantSpend(tenantId: string, amountUsd: number): void {
-    const amountMicrousd = toMicrousd(amountUsd, 'Spend amount', true, 'up');
-    withImmediateTransaction(this.db, () => {
-      const row = this.ensureTenantRow(tenantId);
-      const spentMicrousd = row.spent_microusd + amountMicrousd;
-      if (!Number.isSafeInteger(spentMicrousd)) {
-        throw new Error('Tenant settled spend is outside the supported micro-USD range');
-      }
-
-      const shouldTrip = spentMicrousd >= row.cap_microusd && row.stasis_active === 0;
-      const now = new Date(this.clock.now()).toISOString();
-      const message = shouldTrip
-        ? `Tenant settled spend ($${fromMicrousd(spentMicrousd).toFixed(2)}) met or exceeded budget cap ($${fromMicrousd(row.cap_microusd).toFixed(2)}).`
-        : row.stasis_message;
-
-      this.db
-        .prepare(`
-          UPDATE governance_tenant_budgets
-          SET spent_microusd = ?,
-              stasis_active = ?,
-              trip_code = ?,
-              trip_at = ?,
-              resumed_by = ?,
-              stasis_message = ?,
-              revision = revision + 1
-          WHERE tenant_id = ?
-        `)
-        .run(
-          spentMicrousd,
-          shouldTrip ? 1 : row.stasis_active,
-          shouldTrip ? 'BUDGET_BREACH' : row.trip_code,
-          shouldTrip ? now : row.trip_at,
-          shouldTrip ? null : row.resumed_by,
-          message,
-          tenantId
-        );
-    });
+    recordTenantBudgetSpend(this.db, this.clock, tenantId, amountUsd, () => this.readRequiredRow());
   }
 
   setTenantCap(tenantId: string, capUsd: number): void {
-    const capMicrousd = toMicrousd(capUsd, 'capUsd', false, 'down');
-    withImmediateTransaction(this.db, () => {
-      this.ensureTenantRow(tenantId);
-      this.db
-        .prepare(`
-          UPDATE governance_tenant_budgets
-          SET cap_microusd = ?, revision = revision + 1
-          WHERE tenant_id = ?
-        `)
-        .run(capMicrousd, tenantId);
-    });
+    setTenantBudgetCap(this.db, this.clock, tenantId, capUsd, () => this.readRequiredRow());
   }
 
   resumeTenant(tenantId: string, resumedBy: Actor = 'human'): void {
-    if (resumedBy !== 'human') {
-      throw new Error('STASIS resume requires a human actor');
-    }
-
-    withImmediateTransaction(this.db, () => {
-      this.ensureTenantRow(tenantId);
-      this.db
-        .prepare(`
-          UPDATE governance_tenant_budgets
-          SET stasis_active = 0,
-              resumed_by = CASE WHEN trip_code IS NULL THEN NULL ELSE ? END,
-              stasis_message = NULL,
-              revision = revision + 1
-          WHERE tenant_id = ?
-        `)
-        .run(resumedBy, tenantId);
-    });
+    resumeTenantBudget(this.db, this.clock, tenantId, resumedBy, () => this.readRequiredRow());
   }
 
   close(): void {
@@ -460,40 +406,10 @@ export class CapBudgetGovernor implements BudgetGovernor {
   }
 
   private ensureTenantRow(tenantId: string): TenantBudgetStateRow {
-    const existing = this.db
-      .prepare('SELECT * FROM governance_tenant_budgets WHERE tenant_id = ?')
-      .get(tenantId) as TenantBudgetStateRow | undefined;
-    if (existing) return existing;
-
-    const globalRow = this.readRequiredRow();
-    const now = new Date(this.clock.now()).toISOString();
-    this.db
-      .prepare(`
-        INSERT OR IGNORE INTO governance_tenant_budgets (
-          tenant_id, period_start, spent_microusd, cap_microusd,
-          warn_threshold_pct, stasis_active, trip_code, trip_at,
-          resumed_by, stasis_message, revision
-        ) VALUES (?, ?, 0, ?, 80, 0, NULL, NULL, NULL, NULL, 0)
-      `)
-      .run(tenantId, now, globalRow.cap_microusd);
-
-    return this.db
-      .prepare('SELECT * FROM governance_tenant_budgets WHERE tenant_id = ?')
-      .get(tenantId) as unknown as TenantBudgetStateRow;
+    return ensureTenantBudgetRow(this.db, this.clock, tenantId, () => this.readRequiredRow());
   }
 
   private writeTenantTrip(tenantId: string, reason: TripCode, message: string): void {
-    this.db
-      .prepare(`
-        UPDATE governance_tenant_budgets
-        SET stasis_active = 1,
-            trip_code = ?,
-            trip_at = ?,
-            resumed_by = NULL,
-            stasis_message = ?,
-            revision = revision + 1
-        WHERE tenant_id = ?
-      `)
-      .run(reason, new Date(this.clock.now()).toISOString(), message, tenantId);
+    writeTenantBudgetTrip(this.db, this.clock, tenantId, reason, message);
   }
 }

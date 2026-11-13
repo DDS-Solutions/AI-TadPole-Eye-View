@@ -4,6 +4,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    fileParallelism: false,
+    maxWorkers: 1,
     env: { GEV_GOVERNANCE_DB: ':memory:' },
     include: ['test/**/*.test.ts'],
   },

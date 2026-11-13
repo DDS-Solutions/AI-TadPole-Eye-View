@@ -18,37 +18,41 @@
   let isLoading = $state(true);
   let loadError = $state<string | null>(null);
 
+  let inFlightRoute = $state<RouteKey | null>(null);
+
   async function syncRouteComponent(route: RouteKey) {
     loadError = null;
+    if (inFlightRoute === route) return;
     if (route === 'intelligence') {
       if (!IntelligenceComponent) {
         try {
+          inFlightRoute = route;
           isLoading = true;
           const mod = await import('./routes/intelligence/IntelligenceRoute.svelte');
           IntelligenceComponent = mod.default;
         } catch (err) {
           loadError = err instanceof Error ? err.message : String(err);
         } finally {
+          inFlightRoute = null;
           isLoading = false;
         }
       }
     } else {
       if (!GlobeComponent) {
         try {
+          inFlightRoute = route;
           isLoading = true;
           const mod = await import('./routes/GlobeRoute.svelte');
           GlobeComponent = mod.default;
         } catch (err) {
           loadError = err instanceof Error ? err.message : String(err);
         } finally {
+          inFlightRoute = null;
           isLoading = false;
         }
       }
     }
   }
-
-  // Start loading the initial route immediately
-  syncRouteComponent(getRoute());
 
   $effect(() => {
     syncRouteComponent(currentRoute);

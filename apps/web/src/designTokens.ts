@@ -13,3 +13,11 @@ export const WEB_CHANNEL_COLORS = {
   satellite: '#c084fc',
   muted: '#94a3b8',
 } as const;
+
+/** Canvas/uPlot values matching hudTokens.css and DESIGN.md telemetry chart tokens. */
+export const WEB_CHART_THEME = {
+  cursor: '#38bdf8',
+  axis: '#94a3b8',
+  grid: 'rgba(148, 163, 184, 0.12)',
+  ticks: 'rgba(148, 163, 184, 0.25)',
+} as const;

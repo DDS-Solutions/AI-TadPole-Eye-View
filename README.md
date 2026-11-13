@@ -42,7 +42,7 @@ Most agent demos show swarm diagrams. This one shows a working product and the r
 | 🌐 Submarine Cables | Synthetic seed / operator-supplied TeleGeography NC Download Pack | ACTIVE (SEED) | Validated provider, server route, store, Cesium layer, UI wiring, and synthetic fixture are implemented. The optional NC download pack is separately supplied, license- and integrity-gated, and never bundled. |
 | 🛰️ Satellites | CelesTrak standard GP JSON/OMM | ACTIVE (SEED) / LIVE LOCKED | Synthetic seed → server SGP4 → Cesium layer is implemented. Production retrieval remains terms-locked under ADR 0034; raw catalog mirroring and live-position claims are prohibited. |
 | 🎙️ AI Voice Copilot | OpenAI Realtime, Seed/Mock Driver | ACTIVE | `voiceMachine.ts` (XState v5), `VoiceControlOrb.svelte`, `voice.svelte.ts`, `MockAgentAdapter` + `OpenAIRealtimeAdapter` in `core/`, voice token route on server. Mock driver works without API keys. |
-| 👥 T2 Live Co-Op | Custom CRDT Rooms + Presence | PARTIAL | Yjs dependency installed. `CollabRoomManager` (native CRDT via `CollabIntentDoc`), JWT-signed room tokens, `CollabBar.svelte` UI, `collab.ts` store. Custom WebSocket synchronization protocol (not standard `y-websocket` server). |
+| 👥 T2 Live Co-Op | Custom CRDT Rooms + Presence | PARTIAL | Yjs dependency installed. `CollabRoomManager` (native CRDT via `CollabIntentDoc`), tenant-scoped JWT room tokens + single-use WebSocket upgrade tickets, `CollabBar.svelte` UI, `collab.svelte.ts` store. Custom WebSocket synchronization protocol (not standard `y-websocket` server). |
 
 **Keyless boot:** The globe works with zero API keys out of the box using local recorded fixtures and OpenStreetMap raster tiles. Google Photorealistic 3D Tiles and live provider streams are optional enhancements, never a gate.
 
@@ -73,7 +73,7 @@ The repository defines five governance ports. Durable local governance and signe
 | **M1 Observer** | Authenticated audit stream (`/ops/audit`) + feed health | PARTIAL | `SqliteAuditSink` has durable hash-chain verification and protected integrity inspection; external authenticated/resumable observer proof is incomplete. |
 | **M2 Gatekeeper** | Signed approval controls mutations | VERIFIER IMPLEMENTED; PROVIDER UNCONFIGURED | `SignedApprovalGate` verifies exact intent/scopes/signer/key/nonce/time bindings and consumes replay state in shared SQLite. Production denies without an injected trusted provider/key allowlist; `LocalM2ApprovalDemoGate` is non-production only. |
 | **M3 Governor** | Shared budget ledger + durable STASIS | LOCAL M3 IMPLEMENTED | Reservation, settlement, refund, retry, ambiguity, reconciliation, and human-only resume are transactionally shared through SQLite. External Tadpole/production integration remains unfinished. |
-| **M4 Runtime** | Real AI agent team operates the live console end-to-end under governance | NOT YET REACHED (WIP) | `gev demo` simulates M1–M3 in-process (CLI only). M4 = an actual agent process driving a running server via ops-mcp under live governance — in progress. |
+| **M4 Runtime** | Real AI agent team operates the live console end-to-end under governance | ENVELOPE CONTRACTS + LOCAL SERVER VERIFIED; EXTERNAL TADPOLE PENDING | ADR 0038 + Phase 12 implemented `AgentEnvelope`, MCP/SSE capability & session propagation routes, and in-process test-double verification (`tadpoleEnvelopePropagation.test.ts`, `phase12ExitGate.test.ts`). External live Tadpole orchestration, production Auth0 OIDC provisioning, and `mcpRuntime` production HTTP verifier wiring remain Phase 13+ integration work (`mcpRuntime.ts` fails closed with `503` in `NODE_ENV=production`). |
 
 > **Truth note on the demo:** `gev demo` exercises local M1–M3-shaped mechanics, verifies the durable SQLite audit chain, and also displays a disconnected shadow-hash helper for illustration. It does not prove an external production approval provider, external M3 authority, independently anchored audit heads, or a live agent team controlling the globe.
 
@@ -114,26 +114,24 @@ node scripts/adg.mjs  # run Active Documentation Guard
 - **`packages/economic`:** pure zero-I/O economic analysis engine, typed Economic Source Registry (Census ACS, CBP/ZBP, BLS OEWS/LAU, FEMA NRI, OSM Commercial), deterministic statutory suppression preservation, bounds parsing, and zero-coercion semantics.
 - **`packages/providers`:** typed provider registry plus OpenSky, AIS, USGS, FIRMS, GBFS, Radio, CCTV, Launch, Weather, Cables, and Overpass adapters.
 - **`packages/cesium-kit`:** imperative globe and layer controllers, debug bus, and frame-budget monitor.
-- **`packages/ops-mcp`:** hand-written stdio MCP server exposing seven verified local tools. Browser-console-only tools are not advertised or executable over stdio; scene I/O is filename-only, size-bounded, and atomic beneath `.gev/scenes` (override with `GEV_MCP_SCENE_ROOT`).
+- **`packages/ops-mcp`:** MCP server exposing verified local operator tools across stdio and governed HTTP transports (browser-console-only tools are excluded from stdio; scene I/O is filename-only, size-bounded, and atomic beneath `.gev/scenes`, overridable via `GEV_MCP_SCENE_ROOT`).
 - **`packages/cli`:** `gev` command surface for status, demo, audit, feeds, scenes, resume, development, tests, and QA.
-- **`apps/server`:** Hono provider proxies, media/voice/collaboration routes, audit SSE, feed health, telemetry, cost governor, and operations auth.
-- **`apps/web`:** Svelte 5 SPA and tactical HUD backed by Cesium layer controllers.
+- **`apps/server`:** Hono provider proxies, media/voice/collaboration routes, audit SSE, feed health, telemetry, cost governor, and operations auth (`mcpRuntime` HTTP MCP endpoint fails closed with `503` in `NODE_ENV=production` pending Phase 13 OIDC provisioning).
+- **`apps/web`:** Svelte 5 SPA and tactical HUD backed by Cesium layer controllers, plus lazy-loaded Phase 8–11 economic/market/workforce/site-risk inspection route.
 - **`e2e/smoke.spec.ts`:** condition-wait Playwright smoke coverage exercises implemented layers, including cable and satellite toggles and locked satellite setup.
-- **`fixtures/` (24 datasets):** Recorded and synthetic fixtures for all implemented providers (including 1.25 MB OpenSky replay, coastal/tropical observations, satellite ephemerides, and the full suite of economic and commercial POI baseline fixtures).
-- **Architecture Decisions & Documentation:** ADRs 0014–0032, 0034–0036, and 0039–0052 (36 decision records), DESIGN.md, SECURITY.md, RUNBOOK.md, DATA_SOURCES.md, AGENTS.md, PLAN.md.
+- **`fixtures/`:** Recorded and synthetic fixtures for implemented telemetry providers (including 1.25 MB OpenSky replay, coastal/tropical observations, satellite ephemerides, and economic/workforce/site-risk baseline fixtures).
+- **Architecture Decisions & Documentation:** ADRs 0014–0032, 0034–0036, and 0038–0065 (50 decision records in [docs/adr/INDEX.md](./docs/adr/INDEX.md)), DESIGN.md, SECURITY.md, RUNBOOK.md, DATA_SOURCES.md, AGENTS.md, PLAN.md.
 
 ### Partially built
 
-- **T2 Collab:** Custom CRDT room manager with JWT tokens + WebSocket broadcast works. Yjs is a listed dependency but `y-websocket` server is not used; the CRDT sync is a custom protocol over raw WS.
+- **T2 Collab:** Custom CRDT room manager with tenant-scoped JWT tokens, single-use WebSocket tickets, and WebSocket broadcast works. Yjs is a listed dependency but `y-websocket` server is not used; the CRDT sync is a custom protocol over raw WS.
+- **Production External Integrations:** Auth0 OIDC tenant provisioning, external live Tadpole M4 daemon orchestration, and live self-hosted GlitchTip/PostHog deployments fail closed / run in local/seed test mode until Phase 13+ configuration.
 
 ### Not yet built (WIP Roadmap)
 
 #### Active Phased Roadmap (Governed by [PLAN.md](./PLAN.md))
-- **Phase 8: Economic Intelligence Foundation (In Progress):** Core `@gev/economic` analysis engine, synthetic baseline fixtures, and upcoming stateless BusinessContext preview APIs & MCP tools (Tasks 8.4–8.13).
-- **Phase 9: Automated Evidence & SMB Dossiers:** Multi-source evidence correlation, anomaly detection across physical and economic feeds, and automated export of audit-governed operational dossiers.
-- **Phase 10: Production Hardening & Multi-Tenant Boundaries:** Live M2 approval providers, external tenant identity provisioning, rate/quota policy enforcement, and multi-tenant isolation verification.
-- **Phase 11: Sovereign Deployment & Self-Hosted Telemetry:** GlitchTip/PostHog/Plausible self-hosted telemetry integration, automated air-gapped bundle builds, and production deployment runbooks.
-- **Phase 12: Autonomous Agent Loops & Ecosystem:** Full Tadpole M4 runtime with autonomous agents operating the console end-to-end, plus post-parity TAK/CoT bridge (PLAN.md §9).
+- **Phases 0–12 (Checked Off in `PLAN.md §10`):** Foundation, core proxies/voice/MCP, Cesium HUD layers, performance harness/virtualized table, collab/governance showcase, security/registry/MCP SDK parity, operational awareness, lazy intelligence & `@gev/economic`, Census/OSM market analysis, BLS OEWS/LAU workforce analysis, FEMA/USGS/EPA/DOT site-risk screening, and ADR 0038 M4 envelope verification (using recorded fixtures / local governance / test doubles where external provisioning is deferred).
+- **Phase 13 (Next — `NEXT_TASK: 13.1`): Enterprise Onboarding & Sovereign Production Readiness:** Live Auth0 OIDC tenant provisioning, external Tadpole M4 end-to-end runtime connection, production telemetry/deploy pipelines, and sovereign operator workflows.
 
 #### Future Horizons: Sovereign RF & Advanced Sensor Architecture
 *(Architectural research in sovereign sensing and cross-domain intelligence)*
@@ -152,7 +150,7 @@ node scripts/adg.mjs  # run Active Documentation Guard
 - [DATA_SOURCES.md](./DATA_SOURCES.md) — dataset provenance, rate limits, and honest labeling
 - [docs/LICENSES.md](./docs/LICENSES.md) — software, asset, and NC download pack licenses
 - [RUNBOOK.md](./RUNBOOK.md) — operational procedures including STASIS recovery
-- [docs/adr/INDEX.md](./docs/adr/INDEX.md) — Architecture Decision Records (ADRs 0014–0032, 0034–0036, and 0039–0052; 36 records)
+- [docs/adr/INDEX.md](./docs/adr/INDEX.md) — Architecture Decision Records (ADRs 0014–0032, 0034–0036, and 0038–0065; 50 records)
 
 ## Ethics
 

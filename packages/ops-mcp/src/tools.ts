@@ -37,6 +37,10 @@ import {
 import type { OperatorContext } from './context.js';
 import { generateBusinessContextPreview } from './economicPreview.js';
 import {
+  assertEconomicToolAllowed,
+  hardenBusinessPreviewWithPromptGuard,
+} from './economicToolGovernance.js';
+import {
   handleAnalyzeCompetition,
   handleAnalyzeMarketContext,
   handleCompareLocations,
@@ -427,22 +431,14 @@ export async function handlePreviewBusinessContext(
   input: PreviewBusinessContextInput,
   executionContext: ToolExecutionContext = {}
 ): Promise<PreviewBusinessContextOutput> {
-  if (ctx.budgetGovernor.state().stasis_active) {
-    throw new Error('STASIS: economic preview tool is suspended');
-  }
-  if (ctx.flags.get('economic.enabled') === false) {
-    throw new Error('Economic analysis engine is disabled by kill-switch policy');
-  }
+  const tenantId = assertEconomicToolAllowed(ctx, executionContext, 'economic preview tool');
 
-  const tenantId =
-    executionContext.tenant_id ??
-    (executionContext.identity ? executionContext.identity.tenant_id : 'tenant-local');
-
-  return generateBusinessContextPreview({
+  const rawPreview = generateBusinessContextPreview({
     input,
     tenantId,
     clock: ctx.clock,
   });
+  return hardenBusinessPreviewWithPromptGuard(ctx, tenantId, rawPreview);
 }
 
 /** Registers the local stdio implementations on the shared governed executor. */
@@ -476,7 +472,9 @@ export function registerOperatorToolHandlers(ctx: OperatorContext): void {
     .register('analyze_workforce_context', (input, executionContext) =>
       handleAnalyzeWorkforceContext(ctx, input, executionContext)
     )
-    .register('assess_site_risk', (input) => handleAssessSiteRisk(ctx, input));
+    .register('assess_site_risk', (input, executionContext) =>
+      handleAssessSiteRisk(ctx, input, executionContext)
+    );
 }
 
 /** Executes through the one core lifecycle; this function performs no governance itself. */

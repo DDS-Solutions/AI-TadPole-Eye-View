@@ -10,12 +10,6 @@
       "reason": "Monotonic frame-budget instrumentation with an injectable clock fallback; it does not define domain time."
     },
     {
-      "path": "packages/cli/src/commands/scene.ts",
-      "occurrences": 1,
-      "classification": "compliant",
-      "reason": "CLI infrastructure uses wall time only to make an omitted output filename unique; serialized scene time remains contract-owned."
-    },
-    {
       "path": "packages/core/src/clock.ts",
       "occurrences": 2,
       "classification": "compliant",
@@ -37,36 +31,18 @@
   "largeFiles": [],
   "colors": [
     {
-      "path": "apps/web/src/components/CollabBar.svelte",
-      "occurrences": 36,
-      "fingerprint": "021dae77ab823e4be216cecfca37b50c5c9702ec5afcd5a65b2d098927aaa9c1",
-      "classification": "follow-up",
-      "followUp": "DRIFT-COLOR-COLLAB",
-      "owner": "apps/web UI and collaboration owners",
-      "gate": "Add an accepted collaboration channel to DESIGN.md and tokenize this exact palette before the next visual edit to CollabBar."
-    },
-    {
-      "path": "apps/web/src/components/TelemetryTimelineChart.svelte",
-      "occurrences": 15,
-      "fingerprint": "e544fb94f1415f2f9b52c74b2ada325f1b3d4aecf0ea96dbe540250f8f35ba53",
-      "classification": "follow-up",
-      "followUp": "DRIFT-COLOR-WEB-HUD",
-      "owner": "apps/web UI owner",
-      "gate": "Migrate the exact fingerprint to semantic CSS custom properties before task 7.3 or the next visual edit to this file."
-    },
-    {
       "path": "apps/web/src/designTokens.ts",
-      "occurrences": 12,
-      "fingerprint": "3c2379929daa3e5056f7c4556cfca238ddbc0a0b9a6ba974f2988ad09b8fa630",
+      "occurrences": 16,
+      "fingerprint": "2bb649660827e2e1c7a6b4cac88ffc66add1e4b155431172ebf3143a134928f3",
       "classification": "fixed",
-      "reason": "Task 5.2.3 extended the centralized canvas/chart channel map with the accepted orbital-estimate token."
+      "reason": "Task 5.2.3 extended the centralized canvas/chart channel map with the accepted orbital-estimate token, and F-06 remediation added WEB_CHART_THEME tokens replacing literals in TelemetryTimelineChart.svelte."
     },
     {
       "path": "apps/web/src/hudTokens.css",
-      "occurrences": 70,
-      "fingerprint": "99a221f2d194c445b2bafeab6287101908fb55ebd58981f99d42c7a0d884376f",
+      "occurrences": 90,
+      "fingerprint": "cf1eaaaee99e2e446d14d999c403a4f88b37e88c04d20b25dc298f75a6f549e4",
       "classification": "fixed",
-      "reason": "Task 6.6 extended the centralized HUD token surface with the DESIGN.md-approved voice session state palette and removed component color literals."
+      "reason": "Task 6.6 and F-06 remediation centralized voice, chart, and collaboration presence palette tokens in hudTokens.css and removed component color literals."
     },
     {
       "path": "packages/cesium-kit/src/designTokens.ts",

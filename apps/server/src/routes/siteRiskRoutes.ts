@@ -146,6 +146,8 @@ export function createSiteRiskRouter(options: SiteRiskRouterOptions): Hono {
       const result = await resolveAndAssessSiteRisk({
         clock: options.clock,
         input: { ...parsed.data, tenant_id: tenantId },
+        tenantId,
+        auditCtx: { auditSink: options.auditSink, clock: options.clock },
       });
 
       options.auditSink.outcome({

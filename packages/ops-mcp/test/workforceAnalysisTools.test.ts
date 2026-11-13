@@ -82,7 +82,7 @@ describe('Workforce Analysis MCP Operator Tools (Task 10.2 & ADR 0061)', () => {
     );
 
     expect(execution.success).toBe(false);
-    expect(execution.status).toBe('error');
+    expect(execution.status).toBe('blocked');
     expect(execution.error).toContain('STASIS');
   });
 

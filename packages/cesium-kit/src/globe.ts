@@ -67,7 +67,9 @@ export class GlobeController {
       navigationHelpButton: false,
       fullscreenButton: false,
       skyAtmosphere: false,
-      shouldAnimate: true,
+      requestRenderMode: true,
+      maximumRenderTimeChange: Number.POSITIVE_INFINITY,
+      shouldAnimate: false,
     });
 
     // Add keyless OSM baseline layer
@@ -77,6 +79,7 @@ export class GlobeController {
     this.viewer.camera.setView({
       destination: Cartesian3.fromDegrees(-30.0, 30.0, 20000000.0),
     });
+    this.viewer.scene?.requestRender?.();
 
     this.onEntitySelected = options.onEntitySelected;
 
@@ -109,6 +112,7 @@ export class GlobeController {
         roll: rad(pose.roll ?? 0),
       },
     });
+    this.viewer.scene?.requestRender?.();
   }
 
   /**
@@ -119,6 +123,7 @@ export class GlobeController {
       destination: Cartesian3.fromDegrees(lon, lat, altitude_m),
       duration: duration_s,
     });
+    this.viewer.scene?.requestRender?.();
   }
 
   /**

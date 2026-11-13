@@ -7,8 +7,9 @@ import {
 } from '@gev/contracts';
 import type { SimClock } from '@gev/core';
 import {
-  calculateHhiFromShares,
   calculateLocationQuotient,
+  createDefaultSynthesisProvenance,
+  synthesizeAggregateProvenance,
   synthesizeBusinessContextPreview,
 } from '@gev/economic';
 import { EconomicFixtureAdapter } from '@gev/providers';
@@ -116,19 +117,56 @@ export function generateBusinessContextPreview(
     };
   }
 
-  // 7. Industry Location Quotient (LQ) via @gev/economic
+  // 7. Industry Location Quotient (LQ) via @gev/economic (only from observed benchmark records)
+  const allAdapterRecords = adapter.getAllRecords();
+  const localTotalEmpRecord = matchingRecords.find(
+    (r) => r.metric_id === 'total-local-employment' || r.tags?.includes('all-sectors-total')
+  );
+  const benchmarkIndustryRec = allAdapterRecords.find(
+    (r) =>
+      r.geography.level === 'nation' &&
+      (r.metric_id === 'paid-employment' || r.metric_id === 'total-employment') &&
+      r.tags?.some((t) => t === `naics-${input.naics_code}`)
+  );
+  const benchmarkTotalRec = allAdapterRecords.find(
+    (r) =>
+      r.geography.level === 'nation' &&
+      (r.metric_id === 'total-employment' || r.metric_id === 'paid-employment') &&
+      (r.tags?.includes('all-sectors-total') || r.evidence_id.includes('000000'))
+  );
+
   const localEmpVal = empRecord ? getNumericEstimateValue(empRecord.estimate) : undefined;
-  if (localEmpVal !== undefined && localEmpVal > 0) {
-    // Benchmark industry share for tech/services (supersector 54 ~ 98,200 local, national 3.2M / 20M)
-    const localTotalSector = 98_200;
-    const benchmarkIndustry = 3_200_000;
-    const benchmarkTotal = 20_000_000;
+  const localTotalVal = localTotalEmpRecord
+    ? getNumericEstimateValue(localTotalEmpRecord.estimate)
+    : undefined;
+  const benchmarkIndustryVal = benchmarkIndustryRec
+    ? getNumericEstimateValue(benchmarkIndustryRec.estimate)
+    : undefined;
+  const benchmarkTotalVal = benchmarkTotalRec
+    ? getNumericEstimateValue(benchmarkTotalRec.estimate)
+    : undefined;
+
+  if (empRecord && empRecord.estimate.status === 'suppressed') {
+    // Preserve suppression honestly without coercing to zero
+    summaryEstimates.industry_location_quotient = {
+      status: 'suppressed',
+      reason: empRecord.estimate.reason,
+      detail: `Location quotient suppressed because local employment input is suppressed: ${empRecord.estimate.detail}`,
+      unit: 'ratio',
+    };
+  } else if (
+    localEmpVal !== undefined &&
+    localEmpVal > 0 &&
+    localTotalVal !== undefined &&
+    benchmarkIndustryVal !== undefined &&
+    benchmarkTotalVal !== undefined
+  ) {
     try {
       const lq = calculateLocationQuotient(
         localEmpVal,
-        localTotalSector,
-        benchmarkIndustry,
-        benchmarkTotal
+        localTotalVal,
+        benchmarkIndustryVal,
+        benchmarkTotalVal
       );
       summaryEstimates.industry_location_quotient = {
         status: 'available',
@@ -145,85 +183,32 @@ export function generateBusinessContextPreview(
         reason: 'Location quotient calculation error: invalid bounds',
       };
     }
-  } else if (empRecord && empRecord.estimate.status === 'suppressed') {
-    // Preserve suppression honestly without coercing to zero
-    summaryEstimates.industry_location_quotient = {
-      status: 'suppressed',
-      reason: empRecord.estimate.reason,
-      detail: `Location quotient suppressed because local employment input is suppressed: ${empRecord.estimate.detail}`,
-      unit: 'ratio',
-    };
   } else {
     summaryEstimates.industry_location_quotient = {
-      status: 'unavailable',
-      reason: 'Location quotient cannot be calculated: employment benchmark data unavailable',
-    };
-  }
-
-  // 8. Market Concentration HHI via @gev/economic
-  const commercialPoiRecords = matchingRecords.filter((r) => r.source_id === 'osm-commercial');
-  if (commercialPoiRecords.length > 0) {
-    // Synthetic sector competitor distribution for demonstration (DOJ/FTC HHI scale)
-    const benchmarkShares = [22, 18, 15, 12, 10, 8, 5, 4, 3, 3];
-    try {
-      const hhi = calculateHhiFromShares(benchmarkShares);
-      summaryEstimates.market_concentration_hhi = {
-        status: 'available',
-        value: hhi.hhi,
-        margin_of_error: null,
-        confidence_level: null,
-        sample_size: null,
-        unit: 'points',
-        notes: `Market concentration tier: ${hhi.tier} (${hhi.firm_count} observed competitor shares)`,
-      };
-    } catch {
-      summaryEstimates.market_concentration_hhi = {
-        status: 'unavailable',
-        reason: 'Market concentration HHI calculation error',
-      };
-    }
-  } else {
-    summaryEstimates.market_concentration_hhi = {
       status: 'unavailable',
       reason:
-        'Market concentration HHI cannot be calculated: competitor share data unavailable for geography',
+        'Location quotient cannot be calculated: benchmark industry or total employment records unavailable',
     };
   }
 
-  // Determine primary seed provenance
-  const primaryProvenance: DataProvenance = matchingRecords[0]?.provenance ?? {
-    schema_version: 1,
-    source: {
-      provider_id: 'economic-analysis-engine',
-      feed_id: 'economic-preview',
-      name: 'GEV Economic Analysis Engine',
-      canonical_url: 'https://gev.dds-solutions.internal/economic',
-    },
-    retrieved_at: nowIso,
-    observation_period: {
-      status: 'available',
-      start: nowIso,
-      end: nowIso,
-    },
-    vintage: {
-      status: 'available',
-      value: '2026 Seed Fixture Benchmark Compilation',
-    },
-    mode: 'seed',
-    source_mode: 'seed',
-    license: {
-      id: 'us-government-public-domain',
-      name: 'U.S. Government Public Domain / Open Data Fixtures',
-    },
-    attribution: 'DDS-Solutions Economic Intelligence Engine (Seed Mode)',
-    fixture_id: 'economic-seed-compilation-v1',
-    cache: null,
-    freshness: {
-      status: 'fresh',
-      age_seconds: 0,
-      fresh_for_seconds: 86400,
-    },
+  // 8. Market Concentration HHI (never fabricated from synthetic benchmark shares)
+  summaryEstimates.market_concentration_hhi = {
+    status: 'unavailable',
+    reason:
+      'Market concentration HHI cannot be calculated: observed firm-level market shares unavailable',
   };
+
+  // Derive primary provenance strictly from matching evidence or honest unavailable fallback
+  const primaryProvenance: DataProvenance =
+    matchingRecords.length > 0
+      ? synthesizeAggregateProvenance(
+          matchingRecords.map((r) => r.provenance),
+          nowIso
+        )
+      : createDefaultSynthesisProvenance(
+          nowIso,
+          'No matching economic evidence records for target geography and NAICS code'
+        );
 
   return synthesizeBusinessContextPreview({
     previewId,

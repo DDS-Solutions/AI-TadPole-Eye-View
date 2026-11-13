@@ -358,6 +358,8 @@ export function createApp(options: CreateAppOptions = {}) {
       auth,
       clock,
       apiKey: options.voiceApiKey,
+      auditSink,
+      stasisActive: () => budgetGovernor.state().stasis_active,
       rateLimiter,
       resolveClientId,
     })

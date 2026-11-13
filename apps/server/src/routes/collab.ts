@@ -1,20 +1,8 @@
 import crypto from 'node:crypto';
-import {
-  RoomJoinRequestSchema,
-  RoomJoinResponseSchema,
-  RoomTokenPayloadSchema,
-  type UserPresence,
-  UserPresencePatchSchema,
-} from '@gev/contracts';
+import { RoomTokenPayloadSchema, type UserPresence, UserPresencePatchSchema } from '@gev/contracts';
 import { CollabIntentDoc, type SimClock, SystemClock } from '@gev/core';
-import { Hono } from 'hono';
 import { SignJWT, jwtVerify } from 'jose';
 import type { WebSocket } from 'ws';
-import {
-  type InMemoryRateLimiter,
-  type OpsAuthAdapter,
-  createRateLimitMiddleware,
-} from '../middleware/opsAuth.js';
 
 // Strong ephemeral secret generated on startup if not explicitly provided in environment
 const JWT_SECRET = new TextEncoder().encode(
@@ -74,14 +62,35 @@ export class PeerMap extends Map<string, RoomPeer> {
 
 export interface ActiveRoom {
   roomId: string;
+  tenantId: string;
   doc: CollabIntentDoc;
   peers: PeerMap;
   createdAt: number;
   lastActivityAt: number;
 }
 
+export interface VerifiedRoomPayload {
+  sub: string;
+  callsign: string;
+  roomId: string;
+  tenantId: string;
+  role: 'viewer' | 'operator' | 'ai_copilot';
+}
+
+interface UpgradeTicketEntry {
+  payload: VerifiedRoomPayload;
+  expiresAtMs: number;
+}
+
+const UPGRADE_TICKET_TTL_MS = 30_000;
+
+function scopeRoomKey(roomId: string, tenantId: string = 'tenant-local'): string {
+  return `${tenantId}\u0000${roomId}`;
+}
+
 export class CollabRoomManager {
   private rooms = new Map<string, ActiveRoom>();
+  private upgradeTickets = new Map<string, UpgradeTicketEntry>();
 
   constructor(private readonly clock: SimClock = new SystemClock()) {
     // Periodic eviction of idle rooms every 10 minutes
@@ -95,26 +104,32 @@ export class CollabRoomManager {
 
   cleanupIdleRooms(): void {
     const now = this.clock.now();
-    for (const [roomId, room] of this.rooms.entries()) {
+    for (const [key, room] of this.rooms.entries()) {
       if (room.peers.size === 0 && now - room.lastActivityAt > ROOM_IDLE_TTL_MS) {
-        this.rooms.delete(roomId);
+        this.rooms.delete(key);
+      }
+    }
+    for (const [ticket, entry] of this.upgradeTickets.entries()) {
+      if (now > entry.expiresAtMs) {
+        this.upgradeTickets.delete(ticket);
       }
     }
   }
 
-  getOrCreateRoom(roomId: string): ActiveRoom {
+  getOrCreateRoom(roomId: string, tenantId: string = 'tenant-local'): ActiveRoom {
     this.cleanupIdleRooms();
 
-    let room = this.rooms.get(roomId);
+    const key = scopeRoomKey(roomId, tenantId);
+    let room = this.rooms.get(key);
     if (!room) {
       if (this.rooms.size >= MAX_ACTIVE_ROOMS) {
         // Evict oldest empty room if capacity reached
         let oldestKey: string | null = null;
         let oldestTime = Number.POSITIVE_INFINITY;
-        for (const [id, r] of this.rooms.entries()) {
+        for (const [candidateKey, r] of this.rooms.entries()) {
           if (r.peers.size === 0 && r.lastActivityAt < oldestTime) {
             oldestTime = r.lastActivityAt;
-            oldestKey = id;
+            oldestKey = candidateKey;
           }
         }
         if (oldestKey) {
@@ -126,33 +141,40 @@ export class CollabRoomManager {
 
       room = {
         roomId,
+        tenantId,
         doc: new CollabIntentDoc(roomId),
         peers: new PeerMap(),
         createdAt: this.clock.now(),
         lastActivityAt: this.clock.now(),
       };
-      this.rooms.set(roomId, room);
+      this.rooms.set(key, room);
     }
     room.lastActivityAt = this.clock.now();
     return room;
   }
 
-  getRoom(roomId: string): ActiveRoom | undefined {
-    return this.rooms.get(roomId);
+  getRoom(roomId: string, tenantId: string = 'tenant-local'): ActiveRoom | undefined {
+    return this.rooms.get(scopeRoomKey(roomId, tenantId));
   }
 
-  listRooms(): Array<{ roomId: string; peerCount: number; lastActivityAt: number }> {
-    return Array.from(this.rooms.values()).map((r) => ({
-      roomId: r.roomId,
-      peerCount: r.peers.size,
-      lastActivityAt: r.lastActivityAt,
-    }));
+  listRooms(
+    tenantId?: string
+  ): Array<{ roomId: string; tenantId: string; peerCount: number; lastActivityAt: number }> {
+    return Array.from(this.rooms.values())
+      .filter((r) => (tenantId ? r.tenantId === tenantId : true))
+      .map((r) => ({
+        roomId: r.roomId,
+        tenantId: r.tenantId,
+        peerCount: r.peers.size,
+        lastActivityAt: r.lastActivityAt,
+      }));
   }
 
   async createRoomToken(
     roomId: string,
     callsign: string,
-    role: 'viewer' | 'operator' | 'ai_copilot'
+    role: 'viewer' | 'operator' | 'ai_copilot',
+    tenantId: string = 'tenant-local'
   ): Promise<{ token: string; clientId: string; expiresAt: number }> {
     const issuedAt = Math.floor(this.clock.now() / 1000);
     const expiresAt = issuedAt + 3600; // 1 hour
@@ -161,6 +183,7 @@ export class CollabRoomManager {
       sub: clientId,
       callsign,
       roomId,
+      tenantId,
       role,
     })
       .setProtectedHeader({ alg: 'HS256' })
@@ -171,12 +194,25 @@ export class CollabRoomManager {
     return { token, clientId, expiresAt };
   }
 
-  async verifyRoomToken(token: string): Promise<{
-    sub: string;
-    callsign: string;
-    roomId: string;
-    role: 'viewer' | 'operator' | 'ai_copilot';
-  } | null> {
+  createUpgradeTicket(payload: VerifiedRoomPayload): string {
+    const ticket = crypto.randomBytes(24).toString('base64url');
+    this.upgradeTickets.set(ticket, {
+      payload,
+      expiresAtMs: this.clock.now() + UPGRADE_TICKET_TTL_MS,
+    });
+    return ticket;
+  }
+
+  consumeUpgradeTicket(ticket: string, requestedRoomId: string): VerifiedRoomPayload | null {
+    const entry = this.upgradeTickets.get(ticket);
+    if (!entry) return null;
+    this.upgradeTickets.delete(ticket);
+    if (this.clock.now() > entry.expiresAtMs) return null;
+    if (entry.payload.roomId !== requestedRoomId) return null;
+    return entry.payload;
+  }
+
+  async verifyRoomToken(token: string): Promise<VerifiedRoomPayload | null> {
     try {
       const { payload } = await jwtVerify(token, JWT_SECRET, {
         currentDate: new Date(this.clock.now()),
@@ -187,6 +223,7 @@ export class CollabRoomManager {
         sub: parsed.data.sub,
         callsign: parsed.data.callsign,
         roomId: parsed.data.roomId,
+        tenantId: parsed.data.tenantId,
         role: parsed.data.role,
       };
     } catch {
@@ -197,7 +234,7 @@ export class CollabRoomManager {
   async verifyRoomTokenForRoom(
     token: string,
     requestedRoomId: string
-  ): ReturnType<CollabRoomManager['verifyRoomToken']> {
+  ): Promise<VerifiedRoomPayload | null> {
     const payload = await this.verifyRoomToken(token);
     return payload?.roomId === requestedRoomId ? payload : null;
   }
@@ -208,10 +245,11 @@ export class CollabRoomManager {
       sub: string;
       callsign: string;
       roomId: string;
+      tenantId?: string;
       role: 'viewer' | 'operator' | 'ai_copilot';
     }
   ) {
-    const room = this.getOrCreateRoom(tokenPayload.roomId);
+    const room = this.getOrCreateRoom(tokenPayload.roomId, tokenPayload.tenantId ?? 'tenant-local');
     if (room.peers.size >= MAX_PEERS_PER_ROOM) {
       ws.close(1008, 'Room peer capacity exceeded');
       return;
@@ -343,108 +381,4 @@ export class CollabRoomManager {
   }
 }
 
-export interface CollabRouterOptions {
-  auth: OpsAuthAdapter;
-  rateLimiter?: InMemoryRateLimiter;
-  resolveClientId?: Parameters<typeof createRateLimitMiddleware>[1]['resolveClientId'];
-  allowedHosts?: readonly string[];
-}
-
-export function createCollabRouter(manager: CollabRoomManager, options: CollabRouterOptions) {
-  const router = new Hono();
-
-  router.use('/rooms', options.auth.middleware());
-  router.use('/room/*', options.auth.middleware());
-  if (options.rateLimiter && options.resolveClientId) {
-    router.use(
-      '/join',
-      createRateLimitMiddleware(options.rateLimiter, {
-        bucket: 'collab-join',
-        limit: 20,
-        resolveClientId: options.resolveClientId,
-      })
-    );
-  }
-
-  // POST /api/collab/join
-  router.post('/join', async (c) => {
-    let body: unknown;
-    try {
-      body = await c.req.json();
-    } catch {
-      return c.json({ error: 'Invalid JSON request body' }, 400);
-    }
-
-    const parsed = RoomJoinRequestSchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json({ error: 'Invalid room join request' }, 400);
-    }
-    const req = parsed.data;
-
-    // RBAC: Check authorization for privileged roles (operator, ai_copilot)
-    let assignedRole: 'viewer' | 'operator' | 'ai_copilot' = req.role;
-    if (req.role === 'operator' || req.role === 'ai_copilot') {
-      const authDecision = options.auth.authorize(c.req.header('Authorization'));
-      if (authDecision.kind !== 'authenticated') {
-        // Unauthenticated join downgraded to viewer
-        assignedRole = 'viewer';
-      }
-    }
-
-    const room = manager.getOrCreateRoom(req.roomId);
-    const { token, clientId, expiresAt } = await manager.createRoomToken(
-      req.roomId,
-      req.callsign,
-      assignedRole
-    );
-
-    const rawHost = c.req.header('host');
-    let host = '127.0.0.1:3000';
-    if (rawHost && /^[a-zA-Z0-9.-]+(:\d+)?$/.test(rawHost)) {
-      const hostname = rawHost.split(':')[0]!.toLowerCase();
-      const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
-      if (isLocal || options.allowedHosts?.includes(hostname)) {
-        host = rawHost;
-      }
-    }
-    const forwardedProto = c.req.header('x-forwarded-proto')?.toLowerCase();
-    const isTls = forwardedProto === 'https' || c.req.url.startsWith('https:');
-    const protocol = isTls ? 'wss' : 'ws';
-    const wsUrl = `${protocol}://${host}/api/collab/room/${encodeURIComponent(req.roomId)}?token=${encodeURIComponent(token)}`;
-
-    return c.json(
-      RoomJoinResponseSchema.parse({
-        roomId: req.roomId,
-        clientId,
-        roomToken: token,
-        role: assignedRole,
-        wsUrl,
-        expiresAt,
-        initialState: room.doc.toJSON(),
-      })
-    );
-  });
-
-  // GET /api/collab/rooms
-  router.get('/rooms', (c) => {
-    return c.json({
-      rooms: manager.listRooms(),
-    });
-  });
-
-  // GET /api/collab/room/:roomId
-  router.get('/room/:roomId', (c) => {
-    const roomId = c.req.param('roomId');
-    const room = manager.getRoom(roomId);
-    if (!room) {
-      return c.json({ error: 'Room not found' }, 404);
-    }
-    return c.json({
-      roomId,
-      peerCount: room.peers.size,
-      state: room.doc.toJSON(),
-    });
-  });
-
-  return router;
-}
+export { type CollabRouterOptions, createCollabRouter } from './collabRouter.js';

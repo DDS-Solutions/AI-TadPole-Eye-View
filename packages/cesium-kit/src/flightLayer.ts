@@ -1,6 +1,6 @@
 import type { FlightBatch, FlightState } from '@gev/contracts';
-import { Cartesian3, Color, ConstantPositionProperty, NearFarScalar } from 'cesium';
-import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
+import { Cartesian3, Color, NearFarScalar } from 'cesium';
+import { BaseLayerController, type BaseLayerOptions, setEntityPosition } from './baseLayer.js';
 import { CESIUM_DESIGN_TOKENS } from './designTokens.js';
 
 export interface FlightLayerOptions extends BaseLayerOptions {}
@@ -10,6 +10,8 @@ export interface FlightLayerOptions extends BaseLayerOptions {}
  * Drains incoming position batches through requestAnimationFrame queue straight into Cesium.
  */
 export class FlightLayerController extends BaseLayerController<FlightState, FlightLayerOptions> {
+  private readonly lastSignature = new Map<string, string>();
+
   constructor(options: FlightLayerOptions) {
     super(options, 'gev-flights');
   }
@@ -31,9 +33,15 @@ export class FlightLayerController extends BaseLayerController<FlightState, Flig
     }
 
     const altitude = flight.geo_altitude ?? flight.baro_altitude ?? 0;
-    const position = Cartesian3.fromDegrees(flight.longitude, flight.latitude, altitude);
-
+    const signature = `${flight.last_contact}:${flight.longitude}:${flight.latitude}:${altitude}:${flight.velocity ?? ''}:${flight.true_track ?? ''}`;
     let entity = this.entityMap.get(id);
+
+    if (entity && this.lastSignature.get(id) === signature) {
+      return;
+    }
+
+    const position = Cartesian3.fromDegrees(flight.longitude, flight.latitude, altitude);
+    this.lastSignature.set(id, signature);
 
     if (!entity) {
       entity = this.dataSource.entities.add({
@@ -53,11 +61,16 @@ export class FlightLayerController extends BaseLayerController<FlightState, Flig
       });
       this.entityMap.set(id, entity);
     } else {
-      entity.position = new ConstantPositionProperty(position);
+      setEntityPosition(entity, position);
       if (entity.properties) {
         entity.properties.merge(flight);
       }
     }
+  }
+
+  override destroy(): void {
+    this.lastSignature.clear();
+    super.destroy();
   }
 
   /**

@@ -34,6 +34,7 @@
   --hud-switch-knob: #fff;
   --hud-accent: #38bdf8;
   --hud-accent-soft: rgba(56, 189, 248, 0.15);
+  --hud-accent-subtle: rgba(56, 189, 248, 0.1);
   --hud-accent-faint: rgba(56, 189, 248, 0.08);
   --hud-accent-border: rgba(56, 189, 248, 0.3);
   --hud-accent-selected: rgba(56, 189, 248, 0.2);
@@ -75,4 +76,34 @@
   --channel-cables: #f472b6;
   --channel-satellites: #c084fc;
   --channel-satellites-soft: rgba(192, 132, 252, 0.2);
+  --collab-bar-bg: rgba(8, 14, 22, 0.85);
+  --collab-modal-bg: #0a1018;
+  --collab-surface-deep: #050a12;
+  --collab-backdrop: rgba(0, 0, 0, 0.7);
+  --collab-accent: #00f0ff;
+  --collab-accent-subtle: rgba(0, 240, 255, 0.1);
+  --collab-accent-soft: rgba(0, 240, 255, 0.15);
+  --collab-accent-border-soft: rgba(0, 240, 255, 0.2);
+  --collab-accent-border: rgba(0, 240, 255, 0.3);
+  --collab-accent-border-strong: rgba(0, 240, 255, 0.4);
+  --collab-connected: #39ff14;
+  --collab-disconnect: #ff0055;
+  --collab-disconnect-soft: rgba(255, 0, 85, 0.15);
+  --collab-muted: #718096;
+  --collab-label: #a0aec0;
+  --collab-follow-text: #cbd5e0;
+  --collab-cancel-border: #4a5568;
+  --collab-follow-bg: rgba(255, 255, 255, 0.1);
+  --collab-follow-border: rgba(255, 255, 255, 0.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    backdrop-filter: none !important;
+  }
 }

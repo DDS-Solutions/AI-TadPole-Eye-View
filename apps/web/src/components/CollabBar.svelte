@@ -36,7 +36,7 @@
   <!-- Connected Peers / Presence List -->
   <div class="peers-stream">
     {#each collabStore.state.presences as peer (peer.clientId)}
-      <div class="peer-badge" style="--peer-color: {peer.color || '#00f0ff'};">
+      <div class="peer-badge" style="--peer-color: {peer.color || 'var(--collab-accent)'};">
         <span class="peer-dot"></span>
         <span class="peer-name">{peer.callsign}</span>
         <span class="peer-role">[{peer.role.slice(0, 3).toUpperCase()}]</span>
@@ -114,8 +114,8 @@
     justify-content: space-between;
     gap: 12px;
     padding: 6px 14px;
-    background: rgba(8, 14, 22, 0.85);
-    border: 1px solid rgba(0, 240, 255, 0.2);
+    background: var(--collab-bar-bg);
+    border: 1px solid var(--collab-accent-border-soft);
     border-radius: 6px;
     font-family: 'JetBrains Mono', 'Fira Code', monospace;
     font-size: 11px;
@@ -132,28 +132,28 @@
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: #718096;
+    background: var(--collab-muted);
   }
 
   .status-dot.connected {
-    background: #39ff14;
-    box-shadow: 0 0 6px #39ff14;
+    background: var(--collab-connected);
+    box-shadow: 0 0 6px var(--collab-connected);
   }
 
   .room-label {
-    color: #718096;
+    color: var(--collab-muted);
     font-weight: 700;
   }
 
   .room-id {
-    color: #00f0ff;
+    color: var(--collab-accent);
     font-weight: 800;
   }
 
   .icon-btn {
-    background: rgba(0, 240, 255, 0.1);
-    color: #00f0ff;
-    border: 1px solid rgba(0, 240, 255, 0.3);
+    background: var(--collab-accent-subtle);
+    color: var(--collab-accent);
+    border: 1px solid var(--collab-accent-border);
     padding: 2px 6px;
     font-size: 9px;
     font-weight: 700;
@@ -173,7 +173,7 @@
     align-items: center;
     gap: 5px;
     padding: 3px 8px;
-    background: rgba(0, 0, 0, 0.4);
+    background: var(--hud-shadow-soft);
     border: 1px solid var(--peer-color);
     border-radius: 12px;
     font-size: 10px;
@@ -187,7 +187,7 @@
   }
 
   .peer-name {
-    color: #fff;
+    color: var(--hud-switch-knob);
     font-weight: 700;
   }
 
@@ -198,9 +198,9 @@
   }
 
   .follow-btn {
-    background: rgba(255, 255, 255, 0.1);
-    color: #cbd5e0;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: var(--collab-follow-bg);
+    color: var(--collab-follow-text);
+    border: 1px solid var(--collab-follow-border);
     font-size: 8px;
     padding: 1px 4px;
     border-radius: 2px;
@@ -208,15 +208,15 @@
   }
 
   .follow-btn.active {
-    background: #00f0ff;
-    color: #050a12;
+    background: var(--collab-accent);
+    color: var(--collab-surface-deep);
     font-weight: 800;
   }
 
   .btn-connect {
-    background: rgba(0, 240, 255, 0.15);
-    color: #00f0ff;
-    border: 1px solid #00f0ff;
+    background: var(--collab-accent-soft);
+    color: var(--collab-accent);
+    border: 1px solid var(--collab-accent);
     padding: 3px 10px;
     font-size: 10px;
     font-weight: 800;
@@ -225,9 +225,9 @@
   }
 
   .btn-disconnect {
-    background: rgba(255, 0, 85, 0.15);
-    color: #ff0055;
-    border: 1px solid #ff0055;
+    background: var(--collab-disconnect-soft);
+    color: var(--collab-disconnect);
+    border: 1px solid var(--collab-disconnect);
     padding: 3px 10px;
     font-size: 10px;
     font-weight: 800;
@@ -239,7 +239,7 @@
   .modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.7);
+    background: var(--collab-backdrop);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -249,8 +249,8 @@
 
   .modal-content {
     width: 380px;
-    background: #0a1018;
-    border: 1px solid rgba(0, 240, 255, 0.4);
+    background: var(--collab-modal-bg);
+    border: 1px solid var(--collab-accent-border-strong);
     border-radius: 8px;
     padding: 16px;
     display: flex;
@@ -267,7 +267,7 @@
   .modal-title {
     font-size: 11px;
     font-weight: 800;
-    color: #00f0ff;
+    color: var(--collab-accent);
   }
 
   .modal-body {
@@ -281,13 +281,13 @@
     flex-direction: column;
     gap: 4px;
     font-size: 10px;
-    color: #a0aec0;
+    color: var(--collab-label);
   }
 
   .form-field input {
-    background: #050a12;
-    border: 1px solid rgba(0, 240, 255, 0.3);
-    color: #fff;
+    background: var(--collab-surface-deep);
+    border: 1px solid var(--collab-accent-border);
+    color: var(--hud-switch-knob);
     padding: 6px 10px;
     font-size: 11px;
     border-radius: 4px;
@@ -302,8 +302,8 @@
 
   .btn-cancel {
     background: transparent;
-    border: 1px solid #4a5568;
-    color: #a0aec0;
+    border: 1px solid var(--collab-cancel-border);
+    color: var(--collab-label);
     padding: 5px 12px;
     font-size: 10px;
     border-radius: 4px;
@@ -311,9 +311,9 @@
   }
 
   .btn-submit {
-    background: #00f0ff;
+    background: var(--collab-accent);
     border: none;
-    color: #050a12;
+    color: var(--collab-surface-deep);
     padding: 5px 14px;
     font-size: 10px;
     font-weight: 800;

@@ -1,23 +1,19 @@
 import crypto from 'node:crypto';
-import {
-  type AuthenticatedIdentityContext,
-  GevEvents,
-  type LedgerReservationResult,
-  M3_FINGERPRINT_VERSION,
-  M3_LEDGER_CONTRACT_VERSION,
-} from '@gev/contracts';
+import type { AuthenticatedIdentityContext } from '@gev/contracts';
 import { type SimClock, SystemClock } from '@gev/core';
-import { LedgerOperationError, type SqliteBudgetLedger } from '@gev/governance';
+import type { SqliteBudgetLedger } from '@gev/governance';
 import { markResponseProvenanceCached } from '@gev/providers';
 import type { Context, Next } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { withRequestTimeout } from './billableFeedResult.js';
 import { DEFAULT_PROVIDER_TIERS, type ProviderTierConfig } from './costGovernorConfig.js';
 import {
+  BILLABLE_REQUEST_TIMEOUT_MS,
+  reserveBillableFeedOperation,
+} from './costGovernorReservation.js';
+import {
   type ActiveReservation,
   markAmbiguousReservation,
-  refundExpiredReservation,
-  replayBillableOperation,
   settleBillableReservation,
 } from './costGovernorSettlement.js';
 import type { InMemoryRateLimiter, OpsAuthAdapter } from './opsAuth.js';
@@ -27,8 +23,6 @@ import { canonicalFeedKey, RECOGNIZED_FEED_QUERY_PARAMS } from './costGovernorFe
 export { canonicalFeedKey, RECOGNIZED_FEED_QUERY_PARAMS };
 
 const MAX_CACHE_ENTRIES = 200;
-const BILLABLE_REQUEST_TIMEOUT_MS = 30_000;
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 interface CacheEntry {
   body: unknown;
@@ -369,130 +363,20 @@ export class CostGovernor {
     cached: CacheEntry | undefined,
     tenantId: string
   ): ActiveReservation | Response {
-    const ledger = this.budgetLedger;
-    if (!ledger) {
-      return c.json(
-        { error: 'Durable budget ledger is unavailable', code: 'LEDGER_UNAVAILABLE' },
-        503
-      );
-    }
-    const suppliedId = c.req.header('Idempotency-Key');
-    const operationId = suppliedId ?? crypto.randomUUID();
-    c.header('X-GEV-Operation-Id', operationId);
-    if (!UUID_PATTERN.test(operationId)) {
-      return c.json({ error: 'Idempotency-Key must be a UUID', code: 'INVALID_OPERATION_ID' }, 400);
-    }
-    const startedAt = this.clock.now();
-    const requestDigest = crypto.createHash('sha256').update(cacheKey, 'utf8').digest('hex');
-    let result: LedgerReservationResult;
-    try {
-      result = ledger.reserve({
-        operation_id: operationId,
-        fingerprint_components: {
-          contract_version: M3_LEDGER_CONTRACT_VERSION,
-          fingerprint_version: M3_FINGERPRINT_VERSION,
-          actor: 'system',
-          tenant_id: tenantId,
-          action: `feed.fetch.${providerName}`,
-          input: { provider: providerName, request_digest: requestDigest },
-          task_ref: `provider-fetch:${providerName}`,
-          is_mutating: false,
-          estimate: {
-            currency: 'usd',
-            min: tier.costPerFetchUsd,
-            max: tier.costPerFetchUsd,
-          },
-        },
-        deadline_at: new Date(startedAt + BILLABLE_REQUEST_TIMEOUT_MS).toISOString(),
-        audit_intent: {
-          kind: GevEvents.AuditIntent,
-          id: operationId,
-          ts: this.clock.iso(),
-          actor: 'system',
-          action: `feed.fetch.${providerName}`,
-          target: providerName,
-          params: { request_digest: requestDigest, tenant_id: tenantId },
-          task_ref: `provider-fetch:${providerName}`,
-        },
-      });
-    } catch {
-      return c.json(
-        { error: 'Durable budget ledger is unavailable', code: 'LEDGER_UNAVAILABLE' },
-        503
-      );
-    }
-
-    if (result.kind === 'denied') {
-      c.header('X-GEV-Budget-Exceeded', 'true');
-      if (cached) {
+    return reserveBillableFeedOperation({
+      c,
+      clock: this.clock,
+      budgetLedger: this.budgetLedger,
+      providerName,
+      cacheKey,
+      tier,
+      tenantId,
+      readCachedFallback: () => {
+        if (!cached) return null;
         c.header('X-GEV-Stale', 'true');
         c.header('X-GEV-Cache-Source', 'budget-fallback');
         return c.json(this.readCachedBody(cached), cached.status as 200);
-      }
-      return c.json(
-        {
-          error: `STASIS: Budget reservation denied for feed (tenant: ${tenantId})`,
-          code: 'BUDGET_DENIED',
-          operation_id: operationId,
-        },
-        429
-      );
-    }
-    if (result.kind === 'conflict') {
-      return c.json(
-        { error: result.message, code: 'IDEMPOTENCY_CONFLICT', operation_id: operationId },
-        409
-      );
-    }
-    if (result.kind === 'in_progress') {
-      c.header('Retry-After', '1');
-      return c.json(
-        {
-          error: 'Original operation is still active',
-          code: 'OPERATION_IN_PROGRESS',
-          operation_id: operationId,
-        },
-        409
-      );
-    }
-    if (result.kind === 'in_doubt') {
-      return c.json(
-        {
-          error: 'Original operation requires human reconciliation',
-          code: 'OPERATION_IN_DOUBT',
-          operation_id: operationId,
-        },
-        409
-      );
-    }
-    if (result.kind === 'replay') {
-      return replayBillableOperation(c, this.clock, result.operation);
-    }
-
-    try {
-      const executing = ledger.startExecution(operationId, result.operation.request_fingerprint);
-      return {
-        operationId,
-        requestFingerprint: executing.request_fingerprint,
-        startedAt,
-        actualMicrousd: Math.ceil(tier.costPerFetchUsd * 1_000_000),
-      };
-    } catch (error) {
-      if (error instanceof LedgerOperationError && error.code === 'RESERVATION_EXPIRED') {
-        refundExpiredReservation(this.budgetLedger, this.clock, result.operation, providerName);
-        return c.json(
-          {
-            error: 'Reservation expired before dispatch',
-            code: 'RESERVATION_EXPIRED',
-            operation_id: operationId,
-          },
-          409
-        );
-      }
-      return c.json(
-        { error: 'Durable budget ledger is unavailable', code: 'LEDGER_UNAVAILABLE' },
-        503
-      );
-    }
+      },
+    });
   }
 }

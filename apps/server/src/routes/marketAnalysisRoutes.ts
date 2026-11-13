@@ -2,15 +2,18 @@ import crypto from 'node:crypto';
 import {
   type Actor,
   CompetitionAnalysisInputSchema,
-  type EconomicEvidenceRecord,
   GevEvents,
   LocationComparisonInputSchema,
   MarketAnalysisInputSchema,
   TenantIdSchema,
 } from '@gev/contracts';
 import type { SimClock } from '@gev/core';
-import { analyzeCompetition, analyzeMarketContext, compareLocations } from '@gev/economic';
 import type { CapBudgetGovernor, SqliteAuditSink, SqliteBudgetLedger } from '@gev/governance';
+import {
+  resolveAndAnalyzeCompetition,
+  resolveAndAnalyzeMarketContext,
+  resolveAndCompareLocations,
+} from '@gev/ops-mcp';
 import { EconomicFixtureAdapter } from '@gev/providers';
 import { type Context, Hono } from 'hono';
 import type { InMemoryRateLimiter, OpsAuthAdapter } from '../middleware/opsAuth.js';
@@ -214,50 +217,8 @@ export function createMarketAnalysisRouter(options: MarketAnalysisRouterOptions)
       );
     }
 
-    const input = { ...parsed.data, tenant_id: gov.tenantId };
+    const input = parsed.data;
     const intentId = crypto.randomUUID();
-
-    // Auto-populate evidence records from fixture adapter if omitted
-    if (input.acs_evidence.length === 0) {
-      const acsRecords = adapter.getEvidenceRecords({ geography: input.target_geography });
-      input.acs_evidence = acsRecords.filter(
-        (r) => r.source_id === 'census-acs'
-      ) as EconomicEvidenceRecord[];
-    }
-    if (input.cbp_evidence.length === 0) {
-      const cbpRecords = adapter.getEvidenceRecords({
-        geography: input.target_geography,
-        naicsCode: input.naics_code,
-      });
-      input.cbp_evidence = cbpRecords.filter(
-        (r) => r.source_id === 'census-cbp-zbp'
-      ) as EconomicEvidenceRecord[];
-    }
-    if (!input.osm_evidence || input.osm_evidence.length === 0) {
-      const osmRecords = adapter.getEvidenceRecords({ geography: input.target_geography });
-      input.osm_evidence = osmRecords.filter(
-        (r) => r.source_id === 'osm-commercial'
-      ) as EconomicEvidenceRecord[];
-    }
-
-    if (!input.osm_footprint) {
-      input.osm_footprint = {
-        total_features: 1540,
-        category_counts: {
-          food_and_beverage: 650,
-          retail: 420,
-          services: 230,
-          office: 120,
-          craft_industrial: 40,
-          healthcare: 50,
-          hospitality: 30,
-          other_commercial: 0,
-        },
-        density_per_km2: 24.5,
-        area_km2: 62.85,
-        top_amenities: [],
-      };
-    }
 
     options.auditSink.intent({
       kind: GevEvents.AuditIntent,
@@ -271,8 +232,14 @@ export function createMarketAnalysisRouter(options: MarketAnalysisRouterOptions)
     });
 
     try {
-      const nowIso = new Date(options.clock.now()).toISOString();
-      const result = analyzeMarketContext(input, nowIso);
+      const result = await resolveAndAnalyzeMarketContext({
+        clock: options.clock,
+        input,
+        tenantId: gov.tenantId,
+        fixtureAdapter: adapter,
+        osmEnabled: options.isProviderEnabled ? options.isProviderEnabled('osm-commercial') : true,
+        auditCtx: { auditSink: options.auditSink, clock: options.clock },
+      });
       logOutcome(intentId, gov.startedAt, 'ok', {
         analysis_id: result.analysis_id,
         total_population: result.demographics.total_population.status,
@@ -320,18 +287,8 @@ export function createMarketAnalysisRouter(options: MarketAnalysisRouterOptions)
       );
     }
 
-    const input = { ...parsed.data, tenant_id: gov.tenantId };
+    const input = parsed.data;
     const intentId = crypto.randomUUID();
-
-    if (input.cbp_evidence.length === 0) {
-      const cbpRecords = adapter.getEvidenceRecords({
-        geography: input.target_geography,
-        naicsCode: input.naics_code,
-      });
-      input.cbp_evidence = cbpRecords.filter(
-        (r) => r.source_id === 'census-cbp-zbp'
-      ) as EconomicEvidenceRecord[];
-    }
 
     options.auditSink.intent({
       kind: GevEvents.AuditIntent,
@@ -349,8 +306,13 @@ export function createMarketAnalysisRouter(options: MarketAnalysisRouterOptions)
     });
 
     try {
-      const nowIso = new Date(options.clock.now()).toISOString();
-      const result = analyzeCompetition(input, nowIso);
+      const result = resolveAndAnalyzeCompetition({
+        clock: options.clock,
+        input,
+        tenantId: gov.tenantId,
+        fixtureAdapter: adapter,
+        auditCtx: { auditSink: options.auditSink, clock: options.clock },
+      });
       logOutcome(intentId, gov.startedAt, 'ok', {
         analysis_id: result.analysis_id,
         hhi: result.concentration.hhi,
@@ -398,26 +360,7 @@ export function createMarketAnalysisRouter(options: MarketAnalysisRouterOptions)
       );
     }
 
-    const input = {
-      ...parsed.data,
-      tenant_id: gov.tenantId,
-      locations: parsed.data.locations.map((loc) => {
-        let acs = loc.acs_evidence;
-        let cbp = loc.cbp_evidence;
-        if (acs.length === 0) {
-          acs = adapter
-            .getEvidenceRecords({ geography: loc.geography })
-            .filter((r) => r.source_id === 'census-acs') as EconomicEvidenceRecord[];
-        }
-        if (cbp.length === 0) {
-          cbp = adapter
-            .getEvidenceRecords({ geography: loc.geography, naicsCode: parsed.data.naics_code })
-            .filter((r) => r.source_id === 'census-cbp-zbp') as EconomicEvidenceRecord[];
-        }
-        return { ...loc, acs_evidence: acs, cbp_evidence: cbp };
-      }),
-    };
-
+    const input = parsed.data;
     const intentId = crypto.randomUUID();
 
     options.auditSink.intent({
@@ -432,8 +375,13 @@ export function createMarketAnalysisRouter(options: MarketAnalysisRouterOptions)
     });
 
     try {
-      const nowIso = new Date(options.clock.now()).toISOString();
-      const result = compareLocations(input, nowIso);
+      const result = resolveAndCompareLocations({
+        clock: options.clock,
+        input,
+        tenantId: gov.tenantId,
+        fixtureAdapter: adapter,
+        auditCtx: { auditSink: options.auditSink, clock: options.clock },
+      });
       logOutcome(intentId, gov.startedAt, 'ok', {
         comparison_id: result.comparison_id,
         location_count: result.locations.length,

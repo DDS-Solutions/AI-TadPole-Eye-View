@@ -4,6 +4,9 @@ export * from './server.js';
 export * from './context.js';
 export * from './tools.js';
 export * from './economicPreview.js';
+export * from './economicToolGovernance.js';
+export * from './marketAnalysisTools.js';
+export * from './workforceAnalysisTools.js';
 export * from './siteRiskTools.js';
 export * from './promptSafety.js';
 

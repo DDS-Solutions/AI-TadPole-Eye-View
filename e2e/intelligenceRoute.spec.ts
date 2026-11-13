@@ -51,7 +51,7 @@ test.describe('Lazy /#/intelligence route, Cesium isolation, and navigation roun
       if (phaseId === 'phase-9' || phaseId === 'phase-10' || phaseId === 'phase-11') {
         await expect(statusBadge).toHaveText('INSPECTION READY');
       } else {
-        await expect(statusBadge).toHaveText('PLANNED');
+        await expect(statusBadge).toHaveText('ACTIVE');
       }
     }
 

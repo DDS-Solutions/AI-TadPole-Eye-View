@@ -138,26 +138,38 @@ export function compareLocations(
   let specializations: LocationSpecializationComparison[] | undefined;
   if (validatedInput.naics_code) {
     const naics = validatedInput.naics_code;
+    const findTotalEmpVal = (records: readonly EconomicEvidenceRecord[]) => {
+      const rec = records.find(
+        (r) => r.variable_name === 'EMP_TOTAL' || r.metric_id === 'total-paid-employment'
+      );
+      return rec ? getNumericEstimateValue(rec.estimate) : undefined;
+    };
     const benchEmpRecord = findEvidenceRecord(benchmarkLoc.cbp_evidence, 'paid-employment');
     const benchEmpVal = benchEmpRecord
       ? getNumericEstimateValue(benchEmpRecord.estimate)
       : undefined;
+    const benchTotalVal = findTotalEmpVal(benchmarkLoc.cbp_evidence);
 
     specializations = locations.map((loc) => {
       const locEmpRecord = findEvidenceRecord(loc.cbp_evidence, 'paid-employment');
       const locEmpVal = locEmpRecord ? getNumericEstimateValue(locEmpRecord.estimate) : undefined;
+      const locTotalVal = findTotalEmpVal(loc.cbp_evidence);
 
       if (
         locEmpVal !== undefined &&
+        locTotalVal !== undefined &&
         benchEmpVal !== undefined &&
+        benchTotalVal !== undefined &&
+        locTotalVal > 0 &&
+        benchTotalVal > 0 &&
         benchEmpVal > 0 &&
         locEmpVal >= 0
       ) {
         const lqResult = calculateLocationQuotient(
           locEmpVal,
-          Math.max(locEmpVal, 1000),
+          locTotalVal,
           benchEmpVal,
-          Math.max(benchEmpVal, 1000)
+          benchTotalVal
         );
         return {
           location_key: loc.location_key,
@@ -179,7 +191,7 @@ export function compareLocations(
         geography: loc.geography,
         naics_code: naics,
         location_quotient: null,
-        tier: isSuppressed ? 'suppressed' : 'underrepresented',
+        tier: isSuppressed ? 'suppressed' : 'unavailable',
       };
     });
   }
