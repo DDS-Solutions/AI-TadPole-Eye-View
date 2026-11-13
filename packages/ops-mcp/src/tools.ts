@@ -8,7 +8,6 @@ import type {
   GetFeedHealthOutput,
   LoadSceneInput,
   LoadSceneOutput,
-  OperatorToolName,
   PreviewBusinessContextInput,
   PreviewBusinessContextOutput,
   RunDiagnosticsInput,
@@ -22,7 +21,7 @@ import type {
   TailLogsInput,
   TailLogsOutput,
 } from '@gev/contracts';
-import { TenantIdSchema } from '@gev/contracts';
+import { TenantIdSchema, toolsForSurface } from '@gev/contracts';
 import {
   type ToolExecutionContext,
   type ToolExecutionResult,
@@ -49,21 +48,7 @@ import { handleAnalyzeWorkforceContext } from './workforceAnalysisTools.js';
 import { handleAssessSiteRisk } from './siteRiskTools.js';
 
 export const MAX_SCENE_BYTES = 1024 * 1024;
-export const MCP_OPERATOR_TOOL_NAMES = [
-  'get_feed_health',
-  'get_budget',
-  'run_diagnostics',
-  'load_scene',
-  'save_scene',
-  'tail_logs',
-  'set_flag',
-  'preview_business_context',
-  'analyze_market_context',
-  'analyze_competition',
-  'compare_locations',
-  'analyze_workforce_context',
-  'assess_site_risk',
-] as const satisfies readonly OperatorToolName[];
+export const MCP_OPERATOR_TOOL_NAMES = toolsForSurface('mcp');
 export type McpOperatorToolName = (typeof MCP_OPERATOR_TOOL_NAMES)[number];
 const MCP_OPERATOR_TOOL_NAME_SET: ReadonlySet<string> = new Set(MCP_OPERATOR_TOOL_NAMES);
 export function isMcpOperatorToolName(name: string): name is McpOperatorToolName {

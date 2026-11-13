@@ -33,6 +33,7 @@ export abstract class BaseLayerController<
   private hasPendingSnapshot = false;
   private rafHandle: number | null = null;
   protected isDestroyed = false;
+  protected isSignalLost = false;
 
   constructor(options: TOptions, defaultDataSourceName: string) {
     this.viewer = options.viewer;
@@ -151,6 +152,24 @@ export abstract class BaseLayerController<
     this.dataSource.entities.resumeEvents();
     this.viewer.scene?.requestRender?.();
   }
+
+  getSignalLost(): boolean {
+    return this.isSignalLost;
+  }
+
+  /**
+   * Marks this layer stale/signal-lost so subclasses can dim stale markers visually.
+   */
+  setSignalLost(lost: boolean): void {
+    if (this.isDestroyed || this.isSignalLost === lost) {
+      return;
+    }
+    this.isSignalLost = lost;
+    this.onSignalLostChanged(lost);
+    this.viewer.scene?.requestRender?.();
+  }
+
+  protected onSignalLostChanged(_lost: boolean): void {}
 
   /**
    * Destroys the layer, cancels pending frames, and removes entities from Cesium.

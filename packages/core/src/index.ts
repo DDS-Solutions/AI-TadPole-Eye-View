@@ -8,3 +8,6 @@ export * from './toolExecutor.js';
 export * from './agentAdapters.js';
 export * from './voiceMachine.js';
 export * from './collabDoc.js';
+export * from './trailContinuity.js';
+export * from './viewportLookupGate.js';
+export * from './disposalStack.js';

@@ -94,4 +94,24 @@ describe('Server API & Governed Ops (@gev/server)', () => {
     expect(entries[1]?.kind).toBe(GevEvents.AuditOutcome);
     expect(entries[1]?.status).toBe('blocked');
   });
+
+  it('POST /api/overpass distinguishes invalid query (400) from upstream outage (502)', async () => {
+    const { app } = createApp();
+    const invalidRes = await app.request('/api/overpass', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ql: 'make json; node(around:100,0,0);' }),
+    });
+    expect(invalidRes.status).toBe(400);
+    const invalidBody = await invalidRes.json();
+    expect(invalidBody.code).toBe('OVERPASS_FAILED');
+  });
+
+  it('dispose() tears down owned application resources cleanly and idempotently', async () => {
+    const { app, dispose } = createApp();
+    const res = await app.request('/api/health');
+    expect(res.status).toBe(200);
+    await expect(dispose()).resolves.toBeUndefined();
+    await expect(dispose()).resolves.toBeUndefined();
+  });
 });

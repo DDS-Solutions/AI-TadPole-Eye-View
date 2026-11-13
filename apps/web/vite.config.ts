@@ -46,6 +46,18 @@ export default defineConfig({
     port: 5180,
     strictPort: true,
     proxy: API_PROXY,
+    fs: {
+      deny: [
+        '.env',
+        '.env.*',
+        '**/.git/**',
+        '**/.gev-logs/**',
+        '**/.gev-cache/**',
+        '**/dist/**',
+        '**/data/*.sqlite*',
+        '**/*.db',
+      ],
+    },
   },
   preview: {
     port: 5180,

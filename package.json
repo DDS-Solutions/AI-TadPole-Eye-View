@@ -12,6 +12,7 @@
     "test:unit": "turbo run test",
     "test:mcp:official": "pnpm turbo run build --filter=@gev/server... && node scripts/run-mcp-conformance.mjs",
     "test:performance": "turbo run build --filter=@gev/server... --filter=@gev/providers... --filter=@gev/cesium-kit... --filter=@gev/governance... && pnpm --filter @gev/server test:load && pnpm --filter @gev/server test:performance && pnpm --filter @gev/providers test:performance && pnpm --filter @gev/cesium-kit test:performance && pnpm --filter @gev/governance test:performance",
+    "test:allocations": "pnpm turbo run build --filter=@gev/core --filter=@gev/governance && node --expose-gc scripts/check-allocations.mjs",
     "docs:check": "node scripts/adg.mjs",
     "docs:test": "node --test --test-isolation=none scripts/adg.test.mjs scripts/generate-provider-registry.test.mjs scripts/operational-imagery-spike.test.mjs",
     "architecture:check": "node scripts/architectural-drift.mjs",

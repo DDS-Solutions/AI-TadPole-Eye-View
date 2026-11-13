@@ -1,5 +1,12 @@
 import type { ShipBatch, ShipState } from '@gev/contracts';
-import { Cartesian3, Color, ConstantPositionProperty, JulianDate, NearFarScalar } from 'cesium';
+import {
+  Cartesian3,
+  Color,
+  ConstantPositionProperty,
+  ConstantProperty,
+  JulianDate,
+  NearFarScalar,
+} from 'cesium';
 import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
 import { CESIUM_DESIGN_TOKENS } from './designTokens.js';
 
@@ -10,6 +17,9 @@ export interface MarineLayerOptions extends BaseLayerOptions {}
  * Renders AIS vessel vectors with the maritime design channel.
  * Drains incoming position batches through requestAnimationFrame queue straight into Cesium.
  */
+const ACTIVE_MARINE_ALPHA = 1.0;
+const STALE_MARINE_ALPHA = 0.42;
+
 export class MarineLayerController extends BaseLayerController<ShipState, MarineLayerOptions> {
   private vesselTypeFilter = 'all';
 
@@ -57,6 +67,7 @@ export class MarineLayerController extends BaseLayerController<ShipState, Marine
     let entity = this.entityMap.get(id);
 
     if (!entity) {
+      const alpha = this.isSignalLost ? STALE_MARINE_ALPHA : ACTIVE_MARINE_ALPHA;
       entity = this.dataSource.entities.add({
         id: `ship-${id}`,
         name: ship.name || `MMSI ${ship.mmsi}`,
@@ -64,8 +75,8 @@ export class MarineLayerController extends BaseLayerController<ShipState, Marine
         position,
         point: {
           pixelSize: 7,
-          color: MarineLayerController.EMERALD_TEAL,
-          outlineColor: MarineLayerController.OUTLINE_COLOR,
+          color: MarineLayerController.EMERALD_TEAL.withAlpha(alpha),
+          outlineColor: MarineLayerController.OUTLINE_COLOR.withAlpha(alpha),
           outlineWidth: 1.5,
           scaleByDistance: new NearFarScalar(1.5e2, 1.6, 8.0e6, 0.6),
         },
@@ -85,6 +96,20 @@ export class MarineLayerController extends BaseLayerController<ShipState, Marine
         });
       }
     }
+  }
+
+  protected override onSignalLostChanged(lost: boolean): void {
+    const alpha = lost ? STALE_MARINE_ALPHA : ACTIVE_MARINE_ALPHA;
+    const fill = MarineLayerController.EMERALD_TEAL.withAlpha(alpha);
+    const outline = MarineLayerController.OUTLINE_COLOR.withAlpha(alpha);
+    this.dataSource.entities.suspendEvents();
+    for (const entity of this.entityMap.values()) {
+      if (entity.point) {
+        entity.point.color = new ConstantProperty(fill);
+        entity.point.outlineColor = new ConstantProperty(outline);
+      }
+    }
+    this.dataSource.entities.resumeEvents();
   }
 
   private applyVisibilityFilters(): void {

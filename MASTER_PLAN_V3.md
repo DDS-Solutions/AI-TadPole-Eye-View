@@ -2028,6 +2028,14 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
   and resumes only after the configured idle interval.
 - [ ] 14 exit: release evidence is linked in §17; no known critical/high finding is open; plan status becomes COMPLETE only after human review.
 
+### Post-Phase-13 Upstream Candidate Backlog (Deferred — Requires 4-Pillar Authorization)
+
+Tracked candidates reviewed from upstream `DDS-Solutions/gods-eye-view` (`10a788d`) for potential post-Phase-13 evaluation (commercial-license and §12 compliance checks mandatory before implementation):
+
+- **Layers & Weather:** Rail (`#1675`, 30 keyless GTFS-RT feeds + opt-in pack cache), News (`#1593`, GDELT 2.0 Events / optional capped WorldNewsAPI with strict state labels), Wildlife Sightings (`#1591`, iNaturalist/Acartia UTFGrid + daily rate pacing), Shipwrecks (`#1583`, EMODnet CC BY 4.0 / Wikidata CC0), NOAA GFS + ECMWF IFS wind, NOAA nowCOAST radar/clouds/lightning (`#1665`), and 6 satellite classes (`#1558`).
+- **UX & Replay:** Unified world clock timeline (`#1512`), typed AI chat sharing the governed voice tool executor (`#1507`), Scene v5 anchor/data-pack support, and deterministic globe capture helpers.
+- **Excluded without Explicit Human ADR:** ALPR camera datasets (§12 ethics line), NonCommercial-licensed bundled event packs, and reading external CLI OAuth credential stores.
+
 ---
 
 ## §11 — INSTANT REJECT ANTI-PATTERNS

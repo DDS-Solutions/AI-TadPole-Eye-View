@@ -1,4 +1,4 @@
-import { type OperatorToolName, getOpenAIToolDefinitions } from '@gev/contracts';
+import { getOpenAIToolDefinitions, toolsForSurface } from '@gev/contracts';
 import {
   type AgentProviderAdapter,
   GovernedToolExecutor,
@@ -10,13 +10,7 @@ import {
 import { createActor } from 'xstate';
 import { runtimeClock } from '../runtimeClock.js';
 
-export const VOICE_OPERATOR_TOOL_NAMES = [
-  'fly_to_location',
-  'toggle_layer',
-  'select_entity',
-  'inspect_telemetry',
-  'query_aoi',
-] as const satisfies readonly OperatorToolName[];
+export const VOICE_OPERATOR_TOOL_NAMES = toolsForSurface('voice');
 
 export interface VoiceStoreState {
   status:

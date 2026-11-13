@@ -1,5 +1,5 @@
 import { ProviderRegistrySchema, SystemHealthResponseSchema } from '@gev/contracts';
-import { GovernedToolExecutor, SystemClock } from '@gev/core';
+import { DisposalStack, GovernedToolExecutor, SystemClock } from '@gev/core';
 import { SatellitePropagator } from '@gev/core/satellite-propagation';
 import { createGovernanceRuntimeContext } from '@gev/governance';
 import {
@@ -69,6 +69,7 @@ export const SATELLITE_REQUESTS_PER_MINUTE = 60;
 
 export function createApp(options: CreateAppOptions = {}) {
   const app = new Hono();
+  const cleanup = new DisposalStack();
   if (
     options.clock &&
     options.governanceContext &&
@@ -77,9 +78,13 @@ export function createApp(options: CreateAppOptions = {}) {
     throw new Error('Server clock must be the shared governance runtime clock');
   }
   const clock = options.governanceContext?.clock ?? options.clock ?? new SystemClock();
+  const ownsGovernanceContext = !options.governanceContext;
   const governanceContext =
     options.governanceContext ??
     createGovernanceRuntimeContext({ clock, dbPath: options.governanceDbPath });
+  if (ownsGovernanceContext) {
+    cleanup.defer(() => governanceContext.close());
+  }
   const telemetry = new ServerTelemetryManager({ clock });
   const auth = createOpsAuth({
     ...options.opsAuth,
@@ -436,6 +441,7 @@ export function createApp(options: CreateAppOptions = {}) {
     },
     governanceContext,
     mcpHttp,
+    dispose: async () => cleanup.dispose(),
     adapters: {
       openSky: openSkyAdapter,
       ais: aisAdapter,
