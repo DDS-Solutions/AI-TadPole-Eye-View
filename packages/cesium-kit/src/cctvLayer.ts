@@ -1,6 +1,6 @@
 import type { CctvCamera, CctvCatalog } from '@gev/contracts';
-import { Cartesian3, Color, ConstantPositionProperty, JulianDate, NearFarScalar } from 'cesium';
-import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
+import { Cartesian3, Color, JulianDate, NearFarScalar } from 'cesium';
+import { BaseLayerController, type BaseLayerOptions, setEntityPosition } from './baseLayer.js';
 import { CESIUM_DESIGN_TOKENS } from './designTokens.js';
 
 export interface CctvLayerOptions extends BaseLayerOptions {}
@@ -73,7 +73,7 @@ export class CctvLayerController extends BaseLayerController<CctvCamera, CctvLay
       });
       this.entityMap.set(id, entity);
     } else {
-      entity.position = new ConstantPositionProperty(position);
+      setEntityPosition(entity, position);
       entity.show = isVisible;
       if (entity.properties) {
         entity.properties.merge({

@@ -1,15 +1,35 @@
+import { GEV_PRODUCTION_IDENTITY_PROFILE } from '@gev/contracts';
+import { FrozenClock } from '@gev/core';
+import { SqliteAuditSink } from '@gev/governance';
 import { Hono } from 'hono';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { type OpsAuthOptions, createOpsAuth } from '../src/middleware/opsAuth.js';
 import { createVoiceRouter } from '../src/routes/voice.js';
 
 describe('Voice Realtime Session Token Route (PLAN.md §10 Phase 1 Item 6)', () => {
   const opsToken = 'test_secret_token_123';
+  const cleanups: Array<() => void> = [];
 
-  function createVoiceApp(authOptions: OpsAuthOptions) {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    while (cleanups.length > 0) cleanups.pop()?.();
+  });
+
+  function createVoiceApp(
+    authOptions: OpsAuthOptions,
+    extra?: { stasisActive?: () => boolean; auditSink?: SqliteAuditSink; apiKey?: string }
+  ) {
     const app = new Hono();
     const auth = createOpsAuth(authOptions);
-    app.route('/api/voice', createVoiceRouter({ auth, apiKey: 'mock_key' }));
+    app.route(
+      '/api/voice',
+      createVoiceRouter({
+        auth,
+        apiKey: extra?.apiKey ?? 'mock_key',
+        stasisActive: extra?.stasisActive,
+        auditSink: extra?.auditSink,
+      })
+    );
     return app;
   }
 
@@ -89,5 +109,73 @@ describe('Voice Realtime Session Token Route (PLAN.md §10 Phase 1 Item 6)', () 
 
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toMatchObject({ code: 'MISSING_BEARER_TOKEN' });
+  });
+
+  it('blocks /api/voice/session under STASIS with 423 and records audit intent + blocked outcome', async () => {
+    const clock = new FrozenClock(1_731_400_000_000);
+    const auditSink = new SqliteAuditSink({ dbPath: ':memory:', clock });
+    cleanups.push(() => auditSink.close());
+    const authApp = createVoiceApp(
+      { opsToken, requireAuth: true },
+      { stasisActive: () => true, auditSink }
+    );
+
+    const res = await authApp.request('/api/voice/session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${opsToken}`,
+      },
+      body: JSON.stringify({ model: 'gpt-4o-realtime-preview' }),
+    });
+
+    expect(res.status).toBe(423);
+    await expect(res.json()).resolves.toMatchObject({ code: 'STASIS_ACTIVE' });
+    const events = auditSink.tail({ limit: 10 });
+    expect(events.map((e) => e.kind)).toEqual(['audit.intent', 'audit.outcome']);
+    expect(events[1]).toMatchObject({ status: 'blocked', error: 'STASIS_ACTIVE' });
+  });
+
+  it('fails closed in production when OPENAI_API_KEY is missing/mock and seed mode is off', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('GEV_SEED_MODE', '0');
+    const clock = new FrozenClock(1_731_400_000_000);
+    const nowSec = Math.floor(clock.now() / 1000);
+    const authApp = createVoiceApp({
+      requireAuth: true,
+      clock,
+      bearerVerifier: {
+        verify: async ({ access_token }) =>
+          access_token === 'prod-token'
+            ? {
+                actor: 'human',
+                principal: 'auth0|prod-op',
+                tenant_id: 'tenant-prod',
+                role: 'operator',
+                client_id: 'gev-web',
+                token_id: 'tok-prod',
+                issuer: GEV_PRODUCTION_IDENTITY_PROFILE.issuer,
+                audience: GEV_PRODUCTION_IDENTITY_PROFILE.rest_resource,
+                resource: GEV_PRODUCTION_IDENTITY_PROFILE.rest_resource,
+                scopes: ['read.telemetry'],
+                issued_at_epoch_seconds: nowSec - 10,
+                not_before_epoch_seconds: nowSec - 10,
+                expires_at_epoch_seconds: nowSec + 290,
+              }
+            : null,
+      },
+    });
+
+    const res = await authApp.request('/api/voice/session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer prod-token',
+      },
+      body: '{}',
+    });
+
+    expect(res.status).toBe(503);
+    await expect(res.json()).resolves.toMatchObject({ code: 'VOICE_NOT_CONFIGURED' });
   });
 });

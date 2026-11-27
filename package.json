@@ -12,6 +12,7 @@
     "test:unit": "turbo run test",
     "test:mcp:official": "pnpm turbo run build --filter=@gev/server... && node scripts/run-mcp-conformance.mjs",
     "test:performance": "turbo run build --filter=@gev/server... --filter=@gev/providers... --filter=@gev/cesium-kit... --filter=@gev/governance... && pnpm --filter @gev/server test:load && pnpm --filter @gev/server test:performance && pnpm --filter @gev/providers test:performance && pnpm --filter @gev/cesium-kit test:performance && pnpm --filter @gev/governance test:performance",
+    "test:allocations": "pnpm turbo run build --filter=@gev/core --filter=@gev/governance && node --expose-gc scripts/check-allocations.mjs",
     "docs:check": "node scripts/adg.mjs",
     "docs:test": "node --test --test-isolation=none scripts/adg.test.mjs scripts/generate-provider-registry.test.mjs scripts/operational-imagery-spike.test.mjs",
     "architecture:check": "node scripts/architectural-drift.mjs",
@@ -23,15 +24,15 @@
     "gev": "node packages/cli/dist/index.js"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.7",
+    "@biomejs/biome": "2.6.9",
     "@modelcontextprotocol/conformance": "0.2.0-alpha.11",
-    "@modelcontextprotocol/inspector": "2.15.0",
-    "@playwright/test": "^1.65.0",
-    "@types/node": "^24.19.2",
-    "fast-check": "^4.10.2",
-    "turbo": "^2.11.11",
+    "@modelcontextprotocol/inspector": "2.17.0",
+    "@playwright/test": "^1.65.1",
+    "@types/node": "^24.19.4",
+    "fast-check": "^4.11.0",
+    "turbo": "^2.11.13",
     "typescript": "^7.0.2",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.2"
   },
   "packageManager": "pnpm@10.34.5",
   "pnpm": {

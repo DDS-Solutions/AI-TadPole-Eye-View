@@ -95,7 +95,8 @@ async function loadFeed<T extends ProvenanceCarrier>(
   schema: { parse(input: unknown): T },
   signal: AbortSignal,
   consume: (data: T) => void,
-  clear?: () => void
+  clear?: () => void,
+  onSignalState?: (signalLost: boolean) => void
 ): Promise<void> {
   const sequenceAtStart = currentPollSequence;
   try {
@@ -109,6 +110,7 @@ async function loadFeed<T extends ProvenanceCarrier>(
       return;
     }
     consume(data);
+    onSignalState?.(false);
     layerStore.setProvenance(layer, data.provenance);
     layerStore.activeErrors[layer] = null;
     if (layer === 'satellites') layerStore.setSatelliteAccessLock(null);
@@ -116,7 +118,19 @@ async function loadFeed<T extends ProvenanceCarrier>(
     if (error instanceof DOMException && error.name === 'AbortError') {
       return;
     }
-    layerStore.activeErrors[layer] = error instanceof Error ? error.message : String(error);
+    const detail = error instanceof Error ? error.message : String(error);
+    const hasCachedData = layerStore.counts[layer] > 0 && !clear;
+    layerStore.activeErrors[layer] = hasCachedData ? `SIGNAL LOST · ${detail}` : detail;
+    if (hasCachedData) {
+      onSignalState?.(true);
+      const cachedProv = layerStore.provenance[layer];
+      if (cachedProv && cachedProv.freshness.status !== 'unavailable') {
+        layerStore.setProvenance(layer, {
+          ...cachedProv,
+          freshness: { ...cachedProv.freshness, status: 'stale' },
+        });
+      }
+    }
     clear?.();
     if (
       layer === 'satellites' &&
@@ -145,21 +159,37 @@ export async function pollVisibleFeeds(
 
   if (layerStore.visibility.flights && bindings.flights) {
     tasks.push(
-      loadFeed('flights', '/api/flights', FlightBatch, signal, (data) => {
-        bindings.flights?.enqueueBatch(data);
-        layerStore.counts.flights = bindings.flights?.getEntityCount() ?? 0;
-        layerStore.rawEntities.flights = data.states;
-      })
+      loadFeed(
+        'flights',
+        '/api/flights',
+        FlightBatch,
+        signal,
+        (data) => {
+          bindings.flights?.enqueueBatch(data);
+          layerStore.counts.flights = bindings.flights?.getEntityCount() ?? 0;
+          layerStore.rawEntities.flights = data.states;
+        },
+        undefined,
+        (lost) => bindings.flights?.setSignalLost(lost)
+      )
     );
   }
 
   if (layerStore.visibility.marine && bindings.marine) {
     tasks.push(
-      loadFeed('marine', '/api/ships', ShipBatch, signal, (data) => {
-        bindings.marine?.enqueueBatch(data);
-        layerStore.counts.marine = bindings.marine?.getEntityCount() ?? 0;
-        layerStore.rawEntities.marine = data.ships;
-      })
+      loadFeed(
+        'marine',
+        '/api/ships',
+        ShipBatch,
+        signal,
+        (data) => {
+          bindings.marine?.enqueueBatch(data);
+          layerStore.counts.marine = bindings.marine?.getEntityCount() ?? 0;
+          layerStore.rawEntities.marine = data.ships;
+        },
+        undefined,
+        (lost) => bindings.marine?.setSignalLost(lost)
+      )
     );
   }
 

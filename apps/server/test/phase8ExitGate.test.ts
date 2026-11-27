@@ -253,8 +253,16 @@ describe('Phase 8 Exit Gate Certification (PLAN.md §0 NEXT_TASK 8_EXIT)', () =>
       for (const name of tableNamesAfter) {
         expect(name).not.toMatch(/economic/i);
         expect(name).not.toMatch(/preview/i);
-        expect(name).not.toMatch(/business_context/i);
       }
+      const ctxCount = (
+        db.prepare('SELECT COUNT(*) AS c FROM governance_business_contexts').get() as { c: number }
+      ).c;
+      const verCount = (
+        db.prepare('SELECT COUNT(*) AS c FROM governance_business_context_versions').get() as {
+          c: number;
+        }
+      ).c;
+      expect(ctxCount + verCount).toBe(0);
 
       const auditRows = db
         .prepare(

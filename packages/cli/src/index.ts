@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import { runAuditTail, runAuditVerify } from './commands/audit.js';
 import { runBudgetReconcile } from './commands/budget.js';
 import { runDemo } from './commands/demo.js';
+import { runDoctor } from './commands/doctor.js';
 import { runFeedsHealth } from './commands/feeds.js';
 import { runM1M4Showcase } from './commands/m1M4Showcase.js';
 import { runResume } from './commands/resume.js';
@@ -43,6 +44,16 @@ program
   .option('--server-url <url>', 'Override GEV server URL', 'http://localhost:3000')
   .action(async (options) => {
     await runStatus(options);
+  });
+
+// 1b. gev doctor
+program
+  .command('doctor')
+  .description('Run environment, plan-mirror, fixture, and governance SQLite diagnostics')
+  .option('--db-path <path>', 'Verify an explicit SQLite governance database')
+  .option('--json', 'Output raw JSON')
+  .action(async (options) => {
+    await runDoctor({ dbPath: options.dbPath, json: Boolean(options.json) });
   });
 
 // 2. gev feeds [health]

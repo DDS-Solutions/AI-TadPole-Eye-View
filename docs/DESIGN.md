@@ -61,6 +61,20 @@ relabel a telemetry channel.
 | Error | `--voice-error` | `#ef4444` | Connection or active-session failure; retry is explicit |
 | Tool detail | `--voice-tool-text` | `#ddd6fe` | Bounded governed-tool argument preview text |
 
+### 2.4 Collaboration presence & HUD surface palette
+
+Multiplayer collaboration (`CollabBar.svelte`) and time-series HUD charts (`TelemetryTimelineChart.svelte`) use only centralized custom properties in `apps/web/src/hudTokens.css` and chart canvas constants in `apps/web/src/designTokens.ts`.
+
+| Role | Token | Value | Meaning |
+|---|---|---:|---|
+| Collab bar background | `--collab-bar-bg` | `rgba(8, 14, 22, 0.85)` | Floating collaboration bar backdrop |
+| Collab modal surface | `--collab-modal-bg` | `#0a1018` | Room join modal surface |
+| Collab input / inverse | `--collab-surface-deep` | `#050a12` | Input field background and inverse button label |
+| Collab accent | `--collab-accent` | `#00f0ff` | Active room ID, connect action, and default peer accent |
+| Collab connected | `--collab-connected` | `#39ff14` | Connected WebSocket room indicator |
+| Collab disconnect | `--collab-disconnect` | `#ff0055` | Explicit disconnect action |
+| Collab muted / label | `--collab-muted` | `#718096` / `#a0aec0` | Disconnected dot and modal labels |
+
 The compact container preserves strict pointer pass-through while the orb, status controls, and
 drawer opt back into pointer input. The drawer grows above the bottom-anchored orb, remains within
 the viewport at `360x640` and `1366x768`, and restores keyboard focus to the command field when

@@ -18,12 +18,16 @@ export default defineConfig({
       snapshots: false,
       sources: true,
     },
-    screenshot: 'on',
+    screenshot: 'only-on-failure',
+    contextOptions: {
+      reducedMotion: 'reduce',
+    },
     launchOptions: {
       args: [
         '--enable-unsafe-swiftshader',
         '--use-gl=angle',
         '--use-angle=swiftshader',
+        '--disable-gpu-vsync',
         '--no-sandbox',
         '--disable-setuid-sandbox',
       ],

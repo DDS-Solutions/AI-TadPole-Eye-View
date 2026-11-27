@@ -306,7 +306,13 @@ export const LocationSpecializationComparisonSchema = z
     geography: EconomicGeographySchema,
     naics_code: z.string().min(2).max(6),
     location_quotient: z.number().finite().nonnegative().nullable(),
-    tier: z.enum(['high_specialization', 'average', 'underrepresented', 'suppressed']),
+    tier: z.enum([
+      'high_specialization',
+      'average',
+      'underrepresented',
+      'suppressed',
+      'unavailable',
+    ]),
   })
   .strict();
 export type LocationSpecializationComparison = z.infer<

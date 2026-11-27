@@ -7,7 +7,13 @@
 <article class="module-card" id={`card-${mod.id}`}>
   <div class="card-header">
     <span class="phase-tag mono">{mod.phase}</span>
-    <span class="status-badge status-planned mono">{mod.status}</span>
+    <span
+      class="status-badge mono"
+      class:status-planned={mod.status === 'PLANNED'}
+      class:status-active={mod.status !== 'PLANNED'}
+    >
+      {mod.status}
+    </span>
   </div>
   <h3 class="card-title">{mod.title}</h3>
   <div class="card-badge-row">
@@ -21,7 +27,7 @@
   </div>
 
   <div class="data-sources-section">
-    <span class="sources-label">PLANNED DATA SOURCES</span>
+    <span class="sources-label">DATA SOURCES &amp; CONTRACTS</span>
     <ul class="sources-list">
       {#each mod.sources as src}
         <li class="source-item mono">{src}</li>
@@ -81,6 +87,12 @@
     background: var(--hud-chip-bg);
     border: 1px solid var(--hud-chip-border);
     color: var(--hud-text-secondary);
+  }
+
+  .status-active {
+    background: var(--hud-success-soft);
+    border: 1px solid var(--hud-accent-border);
+    color: var(--hud-success);
   }
 
   .card-title {

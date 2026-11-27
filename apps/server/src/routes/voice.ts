@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { VoiceSessionRequest } from '@gev/contracts';
+import { type AuditSink, GevEvents, VoiceSessionRequest } from '@gev/contracts';
 import type { SimClock } from '@gev/core';
 import { SystemClock } from '@gev/core';
 import { pinnedFetch } from '@gev/security';
@@ -14,6 +14,8 @@ export interface VoiceRouterOptions {
   auth: OpsAuthAdapter;
   clock?: SimClock;
   apiKey?: string;
+  auditSink?: AuditSink;
+  stasisActive?: () => boolean;
   rateLimiter?: InMemoryRateLimiter;
   resolveClientId?: Parameters<typeof createRateLimitMiddleware>[1]['resolveClientId'];
 }
@@ -55,14 +57,67 @@ export function createVoiceRouter(options: VoiceRouterOptions) {
           modalities: ['text', 'audio'] as const,
         };
 
-    // In seed / mock / dev mode without live OpenAI key
-    if (!apiKey || apiKey === 'mock_key' || process.env.GEV_SEED_MODE === '1') {
+    const startedAt = clock.now();
+    const intentId = crypto.randomUUID();
+    const rawActor = c.get('opsActor' as never) as string | undefined;
+    const actor: 'ai' | 'human' | 'system' =
+      rawActor === 'ai' || rawActor === 'human' || rawActor === 'system' ? rawActor : 'human';
+    const tenantId = (c.get('opsTenantId' as never) as string | undefined) ?? 'tenant-local';
+
+    options.auditSink?.intent({
+      kind: GevEvents.AuditIntent,
+      id: intentId,
+      ts: new Date(startedAt).toISOString(),
+      actor,
+      action: 'voice.session.create',
+      target: 'openai-realtime',
+      params: { model: reqData.model, voice: reqData.voice, tenant_id: tenantId },
+      task_ref: 'voice-session',
+    });
+
+    const recordOutcome = (status: 'ok' | 'error' | 'blocked', error?: string) => {
+      options.auditSink?.outcome({
+        kind: GevEvents.AuditOutcome,
+        intent_id: intentId,
+        ts: new Date(clock.now()).toISOString(),
+        status,
+        duration_ms: Math.max(0, clock.now() - startedAt),
+        ...(error ? { error } : {}),
+      });
+    };
+
+    if (options.stasisActive?.()) {
+      recordOutcome('blocked', 'STASIS_ACTIVE');
+      return c.json(
+        { error: 'Voice sessions are suspended while STASIS is active', code: 'STASIS_ACTIVE' },
+        423
+      );
+    }
+
+    const isSeedMode = process.env.GEV_SEED_MODE === '1';
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    if (!isSeedMode && isProduction && (!apiKey || apiKey === 'mock_key')) {
+      recordOutcome('error', 'VOICE_NOT_CONFIGURED');
+      return c.json(
+        {
+          error: 'Voice provider API key is not configured for production mode',
+          code: 'VOICE_NOT_CONFIGURED',
+        },
+        503
+      );
+    }
+
+    // In explicit seed / mock / non-production dev mode without live OpenAI key
+    if (isSeedMode || !apiKey || apiKey === 'mock_key') {
       const nowSec = Math.floor(clock.now() / 1000);
+      const sessionId = `sess_${crypto.randomUUID().slice(0, 12)}`;
+      recordOutcome('ok');
       return c.json({
         client_secret: `ek_mock_dev_${crypto.randomUUID().replace(/-/g, '')}`,
         expires_at: nowSec + 3600,
         model: reqData.model,
-        session_id: `sess_${crypto.randomUUID().slice(0, 12)}`,
+        session_id: sessionId,
       });
     }
 
@@ -84,6 +139,7 @@ export function createVoiceRouter(options: VoiceRouterOptions) {
       });
 
       if (!res.ok) {
+        recordOutcome('error', `Upstream HTTP ${res.status}`);
         return c.json(
           { error: 'Upstream voice provider error', code: 'VOICE_PROVIDER_ERROR' },
           502
@@ -96,6 +152,7 @@ export function createVoiceRouter(options: VoiceRouterOptions) {
         model?: string;
       };
 
+      recordOutcome('ok');
       return c.json({
         client_secret: json.client_secret?.value || `ek_live_${crypto.randomUUID()}`,
         expires_at: json.client_secret?.expires_at || Math.floor(clock.now() / 1000) + 60,
@@ -103,6 +160,7 @@ export function createVoiceRouter(options: VoiceRouterOptions) {
         session_id: json.id || `sess_${crypto.randomUUID()}`,
       });
     } catch {
+      recordOutcome('error', 'VOICE_PROVIDER_ERROR');
       return c.json({ error: 'Upstream voice provider error', code: 'VOICE_PROVIDER_ERROR' }, 502);
     }
   });

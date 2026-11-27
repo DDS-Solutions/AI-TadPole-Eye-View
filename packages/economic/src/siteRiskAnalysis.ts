@@ -1,3 +1,4 @@
+import type { DataProvenance } from '@gev/contracts';
 import {
   type DotBtsAccessibilityRecord,
   type EconomicEstimate,
@@ -19,7 +20,7 @@ import {
   type Usgs3DepElevationPointResult,
   type Usgs3DepSlopeResult,
 } from '@gev/contracts';
-import { createDefaultSynthesisProvenance } from './multiSourceEvidence.js';
+import { synthesizeAggregateProvenance } from './multiSourceEvidence.js';
 
 export { SITE_RISK_SCHEMA_VERSION, SITE_RISK_SCREENING_DISCLAIMER };
 
@@ -421,6 +422,15 @@ export function assessSiteRisk(input: SiteRiskAssessmentInput): SiteRiskAssessme
     screeningTier = deriveScreeningTier(rounded);
   }
 
+  const inputProvenances: DataProvenance[] = [
+    ...(input.femaNriRecords ?? []).map((r) => r.provenance),
+    ...(input.femaNfhlSummary?.provenance ? [input.femaNfhlSummary.provenance] : []),
+    ...(input.usgsElevation?.provenance ? [input.usgsElevation.provenance] : []),
+    ...(input.usgsSlope?.provenance ? [input.usgsSlope.provenance] : []),
+    ...(input.epaAqsResult?.provenance ? [input.epaAqsResult.provenance] : []),
+    ...(input.dotBtsRecord?.provenance ? [input.dotBtsRecord.provenance] : []),
+  ];
+
   return SiteRiskAssessmentResultSchema.parse({
     schema_version: SITE_RISK_SCHEMA_VERSION,
     geography: input.geography,
@@ -433,7 +443,7 @@ export function assessSiteRisk(input: SiteRiskAssessmentInput): SiteRiskAssessme
     source_signals: sourceSignals,
     data_gaps: dataGaps,
     is_definitive_advice: false,
-    provenance: createDefaultSynthesisProvenance(input.isoTimestamp),
+    provenance: synthesizeAggregateProvenance(inputProvenances, input.isoTimestamp),
     advisory_disclaimer: SITE_RISK_SCREENING_DISCLAIMER,
   });
 }

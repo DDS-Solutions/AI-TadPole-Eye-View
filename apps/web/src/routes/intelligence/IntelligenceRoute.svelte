@@ -6,15 +6,43 @@
   import MarketAnalysisInspector from './MarketAnalysisInspector.svelte';
 
   let currentTime = $state(new Date(runtimeClock.now()).toUTCString());
+  let stasisActive = $state(false);
+  let budgetRemainingUsd = $state<number | null>(null);
+  let requestedMode = $state('seed');
   let timer: ReturnType<typeof setInterval> | null = null;
+  let healthAbort: AbortController | null = null;
+
+  async function refreshHealth() {
+    if (typeof fetch !== 'function') return;
+    healthAbort?.abort();
+    healthAbort = new AbortController();
+    try {
+      const res = await fetch('/api/health', { signal: healthAbort.signal });
+      if (!res.ok) return;
+      const health = (await res.json()) as {
+        stasis_active?: boolean;
+        budget_remaining_usd?: number;
+        requested_mode?: string;
+      };
+      if (typeof health.stasis_active === 'boolean') stasisActive = health.stasis_active;
+      if (typeof health.budget_remaining_usd === 'number') {
+        budgetRemainingUsd = health.budget_remaining_usd;
+      }
+      if (typeof health.requested_mode === 'string') requestedMode = health.requested_mode;
+    } catch {
+      // Keep baseline seed telemetry labels when offline/aborted
+    }
+  }
 
   if (typeof window !== 'undefined') {
+    refreshHealth();
     timer = setInterval(() => {
       currentTime = new Date(runtimeClock.now()).toUTCString();
     }, 1000);
   }
 
   onDestroy(() => {
+    healthAbort?.abort();
     if (timer) {
       clearInterval(timer);
       timer = null;
@@ -58,7 +86,9 @@
       </div>
       <div class="context-row">
         <span class="context-label">GOVERNANCE</span>
-        <span class="context-value badge-active mono">STASIS_INACTIVE</span>
+        <span class="context-value badge-active mono">
+          {stasisActive ? 'STASIS_ACTIVE' : 'STASIS_INACTIVE'}
+        </span>
       </div>
     </div>
   </header>
@@ -81,12 +111,16 @@
           <span class="metric-value mono" id="webgl-context-metric">0 ACTIVE</span>
         </div>
         <div class="telemetry-metric">
-          <span class="metric-label">ESTIMATED SPEND</span>
-          <span class="metric-value metric-accent mono" id="estimated-spend-metric">$0.00 / $10.00</span>
+          <span class="metric-label">BUDGET REMAINING</span>
+          <span class="metric-value metric-accent mono" id="estimated-spend-metric">
+            {budgetRemainingUsd === null ? '$10.00 / $10.00' : `$${budgetRemainingUsd.toFixed(2)} REMAINING`}
+          </span>
         </div>
         <div class="telemetry-metric">
           <span class="metric-label">PROVIDER MODE</span>
-          <span class="metric-value mono" id="provider-mode-metric">SEED FIXTURES</span>
+          <span class="metric-value mono" id="provider-mode-metric">
+            {requestedMode === 'live' ? 'LIVE PROVIDERS' : 'SEED FIXTURES'}
+          </span>
         </div>
       </div>
     </section>

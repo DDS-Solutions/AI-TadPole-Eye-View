@@ -180,7 +180,7 @@ describe('Market Analysis MCP Operator Tools (Task 9.5)', () => {
     );
 
     expect(execution.success).toBe(false);
-    expect(execution.status).toBe('error');
+    expect(execution.status).toBe('blocked');
     expect(execution.error).toContain('STASIS');
   });
 

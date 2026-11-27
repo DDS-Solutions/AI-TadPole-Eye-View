@@ -3,12 +3,11 @@ import {
   Cartesian2,
   Cartesian3,
   Color,
-  ConstantPositionProperty,
   ConstantProperty,
   HeightReference,
   VerticalOrigin,
 } from 'cesium';
-import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
+import { BaseLayerController, type BaseLayerOptions, setEntityPosition } from './baseLayer.js';
 import { CESIUM_DESIGN_TOKENS } from './designTokens.js';
 
 export interface CollabLayerOptions extends BaseLayerOptions {
@@ -119,9 +118,13 @@ export class CollabLayerController extends BaseLayerController<UserPresence, Col
       this.entityMap.set(id, entity);
     } else {
       entity.show = true;
-      entity.position = new ConstantPositionProperty(position);
+      setEntityPosition(entity, position);
       if (entity.label) {
-        entity.label.text = new ConstantProperty(presence.callsign);
+        if (entity.label.text instanceof ConstantProperty) {
+          entity.label.text.setValue(presence.callsign);
+        } else {
+          entity.label.text = new ConstantProperty(presence.callsign);
+        }
       }
       if (entity.properties) {
         entity.properties.merge(presence);

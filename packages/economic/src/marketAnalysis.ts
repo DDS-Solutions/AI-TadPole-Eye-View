@@ -17,6 +17,7 @@ import {
 import { createDisagreementState, evaluateSourceLinkedDisagreement } from './disagreementState.js';
 import {
   createDefaultSynthesisProvenance,
+  createOsmFootprintSynthesisProvenance,
   findEvidenceRecord,
   synthesizeMultiSourceEvidenceBundle,
 } from './multiSourceEvidence.js';
@@ -219,6 +220,11 @@ export function analyzeMarketContext(
   // 5. Evaluate disagreements & cross-source divergence
   const disagreements: SourceLinkedDisagreement[] = [];
 
+  const osmProv =
+    validatedInput.osm_evidence?.[0]?.provenance ??
+    createOsmFootprintSynthesisProvenance(clockTimestamp);
+  const osmVintage = osmProv.vintage.status === 'available' ? osmProv.vintage.value : 'unavailable';
+
   // Check expected benchmark density vs observed density
   if (validatedInput.benchmark_density_expectation !== undefined && footprint && popRecord) {
     const expectedEstimate: EconomicEstimate = {
@@ -238,23 +244,26 @@ export function analyzeMarketContext(
         source_id: 'gev-economic-model',
         variable_id: 'BENCHMARK_DENSITY',
         metric_id: 'commercial-density-expectation',
-        vintage: '2026-Q3-Benchmark',
+        vintage: osmVintage,
         attribution: 'GEV Economic Model Benchmark',
       },
       expectedDescription: 'Model expected commercial density benchmark',
       expectedEstimate,
-      expectedProvenance: popRecord.provenance,
+      expectedProvenance: createDefaultSynthesisProvenance(
+        clockTimestamp,
+        'Model density expectation supplied by caller without benchmark dataset provenance'
+      ),
       observedMetric: 'osm-commercial-density',
       observedVariableLink: {
         source_id: 'osm-commercial',
         variable_id: 'poi_density_km2',
         metric_id: 'commercial-density-per-km2',
-        vintage: '2026-OSM-Extraction',
-        attribution: '© OpenStreetMap contributors (ODbL 1.0)',
+        vintage: osmVintage,
+        attribution: osmProv.attribution,
       },
       observedDescription: 'Observed commercial POI density per km²',
       observedEstimate: commercialFootprint.commercial_density_per_km2,
-      observedProvenance: validatedInput.osm_evidence?.[0]?.provenance ?? popRecord.provenance,
+      observedProvenance: osmProv,
     });
     if (dis) disagreements.push(dis);
   }
@@ -273,7 +282,7 @@ export function analyzeMarketContext(
         vintage:
           estabRecord.provenance.vintage.status === 'available'
             ? estabRecord.provenance.vintage.value
-            : '2023',
+            : 'unavailable',
         attribution: estabRecord.provenance.attribution,
       },
       expectedDescription: 'CBP reported administrative establishment count',
@@ -284,12 +293,12 @@ export function analyzeMarketContext(
         source_id: 'osm-commercial',
         variable_id: 'total_commercial_features',
         metric_id: 'commercial-poi-count',
-        vintage: '2026-OSM-Extraction',
-        attribution: '© OpenStreetMap contributors (ODbL 1.0)',
+        vintage: osmVintage,
+        attribution: osmProv.attribution,
       },
       observedDescription: 'OSM observed commercial POI count',
       observedEstimate: commercialFootprint.commercial_poi_count,
-      observedProvenance: validatedInput.osm_evidence?.[0]?.provenance ?? estabRecord.provenance,
+      observedProvenance: osmProv,
       warningThreshold: 0.25,
       criticalThreshold: 0.5,
     });

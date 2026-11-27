@@ -18,6 +18,7 @@ import {
   type TrustedApprovalKey,
 } from './signedApproval.js';
 
+import { SqliteBusinessContextStore } from './businessContextStore.js';
 import { TadpoleConnectionLifecycle } from './tadpoleSessionLifecycle.js';
 import { SqliteTenantLayerAccessStore } from './tenantLayerAccessStore.js';
 
@@ -31,6 +32,7 @@ export interface GovernanceRuntimeContext {
   agentEnvelope: TadpoleAgentEnvelope;
   connectionLifecycle: TadpoleConnectionLifecycle;
   tenantLayerAccessStore: SqliteTenantLayerAccessStore;
+  businessContextStore: SqliteBusinessContextStore;
   startReaper(intervalMs?: number): { stop(): void };
   authority(): GovernanceAuthority;
   close(): void;
@@ -57,6 +59,7 @@ export interface GovernanceRuntimeContextOptions {
     retentionPolicy?: AuditRetentionPolicy;
   };
   tenantLayerAccessStore?: SqliteTenantLayerAccessStore;
+  businessContextStore?: SqliteBusinessContextStore;
   credentialEncryptionKey?: Buffer;
 }
 
@@ -155,6 +158,15 @@ export function createGovernanceRuntimeContext(
         })
       : (undefined as unknown as SqliteTenantLayerAccessStore));
 
+  const businessContextStore =
+    options.businessContextStore ??
+    (database
+      ? new SqliteBusinessContextStore(database, clock, {
+          encryptionKey: options.credentialEncryptionKey,
+          auditSink,
+        })
+      : (undefined as unknown as SqliteBusinessContextStore));
+
   let closed = false;
   const activeReapers = new Set<NodeJS.Timeout>();
 
@@ -210,6 +222,7 @@ export function createGovernanceRuntimeContext(
     agentEnvelope,
     connectionLifecycle,
     tenantLayerAccessStore,
+    businessContextStore,
     startReaper: (intervalMs = 30_000) => {
       const timer = setInterval(() => {
         if (closed) return;

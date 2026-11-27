@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   AuditIntegrityStatusSchema,
-  AuditIntent,
+  type AuditIntent,
   GevEvents,
   LedgerFingerprintComponentsSchema,
   LedgerOperationSchema,

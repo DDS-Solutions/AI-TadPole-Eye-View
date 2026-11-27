@@ -13,6 +13,7 @@ import { calculateHhiFromShares, calculateHhiFromValues } from './concentration.
 import { createDisagreementState, evaluateSourceLinkedDisagreement } from './disagreementState.js';
 import {
   createDefaultSynthesisProvenance,
+  createOsmFootprintSynthesisProvenance,
   findEvidenceRecord,
   synthesizeMultiSourceEvidenceBundle,
 } from './multiSourceEvidence.js';
@@ -111,6 +112,7 @@ export function analyzeCompetition(
   // 6. Cross-source disagreement evaluation
   const disagreements: SourceLinkedDisagreement[] = [];
   if (estabRecord) {
+    const osmObservedProv = createOsmFootprintSynthesisProvenance(clockTimestamp);
     const dis = evaluateSourceLinkedDisagreement({
       disagreementId: `dis-comp-${analysisId}`,
       indicatorKey: 'competitor_count_divergence',
@@ -123,7 +125,7 @@ export function analyzeCompetition(
         vintage:
           estabRecord.provenance.vintage.status === 'available'
             ? estabRecord.provenance.vintage.value
-            : '2023',
+            : 'unavailable',
         attribution: estabRecord.provenance.attribution,
       },
       expectedDescription: `Reported establishments for NAICS ${validatedInput.naics_code}`,
@@ -134,12 +136,12 @@ export function analyzeCompetition(
         source_id: 'osm-commercial',
         variable_id: 'competitor_poi_count',
         metric_id: 'observed-poi-competitors',
-        vintage: '2026-OSM-Extraction',
-        attribution: '© OpenStreetMap contributors (ODbL 1.0)',
+        vintage: 'unavailable',
+        attribution: osmObservedProv.attribution,
       },
       observedDescription: `Observed OSM commercial competitors for ${validatedInput.industry_title}`,
       observedEstimate: observedCompetitors,
-      observedProvenance: estabRecord.provenance,
+      observedProvenance: osmObservedProv,
       warningThreshold: 0.2,
       criticalThreshold: 0.4,
     });

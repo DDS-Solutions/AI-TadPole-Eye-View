@@ -1,5 +1,11 @@
 import fs from 'node:fs';
-import { deserializeScene, getDefaultSceneState, serializeScene } from '@gev/core';
+import {
+  type SimClock,
+  SystemClock,
+  deserializeScene,
+  getDefaultSceneState,
+  serializeScene,
+} from '@gev/core';
 import pc from 'picocolors';
 
 export async function runSceneLoad(filePath: string): Promise<void> {
@@ -30,9 +36,12 @@ export async function runSceneLoad(filePath: string): Promise<void> {
   }
 }
 
-export async function runSceneSave(targetPath?: string): Promise<void> {
-  const filePath = targetPath ?? `scene-${Date.now()}.json`;
-  const scene = getDefaultSceneState();
+export async function runSceneSave(
+  targetPath?: string,
+  clock: SimClock = new SystemClock()
+): Promise<void> {
+  const filePath = targetPath ?? `scene-${clock.now()}.json`;
+  const scene = getDefaultSceneState(clock);
 
   await fs.promises.writeFile(filePath, JSON.stringify(scene, null, 2), 'utf-8');
   console.log(pc.bold(pc.green(`\n✔ Saved reproducible scene state to ${filePath}`)));

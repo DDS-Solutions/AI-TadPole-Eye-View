@@ -37,13 +37,6 @@ export function attachWebSocketCollabServer(
       socket.destroy();
       return;
     }
-    const token = url.searchParams.get('token');
-    if (!token) {
-      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-      socket.destroy();
-      return;
-    }
-
     let requestedRoomId: string;
     try {
       requestedRoomId = decodeURIComponent(pathMatch[1] ?? '');
@@ -52,7 +45,31 @@ export function attachWebSocketCollabServer(
       socket.destroy();
       return;
     }
-    const verified = await collabRoomManager.verifyRoomTokenForRoom(token, requestedRoomId);
+
+    // Reject long-lived JWT tokens in URL query params (use single-use ticket or Bearer header)
+    if (url.searchParams.has('token')) {
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+
+    const ticket = url.searchParams.get('ticket');
+    const authHeader = req.headers.authorization;
+    const bearerMatch =
+      typeof authHeader === 'string' ? /^Bearer\s+([^\s]+)$/i.exec(authHeader) : null;
+    const bearerToken = bearerMatch?.[1];
+
+    if (!ticket && !bearerToken) {
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+
+    const verified = ticket
+      ? collabRoomManager.consumeUpgradeTicket(ticket, requestedRoomId)
+      : bearerToken
+        ? await collabRoomManager.verifyRoomTokenForRoom(bearerToken, requestedRoomId)
+        : null;
     if (!verified) {
       socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
       socket.destroy();

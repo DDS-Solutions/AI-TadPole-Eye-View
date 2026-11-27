@@ -1,35 +1,35 @@
 import fs from 'node:fs';
+import type {
+  CoastalConditionsResponse,
+  CoastalStation,
+  CoastalValue,
+  OperationalAoi,
+} from '@gev/contracts';
 import {
   COOPS_MAX_RECORDS,
   COOPS_MAX_STATIONS,
   COOPS_USAGE_NOTICE,
-  type CoastalConditionsResponse,
   CoastalConditionsResponseSchema,
-  type CoastalCurrentObservation,
-  type CoastalCurrentPrediction,
-  type CoastalStation,
-  type CoastalTidePrediction,
-  type CoastalValue,
-  type CoastalWaterLevelObservation,
-  type OperationalAoi,
   OperationalAoiSchema,
 } from '@gev/contracts';
 import { type SimClock, SystemClock } from '@gev/core';
 import {
+  COOPS_MAX_STALE_MS,
+  STATION_COLLECTION_TYPES,
+  normalizeCurrentObservations,
+  normalizeCurrentPredictions,
+  normalizeTidePredictions,
+  normalizeWaterObservations,
+  productFor,
+  stationType,
+} from './coastalNormalization.js';
+import {
   CoastalSeedFixtureSchema,
-  type RawProductResponse,
   RawProductResponseSchema,
   RawStationCollectionSchema,
   type SourceStation,
 } from './coastalPayloads.js';
-import {
-  type CoopsInstant,
-  coopsDate,
-  coopsInstant,
-  nullableNumber,
-  numericValue,
-  strings,
-} from './coastalValues.js';
+import { type CoopsInstant, coopsDate } from './coastalValues.js';
 import { resolveFixturePath } from './opensky.js';
 import {
   type OperationalFetcher,
@@ -45,17 +45,7 @@ const COOPS_HOST = 'api.tidesandcurrents.noaa.gov';
 const DATA_ROOT = `https://${COOPS_HOST}/api/prod/datagetter`;
 const METADATA_ROOT = `https://${COOPS_HOST}/mdapi/prod/webapi`;
 const COOPS_MAX_BYTES = 2_097_152;
-const COOPS_MAX_STALE_MS = 1_800_000;
 const COOPS_MAX_UPSTREAM_REQUESTS_PER_HOUR = 240;
-const STATION_COLLECTION_TYPES = [
-  'waterlevels',
-  'tidepredictions',
-  'currents',
-  'currentpredictions',
-] as const;
-type StationCollectionType = (typeof STATION_COLLECTION_TYPES)[number];
-type StationType = CoastalStation['station_types'][number];
-type Product = 'water_level' | 'predictions' | 'currents' | 'currents_predictions';
 
 export interface CoastalConditionsAdapterOptions {
   clock?: SimClock;
@@ -66,140 +56,6 @@ export interface CoastalConditionsAdapterOptions {
   applicationId?: string;
   seedFixturePath?: string;
   fetcher?: OperationalFetcher;
-}
-
-function stationType(collectionType: StationCollectionType): StationType {
-  return {
-    waterlevels: 'water_level',
-    tidepredictions: 'tide_prediction',
-    currents: 'current',
-    currentpredictions: 'current_prediction',
-  }[collectionType] as StationType;
-}
-
-function productFor(type: StationType): Product {
-  return {
-    water_level: 'water_level',
-    tide_prediction: 'predictions',
-    current: 'currents',
-    current_prediction: 'currents_predictions',
-  }[type] as Product;
-}
-
-function normalizeWaterObservations(
-  response: RawProductResponse | undefined,
-  now: number,
-  timeCache: Map<string, CoopsInstant>,
-  valueCache: Map<string, CoastalValue>,
-  stringCache: Map<string, string[]>
-): CoastalWaterLevelObservation[] {
-  const normalized: CoastalWaterLevelObservation[] = [];
-  for (const record of response?.data ?? []) {
-    const observedAt = coopsInstant(record.t, 'CO-OPS water-level observation time', timeCache);
-    const age = now - observedAt.milliseconds;
-    if (age < -300_000 || age > COOPS_MAX_STALE_MS) continue;
-    const quality = String(record.q ?? '').toLowerCase();
-    normalized.push({
-      observed_at: observedAt.iso,
-      value: numericValue(record.v, 'Water level', valueCache),
-      sigma: nullableNumber(record.s),
-      quality: quality === 'p' ? 'preliminary' : quality === 'v' ? 'verified' : 'unknown',
-      flags: strings(record.f, stringCache),
-    });
-  }
-  return normalized;
-}
-
-function normalizeTidePredictions(
-  response: RawProductResponse | undefined,
-  now: number,
-  timeCache: Map<string, CoopsInstant>,
-  valueCache: Map<string, CoastalValue>
-): CoastalTidePrediction[] {
-  return (response?.predictions ?? []).flatMap((record) => {
-    const validAt = coopsInstant(record.t, 'CO-OPS tide prediction time', timeCache);
-    if (validAt.milliseconds < now) return [];
-    const tideType = ['HH', 'H', 'L', 'LL'].includes(String(record.type ?? record.ty))
-      ? (String(record.type ?? record.ty) as CoastalTidePrediction['tide_type'])
-      : null;
-    return [
-      {
-        valid_at: validAt.iso,
-        value: numericValue(record.v, 'Predicted water level', valueCache),
-        tide_type: tideType,
-      },
-    ];
-  });
-}
-
-function normalizeCurrentObservations(
-  response: RawProductResponse | undefined,
-  now: number,
-  timeCache: Map<string, CoopsInstant>,
-  valueCache: Map<string, CoastalValue>,
-  stringCache: Map<string, string[]>
-): CoastalCurrentObservation[] {
-  return (response?.data ?? []).flatMap((record) => {
-    const observedAt = coopsInstant(record.t, 'CO-OPS current observation time', timeCache);
-    const age = now - observedAt.milliseconds;
-    if (age < -300_000 || age > COOPS_MAX_STALE_MS) return [];
-    const bin = Number(record.b);
-    return [
-      {
-        observed_at: observedAt.iso,
-        speed: numericValue(record.s, 'Current speed', valueCache),
-        direction_deg: numericValue(record.d, 'Current direction', valueCache),
-        bin: Number.isInteger(bin) && bin >= 0 ? bin : null,
-        quality_flags: strings(record.f ?? record.q, stringCache),
-      },
-    ];
-  });
-}
-
-function currentPredictionRecords(response: RawProductResponse | undefined) {
-  const value = response?.current_predictions;
-  return Array.isArray(value) ? value : (value?.cp ?? response?.predictions ?? []);
-}
-
-function normalizeCurrentPredictions(
-  response: RawProductResponse | undefined,
-  now: number,
-  timeCache: Map<string, CoopsInstant>,
-  valueCache: Map<string, CoastalValue>
-): CoastalCurrentPrediction[] {
-  return currentPredictionRecords(response).flatMap((record) => {
-    const validAt = coopsInstant(
-      record.Time ?? record.t,
-      'CO-OPS current prediction time',
-      timeCache
-    );
-    if (validAt.milliseconds < now) return [];
-    const bin = Number(record.Bin ?? record.b);
-    return [
-      {
-        valid_at: validAt.iso,
-        speed: numericValue(record.Speed ?? record.s, 'Predicted current speed', valueCache),
-        direction_deg: numericValue(
-          record.Direction ?? record.d,
-          'Predicted current direction',
-          valueCache
-        ),
-        velocity_major: numericValue(
-          record.Velocity_Major,
-          'Predicted major-axis velocity',
-          valueCache
-        ),
-        mean_ebb_direction_deg: numericValue(record.meanEbbDir, 'Mean ebb direction', valueCache),
-        mean_flood_direction_deg: numericValue(
-          record.meanFloodDir,
-          'Mean flood direction',
-          valueCache
-        ),
-        bin: Number.isInteger(bin) && bin >= 0 ? bin : null,
-        depth: numericValue(record.Depth, 'Current-bin depth', valueCache),
-      },
-    ];
-  });
 }
 
 function latestObservation(

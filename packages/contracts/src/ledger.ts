@@ -351,6 +351,8 @@ export interface BudgetLedger {
   lookup(operationId: string): LedgerOperation | null;
   recoverExpired(): LedgerRecoveryResult;
   hasInDoubt(): boolean;
+  /** Optional tenant budget/STASIS lookup supported by multi-tenant ledger stores. */
+  getTenantBudget?(tenantId: string): { stasis_active: number };
 }
 
 export type AtomicLedgerAuditIntent = AuditIntentType;

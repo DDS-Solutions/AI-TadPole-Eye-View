@@ -43,13 +43,19 @@ export function createOverpassRouter(options: OverpassRouterOptions = {}) {
       return c.json({ error: 'Validation failed', details: parsed.error.issues }, 400);
     }
 
+    let sanitized: ReturnType<typeof sanitizeOverpassQuery>;
     try {
-      const sanitized = sanitizeOverpassQuery(parsed.data.ql, {
+      sanitized = sanitizeOverpassQuery(parsed.data.ql, {
         maxTimeoutSec: 25,
         defaultTimeoutSec: parsed.data.timeout_seconds,
         fallbackBbox: parsed.data.bbox,
       });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Invalid Overpass query';
+      return c.json({ error: message, code: 'OVERPASS_FAILED' }, 400);
+    }
 
+    try {
       if (isSeedMode) {
         const payload = OverpassResponsePayloadSchema.parse({
           version: 0.6,
@@ -140,8 +146,8 @@ export function createOverpassRouter(options: OverpassRouterOptions = {}) {
         })
       );
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown Overpass error';
-      return c.json({ error: message, code: 'OVERPASS_FAILED' }, 400);
+      const message = err instanceof Error ? err.message : 'Upstream Overpass service unavailable';
+      return c.json({ error: message, code: 'OVERPASS_UNAVAILABLE' }, 502);
     }
   });
 

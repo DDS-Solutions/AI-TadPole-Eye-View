@@ -1,11 +1,17 @@
 import crypto from 'node:crypto';
 import { type Actor, BusinessContextInputSchema, GevEvents, TenantIdSchema } from '@gev/contracts';
 import type { SimClock } from '@gev/core';
-import type { CapBudgetGovernor, SqliteAuditSink, SqliteBudgetLedger } from '@gev/governance';
-import { generateBusinessContextPreview } from '@gev/ops-mcp';
+import type {
+  CapBudgetGovernor,
+  SqliteAuditSink,
+  SqliteBudgetLedger,
+  SqliteBusinessContextStore,
+} from '@gev/governance';
+import { generateBusinessContextPreview, hardenBusinessPreviewWithPromptGuard } from '@gev/ops-mcp';
 import { EconomicFixtureAdapter } from '@gev/providers';
 import { type Context, Hono } from 'hono';
 import type { InMemoryRateLimiter, OpsAuthAdapter } from '../middleware/opsAuth.js';
+import { createBusinessContextRouter } from './businessContextRoutes.js';
 import { createMarketAnalysisRouter } from './marketAnalysisRoutes.js';
 import { createSiteRiskRouter } from './siteRiskRoutes.js';
 import { createWorkforceAnalysisRouter } from './workforceAnalysisRoutes.js';
@@ -18,6 +24,7 @@ export interface EconomicRouterOptions {
   auditSink: SqliteAuditSink;
   budgetGovernor: CapBudgetGovernor;
   budgetLedger?: SqliteBudgetLedger;
+  businessContextStore?: SqliteBusinessContextStore;
   rateLimiter: InMemoryRateLimiter;
   resolveClientId: (context: Context) => string;
   isProviderEnabled?: (providerName: string) => boolean;
@@ -171,14 +178,19 @@ export function createEconomicRouter(options: EconomicRouterOptions): Hono {
       task_ref: taskRef,
     });
 
-    // 7. Stateless execution
+    // 7. Stateless execution + prompt protection
     try {
-      const preview = generateBusinessContextPreview({
+      const rawPreview = generateBusinessContextPreview({
         input: parsedInput.data,
         tenantId,
         clock: options.clock,
         fixtureAdapter: adapter,
       });
+      const preview = await hardenBusinessPreviewWithPromptGuard(
+        { auditSink: options.auditSink, clock: options.clock },
+        tenantId,
+        rawPreview
+      );
 
       // 8. Audit outcome AFTER successful execution
       options.auditSink.outcome({
@@ -223,6 +235,7 @@ export function createEconomicRouter(options: EconomicRouterOptions): Hono {
   router.route('/', createMarketAnalysisRouter(options));
   router.route('/', createWorkforceAnalysisRouter(options));
   router.route('/', createSiteRiskRouter(options));
+  router.route('/', createBusinessContextRouter(options));
 
   return router;
 }

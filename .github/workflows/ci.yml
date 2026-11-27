@@ -15,9 +15,13 @@ permissions:
 
 jobs:
   quality:
-    name: lint · typecheck · unit
+    name: lint · typecheck · unit (Node ${{ matrix.node }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [24, 26]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -25,7 +29,7 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: ${{ matrix.node }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Lint, typecheck, unit tests (seed mode — zero live API calls)
@@ -36,6 +40,10 @@ jobs:
         run: pnpm test:performance
         env:
           GEV_SEED_MODE: '1'
+      - name: Allocation regression gate
+        run: pnpm test:allocations
+        env:
+          GEV_SEED_MODE: '1'
       - name: ADG — documentation must match code
         run: pnpm docs:check
       - name: Documentation guard and generated-section tests
@@ -44,6 +52,10 @@ jobs:
         run: pnpm docs:providers:check
       - name: Architectural drift inventory
         run: pnpm architecture:check
+      - name: Official MCP conformance & inspector gate
+        run: pnpm test:mcp:official
+        env:
+          GEV_SEED_MODE: '1'
 
   build:
     name: build all

@@ -3,15 +3,8 @@ import {
   type SatellitePropagatedState,
   type SatellitePropagationBatch,
 } from '@gev/contracts';
-import {
-  Cartesian3,
-  Color,
-  ConstantPositionProperty,
-  ConstantProperty,
-  NearFarScalar,
-  type PropertyBag,
-} from 'cesium';
-import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
+import { Cartesian3, Color, ConstantProperty, NearFarScalar, type PropertyBag } from 'cesium';
+import { BaseLayerController, type BaseLayerOptions, setEntityPosition } from './baseLayer.js';
 import { CESIUM_DESIGN_TOKENS } from './designTokens.js';
 
 export interface SatelliteLayerOptions extends BaseLayerOptions {}
@@ -108,7 +101,7 @@ export class SatelliteLayerController extends BaseLayerController<
       return;
     }
     entity.name = state.object_name;
-    entity.position = new ConstantPositionProperty(position);
+    setEntityPosition(entity, position);
     if (entity.properties) updateSatelliteProperties(entity.properties, state);
   }
 }

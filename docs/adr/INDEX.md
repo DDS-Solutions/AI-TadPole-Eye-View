@@ -56,4 +56,5 @@ This directory records all significant architectural and structural decisions ma
 | [0063](./0063-usgs-3dep-elevation-adapter-architecture.md) | USGS 3DEP Elevation Point Query Service adapter, vertical datums, unit conversions, and non-coercion invariants | Accepted | 2026-09-27 |
 | [0064](./0064-epa-aqs-historical-monitoring-adapter-architecture.md) | EPA AQS Historical Regulatory Monitoring Adapter, Criteria Pollutant Dictionary, and Non-Coercion Invariants | Accepted | 2026-11-12 |
 | [0065](./0065-dot-bts-accessibility-and-site-risk-screening-architecture.md) | DOT/BTS Transportation Accessibility Adapter and Pure Site-Risk Screening Engine | Accepted | 2026-11-12 |
+| [0066](./0066-business-context-encrypted-persistence-architecture.md) | Encrypted, Versioned, Tenant-Isolated BusinessContext Persistence | Accepted | 2026-11-27 |
 

@@ -1,4 +1,4 @@
-import type { EconomicGeographyLevel } from '@gev/contracts';
+import { EconomicGeographyLevelSchema } from '@gev/contracts';
 import { z } from 'zod';
 
 export const EconomicSourceIdSchema = z.enum([
@@ -32,7 +32,7 @@ export const EconomicSourceMetadataSchema = z
     terms_url: z.string().url(),
     license_id: z.string().min(1).max(64),
     attribution_notice: z.string().min(1).max(500),
-    supported_geographies: z.array(z.custom<EconomicGeographyLevel>()).min(1),
+    supported_geographies: z.array(EconomicGeographyLevelSchema).min(1),
     update_cadence: z.string().min(1).max(100),
     vintage_description: z.string().min(1).max(200),
     status: EconomicSourceStatusSchema,

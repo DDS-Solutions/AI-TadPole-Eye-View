@@ -8,7 +8,6 @@ import type {
   GetFeedHealthOutput,
   LoadSceneInput,
   LoadSceneOutput,
-  OperatorToolName,
   PreviewBusinessContextInput,
   PreviewBusinessContextOutput,
   RunDiagnosticsInput,
@@ -22,7 +21,7 @@ import type {
   TailLogsInput,
   TailLogsOutput,
 } from '@gev/contracts';
-import { TenantIdSchema } from '@gev/contracts';
+import { TenantIdSchema, toolsForSurface } from '@gev/contracts';
 import {
   type ToolExecutionContext,
   type ToolExecutionResult,
@@ -37,6 +36,10 @@ import {
 import type { OperatorContext } from './context.js';
 import { generateBusinessContextPreview } from './economicPreview.js';
 import {
+  assertEconomicToolAllowed,
+  hardenBusinessPreviewWithPromptGuard,
+} from './economicToolGovernance.js';
+import {
   handleAnalyzeCompetition,
   handleAnalyzeMarketContext,
   handleCompareLocations,
@@ -45,21 +48,7 @@ import { handleAnalyzeWorkforceContext } from './workforceAnalysisTools.js';
 import { handleAssessSiteRisk } from './siteRiskTools.js';
 
 export const MAX_SCENE_BYTES = 1024 * 1024;
-export const MCP_OPERATOR_TOOL_NAMES = [
-  'get_feed_health',
-  'get_budget',
-  'run_diagnostics',
-  'load_scene',
-  'save_scene',
-  'tail_logs',
-  'set_flag',
-  'preview_business_context',
-  'analyze_market_context',
-  'analyze_competition',
-  'compare_locations',
-  'analyze_workforce_context',
-  'assess_site_risk',
-] as const satisfies readonly OperatorToolName[];
+export const MCP_OPERATOR_TOOL_NAMES = toolsForSurface('mcp');
 export type McpOperatorToolName = (typeof MCP_OPERATOR_TOOL_NAMES)[number];
 const MCP_OPERATOR_TOOL_NAME_SET: ReadonlySet<string> = new Set(MCP_OPERATOR_TOOL_NAMES);
 export function isMcpOperatorToolName(name: string): name is McpOperatorToolName {
@@ -427,22 +416,14 @@ export async function handlePreviewBusinessContext(
   input: PreviewBusinessContextInput,
   executionContext: ToolExecutionContext = {}
 ): Promise<PreviewBusinessContextOutput> {
-  if (ctx.budgetGovernor.state().stasis_active) {
-    throw new Error('STASIS: economic preview tool is suspended');
-  }
-  if (ctx.flags.get('economic.enabled') === false) {
-    throw new Error('Economic analysis engine is disabled by kill-switch policy');
-  }
+  const tenantId = assertEconomicToolAllowed(ctx, executionContext, 'economic preview tool');
 
-  const tenantId =
-    executionContext.tenant_id ??
-    (executionContext.identity ? executionContext.identity.tenant_id : 'tenant-local');
-
-  return generateBusinessContextPreview({
+  const rawPreview = generateBusinessContextPreview({
     input,
     tenantId,
     clock: ctx.clock,
   });
+  return hardenBusinessPreviewWithPromptGuard(ctx, tenantId, rawPreview);
 }
 
 /** Registers the local stdio implementations on the shared governed executor. */
@@ -476,7 +457,9 @@ export function registerOperatorToolHandlers(ctx: OperatorContext): void {
     .register('analyze_workforce_context', (input, executionContext) =>
       handleAnalyzeWorkforceContext(ctx, input, executionContext)
     )
-    .register('assess_site_risk', (input) => handleAssessSiteRisk(ctx, input));
+    .register('assess_site_risk', (input, executionContext) =>
+      handleAssessSiteRisk(ctx, input, executionContext)
+    );
 }
 
 /** Executes through the one core lifecycle; this function performs no governance itself. */

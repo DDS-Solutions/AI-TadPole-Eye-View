@@ -1,16 +1,14 @@
 import crypto from 'node:crypto';
 import {
   type Actor,
-  type EconomicEvidenceRecord,
-  type EconomicGeography,
   GevEvents,
   TenantIdSchema,
   WorkforceAnalysisInputSchema,
 } from '@gev/contracts';
 import type { SimClock } from '@gev/core';
-import { analyzeWorkforceContext } from '@gev/economic';
 import type { CapBudgetGovernor, SqliteAuditSink, SqliteBudgetLedger } from '@gev/governance';
-import { BlsLauAdapter, BlsOewsAdapter } from '@gev/providers';
+import { resolveAndAnalyzeWorkforceContext } from '@gev/ops-mcp';
+import type { BlsLauAdapter, BlsOewsAdapter } from '@gev/providers';
 import { type Context, Hono } from 'hono';
 import type { InMemoryRateLimiter, OpsAuthAdapter } from '../middleware/opsAuth.js';
 
@@ -32,10 +30,6 @@ export interface WorkforceAnalysisRouterOptions {
 
 export function createWorkforceAnalysisRouter(options: WorkforceAnalysisRouterOptions): Hono {
   const router = new Hono();
-  const oewsAdapter =
-    options.oewsAdapter ?? new BlsOewsAdapter({ clock: options.clock, seedMode: true });
-  const lauAdapter =
-    options.lauAdapter ?? new BlsLauAdapter({ clock: options.clock, seedMode: true });
   const rateLimit = options.requestsPerMinute ?? DEFAULT_WORKFORCE_ANALYSIS_RATE_LIMIT;
 
   // Shared governance validation helper
@@ -216,105 +210,8 @@ export function createWorkforceAnalysisRouter(options: WorkforceAnalysisRouterOp
       );
     }
 
-    const input = { ...parsed.data, tenant_id: gov.tenantId };
+    const input = parsed.data;
     const intentId = crypto.randomUUID();
-
-    function resolveWorkforceOewsGeography(geo: EconomicGeography): EconomicGeography {
-      if (geo.level === 'cbsa' || geo.level === 'state' || geo.level === 'nation') {
-        return geo;
-      }
-      if (geo.level === 'county') {
-        if (geo.county_fips?.startsWith('48453') || geo.county_fips?.startsWith('48')) {
-          return { level: 'cbsa', cbsa_code: '12420', name: 'Austin-Round Rock-Georgetown, TX' };
-        }
-      }
-      if (geo.level === 'place') {
-        if (geo.place_fips === '4805000' || geo.name?.toLowerCase().includes('austin')) {
-          return { level: 'cbsa', cbsa_code: '12420', name: 'Austin-Round Rock-Georgetown, TX' };
-        }
-      }
-      if (geo.level === 'zcta') {
-        if (geo.zcta?.startsWith('787')) {
-          return { level: 'cbsa', cbsa_code: '12420', name: 'Austin-Round Rock-Georgetown, TX' };
-        }
-      }
-      return geo;
-    }
-
-    function resolveWorkforceLauGeography(geo: EconomicGeography): EconomicGeography {
-      if (
-        geo.level === 'county' ||
-        geo.level === 'cbsa' ||
-        geo.level === 'state' ||
-        geo.level === 'nation'
-      ) {
-        return geo;
-      }
-      if (geo.level === 'place' || geo.level === 'zcta') {
-        return {
-          level: 'county',
-          county_fips: '48453',
-          state_fips: '48',
-          name: 'Travis County, TX',
-        };
-      }
-      return geo;
-    }
-
-    // Auto-populate evidence records from BLS adapters if omitted
-    if (input.oews_evidence.length === 0) {
-      try {
-        const oewsGeo = resolveWorkforceOewsGeography(input.target_geography);
-        const localRecords = await oewsAdapter.query({
-          geography: oewsGeo,
-          soc_code: input.soc_code,
-        });
-        const nationalRecords = await oewsAdapter.query({
-          geography: { level: 'nation', country_code: 'US' },
-          soc_code: input.soc_code,
-        });
-        const allLocalOccupations = await oewsAdapter.query({
-          geography: oewsGeo,
-          soc_code: '00-0000',
-        });
-        const allNationalOccupations = await oewsAdapter.query({
-          geography: { level: 'nation', country_code: 'US' },
-          soc_code: '00-0000',
-        });
-        const geoAllRecords = await oewsAdapter.getEvidenceByGeography(oewsGeo);
-        const combined = [
-          ...localRecords,
-          ...nationalRecords,
-          ...allLocalOccupations,
-          ...allNationalOccupations,
-          ...geoAllRecords,
-        ];
-        const seenIds = new Set<string>();
-        const deduped: EconomicEvidenceRecord[] = [];
-        for (const r of combined) {
-          if (!seenIds.has(r.evidence_id)) {
-            seenIds.add(r.evidence_id);
-            deduped.push(r as EconomicEvidenceRecord);
-          }
-        }
-        input.oews_evidence = deduped;
-      } catch {
-        // Fallback gracefully to empty if provider query cannot fulfill
-        input.oews_evidence = [];
-      }
-    }
-
-    if (input.lau_evidence.length === 0) {
-      try {
-        const lauGeo = resolveWorkforceLauGeography(input.target_geography);
-        const lauRecords = await lauAdapter.query({
-          geography: lauGeo,
-        });
-        input.lau_evidence = lauRecords as EconomicEvidenceRecord[];
-      } catch {
-        input.lau_evidence = [];
-      }
-    }
 
     // Audit intent BEFORE execution
     options.auditSink.intent({
@@ -333,8 +230,14 @@ export function createWorkforceAnalysisRouter(options: WorkforceAnalysisRouterOp
     });
 
     try {
-      const nowIso = new Date(options.clock.now()).toISOString();
-      const result = analyzeWorkforceContext(input, nowIso);
+      const result = await resolveAndAnalyzeWorkforceContext({
+        clock: options.clock,
+        input,
+        tenantId: gov.tenantId,
+        oewsAdapter: options.oewsAdapter,
+        lauAdapter: options.lauAdapter,
+        auditCtx: { auditSink: options.auditSink, clock: options.clock },
+      });
 
       logOutcome(intentId, gov.startedAt, 'ok', {
         analysis_id: result.analysis_id,
