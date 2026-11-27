@@ -3,8 +3,9 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { type SimClock, SystemClock } from '@gev/core';
 import { migrateAuditChain } from './auditChainMigration.js';
+import { migrateBusinessContextPersistence } from './businessContextMigration.js';
 
-export const GOVERNANCE_SCHEMA_VERSION = 6;
+export const GOVERNANCE_SCHEMA_VERSION = 7;
 export const GOVERNANCE_BUSY_TIMEOUT_MS = 5_000;
 
 export interface GovernanceDatabaseOptions {
@@ -295,6 +296,10 @@ export function migrateGovernanceDatabase(db: DatabaseSync, clock: SimClock): vo
       db.prepare(
         'INSERT INTO governance_schema_migrations (version, applied_at) VALUES (?, ?);'
       ).run(6, new Date(clock.now()).toISOString());
+    }
+
+    if (versionRow.version < 7) {
+      migrateBusinessContextPersistence(db, new Date(clock.now()).toISOString());
     }
 
     db.exec('COMMIT;');

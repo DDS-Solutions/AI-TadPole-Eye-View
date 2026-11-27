@@ -616,6 +616,16 @@ Automated failure drills (`packages/governance/test/failureDrills.test.ts`, `app
 - **Disconnect & Pre-Dispatch Cancellation:** Client disconnects while M2 approval is pending abort cleanly and refund the M3 reservation (`REFUNDED`, zero charge); closed sessions fail closed on subsequent `/mcp` calls (`401`).
 - **Push STASIS Notifications & 1-Cycle Propagation:** `CapBudgetGovernor` (`packages/governance/src/budgetGovernor.ts`) and `StasisNotificationBus` (`packages/governance/src/stasisNotifier.ts`) immediately suspend active `TadpoleConnectionLifecycle` sessions, push `stasis.entered` / `stasis.resumed` events on `/ops/audit/stream` (`apps/server/src/routes/auditStream.ts`), and reject the very next `/mcp` request cycle with `423` (`STASIS_ACTIVE`). Resume remains strictly restricted to authenticated human `platform_admin` operators (`/ops/resume`).
 
+## 28. Encrypted BusinessContext Persistence & Lifecycle Operations (Task 13.1 & ADR 0066)
+
+Persisted SMB `BusinessContext` records (`packages/governance/src/businessContextStore.ts`, `packages/governance/src/businessContextMigration.ts`, `apps/server/src/routes/businessContextRoutes.ts`) operate on Governance SQLite Schema v7 with strict tenant isolation and encryption at rest:
+
+- **Encryption & Key Management:** Payloads are encrypted with AES-256-GCM using `GEV_CREDENTIAL_KEY` (required in `NODE_ENV=production`) with per-tenant, per-context, per-version AAD (`business_context.v1:<tenant_id>:<context_id>:v<version>`) and SHA-256 payload digests. Ciphertext tampering or cross-tenant row copying fails decryption closed (`INTEGRITY_ERROR`).
+- **Pre-Parse Structural Guards & Optimistic Concurrency:** Payloads exceeding `65,536` UTF-8 bytes (`413`), nesting depth `> 16`, or containing `__proto__`/`constructor`/`prototype` keys (`400`) are rejected before persistence. Updates require `expected_version` (`409 VERSION_CONFLICT` on stale writes), and version rows are protected by the SQLite trigger `governance_business_context_versions_immutable_update`.
+- **Encrypted Backup, Export, Retention & Verified Hard Deletion:** Backups (`POST /api/economic/contexts/:contextId/backup`) export ciphertext-only bundles (`gev.business_context.backup.v1`); restores verify `backup_sha256`, tenant ownership, and decryptability of every version without clobbering existing records. Deletion (`DELETE /api/economic/contexts/:contextId`) enforces `legal_hold` (overridable only by `platform_admin` with `?force_legal_hold=1`), removes rows across both parent and version tables atomically, verifies `COUNT(*) = 0` on both tables, and returns a `BusinessContextDeletionReceipt` (`verified_zero_remaining: true`) linked to the M1 `audit.intent` ID.
+- **Audit Redaction:** All mutations, exports, backups, restores, and deletions record paired M1 `audit.intent`/`audit.outcome` WAL entries using `redactBusinessContextForAudit` (`packages/economic/src/businessContextGuard.ts`), never logging sensitive business names, revenues, or employee counts.
+
+
 
 
 

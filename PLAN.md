@@ -3,7 +3,7 @@
 **Organization:** DDS-Solutions
 **Plan version:** 3.0
 **Verified against repository:** 2026-09-26
-**Status:** IN PROGRESS — Phase 13: Phase 12 exit certified; task 13.1 ready
+**Status:** IN PROGRESS — Phase 13: Task 13.1 complete; task 13.2 ready
 **Canonical working copy:** `PLAN.md`
 **Synchronized named copy:** `MASTER_PLAN_V3.md`
 **File-size exception:** ADR 0030 permits this synchronized master-plan pair to exceed 500 lines so the resume protocol, tracker, and evidence remain one atomic source.
@@ -20,11 +20,11 @@ This plan replaces the inaccurate implementation assumptions in V2. “Complete�
 ```text
 PLAN_VERSION=3.0
 CURRENT_PHASE=13
-NEXT_TASK=13.1
+NEXT_TASK=13.2
 NEXT_TASK_STATUS=READY
 OQ1_POLICY_STATUS=ACCEPTED_LOCAL_ONLY
 TADPOLE_CLIENT_FIX_EVIDENCE=SATISFIED
-LAST_VERIFIED_UTC=2026-11-12
+LAST_VERIFIED_UTC=2026-11-27
 STASIS_OBSERVABILITY=DURABLE_SHARED_SQLITE_WITH_OFFLINE_SNAPSHOT_CAVEAT
 IMPLEMENTATION_STARTED=YES
 ```
@@ -1967,13 +1967,13 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 - [x] 8.5 Add content/instruction separation and prompt-injection tests before any provider/economic text enters an LLM/Tadpole context.
 - [x] 8 exit: suppressed/unavailable/stale cases validate; provenance is required; no persistence or live calls; ADG and affected gates pass.
 
-#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 13.1
+#### Ready-to-authorize 4-Pillar brief for NEXT_TASK 13.2
 
 ```text
-[SCOPE_CONTRACT] packages/contracts, packages/economic, packages/governance, apps/server, docs. In scope: design and implement versioned, tenant-owned, encrypted persistence for BusinessContext with SQLite migrations, tenant isolation, retention policy, backup, export, verified hard deletion, and full M1 intent/outcome audit coverage. Out of scope: live external API queries, untrusted content ingestion bypass, or Phase 14 release artifacts.
-[PERFORMANCE_THRESHOLD] 100% unit and property tests green; persistence round-trip and export < 10ms p95; ADG, architectural-drift (0 files > 500 lines), and bundle-budget checks clean.
-[ARCHITECTURE_MODE] PLAN.md §2, §3, §6, §10 Task 13.1; ADR 0031, ADR 0038, ADR 0041, ADR 0042; AES-256-GCM encryption at rest; tenant-isolated SQL repositories; strict audit-before-action.
-[FAILURE_MODES] Cross-tenant data leakage, unencrypted sensitive business parameters, missing audit intent/outcome on mutate/delete, orphaned records after deletion, schema drift without migration.
+[SCOPE_CONTRACT] packages/contracts, packages/economic, packages/governance, apps/server, docs. In scope: design and implement immutable, tenant-isolated evidence bundles and analysis receipts recording source IDs, vintages, variable dictionary versions, scoring config, code revision, and M1 audit intent ID with cryptographic SHA-256 chain/receipt verification and claim-to-source tracing. Out of scope: live external API queries, untrusted content ingestion bypass, or Phase 14 release artifacts.
+[PERFORMANCE_THRESHOLD] 100% unit and property tests green; receipt generation and verification < 10ms p95; ADG, architectural-drift (0 files > 500 lines), and bundle-budget checks clean.
+[ARCHITECTURE_MODE] PLAN.md §2, §3, §4, §10 Task 13.2; ADR 0035, ADR 0044, ADR 0052, ADR 0058, ADR 0066; immutable append-only SQLite receipt storage; strict tenant isolation; SimClock timestamps only.
+[FAILURE_MODES] Mutable or overwritable receipts, missing source/vintage/intent-ID provenance links, cross-tenant receipt access, coerced suppressed/unavailable signals inside evidence bundles, files > 500 lines.
 ```
 
 ### Phase 9 — Economic R1: market and business footprint
@@ -2008,7 +2008,7 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
 
 ### Phase 13 — Economic R4: governed SMB digital twin
 
-- [ ] 13.1 Persist versioned BusinessContext only after Phase 7, with migrations, encryption decision, tenant ownership, retention, backup, export, and verified deletion.
+- [x] 13.1 Persist versioned BusinessContext only after Phase 7, with migrations, encryption decision, tenant ownership, retention, backup, export, and verified deletion.
 - [ ] 13.2 Produce immutable evidence bundles/analysis receipts with source IDs, vintages, variable dictionary, scoring config, code revision, and intent ID.
 - [ ] 13.3 Add read-only Tadpole economic tools that still enforce identity, quotas, budget, provenance, and untrusted-content handling.
 - [ ] 13.4 Add audited saved AOI watches and bounded notifications with explicit severity/
@@ -4757,6 +4757,26 @@ No later task is authorized merely because it appears in this plan.
   - Console Status Check (`pnpm gev status`): Verified console reports `Project Phase: Phase 13 — Economic R4: governed SMB digital twin`.
 - **Plan Advancement:** Phase 12 Exit Gate certified (`[x] 12 exit`). Advanced to `CURRENT_PHASE=13`, `NEXT_TASK=13.1`, `NEXT_TASK_STATUS=READY`.
 - **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 13.1. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
+
+### Task 13.1 Implementation & Verification Checkpoint — 2026-11-27
+
+- **Branch:** `codex/task-13.1-business-context-persistence` (branched from `feat/pre-phase13-upstream-patterns` after `79b6282`)
+- **Scope:** Implemented encrypted, versioned, tenant-isolated `BusinessContext` persistence with Governance SQLite Schema v7 migration, AES-256-GCM encryption at rest with per-tenant/context/version AAD, pre-parse byte/depth/prototype-key guards, optimistic version concurrency, retention expiry and legal-hold protection, ciphertext-only backup and tenant-verified fail-closed restore, audited export, verified zero-orphan hard deletion receipts, and protected `/api/economic/contexts*` REST routes with full M1 `audit.intent`/`audit.outcome` WAL coverage adhering to PLAN.md §2, §3, §6, §10 Task 13.1, and ADRs 0031, 0038, 0041, 0042, and 0066.
+- **Artifacts produced & updated:**
+  - `packages/contracts/src/businessContextPersistence.ts` & `packages/contracts/src/index.ts`: Added persistence schemas (`BusinessContextCreateRequestSchema`, `BusinessContextUpdateRequestSchema`, `BusinessContextMetadataSchema`, `PersistedBusinessContextSchema`, `BusinessContextExportBundleSchema`, `BusinessContextEncryptedBackupSchema`, `BusinessContextDeletionReceiptSchema`, `BusinessContextRetentionPurgeResultSchema`) and pre-parse guards (`assertSafeStructuredValue`, `parseBoundedJsonPayload`).
+  - `packages/contracts/test/businessContextPersistenceContracts.test.ts`: Verified contracts, retention bounds, prototype-pollution rejection, depth bounds, and byte caps (3/3 passed).
+  - `packages/economic/src/businessContextGuard.ts` & `packages/economic/src/index.ts`: Added pure retention expiry helpers, safe input validation, and `redactBusinessContextForAudit` preventing sensitive business parameters from entering audit logs.
+  - `packages/economic/test/businessContextGuard.test.ts`: Unit and `fast-check` property tests verifying zero PII leakage in audit summaries and retention/legal-hold behavior (2/2 passed).
+  - `packages/governance/src/businessContextMigration.ts`, `packages/governance/src/businessContextCrypto.ts`, `packages/governance/src/businessContextBackup.ts`, `packages/governance/src/businessContextStore.ts`, `packages/governance/src/governanceDb.ts`, `packages/governance/src/runtimeContext.ts`, & `packages/governance/src/index.ts`: Added Governance Schema v7 migration (`governance_business_contexts`, `governance_business_context_versions` with `ON DELETE CASCADE` and append-only update trigger), AES-256-GCM tenant-bound AAD encryption + SHA-256 tamper verification, `SqliteBusinessContextStore`, and runtime wiring.
+  - `packages/governance/test/businessContextStore.test.ts` & `packages/governance/test/businessContextPerformance.test.ts`: Verified zero plaintext in SQLite, cross-tenant isolation, ciphertext/AAD tamper detection, optimistic concurrency, legal hold, retention purge, encrypted backup/restore, verified zero-orphan deletion, M1 audit chain integrity, and isolated `< 10ms p95` performance (`roundTrip p95=2.078ms`, `export p95=1.390ms`, N=60).
+  - `apps/server/src/routes/businessContextRoutes.ts`, `apps/server/src/routes/economic.ts`, `apps/server/src/index.ts`, `apps/server/test/businessContextRoutes.test.ts`, `apps/server/test/auditIntegrity.test.ts`, & `apps/server/test/phase8ExitGate.test.ts`: Mounted protected `/api/economic/contexts*` routes behind `opsAuth`, tenant isolation, least-privilege RBAC (`ai_copilot` metadata-only), kill-switch, STASIS 423, rate limits, 64 KiB payload cap (413), and `Cache-Control: no-store`.
+  - `docs/adr/0066-business-context-encrypted-persistence-architecture.md`, `docs/adr/INDEX.md`, & `RUNBOOK.md` (§28): Accepted ADR 0066 and documented operational procedures.
+- **Verification Evidence & Performance:**
+  - Uncached build, typecheck, and tests (`pnpm turbo run build typecheck test --force`): `@gev/contracts` 27 files / 199 tests passed; `@gev/economic` 23 files / 191 tests passed; `@gev/governance` 18 files / 114 tests passed; `@gev/server` 37 files / 321 tests passed; `@gev/cli` 5 files / 19 tests passed.
+  - Performance & allocation gates: Task 13.1 `roundTrip p95=2.078ms`, `export p95=1.390ms` (threshold `< 10ms`); Task 12.1 `p95=0.339ms`; allocation gate `perIter=31.9B` (max `24576B`).
+  - Quality, architecture, docs & MCP gates: Biome check `0` errors across 504 files; `pnpm architecture:check` `0` large files (> 500 lines); `pnpm check:budgets` PASS; `pnpm docs:check` & `pnpm docs:test` (17/17) PASS; `pnpm test:mcp:official` PASS (13 tools, 0 schema errors); `pnpm gev doctor` PASS (`Schema v7 ready`).
+- **Plan Advancement:** Task 13.1 complete (`[x] 13.1`). Advanced to `CURRENT_PHASE=13`, `NEXT_TASK=13.2`, `NEXT_TASK_STATUS=READY`.
+- **Recommended new-chat instruction:** `Resume PLAN.md at NEXT_TASK 13.2. Authorize the embedded 4-Pillar brief exactly; do not advance into later tasks.`
 
 No later task is authorized merely because it appears in this plan.
 

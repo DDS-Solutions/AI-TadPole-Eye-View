@@ -299,6 +299,7 @@ export function createApp(options: CreateAppOptions = {}) {
       auditSink,
       budgetGovernor,
       budgetLedger,
+      businessContextStore: governanceContext.businessContextStore,
       rateLimiter,
       resolveClientId,
       isProviderEnabled: options.isProviderEnabled,
