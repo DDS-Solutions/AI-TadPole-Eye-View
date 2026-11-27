@@ -1,13 +1,6 @@
 import type { BikeStation, BikeStationBatch } from '@gev/contracts';
-import {
-  Cartesian3,
-  Color,
-  ConstantPositionProperty,
-  ConstantProperty,
-  JulianDate,
-  NearFarScalar,
-} from 'cesium';
-import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
+import { Cartesian3, Color, ConstantProperty, JulianDate, NearFarScalar } from 'cesium';
+import { BaseLayerController, type BaseLayerOptions, setEntityPosition } from './baseLayer.js';
 import { CESIUM_DESIGN_TOKENS } from './designTokens.js';
 
 export interface GbfsLayerOptions extends BaseLayerOptions {
@@ -86,10 +79,14 @@ export class GbfsLayerController extends BaseLayerController<BikeStation, GbfsLa
       });
       this.entityMap.set(id, entity);
     } else {
-      entity.position = new ConstantPositionProperty(position);
+      setEntityPosition(entity, position);
       entity.show = isVisible;
       if (entity.point) {
-        entity.point.pixelSize = new ConstantProperty(pixelSize);
+        if (entity.point.pixelSize instanceof ConstantProperty) {
+          entity.point.pixelSize.setValue(pixelSize);
+        } else {
+          entity.point.pixelSize = new ConstantProperty(pixelSize);
+        }
       }
       if (entity.properties) {
         entity.properties.merge({

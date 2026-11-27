@@ -1,6 +1,6 @@
 import type { RadioCatalog, RadioStation } from '@gev/contracts';
-import { Cartesian3, Color, ConstantPositionProperty, JulianDate, NearFarScalar } from 'cesium';
-import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
+import { Cartesian3, Color, JulianDate, NearFarScalar } from 'cesium';
+import { BaseLayerController, type BaseLayerOptions, setEntityPosition } from './baseLayer.js';
 import { CESIUM_DESIGN_TOKENS } from './designTokens.js';
 
 export interface RadioLayerOptions extends BaseLayerOptions {}
@@ -73,7 +73,7 @@ export class RadioLayerController extends BaseLayerController<RadioStation, Radi
       });
       this.entityMap.set(id, entity);
     } else {
-      entity.position = new ConstantPositionProperty(position);
+      setEntityPosition(entity, position);
       entity.show = isVisible;
       if (entity.properties) {
         entity.properties.merge({

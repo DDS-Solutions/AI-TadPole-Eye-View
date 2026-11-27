@@ -1,6 +1,6 @@
 import type { LaunchCatalog, LaunchMission } from '@gev/contracts';
 import { Cartesian3, Color, ConstantProperty, NearFarScalar } from 'cesium';
-import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
+import { BaseLayerController, type BaseLayerOptions, setPolylinePositions } from './baseLayer.js';
 import { CESIUM_DESIGN_TOKENS } from './designTokens.js';
 
 export interface LaunchLayerOptions extends BaseLayerOptions {}
@@ -72,9 +72,7 @@ export class LaunchLayerController extends BaseLayerController<LaunchMission, La
       });
       this.entityMap.set(id, entity);
     } else {
-      if (entity.polyline) {
-        entity.polyline.positions = new ConstantProperty(positions);
-      }
+      setPolylinePositions(entity, positions);
       if (entity.properties) {
         entity.properties.merge({
           kind: 'launch',

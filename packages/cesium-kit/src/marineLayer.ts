@@ -1,13 +1,6 @@
 import type { ShipBatch, ShipState } from '@gev/contracts';
-import {
-  Cartesian3,
-  Color,
-  ConstantPositionProperty,
-  ConstantProperty,
-  JulianDate,
-  NearFarScalar,
-} from 'cesium';
-import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
+import { Cartesian3, Color, ConstantProperty, JulianDate, NearFarScalar } from 'cesium';
+import { BaseLayerController, type BaseLayerOptions, setEntityPosition } from './baseLayer.js';
 import { CESIUM_DESIGN_TOKENS } from './designTokens.js';
 
 export interface MarineLayerOptions extends BaseLayerOptions {}
@@ -87,7 +80,7 @@ export class MarineLayerController extends BaseLayerController<ShipState, Marine
       });
       this.entityMap.set(id, entity);
     } else {
-      entity.position = new ConstantPositionProperty(position);
+      setEntityPosition(entity, position);
       entity.show = isVisible;
       if (entity.properties) {
         entity.properties.merge({
