@@ -298,6 +298,8 @@ test.describe('GEV v2 implemented-layer telemetry, virtualized table, and frame 
 
     await page.goto('/');
     const toggle = page.locator('#toggle-satellites');
+    // Wait for lazy GlobeRoute + Cesium chunk mount before checking reactive lock state
+    await expect(toggle).toBeVisible({ timeout: 30_000 });
     await expect(toggle).toBeDisabled();
     await expect(toggle).not.toBeChecked();
 

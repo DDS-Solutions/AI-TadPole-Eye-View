@@ -6,45 +6,17 @@
     AnalyzeWorkforceContextOutput,
     AssessSiteRiskOutput,
     CompareLocationsOutput,
-    EconomicGeography,
   } from '@gev/contracts';
   import LocationComparisonTab from './LocationComparisonTab.svelte';
   import MarketContextTab from './MarketContextTab.svelte';
+  import {
+    GEOGRAPHY_PRESETS,
+    type MarketInspectorTabId as TabId,
+    NAICS_PRESETS,
+    SOC_PRESETS,
+  } from './marketInspectorPresets.js';
   import SiteRiskTab from './SiteRiskTab.svelte';
   import WorkforceTab from './WorkforceTab.svelte';
-
-  type TabId = 'market' | 'competition' | 'comparison' | 'workforce' | 'site-risk';
-
-  const GEOGRAPHY_PRESETS: Array<{ id: string; label: string; geo: EconomicGeography }> = [
-    {
-      id: 'travis-county',
-      label: 'Travis County, TX (County)',
-      geo: { level: 'county', county_fips: '48453', state_fips: '48', name: 'Travis County, TX' },
-    },
-    {
-      id: 'austin-city',
-      label: 'Austin City, TX (Place)',
-      geo: { level: 'place', place_fips: '4805000', name: 'Austin city, TX' },
-    },
-    {
-      id: 'downtown-78701',
-      label: 'Downtown Austin (ZCTA 78701)',
-      geo: { level: 'zcta', zcta: '78701', name: 'ZCTA 78701' },
-    },
-  ];
-
-  const NAICS_PRESETS = [
-    { code: '722511', title: 'Full-Service Restaurants' },
-    { code: '541511', title: 'Custom Computer Programming Services' },
-    { code: '44-45', title: 'Retail Trade' },
-  ];
-
-  const SOC_PRESETS = [
-    { code: '15-1252', title: 'Software Developers' },
-    { code: '29-1141', title: 'Registered Nurses' },
-    { code: '35-2014', title: 'Cooks, Restaurant' },
-    { code: '00-0000', title: 'All Occupations' },
-  ];
 
   let selectedGeoId = $state('travis-county');
   let selectedNaicsCode = $state('722511');
@@ -71,10 +43,13 @@
   );
 
   async function postEconomic<T>(endpoint: string, payload: unknown): Promise<T> {
+    const opsToken =
+      typeof window !== 'undefined' ? sessionStorage.getItem('gev_ops_token') : null;
     const res = await fetch(`/api/economic/${endpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(opsToken ? { Authorization: `Bearer ${opsToken}` } : {}),
       },
       body: JSON.stringify(payload),
     });
@@ -158,7 +133,7 @@
 <div class="market-inspector-container" id="market-analysis-inspector">
   <div class="inspector-header">
     <div class="header-left">
-      <span class="chip-badge">PHASE 9 &amp; 10 OPERATOR HUD</span>
+      <span class="chip-badge">PHASE 9–11 OPERATOR HUD</span>
       <h3 class="inspector-title" id="market-inspector-title">Market &amp; Business Footprint Inspector</h3>
       <span class="inspector-subtitle">Governed demographic, establishment, and commercial footprint telemetry</span>
     </div>

@@ -20,9 +20,9 @@ export const economicModules: readonly EconomicModule[] = [
     phase: 'Phase 8',
     title: 'Economic R0: Foundation & Core Contracts',
     badge: 'CORE CONTRACTS',
-    status: 'PLANNED',
+    status: 'ACTIVE',
     statusReason:
-      'Phase 8 implementation planned. Contracts, schemas, and deterministic fixtures pending.',
+      'Phase 8 active. Core contracts, discriminated estimates, DataProvenance, and BusinessContext preview online.',
     sources: [
       'Discriminated Geography',
       'Economic Estimates',

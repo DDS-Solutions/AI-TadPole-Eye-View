@@ -4,14 +4,13 @@ import type {
   CableLandingPoint,
   CableRoute,
 } from '@gev/contracts';
+import { Cartesian3, Color, ConstantProperty, NearFarScalar } from 'cesium';
 import {
-  Cartesian3,
-  Color,
-  ConstantPositionProperty,
-  ConstantProperty,
-  NearFarScalar,
-} from 'cesium';
-import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
+  BaseLayerController,
+  type BaseLayerOptions,
+  setEntityPosition,
+  setPolylinePositions,
+} from './baseLayer.js';
 import { CESIUM_DESIGN_TOKENS } from './designTokens.js';
 
 type CableRenderItem =
@@ -104,7 +103,7 @@ export class CableLayerController extends BaseLayerController<CableRenderItem, C
       this.entityMap.set(id, entity);
       return;
     }
-    entity.position = new ConstantPositionProperty(position);
+    setEntityPosition(entity, position);
   }
 
   private processRouteSegment(
@@ -140,8 +139,6 @@ export class CableLayerController extends BaseLayerController<CableRenderItem, C
       this.entityMap.set(id, entity);
       return;
     }
-    if (entity.polyline) {
-      entity.polyline.positions = new ConstantProperty(positions);
-    }
+    setPolylinePositions(entity, positions);
   }
 }

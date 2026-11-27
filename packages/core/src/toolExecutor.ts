@@ -34,6 +34,14 @@ export type {
   ToolHandler,
 } from './toolExecutionTypes.js';
 
+/** Read-only operator diagnostic tools allowed during STASIS so operators can inspect state/logs. */
+const STASIS_EXEMPT_DIAGNOSTIC_TOOLS: ReadonlySet<OperatorToolName> = new Set([
+  'get_budget',
+  'get_feed_health',
+  'run_diagnostics',
+  'tail_logs',
+]);
+
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function generateUuid(): string {
@@ -259,7 +267,42 @@ export class GovernedToolExecutor {
     }
 
     try {
-      BudgetStateSchema.parse(budgetGovernor.state());
+      const budgetState = BudgetStateSchema.parse(budgetGovernor.state());
+      if (!STASIS_EXEMPT_DIAGNOSTIC_TOOLS.has(name)) {
+        if (budgetState.stasis_active) {
+          return this.finishUnreserved(
+            auditSink,
+            makeFailure(
+              this.clock,
+              name,
+              intentId,
+              startTime,
+              'BUDGET_DENIED',
+              `STASIS: tool '${name}' is suspended while global STASIS is active`,
+              'blocked'
+            )
+          );
+        }
+        const tenantId = context.tenant_id ?? context.identity?.tenant_id;
+        if (
+          tenantId &&
+          this.budgetLedger?.getTenantBudget &&
+          this.budgetLedger.getTenantBudget(tenantId).stasis_active === 1
+        ) {
+          return this.finishUnreserved(
+            auditSink,
+            makeFailure(
+              this.clock,
+              name,
+              intentId,
+              startTime,
+              'BUDGET_DENIED',
+              `STASIS: tool '${name}' is suspended for tenant '${tenantId}'`,
+              'blocked'
+            )
+          );
+        }
+      }
     } catch (error) {
       return this.finishUnreserved(
         auditSink,

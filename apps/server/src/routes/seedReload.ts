@@ -250,7 +250,7 @@ function replayResponse(
     return context.json({ status: 'error', code: 'LEDGER_UNAVAILABLE' }, 503);
   }
   const terminal = operation.terminal_result as Record<string, unknown>;
-  const resolvedStatus =
+  const resolvedStatus: 200 | 403 | 409 | 429 | 500 | 503 =
     statusCode ?? (terminal.status === 'error' ? 500 : terminal.status === 'blocked' ? 429 : 200);
-  return context.json(operation.terminal_result, resolvedStatus as any);
+  return context.json(operation.terminal_result, resolvedStatus);
 }

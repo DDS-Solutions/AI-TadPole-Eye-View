@@ -195,6 +195,43 @@ function scanFalseClaims() {
     .map(([file, pattern]) => `${file}: stale claim matched ${pattern}`);
 }
 
+function scanImportDirections(allFiles) {
+  const violations = [];
+  const importSpecPattern = /(?:from\s+|import\s*\(\s*)['"]([^'"]+)['"]/g;
+  for (const file of allFiles.filter((candidate) => SCAN_EXTENSIONS.has(path.extname(candidate)))) {
+    if (/(^|\/)(test|tests)(\/|$)|\.test\.[^.]+$/.test(file)) continue;
+    const text = read(file);
+    for (const match of text.matchAll(importSpecPattern)) {
+      const spec = match[1];
+      if (file.startsWith('packages/contracts/src/')) {
+        if (spec.startsWith('@gev/') || spec.startsWith('node:') || spec === 'cesium') {
+          violations.push(`${file}: contracts layer cannot import ${spec}`);
+        }
+      } else if (file.startsWith('packages/core/src/')) {
+        if (
+          (spec.startsWith('@gev/') && !spec.startsWith('@gev/contracts')) ||
+          spec.startsWith('node:') ||
+          spec === 'cesium'
+        ) {
+          violations.push(`${file}: core pure-domain layer cannot import ${spec}`);
+        }
+      } else if (
+        file.startsWith('apps/web/src/') &&
+        file !== 'apps/web/src/routes/GlobeRoute.svelte'
+      ) {
+        if (spec === 'cesium' || spec === '@cesium/engine') {
+          violations.push(`${file}: web UI layer cannot import Cesium directly (${spec})`);
+        }
+      } else if (file.startsWith('packages/economic/src/')) {
+        if (spec.startsWith('node:fs') || spec.startsWith('node:http') || spec === 'cesium') {
+          violations.push(`${file}: economic domain package cannot import ${spec}`);
+        }
+      }
+    }
+  }
+  return violations;
+}
+
 function scan() {
   const allFiles = walk();
   const dependencies = scanDependencies(allFiles);
@@ -206,6 +243,7 @@ function scan() {
     cesiumImports: dependencies.cesiumImports,
     stackPackages: dependencies.stackPackages,
     falseClaims: scanFalseClaims(),
+    importDirectionViolations: scanImportDirections(allFiles),
   };
 }
 
@@ -283,6 +321,7 @@ function check(current) {
     errors.push('stackPackages: installed-stack truth changed; reconcile docs and inventory');
   }
   errors.push(...current.falseClaims);
+  errors.push(...(current.importDirectionViolations ?? []));
 
   if (errors.length > 0) {
     console.error('[ARCH-DRIFT] Architectural drift check failed:');

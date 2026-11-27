@@ -1,6 +1,6 @@
 import type { FlightBatch, FlightState } from '@gev/contracts';
-import { Cartesian3, Color, ConstantPositionProperty, NearFarScalar } from 'cesium';
-import { BaseLayerController, type BaseLayerOptions } from './baseLayer.js';
+import { Cartesian3, Color, ConstantProperty, NearFarScalar } from 'cesium';
+import { BaseLayerController, type BaseLayerOptions, setEntityPosition } from './baseLayer.js';
 import { CESIUM_DESIGN_TOKENS } from './designTokens.js';
 
 export interface FlightLayerOptions extends BaseLayerOptions {}
@@ -9,7 +9,18 @@ export interface FlightLayerOptions extends BaseLayerOptions {}
  * Flight Layer Controller (Rule 1 & Rule 5)
  * Drains incoming position batches through requestAnimationFrame queue straight into Cesium.
  */
+const ACTIVE_FLIGHT_ALPHA = 1.0;
+const STALE_FLIGHT_ALPHA = 0.42;
+
 export class FlightLayerController extends BaseLayerController<FlightState, FlightLayerOptions> {
+  private readonly lastSignature = new Map<string, string>();
+  private static readonly BASE_COLOR = Color.fromCssColorString(
+    CESIUM_DESIGN_TOKENS.channels.aviation
+  );
+  private static readonly BASE_OUTLINE = Color.fromCssColorString(
+    CESIUM_DESIGN_TOKENS.outlines.default
+  );
+
   constructor(options: FlightLayerOptions) {
     super(options, 'gev-flights');
   }
@@ -31,19 +42,26 @@ export class FlightLayerController extends BaseLayerController<FlightState, Flig
     }
 
     const altitude = flight.geo_altitude ?? flight.baro_altitude ?? 0;
-    const position = Cartesian3.fromDegrees(flight.longitude, flight.latitude, altitude);
-
+    const signature = `${flight.last_contact}:${flight.longitude}:${flight.latitude}:${altitude}:${flight.velocity ?? ''}:${flight.true_track ?? ''}`;
     let entity = this.entityMap.get(id);
 
+    if (entity && this.lastSignature.get(id) === signature) {
+      return;
+    }
+
+    const position = Cartesian3.fromDegrees(flight.longitude, flight.latitude, altitude);
+    this.lastSignature.set(id, signature);
+
     if (!entity) {
+      const alpha = this.isSignalLost ? STALE_FLIGHT_ALPHA : ACTIVE_FLIGHT_ALPHA;
       entity = this.dataSource.entities.add({
         id: `flight-${id}`,
         name: flight.callsign || flight.icao24,
         position,
         point: {
           pixelSize: 6,
-          color: Color.fromCssColorString(CESIUM_DESIGN_TOKENS.channels.aviation),
-          outlineColor: Color.fromCssColorString(CESIUM_DESIGN_TOKENS.outlines.default),
+          color: FlightLayerController.BASE_COLOR.withAlpha(alpha),
+          outlineColor: FlightLayerController.BASE_OUTLINE.withAlpha(alpha),
           outlineWidth: 1,
           scaleByDistance: new NearFarScalar(1.5e2, 1.5, 8.0e6, 0.5),
         },
@@ -53,11 +71,30 @@ export class FlightLayerController extends BaseLayerController<FlightState, Flig
       });
       this.entityMap.set(id, entity);
     } else {
-      entity.position = new ConstantPositionProperty(position);
+      setEntityPosition(entity, position);
       if (entity.properties) {
         entity.properties.merge(flight);
       }
     }
+  }
+
+  protected override onSignalLostChanged(lost: boolean): void {
+    const alpha = lost ? STALE_FLIGHT_ALPHA : ACTIVE_FLIGHT_ALPHA;
+    const fill = FlightLayerController.BASE_COLOR.withAlpha(alpha);
+    const outline = FlightLayerController.BASE_OUTLINE.withAlpha(alpha);
+    this.dataSource.entities.suspendEvents();
+    for (const entity of this.entityMap.values()) {
+      if (entity.point) {
+        entity.point.color = new ConstantProperty(fill);
+        entity.point.outlineColor = new ConstantProperty(outline);
+      }
+    }
+    this.dataSource.entities.resumeEvents();
+  }
+
+  override destroy(): void {
+    this.lastSignature.clear();
+    super.destroy();
   }
 
   /**

@@ -8,6 +8,8 @@
     "lint": "biome check ."
   },
   "devDependencies": {
-    "@playwright/test": "^1.65.0"
+    "@gev/cesium-kit": "workspace:*",
+    "@gev/contracts": "workspace:*",
+    "@playwright/test": "^1.65.1"
   }
 }

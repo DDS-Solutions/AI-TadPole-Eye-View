@@ -1,4 +1,4 @@
-import { RoomJoinResponseSchema } from '@gev/contracts';
+import { GEV_PRODUCTION_IDENTITY_PROFILE, RoomJoinResponseSchema } from '@gev/contracts';
 import { FrozenClock } from '@gev/core';
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../src/index.js';
@@ -285,17 +285,20 @@ describe('Collaborative Rooms API (@gev/server)', () => {
         readyState: 1,
         send: () => {},
         close: () => {},
-        on: (event: string, handler: any) => {
+        on: (event: string, handler: (data: unknown, isBinary: boolean) => void) => {
           if (event === 'message') messageHandler = handler;
         },
       };
 
-      context.collabRoomManager.handleWebSocketPeer(fakeWs as any, {
-        sub: 'viewer-client-1',
-        callsign: 'ViewerOne',
-        roomId: 'viewer-idle-room',
-        role: 'viewer',
-      });
+      context.collabRoomManager.handleWebSocketPeer(
+        fakeWs as unknown as Parameters<typeof context.collabRoomManager.handleWebSocketPeer>[0],
+        {
+          sub: 'viewer-client-1',
+          callsign: 'ViewerOne',
+          roomId: 'viewer-idle-room',
+          role: 'viewer',
+        }
+      );
 
       clock.setTime(1_050_000);
       // Viewer sends unauthorized binary frame
@@ -303,6 +306,68 @@ describe('Collaborative Rooms API (@gev/server)', () => {
 
       // Room lastActivityAt should NOT have been updated by viewer binary frame
       expect(room.lastActivityAt).toBe(initialActivity);
+    } finally {
+      context.auditSink.close();
+    }
+  });
+
+  it('authenticates /api/collab/join asynchronously, isolates rooms by tenant, and uses one-time tickets instead of ?token= JWTs', async () => {
+    const clock = new FrozenClock(1_731_400_000_000);
+    const nowSec = Math.floor(clock.now() / 1000);
+    const context = createApp({
+      clock,
+      identityBearerVerifier: {
+        verify: async ({ access_token }) => {
+          if (access_token !== 'oidc-tenant-a' && access_token !== 'oidc-tenant-b') return null;
+          const isA = access_token === 'oidc-tenant-a';
+          return {
+            actor: 'human',
+            principal: isA ? 'auth0|op-a' : 'auth0|op-b',
+            tenant_id: isA ? 'tenant-alpha' : 'tenant-beta',
+            role: 'operator',
+            client_id: 'gev-web',
+            token_id: isA ? 'tok-a' : 'tok-b',
+            issuer: GEV_PRODUCTION_IDENTITY_PROFILE.issuer,
+            audience: GEV_PRODUCTION_IDENTITY_PROFILE.rest_resource,
+            resource: GEV_PRODUCTION_IDENTITY_PROFILE.rest_resource,
+            scopes: ['read.telemetry'],
+            issued_at_epoch_seconds: nowSec - 10,
+            not_before_epoch_seconds: nowSec - 10,
+            expires_at_epoch_seconds: nowSec + 290,
+          };
+        },
+      },
+    });
+    try {
+      const joinA = await joinRoom(context, 'operator', 'Bearer oidc-tenant-a', 'shared-room-name');
+      const joinB = await joinRoom(context, 'operator', 'Bearer oidc-tenant-b', 'shared-room-name');
+
+      expect(joinA.role).toBe('operator');
+      expect(joinB.role).toBe('operator');
+      expect(joinA.wsUrl).toContain('?ticket=');
+      expect(joinA.wsUrl).not.toContain('?token=');
+      expect(joinA.wsUrl).not.toContain(joinA.roomToken);
+
+      const ticket = new URL(joinA.wsUrl).searchParams.get('ticket');
+      expect(ticket).toBeTruthy();
+      expect(
+        context.collabRoomManager.consumeUpgradeTicket(ticket ?? '', 'shared-room-name')
+      ).toMatchObject({ tenantId: 'tenant-alpha', roomId: 'shared-room-name', role: 'operator' });
+      // Ticket is strictly single-use
+      expect(
+        context.collabRoomManager.consumeUpgradeTicket(ticket ?? '', 'shared-room-name')
+      ).toBeNull();
+
+      // Tenant A only sees tenant-alpha's rooms
+      const roomsResA = await context.app.request('/api/collab/rooms', {
+        headers: { Authorization: 'Bearer oidc-tenant-a' },
+      });
+      expect(roomsResA.status).toBe(200);
+      const roomsJsonA = (await roomsResA.json()) as {
+        rooms: Array<{ roomId: string; tenantId: string }>;
+      };
+      expect(roomsJsonA.rooms).toHaveLength(1);
+      expect(roomsJsonA.rooms[0]?.tenantId).toBe('tenant-alpha');
     } finally {
       context.auditSink.close();
     }

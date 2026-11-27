@@ -7,9 +7,10 @@ type CreateApplication = typeof import('./index.js').createApp;
 
 /** Starts the standalone process; application composition remains testable in index.ts. */
 export function startStandaloneServer(createApplication: CreateApplication): void {
-  const { app, collabRoomManager, rateLimiter, mcpHttp, governanceContext } = createApplication({
-    clock: resolveServerClockFromEnvironment(),
-  });
+  const { app, collabRoomManager, rateLimiter, mcpHttp, governanceContext, dispose } =
+    createApplication({
+      clock: resolveServerClockFromEnvironment(),
+    });
   const reaper = governanceContext.startReaper(30_000);
   const server = serve({
     fetch: app.fetch,
@@ -21,5 +22,6 @@ export function startStandaloneServer(createApplication: CreateApplication): voi
   bindMcpHttpShutdown(mcpHttp, server);
   server.once('close', () => {
     reaper.stop();
+    void dispose();
   });
 }

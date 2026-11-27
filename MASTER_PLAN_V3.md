@@ -2028,6 +2028,14 @@ the ADR, record DOC_BLOCKER with the exact missing facts and stop before impleme
   and resumes only after the configured idle interval.
 - [ ] 14 exit: release evidence is linked in §17; no known critical/high finding is open; plan status becomes COMPLETE only after human review.
 
+### Post-Phase-13 Upstream Candidate Backlog (Deferred — Requires 4-Pillar Authorization)
+
+Tracked candidates reviewed from upstream `DDS-Solutions/gods-eye-view` (`10a788d`) for potential post-Phase-13 evaluation (commercial-license and §12 compliance checks mandatory before implementation):
+
+- **Layers & Weather:** Rail (`#1675`, 30 keyless GTFS-RT feeds + opt-in pack cache), News (`#1593`, GDELT 2.0 Events / optional capped WorldNewsAPI with strict state labels), Wildlife Sightings (`#1591`, iNaturalist/Acartia UTFGrid + daily rate pacing), Shipwrecks (`#1583`, EMODnet CC BY 4.0 / Wikidata CC0), NOAA GFS + ECMWF IFS wind, NOAA nowCOAST radar/clouds/lightning (`#1665`), and 6 satellite classes (`#1558`).
+- **UX & Replay:** Unified world clock timeline (`#1512`), typed AI chat sharing the governed voice tool executor (`#1507`), Scene v5 anchor/data-pack support, and deterministic globe capture helpers.
+- **Excluded without Explicit Human ADR:** ALPR camera datasets (§12 ethics line), NonCommercial-licensed bundled event packs, and reading external CLI OAuth credential stores.
+
 ---
 
 ## §11 — INSTANT REJECT ANTI-PATTERNS
@@ -2062,17 +2070,17 @@ Stop and request a human ADR for person tracking, face recognition, de-anonymiza
 | ADR | Decision | Status |
 |---|---|---|
 | 0030 | V3 canonical plan, synchronized named copy, deterministic resume protocol | Accepted |
-| 0031 | Authentication, identity, tenancy, and route policy | Reserved |
-| 0032 | MCP SDK/transport/protocol/session design | Reserved |
-| 0033 | Durable shared governance, M2/M3 adapters, audit hash chain | Reserved |
-| 0034 | Satellite source, GP/OMM propagation, reference frames, licensing | Reserved |
-| 0035 | Provenance/geography/statistical/evidence contract model | Reserved |
-| 0036 | OSM economic use and ODbL output obligations | Reserved |
-| 0037 | Intelligence routing and optional MapLibre bundle strategy | Reserved |
+| 0031 | Authentication, identity, tenancy, and route policy | Accepted (ADR 0031; production provisioning pending) |
+| 0032 | MCP SDK/transport/protocol/session design | Accepted (ADR 0032) |
+| 0033 | Durable shared governance, M2/M3 adapters, audit hash chain | Reserved (covered by ADRs 0041–0044) |
+| 0034 | Satellite source, GP/OMM propagation, reference frames, licensing | Accepted (ADR 0034) |
+| 0035 | Provenance/geography/statistical/evidence contract model | Accepted (ADR 0035) |
+| 0036 | OSM economic use and ODbL output obligations | Accepted (ADRs 0036, 0057) |
+| 0037 | Intelligence routing and optional MapLibre bundle strategy | Reserved (superseded by ADR 0051) |
 | 0038 | Tadpole AgentEnvelope and M4 failure policy | Accepted (ADR 0038) |
 | 0039 | Language placement across TypeScript/Svelte, Rust, SQL, and Python | Accepted |
 
-Reserved ADR numbers are planning aids, not accepted decisions. Update `docs/adr/INDEX.md` only when an ADR file exists.
+Accepted ADRs 0040–0065 are indexed in `docs/adr/INDEX.md`. Reserved ADR numbers remain planning cross-references; do not link nonexistent ADR files.
 
 ---
 

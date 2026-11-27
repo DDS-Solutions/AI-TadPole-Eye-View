@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { type Actor, BusinessContextInputSchema, GevEvents, TenantIdSchema } from '@gev/contracts';
 import type { SimClock } from '@gev/core';
 import type { CapBudgetGovernor, SqliteAuditSink, SqliteBudgetLedger } from '@gev/governance';
-import { generateBusinessContextPreview } from '@gev/ops-mcp';
+import { generateBusinessContextPreview, hardenBusinessPreviewWithPromptGuard } from '@gev/ops-mcp';
 import { EconomicFixtureAdapter } from '@gev/providers';
 import { type Context, Hono } from 'hono';
 import type { InMemoryRateLimiter, OpsAuthAdapter } from '../middleware/opsAuth.js';
@@ -171,14 +171,19 @@ export function createEconomicRouter(options: EconomicRouterOptions): Hono {
       task_ref: taskRef,
     });
 
-    // 7. Stateless execution
+    // 7. Stateless execution + prompt protection
     try {
-      const preview = generateBusinessContextPreview({
+      const rawPreview = generateBusinessContextPreview({
         input: parsedInput.data,
         tenantId,
         clock: options.clock,
         fixtureAdapter: adapter,
       });
+      const preview = await hardenBusinessPreviewWithPromptGuard(
+        { auditSink: options.auditSink, clock: options.clock },
+        tenantId,
+        rawPreview
+      );
 
       // 8. Audit outcome AFTER successful execution
       options.auditSink.outcome({
